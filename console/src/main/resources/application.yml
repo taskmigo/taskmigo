@@ -8,10 +8,13 @@ spring:
     password: ${DATABASE_PASSWORD}
   flyway:
     enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
 
 app:
   security:
-    issuer: ${AUTH_ISSUER:http://localhost:9000}
     bootstrap:
       username: ${BOOTSTRAP_USERNAME:developer}
       password: ${BOOTSTRAP_PASSWORD}

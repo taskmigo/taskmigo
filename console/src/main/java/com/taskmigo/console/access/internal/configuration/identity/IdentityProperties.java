@@ -1,6 +1,4 @@
-package com.taskmigo.console.config;
-
-import java.net.URI;
+package com.taskmigo.console.access.internal.configuration.identity;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -10,12 +8,7 @@ import org.springframework.validation.annotation.Validated;
 
 @Validated
 @ConfigurationProperties(prefix = "app.security")
-public record SecurityProperties(
-        @NotNull URI issuer,
-        @NotNull @Valid Bootstrap bootstrap) {
+public record IdentityProperties(@NotNull @Valid Bootstrap bootstrap) {
 
-    public record Bootstrap(
-            @NotBlank String username,
-            @NotBlank String password) {
-    }
+  public record Bootstrap(@NotBlank String username, @NotBlank String password) {}
 }

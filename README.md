@@ -1,29 +1,32 @@
 # Taskmigo
 
-Repository Taskmigo chứa các service và hạ tầng dùng chung. Hiện tại repository cung cấp service [Taskmigo Console](console/README.md), vừa là OAuth 2.1/OpenID Connect Authorization Server, vừa là Resource Server bảo vệ `/api/**`.
+Taskmigo currently provides Taskmigo Console, an OAuth 2.1/OpenID Connect Authorization Server
+and JWT Resource Server backed by PostgreSQL.
 
-## Cấu trúc repository
+## Start the development stack
 
-- `console/`: service xác thực và API Console; xem [tài liệu riêng của Console](console/README.md).
-- `compose.yaml`: orchestration dùng chung ở repository root, sẵn sàng bổ sung các service khác.
-
-## Khởi động stack bằng Docker Compose
-
-Ứng dụng dùng PostgreSQL 18 cho user, authority, OAuth client, authorization, consent và signing key; không còn repository in-memory. Các migration Flyway tự chạy khi service khởi động.
+The checked-in sample contains local-only credentials and two environment-configured OAuth
+clients:
 
 ```bash
-export DATABASE_PASSWORD='a-strong-database-password'
-export BOOTSTRAP_PASSWORD='a-strong-login-password'
-docker compose up --build
+bash examples/docker-compose.sh up --build
 ```
 
-Compose tạo volume `postgres-data`, vì vậy dữ liệu OAuth và user vẫn tồn tại sau khi container được tạo lại. User bootstrap mặc định là `developer`; username có thể đổi qua `BOOTSTRAP_USERNAME`. Không commit các password vào repository.
+No OAuth client is fixed in application source or `application.yml`. Production deployments must
+provide their own secrets and standard
+`spring.security.oauth2.authorizationserver.client.<registration-id>` configuration.
 
-Hướng dẫn chạy riêng module Console và các chi tiết OAuth nằm trong [console/README.md](console/README.md). Nếu chỉ cần PostgreSQL:
+The wrapper deliberately removes conflicting exported variables before invoking Compose. This
+ensures the documented sample user remains `developer` / `developer-password`, even when the
+shell contains credentials from another Taskmigo environment.
 
-```bash
-export DATABASE_PASSWORD='a-strong-database-password'
-docker compose up -d postgres
-```
+## Documentation
 
-Production nên thay bảng signing key bằng KMS/HSM; implementation hiện tại lưu JWK bền vững trong PostgreSQL để hỗ trợ restart và nhiều replica, thay vì sinh key mới trong memory.
+- [Architecture](docs/Architecture.md)
+- Identity and Access
+  - [Users, roles and login](docs/IdentityAndAccess.md)
+  - [OAuth client management](docs/OAuthClientManagement.md)
+  - [JWT security](docs/JwtSecurity.md)
+- [System API](docs/SystemApi.md)
+- [Use-case coverage](docs/UseCaseCoverage.md)
+- [Console quick start and build](console/README.md)
