@@ -9,6 +9,7 @@ import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
@@ -39,18 +40,22 @@ public class DatabaseBootstrapConfiguration {
     private static RegisteredClient browserClient() {
         return RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("taskmigo-browser")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+                .clientSecret("{noop}hello")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .redirectUri("http://127.0.0.1:8080/callback")
+                .redirectUri("https://oauth.pstmn.io/v1/callback")
                 .postLogoutRedirectUri("http://127.0.0.1:8080/")
-                .scope("openid")
-                .scope("profile")
+                .scope(OidcScopes.OPENID)
+                .scope(OidcScopes.PROFILE)
+                .scope(OidcScopes.EMAIL)
                 .scope("api.read")
                 .scope("api.admin")
+                .scope("offline_access")
                 .clientSettings(ClientSettings.builder()
                         .requireProofKey(true)
-                        .requireAuthorizationConsent(true)
+                        .requireAuthorizationConsent(false)
                         .build())
                 .build();
     }
