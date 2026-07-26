@@ -16,7 +16,8 @@ services:
       - postgres-data:/var/lib/postgresql/data
 
   console:
-    build: .
+    build:
+      context: ./console
     environment:
       DATABASE_URL: jdbc:postgresql://postgres:5432/taskmigo
       DATABASE_USERNAME: taskmigo

@@ -7,7 +7,7 @@ Một ứng dụng Spring Boot “2 trong 1”: vừa là OAuth 2.1/OpenID Conne
 Ứng dụng dùng PostgreSQL 18 cho user, authority, OAuth client, authorization, consent và signing key; không còn repository in-memory. Các migration Flyway tự chạy khi service khởi động.
 
 ```bash
-cd console
+# Chạy tại thư mục gốc của repository, nơi chứa compose.yaml
 export DATABASE_PASSWORD='a-strong-database-password'
 export BOOTSTRAP_PASSWORD='a-strong-login-password'
 docker compose up --build
@@ -18,7 +18,9 @@ Compose tạo volume `postgres-data`, vì vậy dữ liệu OAuth và user vẫn
 Để chạy application trực tiếp trong khi chỉ chạy PostgreSQL bằng Compose:
 
 ```bash
+# Chạy lệnh Compose tại thư mục gốc của repository
 docker compose up -d postgres
+cd console
 export DATABASE_URL='jdbc:postgresql://localhost:5432/taskmigo'
 export DATABASE_USERNAME='taskmigo'
 export DATABASE_PASSWORD='a-strong-database-password'
