@@ -5,6 +5,7 @@ Taskmigo is a modern Redmine alternative. This service implements the current v0
 ## Stack
 
 - Java 26
+- Gradle 9.7.1
 - Spring Boot 4.1.0
 - Spring Security Authorization Server 7.1.0, managed by Spring Boot
 - PostgreSQL 18.4
@@ -12,6 +13,7 @@ Taskmigo is a modern Redmine alternative. This service implements the current v0
 - Testcontainers 2.0.5, managed by Spring Boot
 
 Spring Boot's dependency management is the source of truth for compatible Spring and third-party dependency versions.
+The Gradle build uses a Java 26 toolchain, so compilation and tests consistently target Java 26.
 
 ## Database lifecycle
 
@@ -47,14 +49,14 @@ Use the returned bearer token for `/api/v0/**`.
 
 ```bash
 docker compose up -d
-mvn spring-boot:run
+./gradlew bootRun
 ```
 
 ## Verify
 
-`mvn verify` runs integration tests against a real PostgreSQL 18.4 container. The tests verify Flyway schema creation,
+`./gradlew build` runs integration tests against a real PostgreSQL 18.4 container. The tests verify Flyway schema creation,
 resource invariants, live external-Group authorization, archived Project behavior, and the OAuth client-credentials flow.
 
 ```bash
-mvn verify
+./gradlew build
 ```
