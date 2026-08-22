@@ -23,19 +23,10 @@ jobs:
         working-directory: server
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-node@v7.0.0
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: server/package-lock.json
       - uses: actions/setup-java@v5.7.0
         with:
           distribution: temurin
           java-version: "26"
           cache: gradle
-      - name: Install dependencies
-        run: npm ci
-      - name: Verify formatting
-        run: npm run format:check
       - name: Verify build
         run: ./gradlew --no-daemon build
