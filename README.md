@@ -1,6 +1,7 @@
 # Taskmigo
 
-Taskmigo is a modern Redmine alternative. The repository is one shared codebase with independently runnable web and worker applications.
+Taskmigo is a modern Redmine alternative. The repository is one shared codebase with independently runnable web and
+worker applications plus the product documentation site.
 
 ## Stack
 
@@ -14,17 +15,19 @@ Taskmigo is a modern Redmine alternative. The repository is one shared codebase 
 - PostgreSQL
 - Flyway
 - Testcontainers
+- Next.js with Fumadocs
 
-Dependency and plugin versions are defined in `gradle/libs.versions.toml`. Spring Boot and Spring Modulith BOMs provide
-compatible versions for their dependency families.
+Server dependency and plugin versions are defined in `server/gradle/libs.versions.toml`. Spring Boot and Spring Modulith
+BOMs provide compatible versions for their dependency families.
 
 ## Project structure
 
-| Project           | Responsibility                                            | Output              |
-| ----------------- | --------------------------------------------------------- | ------------------- |
-| `taskmigo-core`   | Shared domain modules, persistence, and Flyway migrations | Library JAR         |
-| `taskmigo-web`    | HTTP API, OAuth authorization server, and resource server | Executable Boot JAR |
-| `taskmigo-worker` | Background processing without an embedded web server      | Executable Boot JAR |
+| Project                  | Responsibility                                            | Output              |
+| ------------------------ | --------------------------------------------------------- | ------------------- |
+| `server/taskmigo-core`   | Shared domain modules, persistence, and Flyway migrations | Library JAR         |
+| `server/taskmigo-web`    | HTTP API, OAuth authorization server, and resource server | Executable Boot JAR |
+| `server/taskmigo-worker` | Background processing without an embedded web server      | Executable Boot JAR |
+| `docs`                   | Documentation site and versioned product contract         | Static site         |
 
 Both applications depend on `taskmigo-core`; core never depends on either executable.
 Spring Modulith treats each direct package below `io.taskmigo` as an application module. Architecture tests reject module cycles,
@@ -32,7 +35,8 @@ access to internal packages, and dependencies not explicitly allowed by each mod
 
 ## Database lifecycle
 
-Flyway is the only schema owner. `taskmigo-core/src/main/resources/db/migration` contains the database definition and invariants.
+Flyway is the only schema owner. `server/taskmigo-core/src/main/resources/db/migration` contains the database definition
+and invariants.
 Hibernate is configured with `spring.jpa.hibernate.ddl-auto=validate`; it never creates or updates tables.
 
 The initial migration enforces database uniqueness plus cross-table invariants such as same-Organization Group members,
@@ -65,19 +69,29 @@ Use the returned bearer token for `/api/v0/**`.
 Start PostgreSQL, then run either application independently:
 
 ```bash
+cd server
 docker compose up -d
 ./gradlew :taskmigo-web:bootRun
 ```
 
 ```bash
+cd server
 ./gradlew :taskmigo-worker:bootRun
+```
+
+Run the documentation site independently:
+
+```bash
+cd docs
+npm ci
+npm run dev
 ```
 
 Build the independently deployable container images from the repository root:
 
 ```bash
-docker build --file taskmigo-web/Dockerfile --tag taskmigo-web .
-docker build --file taskmigo-worker/Dockerfile --tag taskmigo-worker .
+docker build --file server/taskmigo-web/Dockerfile --tag taskmigo-web server
+docker build --file server/taskmigo-worker/Dockerfile --tag taskmigo-worker server
 ```
 
 Both images use Temurin images pinned by manifest digest, contain only the selected executable Boot JAR plus its runtime,
@@ -87,18 +101,29 @@ Dockerfile changes are checked by Hadolint in a path-filtered workflow; the job 
 
 ## Verify
 
-The verification gate scans the entire repository with Prettier, enforces JSpecify nullness contracts with NullAway,
-validates the Spring Modulith boundaries, and runs the web integration tests against a real PostgreSQL container.
+The server verification gate scans the entire `server/` tree with Prettier, enforces JSpecify nullness contracts with
+NullAway, validates the Spring Modulith boundaries, and runs the web integration tests against a real PostgreSQL container.
 
 ```bash
+cd server
 npm ci
 npm run format:check
 ./gradlew build
 ```
 
-Format the entire repository or check formatting without changing files. Unsupported file types are scanned and skipped:
+Format the entire server tree or check formatting without changing files. Unsupported file types are scanned and skipped:
 
 ```bash
 npm run format:fix
 npm run format:check
+```
+
+Verify the documentation site from `docs/`:
+
+```bash
+npm ci
+npm run lint:check
+npm run format:check
+npm run types:check
+npm run build
 ```

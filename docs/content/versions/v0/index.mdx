@@ -1,0 +1,25 @@
+---
+title: Taskmigo
+description: Resource and project management for teams that work across company boundaries.
+---
+
+Taskmigo models the people, teams, roles, and projects that companies use to collaborate.
+The current contract focuses on resource management before introducing work-tracking features.
+
+```mermaid
+flowchart LR
+  orgA[Organization A] --> project[Project]
+  orgA --> role[Roles]
+  orgB[Organization B] --> users[Users]
+  orgB --> groups[Groups]
+  users --> membership[Project membership]
+  groups --> membership
+  role --> membership
+  membership --> project
+```
+
+The central rule is simple: **ownership and participation are different**.
+A resource remains owned by its home Organization even when it participates in another Organization's Project.
+
+- [Product manual](/versions/v0/manuals)
+- [Developer resource model](/versions/v0/developer)
