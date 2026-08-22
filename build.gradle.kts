@@ -1,6 +1,9 @@
+import net.ltgt.gradle.errorprone.errorprone
+
 plugins {
     base
     id("org.springframework.boot") version "4.1.1" apply false
+    id("net.ltgt.errorprone") version "5.1.0" apply false
 }
 
 allprojects {
@@ -14,6 +17,8 @@ subprojects {
     }
 
     plugins.withType<JavaPlugin> {
+        apply(plugin = "net.ltgt.errorprone")
+
         extensions.configure<JavaPluginExtension> {
             toolchain {
                 languageVersion = JavaLanguageVersion.of(26)
@@ -26,6 +31,18 @@ subprojects {
             add("testImplementation", platform("org.springframework.boot:spring-boot-dependencies:4.1.1"))
             add("testImplementation", platform("org.springframework.modulith:spring-modulith-bom:2.1.0"))
             add("testRuntimeOnly", "org.junit.platform:junit-platform-launcher")
+            add("errorprone", "com.google.errorprone:error_prone_core:2.50.0")
+            add("errorprone", "com.uber.nullaway:nullaway:0.13.8")
+        }
+
+        tasks.withType<JavaCompile>().configureEach {
+            options.errorprone {
+                disableAllChecks.set(true)
+                error("NullAway", "RequireExplicitNullMarking")
+                option("NullAway:OnlyNullMarked", "true")
+                option("NullAway:JSpecifyMode", "true")
+                option("NullAway:HandleTestAssertionLibraries", "true")
+            }
         }
 
         tasks.withType<Test>().configureEach {

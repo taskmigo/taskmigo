@@ -8,6 +8,7 @@ Taskmigo is a modern Redmine alternative. The repository is one shared codebase 
 - Gradle 9.7.1
 - Spring Boot 4.1.1
 - Spring Modulith 2.1.0
+- NullAway 0.13.8 with JSpecify 1.0.0
 - Spring Security Authorization Server 7.1.0, managed by Spring Boot
 - PostgreSQL 18.4
 - Flyway 12.4.0, managed by Spring Boot
@@ -73,7 +74,7 @@ docker compose up -d
 
 ## Verify
 
-`./gradlew build` verifies every Gradle project, validates the Spring Modulith boundaries, and runs the web integration tests
+`./gradlew build` verifies every Gradle project, enforces JSpecify nullness contracts with NullAway, validates the Spring Modulith boundaries, and runs the web integration tests
 against a real PostgreSQL 18.4 container.
 
 ```bash

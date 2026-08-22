@@ -8,8 +8,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -77,7 +79,7 @@ class ResourceController {
 
     @PostMapping("/projects/{projectId}/members")
     ResponseEntity<Map<String, UUID>> addProjectMember(@PathVariable UUID projectId, @Valid @RequestBody ProjectMemberRequest request) {
-        UUID id = resources.addProjectMember(projectId, request.principalType(), request.principalId());
+        UUID id = resources.addProjectMember(projectId, request.principalType(), Objects.requireNonNull(request.principalId()));
         return created("/api/v0/projects/" + projectId + "/members/" + id, id);
     }
 
@@ -101,11 +103,11 @@ class ResourceController {
         return ResponseEntity.created(URI.create(location)).body(Map.of("id", id));
     }
 
-    record OrganizationRequest(@NotBlank String key, @NotBlank String name) {}
-    record UserRequest(@NotBlank String username, @Email @NotBlank String email, @NotBlank String displayName) {}
-    record NamedRequest(@NotBlank String name, String description) {}
-    record RoleRequest(@NotBlank String name, String description, Set<String> permissions) {}
-    record ProjectRequest(@NotBlank String key, @NotBlank String name, String description) {}
-    record ProjectMemberRequest(@NotBlank String principalType, @NotNull UUID principalId) {}
-    record RoleAssignmentRequest(Set<UUID> roleIds) {}
+    record OrganizationRequest(@NotBlank @Nullable String key, @NotBlank @Nullable String name) {}
+    record UserRequest(@NotBlank @Nullable String username, @Email @NotBlank @Nullable String email, @NotBlank @Nullable String displayName) {}
+    record NamedRequest(@NotBlank @Nullable String name, @Nullable String description) {}
+    record RoleRequest(@NotBlank @Nullable String name, @Nullable String description, @Nullable Set<String> permissions) {}
+    record ProjectRequest(@NotBlank @Nullable String key, @NotBlank @Nullable String name, @Nullable String description) {}
+    record ProjectMemberRequest(@NotBlank @Nullable String principalType, @NotNull @Nullable UUID principalId) {}
+    record RoleAssignmentRequest(@Nullable Set<UUID> roleIds) {}
 }

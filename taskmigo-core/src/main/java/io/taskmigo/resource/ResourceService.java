@@ -5,6 +5,7 @@ import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +26,7 @@ public class ResourceService {
     }
 
     @Transactional
-    public UUID createOrganization(String key, String name) {
+    public UUID createOrganization(@Nullable String key, @Nullable String name) {
         try {
             return organizations.saveAndFlush(new OrganizationEntity(UUID.randomUUID(), required(key, "key"), required(name, "name"))).getId();
         } catch (DataIntegrityViolationException exception) {
@@ -34,7 +35,7 @@ public class ResourceService {
     }
 
     @Transactional
-    public UUID createUser(UUID organizationId, String username, String email, String displayName) {
+    public UUID createUser(UUID organizationId, @Nullable String username, @Nullable String email, @Nullable String displayName) {
         OrganizationEntity organization = organization(organizationId);
         String normalizedEmail = required(email, "email").toLowerCase(Locale.ROOT);
         try {
@@ -46,7 +47,7 @@ public class ResourceService {
     }
 
     @Transactional
-    public UUID createGroup(UUID organizationId, String name, String description) {
+    public UUID createGroup(UUID organizationId, @Nullable String name, @Nullable String description) {
         return groups.save(new GroupEntity(UUID.randomUUID(), organization(organizationId), required(name, "name"), description)).getId();
     }
 
@@ -69,7 +70,7 @@ public class ResourceService {
     }
 
     @Transactional
-    public UUID createRole(UUID organizationId, String name, String description, Set<String> permissions) {
+    public UUID createRole(UUID organizationId, @Nullable String name, @Nullable String description, @Nullable Set<String> permissions) {
         Set<String> requested = permissions == null ? Set.of() : Set.copyOf(permissions);
         if (!PermissionCatalog.ALL.containsAll(requested)) {
             Set<String> unknown = new HashSet<>(requested); unknown.removeAll(PermissionCatalog.ALL);
@@ -79,7 +80,7 @@ public class ResourceService {
     }
 
     @Transactional
-    public UUID createProject(UUID organizationId, String key, String name, String description) {
+    public UUID createProject(UUID organizationId, @Nullable String key, @Nullable String name, @Nullable String description) {
         try {
             return projects.saveAndFlush(new ProjectEntity(UUID.randomUUID(), organization(organizationId), required(key, "key"),
                 required(name, "name"), description)).getId();
@@ -92,7 +93,7 @@ public class ResourceService {
     public void archiveProject(UUID projectId) { project(projectId).status = ProjectStatus.ARCHIVED; }
 
     @Transactional
-    public UUID addProjectMember(UUID projectId, String principalType, UUID principalId) {
+    public UUID addProjectMember(UUID projectId, @Nullable String principalType, UUID principalId) {
         ProjectEntity project = activeProject(projectId);
         PrincipalType type = principalType(principalType);
         assertPrincipalExists(type, principalId);
@@ -112,7 +113,7 @@ public class ResourceService {
     }
 
     @Transactional
-    public void setProjectMemberRoles(UUID projectId, UUID projectMemberId, Set<UUID> roleIds) {
+    public void setProjectMemberRoles(UUID projectId, UUID projectMemberId, @Nullable Set<UUID> roleIds) {
         ProjectEntity project = activeProject(projectId);
         ProjectMemberEntity member = projectMember(projectMemberId);
         if (!member.project.getId().equals(projectId)) throw notFound("Project Member not found in Project");
@@ -159,11 +160,11 @@ public class ResourceService {
         boolean exists = switch (type) { case USER -> users.existsById(principalId); case GROUP -> groups.existsById(principalId); };
         if (!exists) throw badRequest("Project Member principal does not exist");
     }
-    private static PrincipalType principalType(String value) {
+    private static PrincipalType principalType(@Nullable String value) {
         try { return PrincipalType.valueOf(required(value, "principalType").toUpperCase(Locale.ROOT)); }
         catch (IllegalArgumentException exception) { throw badRequest("principalType must be USER or GROUP"); }
     }
-    private static String required(String value, String field) {
+    private static String required(@Nullable String value, String field) {
         if (value == null || value.isBlank()) throw badRequest(field + " is required");
         return value.trim();
     }

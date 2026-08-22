@@ -12,6 +12,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -43,8 +44,8 @@ class ResourceModelIntegrationTest {
 
     @Test
     void flywayBuildsTheSchemaAndHibernateOnlyValidatesIt() {
-        assertThat(flyway.info().current()).isNotNull();
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("1");
+        var current = Objects.requireNonNull(flyway.info().current());
+        assertThat(current.getVersion().getVersion()).isEqualTo("1");
         assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where success", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("select count(*) from information_schema.tables where table_name = 'project_members'", Integer.class)).isEqualTo(1);
     }
