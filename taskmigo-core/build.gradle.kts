@@ -5,7 +5,7 @@ plugins {
 description = "Shared Taskmigo domain and persistence modules"
 
 dependencies {
-    api("org.jspecify:jspecify:1.0.0")
+    api("org.jspecify:jspecify:1.0.1")
     api("org.springframework.modulith:spring-modulith-starter-core")
 
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")

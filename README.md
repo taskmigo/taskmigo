@@ -8,7 +8,7 @@ Taskmigo is a modern Redmine alternative. The repository is one shared codebase 
 - Gradle 9.7.1
 - Spring Boot 4.1.1
 - Spring Modulith 2.1.0
-- NullAway 0.13.8 with JSpecify 1.0.0
+- NullAway 0.14.0 with JSpecify 1.0.1
 - Prettier 3.9.6 with prettier-plugin-java 2.10.3
 - Spring Security Authorization Server 7.1.0, managed by Spring Boot
 - PostgreSQL 18.4

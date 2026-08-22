@@ -32,7 +32,7 @@ subprojects {
             add("testImplementation", platform("org.springframework.modulith:spring-modulith-bom:2.1.0"))
             add("testRuntimeOnly", "org.junit.platform:junit-platform-launcher")
             add("errorprone", "com.google.errorprone:error_prone_core:2.50.0")
-            add("errorprone", "com.uber.nullaway:nullaway:0.13.8")
+            add("errorprone", "com.uber.nullaway:nullaway:0.14.0")
         }
 
         tasks.withType<JavaCompile>().configureEach {
