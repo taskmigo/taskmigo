@@ -85,9 +85,6 @@ runtime, and run as the non-root `taskmigo` user. The web image exposes port `80
 port.
 
 Dockerfile changes are checked by Hadolint in a path-filtered workflow; the job is not created for unrelated changes.
-Container-relevant changes additionally build both images and run end-to-end checks against PostgreSQL, OAuth, the
-protected API, and the worker process in GitHub Actions.
-
 ## Verify
 
 The verification gate scans the entire repository with Prettier, enforces JSpecify nullness contracts with NullAway,
