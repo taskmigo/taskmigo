@@ -9,41 +9,6 @@ services:
       - "5432:5432"
     volumes:
       - taskmigo-postgres:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready --username taskmigo --dbname taskmigo"]
-      interval: 2s
-      timeout: 5s
-      retries: 30
-
-  web:
-    profiles: [application]
-    image: taskmigo-web:e2e
-    build:
-      context: .
-      dockerfile: taskmigo-web/Dockerfile
-    environment:
-      TASKMIGO_DATABASE_URL: jdbc:postgresql://postgres:5432/taskmigo
-      TASKMIGO_DATABASE_USERNAME: taskmigo
-      TASKMIGO_DATABASE_PASSWORD: taskmigo
-    ports:
-      - "${TASKMIGO_WEB_PORT:-8080}:8080"
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-  worker:
-    profiles: [application]
-    image: taskmigo-worker:e2e
-    build:
-      context: .
-      dockerfile: taskmigo-worker/Dockerfile
-    environment:
-      TASKMIGO_DATABASE_URL: jdbc:postgresql://postgres:5432/taskmigo
-      TASKMIGO_DATABASE_USERNAME: taskmigo
-      TASKMIGO_DATABASE_PASSWORD: taskmigo
-    depends_on:
-      postgres:
-        condition: service_healthy
 
 volumes:
   taskmigo-postgres:

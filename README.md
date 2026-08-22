@@ -88,12 +88,6 @@ Dockerfile changes are checked by Hadolint in a path-filtered workflow; the job 
 Container-relevant changes additionally build both images and run end-to-end checks against PostgreSQL, OAuth, the
 protected API, and the worker process in GitHub Actions.
 
-Run the same end-to-end suite locally with Docker Compose, curl, and jq:
-
-```bash
-./scripts/e2e.sh
-```
-
 ## Verify
 
 The verification gate scans the entire repository with Prettier, enforces JSpecify nullness contracts with NullAway,
