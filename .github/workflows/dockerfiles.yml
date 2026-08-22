@@ -1,0 +1,25 @@
+name: Dockerfiles
+
+on:
+  pull_request:
+    paths:
+      - "**/Dockerfile"
+  push:
+    branches: [next]
+    paths:
+      - "**/Dockerfile"
+
+permissions:
+  contents: read
+
+jobs:
+  hadolint:
+    name: Verify Dockerfiles
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Verify Dockerfiles
+        uses: hadolint/hadolint-action@v3.4.0
+        with:
+          dockerfile: Dockerfile
+          recursive: true
