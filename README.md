@@ -1,23 +1,36 @@
 # Taskmigo
 
-Taskmigo is a modern Redmine alternative. This service implements the current v0 resource-management contract from `taskmigo/docs`.
+Taskmigo is a modern Redmine alternative. The repository is one shared codebase with independently runnable web and worker applications.
 
 ## Stack
 
 - Java 26
 - Gradle 9.7.1
-- Spring Boot 4.1.0
+- Spring Boot 4.1.1
+- Spring Modulith 2.1.0
 - Spring Security Authorization Server 7.1.0, managed by Spring Boot
 - PostgreSQL 18.4
 - Flyway 12.4.0, managed by Spring Boot
 - Testcontainers 2.0.5, managed by Spring Boot
 
-Spring Boot's dependency management is the source of truth for compatible Spring and third-party dependency versions.
+Spring Boot and Spring Modulith BOMs are the source of truth for compatible dependency versions.
 The Gradle build uses a Java 26 toolchain, so compilation and tests consistently target Java 26.
+
+## Project structure
+
+| Project | Responsibility | Output |
+| --- | --- | --- |
+| `taskmigo-core` | Shared domain modules, persistence, and Flyway migrations | Library JAR |
+| `taskmigo-web` | HTTP API, OAuth authorization server, and resource server | Executable Boot JAR |
+| `taskmigo-worker` | Background processing without an embedded web server | Executable Boot JAR |
+
+Both applications depend on `taskmigo-core`; core never depends on either executable.
+Spring Modulith treats each direct package below `io.taskmigo` as an application module. Architecture tests reject module cycles,
+access to internal packages, and dependencies not explicitly allowed by each module.
 
 ## Database lifecycle
 
-Flyway is the only schema owner. `src/main/resources/db/migration` contains the database definition and invariants.
+Flyway is the only schema owner. `taskmigo-core/src/main/resources/db/migration` contains the database definition and invariants.
 Hibernate is configured with `spring.jpa.hibernate.ddl-auto=validate`; it never creates or updates tables.
 
 The initial migration enforces database uniqueness plus cross-table invariants such as same-Organization Group members,
@@ -25,8 +38,8 @@ valid polymorphic Project principals, Project-owned Role assignments, and archiv
 
 ## Authentication and authorization
 
-Spring Security Authorization Server exposes OAuth 2.1 endpoints. The bootstrap client uses `client_credentials` and the
-`taskmigo.api` scope. Domain Users remain separate from authentication identities, matching the v0 resource-model contract.
+Only `taskmigo-web` exposes OAuth 2.1 and HTTP endpoints. The bootstrap client uses `client_credentials` and the
+`taskmigo.api` scope. Domain Users remain separate from authentication identities.
 
 Set production credentials through environment variables:
 
@@ -47,15 +60,21 @@ Use the returned bearer token for `/api/v0/**`.
 
 ## Run
 
+Start PostgreSQL, then run either application independently:
+
 ```bash
 docker compose up -d
-./gradlew bootRun
+./gradlew :taskmigo-web:bootRun
+```
+
+```bash
+./gradlew :taskmigo-worker:bootRun
 ```
 
 ## Verify
 
-`./gradlew build` runs integration tests against a real PostgreSQL 18.4 container. The tests verify Flyway schema creation,
-resource invariants, live external-Group authorization, archived Project behavior, and the OAuth client-credentials flow.
+`./gradlew build` verifies every Gradle project, validates the Spring Modulith boundaries, and runs the web integration tests
+against a real PostgreSQL 18.4 container.
 
 ```bash
 ./gradlew build

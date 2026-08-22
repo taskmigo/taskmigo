@@ -1,42 +1,39 @@
 plugins {
-    java
-    id("org.springframework.boot") version "4.1.0"
+    base
+    id("org.springframework.boot") version "4.1.1" apply false
 }
 
-group = "io.taskmigo"
-version = "0.0.1-SNAPSHOT"
-description = "Taskmigo resource management service"
+allprojects {
+    group = "io.taskmigo"
+    version = "0.0.1-SNAPSHOT"
+}
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(26)
+subprojects {
+    repositories {
+        mavenCentral()
+    }
+
+    plugins.withType<JavaPlugin> {
+        extensions.configure<JavaPluginExtension> {
+            toolchain {
+                languageVersion = JavaLanguageVersion.of(26)
+            }
+        }
+
+        dependencies {
+            add("implementation", platform("org.springframework.boot:spring-boot-dependencies:4.1.1"))
+            add("implementation", platform("org.springframework.modulith:spring-modulith-bom:2.1.0"))
+            add("testImplementation", platform("org.springframework.boot:spring-boot-dependencies:4.1.1"))
+            add("testImplementation", platform("org.springframework.modulith:spring-modulith-bom:2.1.0"))
+            add("testRuntimeOnly", "org.junit.platform:junit-platform-launcher")
+        }
+
+        tasks.withType<Test>().configureEach {
+            useJUnitPlatform()
+        }
     }
 }
 
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    implementation(platform("org.springframework.boot:spring-boot-dependencies:4.1.0"))
-
-    implementation("org.springframework.boot:spring-boot-starter-webmvc")
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-validation")
-    implementation("org.springframework.boot:spring-boot-starter-oauth2-authorization-server")
-    implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
-    implementation("org.springframework.boot:spring-boot-starter-flyway")
-    implementation("org.flywaydb:flyway-database-postgresql")
-
-    runtimeOnly("org.postgresql:postgresql")
-
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.springframework.boot:spring-boot-testcontainers")
-    testImplementation("org.testcontainers:testcontainers-junit-jupiter")
-    testImplementation("org.testcontainers:testcontainers-postgresql")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-}
-
-tasks.test {
-    useJUnitPlatform()
+tasks.named("build") {
+    dependsOn(subprojects.map { "${it.path}:build" })
 }
