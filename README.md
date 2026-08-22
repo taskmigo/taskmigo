@@ -4,19 +4,19 @@ Taskmigo is a modern Redmine alternative. The repository is one shared codebase 
 
 ## Stack
 
-- Java 26
-- Gradle 9.7.1
-- Spring Boot 4.1.1
-- Spring Modulith 2.1.0
-- NullAway 0.14.0 with JSpecify 1.0.1
-- Prettier 3.9.6 with prettier-plugin-java 2.10.3
-- Spring Security Authorization Server 7.1.1, managed by Spring Boot
-- PostgreSQL 18.4
-- Flyway 12.4.0, managed by Spring Boot
-- Testcontainers 2.0.5, managed by Spring Boot
+- Java
+- Gradle multi-project build
+- Spring Boot
+- Spring Modulith
+- NullAway with JSpecify
+- Prettier with prettier-plugin-java
+- Spring Security Authorization Server
+- PostgreSQL
+- Flyway
+- Testcontainers
 
-Spring Boot and Spring Modulith BOMs are the source of truth for compatible dependency versions.
-The Gradle build uses a Java 26 toolchain, so compilation and tests consistently target Java 26.
+Dependency and plugin versions are defined in `gradle/libs.versions.toml`. Spring Boot and Spring Modulith BOMs provide
+compatible versions for their dependency families.
 
 ## Project structure
 
@@ -80,16 +80,15 @@ docker build --file taskmigo-web/Dockerfile --tag taskmigo-web .
 docker build --file taskmigo-worker/Dockerfile --tag taskmigo-worker .
 ```
 
-Both images use Temurin 26.0.2+10 pinned by manifest digest, contain only the selected executable Boot JAR plus its
-runtime, and run as the non-root `taskmigo` user. The web image exposes port `8080`; the worker image has no listening
-port.
+Both images use Temurin images pinned by manifest digest, contain only the selected executable Boot JAR plus its runtime,
+and run as the non-root `taskmigo` user. The web image exposes port `8080`; the worker image has no listening port.
 
 Dockerfile changes are checked by Hadolint in a path-filtered workflow; the job is not created for unrelated changes.
 
 ## Verify
 
 The verification gate scans the entire repository with Prettier, enforces JSpecify nullness contracts with NullAway,
-validates the Spring Modulith boundaries, and runs the web integration tests against a real PostgreSQL 18.4 container.
+validates the Spring Modulith boundaries, and runs the web integration tests against a real PostgreSQL container.
 
 ```bash
 npm ci

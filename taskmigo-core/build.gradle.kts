@@ -5,12 +5,12 @@ plugins {
 description = "Shared Taskmigo domain and persistence modules"
 
 dependencies {
-    api("org.jspecify:jspecify:1.0.1")
-    api("org.springframework.modulith:spring-modulith-starter-core")
+    api(libs.jspecify)
+    api(libs.spring.modulith.starter.core)
 
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-flyway")
-    implementation("org.flywaydb:flyway-database-postgresql")
+    implementation(libs.spring.boot.starter.data.jpa)
+    implementation(libs.spring.boot.starter.flyway)
+    implementation(libs.flyway.postgresql)
 
-    runtimeOnly("org.postgresql:postgresql")
+    runtimeOnly(libs.postgresql.driver)
 }

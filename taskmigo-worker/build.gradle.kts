@@ -6,12 +6,12 @@ plugins {
 description = "Taskmigo background worker application"
 
 dependencies {
-    implementation("org.jspecify:jspecify:1.0.1")
+    implementation(libs.jspecify)
     implementation(project(":taskmigo-core"))
-    implementation("org.springframework.boot:spring-boot-starter")
+    implementation(libs.spring.boot.core.starter)
 
-    runtimeOnly("org.postgresql:postgresql")
+    runtimeOnly(libs.postgresql.driver)
 
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.springframework.modulith:spring-modulith-starter-test")
+    testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.spring.modulith.starter.test)
 }

@@ -2,8 +2,8 @@ import net.ltgt.gradle.errorprone.errorprone
 
 plugins {
     base
-    id("org.springframework.boot") version "4.1.1" apply false
-    id("net.ltgt.errorprone") version "5.1.0" apply false
+    alias(libs.plugins.spring.boot) apply false
+    alias(libs.plugins.errorprone) apply false
 }
 
 allprojects {
@@ -26,13 +26,13 @@ subprojects {
         }
 
         dependencies {
-            add("implementation", platform("org.springframework.boot:spring-boot-dependencies:4.1.1"))
-            add("implementation", platform("org.springframework.modulith:spring-modulith-bom:2.1.0"))
-            add("testImplementation", platform("org.springframework.boot:spring-boot-dependencies:4.1.1"))
-            add("testImplementation", platform("org.springframework.modulith:spring-modulith-bom:2.1.0"))
-            add("testRuntimeOnly", "org.junit.platform:junit-platform-launcher")
-            add("errorprone", "com.google.errorprone:error_prone_core:2.50.0")
-            add("errorprone", "com.uber.nullaway:nullaway:0.14.0")
+            add("implementation", platform(libs.spring.boot.bom))
+            add("implementation", platform(libs.spring.modulith.bom))
+            add("testImplementation", platform(libs.spring.boot.bom))
+            add("testImplementation", platform(libs.spring.modulith.bom))
+            add("testRuntimeOnly", libs.junit.platform.launcher)
+            add("errorprone", libs.errorprone.core)
+            add("errorprone", libs.nullaway)
         }
 
         tasks.withType<JavaCompile>().configureEach {
