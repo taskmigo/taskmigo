@@ -1,0 +1,5 @@
+spring:
+  config:
+    import: classpath:application-core.yaml
+  main:
+    web-application-type: none

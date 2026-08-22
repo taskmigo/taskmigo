@@ -1,0 +1,9 @@
+spring:
+  config:
+    import: classpath:application-core.yaml
+
+taskmigo:
+  security:
+    issuer: ${TASKMIGO_ISSUER:http://localhost:8080}
+    client-id: ${TASKMIGO_OAUTH_CLIENT_ID:taskmigo-cli}
+    client-secret: ${TASKMIGO_OAUTH_CLIENT_SECRET:taskmigo-dev-secret}
