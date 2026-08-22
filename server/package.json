@@ -1,5 +1,5 @@
 {
-  "name": "taskmigo",
+  "name": "taskmigo-server",
   "private": true,
   "scripts": {
     "format:check": "prettier . --check --ignore-unknown",

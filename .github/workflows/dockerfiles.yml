@@ -3,11 +3,13 @@ name: Dockerfiles
 on:
   pull_request:
     paths:
-      - "**/Dockerfile"
+      - "server/**/Dockerfile"
+      - ".github/workflows/dockerfiles.yml"
   push:
     branches: [next]
     paths:
-      - "**/Dockerfile"
+      - "server/**/Dockerfile"
+      - ".github/workflows/dockerfiles.yml"
 
 permissions:
   contents: read

@@ -1,0 +1,44 @@
+---
+title: Roles
+description: Organization-owned permission sets assigned inside Projects.
+---
+
+A Role is a named collection of Project permissions.
+
+## Fields
+
+- **ID**: stable internal identifier.
+- **Organization**: owning Organization.
+- **Name**: human-readable Role name.
+- **Description**: optional summary.
+- **Permissions**: keys selected from Taskmigo's fixed permission catalog.
+
+## Scope
+
+A Role may be assigned only in Projects owned by the same Organization as the Role.
+
+This rule is important for outsourcing. If Company A owns Project Alpha and Company B supplies engineers, those
+engineers receive Company A's Project Roles. Company B's own Role definitions do not control Company A's Project.
+
+## Permission model
+
+Roles grant permissions only.
+
+The current model has:
+
+- no explicit `DENY`;
+- no Role inheritance;
+- no precedence between direct and Group-derived assignments.
+
+If any effective Role grants a permission, the User has that permission for the Project.
+
+## Effective roles
+
+```text
+EffectiveRoles(user, project)
+  = DirectProjectRoles(user, project)
+  union GroupProjectRoles(user, project)
+```
+
+Project authorization and Organization resource administration are separate concerns.
+A Project Role does not grant authority to manage the owning Organization's Users, Groups, or Roles.
