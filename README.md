@@ -20,11 +20,11 @@ The Gradle build uses a Java 26 toolchain, so compilation and tests consistently
 
 ## Project structure
 
-| Project | Responsibility | Output |
-| --- | --- | --- |
-| `taskmigo-core` | Shared domain modules, persistence, and Flyway migrations | Library JAR |
-| `taskmigo-web` | HTTP API, OAuth authorization server, and resource server | Executable Boot JAR |
-| `taskmigo-worker` | Background processing without an embedded web server | Executable Boot JAR |
+| Project           | Responsibility                                            | Output              |
+| ----------------- | --------------------------------------------------------- | ------------------- |
+| `taskmigo-core`   | Shared domain modules, persistence, and Flyway migrations | Library JAR         |
+| `taskmigo-web`    | HTTP API, OAuth authorization server, and resource server | Executable Boot JAR |
+| `taskmigo-worker` | Background processing without an embedded web server      | Executable Boot JAR |
 
 Both applications depend on `taskmigo-core`; core never depends on either executable.
 Spring Modulith treats each direct package below `io.taskmigo` as an application module. Architecture tests reject module cycles,
@@ -75,15 +75,15 @@ docker compose up -d
 
 ## Verify
 
-`./gradlew build` verifies every Gradle project, checks Java formatting with Prettier, enforces JSpecify nullness contracts
-with NullAway, validates the Spring Modulith boundaries, and runs the web integration tests against a real PostgreSQL
-18.4 container.
+`./gradlew build` verifies every Gradle project, checks Java, Markdown, YAML, and JSON formatting with Prettier,
+enforces JSpecify nullness contracts with NullAway, validates the Spring Modulith boundaries, and runs the web
+integration tests against a real PostgreSQL 18.4 container.
 
 ```bash
 ./gradlew build
 ```
 
-Format Java sources or check formatting without changing files:
+Format supported files or check formatting without changing them:
 
 ```bash
 ./gradlew spotlessApply
