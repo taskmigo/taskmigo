@@ -1,0 +1,26 @@
+{
+  "name": "taskmigo",
+  "private": true,
+  "scripts": {
+    "format:check": "prettier . --check --ignore-unknown",
+    "format:fix": "prettier . --write --ignore-unknown"
+  },
+  "devDependencies": {
+    "prettier": "3.9.6",
+    "prettier-plugin-java": "2.10.3"
+  },
+  "prettier": {
+    "plugins": [
+      "prettier-plugin-java"
+    ],
+    "printWidth": 120,
+    "overrides": [
+      {
+        "files": "**/*.java",
+        "options": {
+          "tabWidth": 4
+        }
+      }
+    ]
+  }
+}

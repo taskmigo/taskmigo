@@ -1,24 +1,9 @@
-import com.diffplug.gradle.spotless.SpotlessExtension
 import net.ltgt.gradle.errorprone.errorprone
 
 plugins {
     base
-    id("com.diffplug.spotless") version "8.10.0"
     id("org.springframework.boot") version "4.1.1" apply false
     id("net.ltgt.errorprone") version "5.1.0" apply false
-}
-
-extensions.configure<SpotlessExtension> {
-    format("prettier") {
-        target("**/*.json", "**/*.md", "**/*.yaml", "**/*.yml")
-        targetExclude("**/.gradle/**", "**/build/**")
-        prettier(mapOf("prettier" to "3.9.6")).config(
-            mapOf(
-                "printWidth" to 120,
-                "tabWidth" to 2,
-            ),
-        )
-    }
 }
 
 allprojects {
@@ -27,29 +12,8 @@ allprojects {
 }
 
 subprojects {
-    apply(plugin = "com.diffplug.spotless")
-
     repositories {
         mavenCentral()
-    }
-
-    extensions.configure<SpotlessExtension> {
-        java {
-            target("src/**/*.java")
-            prettier(
-                mapOf(
-                    "prettier" to "3.9.6",
-                    "prettier-plugin-java" to "2.10.3",
-                ),
-            ).config(
-                mapOf(
-                    "parser" to "java",
-                    "plugins" to listOf("prettier-plugin-java"),
-                    "printWidth" to 120,
-                    "tabWidth" to 4,
-                ),
-            )
-        }
     }
 
     plugins.withType<JavaPlugin> {

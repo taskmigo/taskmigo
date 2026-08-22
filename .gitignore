@@ -1,6 +1,7 @@
 /.gradle/
-/build/
+**/build/
 /.idea/
 /.vscode/
+node_modules/
 *.iml
 .env
