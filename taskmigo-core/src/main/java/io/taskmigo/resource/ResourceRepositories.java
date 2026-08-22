@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 interface OrganizationRepository extends JpaRepository<OrganizationEntity, UUID> {}
+
 interface UserRepository extends JpaRepository<UserEntity, UUID> {}
 
 interface GroupRepository extends JpaRepository<GroupEntity, UUID> {
@@ -23,6 +24,14 @@ interface RoleRepository extends JpaRepository<RoleEntity, UUID> {
 interface ProjectRepository extends JpaRepository<ProjectEntity, UUID> {}
 
 interface ProjectMemberRepository extends JpaRepository<ProjectMemberEntity, UUID> {
-    Optional<ProjectMemberEntity> findByProjectIdAndPrincipalTypeAndPrincipalId(UUID projectId, PrincipalType principalType, UUID principalId);
-    List<ProjectMemberEntity> findAllByProjectIdAndPrincipalTypeAndPrincipalIdIn(UUID projectId, PrincipalType principalType, Collection<UUID> principalIds);
+    Optional<ProjectMemberEntity> findByProjectIdAndPrincipalTypeAndPrincipalId(
+        UUID projectId,
+        PrincipalType principalType,
+        UUID principalId
+    );
+    List<ProjectMemberEntity> findAllByProjectIdAndPrincipalTypeAndPrincipalIdIn(
+        UUID projectId,
+        PrincipalType principalType,
+        Collection<UUID> principalIds
+    );
 }

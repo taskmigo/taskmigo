@@ -1,10 +1,11 @@
 package io.taskmigo.resource;
 
 public final class ResourceException extends RuntimeException {
+
     public enum Type {
         BAD_REQUEST,
         NOT_FOUND,
-        CONFLICT
+        CONFLICT,
     }
 
     private final Type type;

@@ -3,6 +3,7 @@ package io.taskmigo.resource;
 import java.util.Set;
 
 public final class PermissionCatalog {
+
     public static final String PROJECT_READ = "project.read";
     public static final String PROJECT_UPDATE = "project.update";
     public static final String PROJECT_MEMBERS_READ = "project.members.read";

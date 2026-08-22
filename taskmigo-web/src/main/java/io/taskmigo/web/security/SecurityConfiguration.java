@@ -31,12 +31,12 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration
 @EnableWebSecurity
 class SecurityConfiguration {
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-            .authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/api/v0/**").hasAuthority("SCOPE_taskmigo.api")
-                .anyRequest().permitAll())
+        http.authorizeHttpRequests(authorize ->
+            authorize.requestMatchers("/api/v0/**").hasAuthority("SCOPE_taskmigo.api").anyRequest().permitAll()
+        )
             .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v0/**"))
             .oauth2AuthorizationServer(Customizer.withDefaults())
             .oauth2ResourceServer(resourceServer -> resourceServer.jwt(Customizer.withDefaults()));
@@ -44,9 +44,11 @@ class SecurityConfiguration {
     }
 
     @Bean
-    RegisteredClientRepository registeredClientRepository(PasswordEncoder passwordEncoder,
-                                                           @Value("${taskmigo.security.client-id}") String clientId,
-                                                           @Value("${taskmigo.security.client-secret}") String clientSecret) {
+    RegisteredClientRepository registeredClientRepository(
+        PasswordEncoder passwordEncoder,
+        @Value("${taskmigo.security.client-id}") String clientId,
+        @Value("${taskmigo.security.client-secret}") String clientSecret
+    ) {
         RegisteredClient client = RegisteredClient.withId(UUID.randomUUID().toString())
             .clientId(clientId)
             .clientSecret(passwordEncoder.encode(clientSecret))
@@ -57,7 +59,10 @@ class SecurityConfiguration {
         return new InMemoryRegisteredClientRepository(client);
     }
 
-    @Bean PasswordEncoder passwordEncoder() { return PasswordEncoderFactories.createDelegatingPasswordEncoder(); }
+    @Bean
+    PasswordEncoder passwordEncoder() {
+        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    }
 
     @Bean
     JWKSource<SecurityContext> jwkSource() {
@@ -81,7 +86,9 @@ class SecurityConfiguration {
 
     private static KeyPair generateRsaKey() {
         try {
-            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA"); generator.initialize(2048); return generator.generateKeyPair();
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(2048);
+            return generator.generateKeyPair();
         } catch (Exception exception) {
             throw new IllegalStateException("Failed to generate authorization-server signing key", exception);
         }
