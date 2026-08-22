@@ -2,7 +2,7 @@ package io.taskmigo.web.api;
 
 import io.taskmigo.resource.ResourceException;
 import java.util.Map;
-import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -19,9 +19,10 @@ class ResourceExceptionHandler {
             case NOT_FOUND -> HttpStatus.NOT_FOUND;
             case CONFLICT -> HttpStatus.CONFLICT;
         };
-        return ResponseEntity.status(status).body(
-            Map.of("error", Objects.requireNonNullElse(exception.getMessage(), "Resource operation failed"))
-        );
+        @Nullable
+        String exceptionMessage = exception.getMessage();
+        String message = exceptionMessage == null ? "Resource operation failed" : exceptionMessage;
+        return ResponseEntity.status(status).body(Map.of("error", message));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
