@@ -101,17 +101,18 @@ Dockerfile changes are checked by Hadolint in a path-filtered workflow; the job 
 
 ## Verify
 
-The server verification gate scans the entire `server/` tree with Prettier, enforces JSpecify nullness contracts with
-NullAway, validates the Spring Modulith boundaries, and runs the web integration tests against a real PostgreSQL container.
+The repository formatting gate scans every supported file from the repository root with Prettier. The server gate
+enforces JSpecify nullness contracts with NullAway, validates the Spring Modulith boundaries, and runs the web integration
+tests against a real PostgreSQL container.
 
 ```bash
-cd server
 npm ci
 npm run format:check
+cd server
 ./gradlew build
 ```
 
-Format the entire server tree or check formatting without changing files. Unsupported file types are scanned and skipped:
+Format or check the entire repository. Unsupported file types are scanned and skipped:
 
 ```bash
 npm run format:fix
@@ -127,3 +128,9 @@ npm run format:check
 npm run types:check
 npm run build
 ```
+
+## GitHub Pages
+
+The documentation workflow deploys `docs/out` after documentation changes reach `next`. Before the first deployment,
+open the repository's **Settings → Pages** page and set **Build and deployment → Source** to **GitHub Actions**. This is a
+one-time repository setting; workflow tokens intentionally cannot enable Pages on their own.
