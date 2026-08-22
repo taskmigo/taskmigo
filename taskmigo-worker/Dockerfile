@@ -1,4 +1,4 @@
-FROM eclipse-temurin:26-jdk-noble AS build
+FROM eclipse-temurin:26.0.2_10-jdk-noble@sha256:00123cb1834b68c2957bd93506cf7011c38bcdca2d122dd2b1ecbf4ea056cae8 AS build
 
 WORKDIR /workspace
 
@@ -14,9 +14,9 @@ COPY taskmigo-core/src taskmigo-core/src
 COPY taskmigo-worker/src taskmigo-worker/src
 
 RUN ./gradlew --no-daemon :taskmigo-worker:bootJar \
-    && cp taskmigo-worker/build/libs/taskmigo-worker-0.0.1-SNAPSHOT.jar /workspace/app.jar
+    && cp taskmigo-worker/build/libs/*.jar /workspace/app.jar
 
-FROM eclipse-temurin:26-jre-noble
+FROM eclipse-temurin:26.0.2_10-jre-noble@sha256:22e4987440fe837f31150df046a5bcb88c118566d1168de7b0307497e196154a
 
 RUN groupadd --system --gid 10001 taskmigo \
     && useradd --system --uid 10001 --gid taskmigo --home-dir /app --shell /usr/sbin/nologin taskmigo
@@ -28,4 +28,3 @@ COPY --from=build --chown=taskmigo:taskmigo /workspace/app.jar app.jar
 USER 10001:10001
 
 CMD ["java", "-jar", "/app/app.jar"]
-

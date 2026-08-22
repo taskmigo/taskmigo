@@ -80,8 +80,9 @@ docker build --file taskmigo-web/Dockerfile --tag taskmigo-web .
 docker build --file taskmigo-worker/Dockerfile --tag taskmigo-worker .
 ```
 
-Both images use Java 26, contain only the selected executable Boot JAR plus its runtime, and run as the non-root
-`taskmigo` user. The web image exposes port `8080`; the worker image has no listening port.
+Both images use Temurin 26.0.2+10 pinned by manifest digest, contain only the selected executable Boot JAR plus its
+runtime, and run as the non-root `taskmigo` user. The web image exposes port `8080`; the worker image has no listening
+port.
 
 Dockerfile changes are checked by Hadolint in a path-filtered workflow; the job is not created for unrelated changes.
 
