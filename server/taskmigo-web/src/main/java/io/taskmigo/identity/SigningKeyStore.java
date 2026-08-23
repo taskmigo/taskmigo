@@ -11,7 +11,6 @@ import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
-import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPublicKey;
@@ -29,7 +28,7 @@ final class SigningKeyStore {
 
     static synchronized RSAKey load(Path configuredPath, String keyId, boolean createIfMissing) {
         if (keyId.isBlank()) throw new IllegalStateException("OAuth signing key id must not be blank");
-        Path path = configuredPath.toAbsolutePath().normalize();
+        var path = configuredPath.toAbsolutePath().normalize();
         try {
             if (!Files.exists(path)) {
                 if (!createIfMissing) {
@@ -44,19 +43,19 @@ final class SigningKeyStore {
     }
 
     private static void createForDevelopment(Path path) throws GeneralSecurityException, IOException {
-        Path parent = Objects.requireNonNull(path.getParent());
+        var parent = Objects.requireNonNull(path.getParent());
         Files.createDirectories(parent);
-        KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+        var generator = KeyPairGenerator.getInstance("RSA");
         generator.initialize(3072);
-        KeyPair keyPair = generator.generateKeyPair();
+        var keyPair = generator.generateKeyPair();
 
-        Path temporary = Files.createTempFile(parent, path.getFileName().toString(), ".tmp");
+        var temporary = Files.createTempFile(parent, path.getFileName().toString(), ".tmp");
         try {
             restrictToOwner(temporary);
             Files.writeString(temporary, pem(keyPair.getPrivate().getEncoded()), StandardCharsets.US_ASCII);
             try {
                 Files.move(temporary, path);
-            } catch (FileAlreadyExistsException ignored) {
+            } catch (FileAlreadyExistsException _) {
                 // Another development process created a complete key first; use that file.
             }
         } finally {
@@ -68,23 +67,23 @@ final class SigningKeyStore {
     private static void restrictToOwner(Path path) throws IOException {
         try {
             Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rw-------"));
-        } catch (UnsupportedOperationException ignored) {
+        } catch (UnsupportedOperationException _) {
             // Non-POSIX file systems use their platform-specific file permissions.
         }
     }
 
     private static RSAPrivateCrtKey readPrivateKey(Path path) throws IOException, GeneralSecurityException {
-        String encoded = Files.readString(path, StandardCharsets.US_ASCII)
+        var encoded = Files.readString(path, StandardCharsets.US_ASCII)
             .replace(PRIVATE_KEY_BEGIN, "")
             .replace(PRIVATE_KEY_END, "")
             .replaceAll("\\s", "");
-        byte[] der = Base64.getDecoder().decode(encoded);
+        var der = Base64.getDecoder().decode(encoded);
         return (RSAPrivateCrtKey) KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(der));
     }
 
     private static RSAKey jwk(RSAPrivateCrtKey privateKey, String keyId) throws GeneralSecurityException {
-        RSAPublicKeySpec publicKeySpec = new RSAPublicKeySpec(privateKey.getModulus(), privateKey.getPublicExponent());
-        RSAPublicKey publicKey = (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(publicKeySpec);
+        var publicKeySpec = new RSAPublicKeySpec(privateKey.getModulus(), privateKey.getPublicExponent());
+        var publicKey = (RSAPublicKey) KeyFactory.getInstance("RSA").generatePublic(publicKeySpec);
         return new RSAKey.Builder(publicKey)
             .privateKey(privateKey)
             .keyID(keyId)
@@ -94,7 +93,7 @@ final class SigningKeyStore {
     }
 
     private static String pem(byte[] der) {
-        String encoded = Base64.getMimeEncoder(64, "\n".getBytes(StandardCharsets.US_ASCII)).encodeToString(der);
+        var encoded = Base64.getMimeEncoder(64, "\n".getBytes(StandardCharsets.US_ASCII)).encodeToString(der);
         return PRIVATE_KEY_BEGIN + "\n" + encoded + "\n" + PRIVATE_KEY_END + "\n";
     }
 }

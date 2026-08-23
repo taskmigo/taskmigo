@@ -134,19 +134,13 @@ public final class ApiResponseFactory {
     }
 
     private ApiResponse.Execution execution() {
-        Instant startedAt = Instant.now();
-        long durationMs = 0;
-
-        Object startedAtAttribute = this.request.getAttribute(ApiExecutionTimingFilter.STARTED_AT_ATTRIBUTE);
-        if (startedAtAttribute instanceof Instant value) {
-            startedAt = value;
-        }
-
-        Object startNanosAttribute = this.request.getAttribute(ApiExecutionTimingFilter.START_NANOS_ATTRIBUTE);
-        if (startNanosAttribute instanceof Long value) {
-            durationMs = TimeUnit.NANOSECONDS.toMillis(Math.max(0, System.nanoTime() - value));
-        }
-
+        var startedAtAttribute = this.request.getAttribute(ApiExecutionTimingFilter.STARTED_AT_ATTRIBUTE);
+        var startedAt = startedAtAttribute instanceof Instant value ? value : Instant.now();
+        var startNanosAttribute = this.request.getAttribute(ApiExecutionTimingFilter.START_NANOS_ATTRIBUTE);
+        var durationMs =
+            startNanosAttribute instanceof Long value
+                ? TimeUnit.NANOSECONDS.toMillis(Math.max(0, System.nanoTime() - value))
+                : 0L;
         return new ApiResponse.Execution(startedAt, durationMs);
     }
 }
