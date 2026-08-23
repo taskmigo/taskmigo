@@ -19,7 +19,7 @@ final class ApiV0ExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException exception) {
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleValidation(MethodArgumentNotValidException exception) {
         Map<String, String> formErrors = new LinkedHashMap<>();
         exception
             .getBindingResult()
@@ -38,7 +38,9 @@ final class ApiV0ExceptionHandler {
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    ResponseEntity<ApiResponse<Void>> handleUnreadableRequest(HttpMessageNotReadableException exception) {
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleUnreadableRequest(
+        HttpMessageNotReadableException exception
+    ) {
         String message = "Request body is malformed or unreadable";
         return this.responses.failure(
             HttpStatus.BAD_REQUEST,
@@ -49,7 +51,7 @@ final class ApiV0ExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception exception) {
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleUnexpected(Exception exception) {
         String message = "An unexpected error occurred";
         return this.responses.failure(
             HttpStatus.INTERNAL_SERVER_ERROR,
