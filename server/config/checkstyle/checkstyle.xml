@@ -6,17 +6,40 @@
 <module name="Checker">
     <property name="severity" value="error"/>
 
+    <!-- Reject tab characters in source files. -->
     <module name="FileTabCharacter"/>
+
+    <!-- Require every source file to end with a newline. -->
     <module name="NewlineAtEndOfFile"/>
 
     <module name="TreeWalker">
+        <!-- Reject wildcard imports. -->
         <module name="AvoidStarImport"/>
+
+        <!-- Reject empty statements. -->
         <module name="EmptyStatement"/>
+
+        <!-- Require classes that override equals to also override hashCode. -->
         <module name="EqualsHashCode"/>
+
+        <!-- Require intentional switch fall-through to be documented. -->
         <module name="FallThrough"/>
+
+        <!-- Require modifiers to follow the Java Language Specification order. -->
         <module name="ModifierOrder"/>
+
+        <!-- Require each variable declaration to use a separate statement. -->
         <module name="MultipleVariableDeclarations"/>
+
+        <!-- Reject modifiers that are implied by the declaration context. -->
         <module name="RedundantModifier"/>
+
+        <!-- Require instance members to be qualified with this. -->
+        <module name="RequireThis">
+            <property name="validateOnlyOverlapping" value="false"/>
+        </module>
+
+        <!-- Require Bean methods to remain package-private. -->
         <module name="MatchXpath">
             <property
                 name="query"
@@ -30,8 +53,14 @@
                 value="@Bean methods must not declare any modifier keyword (package-private only)."
             />
         </module>
+
+        <!-- Reject boolean expressions that can be simplified. -->
         <module name="SimplifyBooleanExpression"/>
+
+        <!-- Reject boolean returns that can be simplified. -->
         <module name="SimplifyBooleanReturn"/>
+
+        <!-- Require strings to be compared by value. -->
         <module name="StringLiteralEquality"/>
     </module>
 </module>
