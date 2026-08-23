@@ -19,14 +19,14 @@ permissions:
   contents: read
 
 jobs:
-  verify:
-    name: Verify Dockerfiles
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
 
-      - name: Verify Dockerfiles
+      - name: Run Hadolint
         uses: hadolint/hadolint-action@v3.4.0
         with:
           dockerfile: Dockerfile

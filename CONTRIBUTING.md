@@ -58,16 +58,10 @@ npm run build
 
 Dockerfiles are checked by Hadolint in GitHub Actions when a Dockerfile changes.
 
-## Pull request checklist
+## Pull requests
 
-- [ ] The change has one clear purpose and no unrelated edits.
-- [ ] Tests cover new behavior and important failure cases.
-- [ ] Public behavior and operational configuration are documented.
-- [ ] Database changes use Flyway and preserve database invariants.
-- [ ] Application persistence uses Spring Data or the owning library API, without raw SQL.
-- [ ] `npm run format:check` passes.
-- [ ] `cd server && ./gradlew --no-daemon build` passes when server code changes.
-- [ ] Qodana passes when server code changes.
-- [ ] Documentation checks pass when files under `docs/` change.
-- [ ] Dockerfile checks pass when a Dockerfile changes.
-- [ ] The pull request description explains the change and lists the verification performed.
+- Keep the change focused and exclude unrelated edits.
+- Add tests for new behavior and important failure cases.
+- Document public behavior, operational configuration, and significant decisions.
+- Describe what changed and how it was verified.
+- Resolve all required pipeline checks before requesting review.
