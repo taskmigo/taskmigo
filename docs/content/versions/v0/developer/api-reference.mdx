@@ -5,9 +5,9 @@ description: Explore the Taskmigo HTTP API, OpenAPI document, and v0 response co
 
 The web application serves both an interactive API reference and a machine-readable OpenAPI document.
 
-| URL                         | Content                           |
-| --------------------------- | --------------------------------- |
-| `/api/docs`                 | Interactive API reference         |
+| URL                         | Content                              |
+| --------------------------- | ------------------------------------ |
+| `/api/docs`                 | Interactive API reference            |
 | `/api/docs/openapi.json/v0` | Machine-readable v0 OpenAPI document |
 
 The OpenAPI document describes the client-credentials scheme used by protected `/api/v0/**` endpoints. The built-in `cli`
@@ -37,11 +37,11 @@ contains pagination.
 
 ### Choose the meta type per endpoint
 
-| Endpoint behavior | Return meta type | `meta.pagination` in JSON/OpenAPI |
-| --- | --- | --- |
-| Returns all data or is not a collection | `ApiResponse.BasicMeta` | Absent |
-| Uses page/offset pagination | `ApiResponse.OffsetMeta` | Required, offset shape only |
-| Uses cursor pagination | `ApiResponse.CursorMeta` | Required, cursor shape only |
+| Endpoint behavior                        | Return meta type          | `meta.pagination` in JSON/OpenAPI |
+| ---------------------------------------- | ------------------------- | --------------------------------- |
+| Returns all data or is not a collection | `ApiResponse.BasicMeta`  | Absent                            |
+| Uses page/offset pagination              | `ApiResponse.OffsetMeta` | Required, offset shape only       |
+| Uses cursor pagination                   | `ApiResponse.CursorMeta` | Required, cursor shape only       |
 
 The controller method signature is the source of truth for OpenAPI. Never declare a general pagination type for an endpoint.
 An endpoint must expose exactly the pagination strategy it implements.
@@ -53,11 +53,7 @@ Use the regular `ok` factory method when the endpoint returns the complete resul
 ```java
 @GetMapping("/permissions")
 ResponseEntity<ApiResponse<Set<String>, ApiResponse.BasicMeta>> permissions() {
-    return this.responses.ok(
-        PermissionCatalog.ALL,
-        "resource.permissions.retrieved",
-        "Permissions retrieved"
-    );
+    return this.responses.ok(PermissionCatalog.ALL, "resource.permissions.retrieved", "Permissions retrieved");
 }
 ```
 
@@ -74,12 +70,7 @@ overload.
 ResponseEntity<ApiResponse<List<ItemDto>, ApiResponse.OffsetMeta>> items() {
     var page = this.items.list(/* query arguments */);
     var pagination = new ApiResponse.OffsetPagination(
-        new ApiResponse.Offset(
-            page.currentPage(),
-            page.perPage(),
-            page.totalItems(),
-            page.totalPages()
-        )
+        new ApiResponse.Offset(page.currentPage(), page.perPage(), page.totalItems(), page.totalPages())
     );
 
     return this.responses.ok(page.items(), pagination, "item.list.retrieved", "Items retrieved");
