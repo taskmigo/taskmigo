@@ -36,14 +36,10 @@ public final class ApiResponseFactory {
         return ResponseEntity.ok(this.success(HttpStatus.OK, null, null, messageCode, messageText));
     }
 
-    public <T> ResponseEntity<ApiResponse<T>> created(
-        URI location,
-        T data,
-        String messageCode,
-        String messageText
-    ) {
-        return ResponseEntity.created(location)
-            .body(this.success(HttpStatus.CREATED, data, null, messageCode, messageText));
+    public <T> ResponseEntity<ApiResponse<T>> created(URI location, T data, String messageCode, String messageText) {
+        return ResponseEntity.created(location).body(
+            this.success(HttpStatus.CREATED, data, null, messageCode, messageText)
+        );
     }
 
     public ResponseEntity<ApiResponse<Void>> failure(
