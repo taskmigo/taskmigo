@@ -104,6 +104,22 @@ class ApiResponseIntegrationTest {
             });
     }
 
+    @Test
+    void authenticationErrorsUseTheSameV0Envelope() {
+        assertThatThrownBy(() ->
+            this.http().get().uri("/api/v0/permissions").retrieve().body(String.class)
+        )
+            .isInstanceOfSatisfying(HttpClientErrorException.Unauthorized.class, exception ->
+                assertThat(exception.getResponseBodyAsString())
+                    .contains("\"success\":false")
+                    .contains("\"status_code\":401")
+                    .contains("\"code\":\"security.unauthorized\"")
+                    .contains("\"code\":\"UNAUTHORIZED\"")
+                    .contains("\"pagination\":null")
+                    .contains("\"data\":null")
+            );
+    }
+
     private RestClient api() {
         return RestClient.builder()
             .baseUrl("http://localhost:" + this.port)
