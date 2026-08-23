@@ -16,9 +16,10 @@ OAuth client type and Taskmigo ownership are independent properties.
 An internal client is `FIRST_PARTY` and `SYSTEM` managed. The `client_type` still depends on how that application is
 deployed. A browser application with a backend can be confidential; a browser-only application is public.
 
-System-managed clients are declared in server configuration and reconciled into PostgreSQL during startup. They are not
-editable through an HTTP management API. Removing a declaration does not delete its database registration; disable it
-explicitly instead.
+Phase 1 system-managed registrations are confidential service clients using `client_credentials`. They are declared in
+server configuration and reconciled into PostgreSQL during startup. They are not editable through an HTTP management API.
+Removing a declaration does not delete its database registration; disable it explicitly instead. Interactive client fields
+are added with the interactive login phase rather than being accepted before they are supported.
 
 ## Built-in CLI client
 
@@ -48,21 +49,38 @@ The following state is stored in PostgreSQL and survives application restarts:
 - service-principal permissions.
 
 An idempotent reconciler updates system-owned fields without changing the internal database identifier. A configured
-`client_id` becomes immutable after the first successful registration. Secrets may be rotated by changing the configured
-secret; unchanged secrets retain their existing encoded value.
+`client_id` becomes immutable after the first successful registration. Every definition has a monotonic
+`configuration-version`. Increase it whenever the secret, scopes, enabled state, or permissions change:
+
+```bash
+export TASKMIGO_OAUTH_CLIENT_CONFIGURATION_VERSION=2
+```
+
+An older application instance cannot overwrite a newer version during a rolling deployment. Two different definitions with
+the same version are rejected. An unchanged secret retains its encoded value.
+
+Expired `client_credentials` authorizations are removed periodically. The cleanup interval and retention window default to
+one hour and seven days and can be configured with `TASKMIGO_OAUTH_AUTHORIZATION_CLEANUP_INTERVAL` and
+`TASKMIGO_OAUTH_AUTHORIZATION_RETENTION`.
 
 ## Signing key
 
-JWTs are signed by an RSA private key stored in a PEM file. On the first start, the server creates the configured file with
-owner-only permissions. Later starts reuse the same key.
+JWTs are signed by an externally provisioned RSA private key stored in a PKCS#8 PEM file. Production startup fails if the
+configured file does not exist. Every instance must mount the same key material; sharing only the key ID is insufficient.
 
 ```bash
 export TASKMIGO_OAUTH_SIGNING_KEY_FILE=/var/lib/taskmigo/oauth-signing-key.pem
 export TASKMIGO_OAUTH_SIGNING_KEY_ID=primary
 ```
 
-The container defaults to `/var/lib/taskmigo/oauth-signing-key.pem`. Mount persistent storage or a managed secret at
-`/var/lib/taskmigo`; replacing or losing the file invalidates tokens signed by the previous key.
+The container defaults to `/var/lib/taskmigo/oauth-signing-key.pem`. Mount a managed secret at that path. Replacing or losing
+the file invalidates tokens signed by the previous key. Development and test environments may opt into local generation:
+
+```bash
+export TASKMIGO_OAUTH_SIGNING_KEY_AUTO_CREATE=true
+```
+
+Do not enable automatic generation for a multi-instance deployment.
 
 The database never stores the private signing key.
 

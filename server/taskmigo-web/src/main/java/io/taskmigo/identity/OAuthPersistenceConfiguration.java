@@ -1,10 +1,10 @@
-package io.taskmigo.web.security;
+package io.taskmigo.identity;
 
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcOperations;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
@@ -13,7 +13,6 @@ import org.springframework.security.oauth2.server.authorization.client.JdbcRegis
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(SecurityProperties.class)
 class OAuthPersistenceConfiguration {
 
     @Bean
@@ -23,7 +22,7 @@ class OAuthPersistenceConfiguration {
 
     @Bean
     @Primary
-    RegisteredClientRepository registeredClientRepository(JdbcRegisteredClientRepository clients, JdbcOperations jdbc) {
+    RegisteredClientRepository registeredClientRepository(JdbcRegisteredClientRepository clients, JdbcClient jdbc) {
         return new ManagedRegisteredClientRepository(clients, jdbc);
     }
 

@@ -31,8 +31,9 @@ BOMs provide compatible versions for their dependency families.
 | `docs`                   | Documentation site and versioned product contract         | Static site         |
 
 Both applications depend on `taskmigo-core`; core never depends on either executable.
-Spring Modulith treats each direct package below `io.taskmigo` as an application module. Architecture tests reject module cycles,
-access to internal packages, and dependencies not explicitly allowed by each module.
+Spring Modulith treats each direct package below `io.taskmigo` as an application module. `identity` owns OAuth clients,
+service principals, token state, and signing keys; `web` only owns HTTP authorization. Architecture tests reject module
+cycles, access to internal packages, and dependencies not explicitly allowed by each module.
 
 ## Database lifecycle
 
@@ -53,7 +54,11 @@ Set production credentials through environment variables:
 
 ```bash
 export TASKMIGO_OAUTH_CLIENT_SECRET='replace-me'
+export TASKMIGO_OAUTH_SIGNING_KEY_FILE=/run/secrets/oauth-signing-key.pem
 ```
+
+Production instances must receive the same externally provisioned signing key. The application does not generate one by
+default. For a single-instance local environment only, set `TASKMIGO_OAUTH_SIGNING_KEY_AUTO_CREATE=true`.
 
 Get a local token:
 
@@ -73,6 +78,8 @@ Start PostgreSQL, then run either application independently:
 ```bash
 cd server
 docker compose up -d
+export TASKMIGO_OAUTH_CLIENT_SECRET='local-secret'
+export TASKMIGO_OAUTH_SIGNING_KEY_AUTO_CREATE=true
 ./gradlew :taskmigo-web:bootRun
 ```
 

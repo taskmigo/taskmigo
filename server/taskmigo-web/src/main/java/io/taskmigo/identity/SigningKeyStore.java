@@ -1,15 +1,13 @@
-package io.taskmigo.web.security;
+package io.taskmigo.identity;
 
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.KeyUse;
 import com.nimbusds.jose.jwk.RSAKey;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
@@ -29,18 +27,23 @@ final class SigningKeyStore {
 
     private SigningKeyStore() {}
 
-    static RSAKey loadOrCreate(Path configuredPath, String keyId) {
+    static synchronized RSAKey load(Path configuredPath, String keyId, boolean createIfMissing) {
         if (keyId.isBlank()) throw new IllegalStateException("OAuth signing key id must not be blank");
         Path path = configuredPath.toAbsolutePath().normalize();
         try {
-            if (!Files.exists(path)) create(path);
+            if (!Files.exists(path)) {
+                if (!createIfMissing) {
+                    throw new IllegalStateException("OAuth signing key does not exist: " + path);
+                }
+                createForDevelopment(path);
+            }
             return jwk(readPrivateKey(path), keyId);
         } catch (GeneralSecurityException | IOException | IllegalArgumentException exception) {
             throw new IllegalStateException("Failed to load OAuth signing key from " + path, exception);
         }
     }
 
-    private static void create(Path path) throws GeneralSecurityException, IOException {
+    private static void createForDevelopment(Path path) throws GeneralSecurityException, IOException {
         Path parent = Objects.requireNonNull(path.getParent());
         Files.createDirectories(parent);
         KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
@@ -51,25 +54,15 @@ final class SigningKeyStore {
         try {
             restrictToOwner(temporary);
             Files.writeString(temporary, pem(keyPair.getPrivate().getEncoded()), StandardCharsets.US_ASCII);
-            moveUnlessAnotherProcessCreatedTheKey(temporary, path);
+            try {
+                Files.move(temporary, path);
+            } catch (FileAlreadyExistsException ignored) {
+                // Another development process created a complete key first; use that file.
+            }
         } finally {
             Files.deleteIfExists(temporary);
         }
-    }
-
-    private static void moveUnlessAnotherProcessCreatedTheKey(Path temporary, Path target) throws IOException {
-        try {
-            Files.move(temporary, target, StandardCopyOption.ATOMIC_MOVE);
-        } catch (AtomicMoveNotSupportedException exception) {
-            try {
-                Files.move(temporary, target);
-            } catch (FileAlreadyExistsException ignored) {
-                // Another process won the first-start race; use the key it created.
-            }
-        } catch (FileAlreadyExistsException ignored) {
-            // Another process won the first-start race; use the key it created.
-        }
-        restrictToOwner(target);
+        restrictToOwner(path);
     }
 
     private static void restrictToOwner(Path path) throws IOException {

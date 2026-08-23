@@ -52,6 +52,9 @@ CREATE TABLE oauth2_authorization (
 );
 CREATE INDEX ix_oauth2_authorization_registered_client_id ON oauth2_authorization(registered_client_id);
 CREATE INDEX ix_oauth2_authorization_principal_name ON oauth2_authorization(principal_name);
+CREATE INDEX ix_oauth2_authorization_client_credentials_expiry
+    ON oauth2_authorization(access_token_expires_at)
+    WHERE authorization_grant_type = 'client_credentials';
 
 CREATE TABLE oauth2_authorization_consent (
     registered_client_id VARCHAR(100) NOT NULL REFERENCES oauth2_registered_client(id),
@@ -67,12 +70,15 @@ CREATE TABLE oauth_client_management (
     trust_level VARCHAR(16) NOT NULL,
     managed_by VARCHAR(16) NOT NULL,
     enabled BOOLEAN NOT NULL,
+    configuration_version BIGINT NOT NULL,
+    definition_hash VARCHAR(64) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL,
     CONSTRAINT uk_oauth_client_management_registration_key UNIQUE (registration_key),
     CONSTRAINT ck_oauth_client_management_client_type CHECK (client_type IN ('PUBLIC', 'CONFIDENTIAL')),
     CONSTRAINT ck_oauth_client_management_trust_level CHECK (trust_level IN ('FIRST_PARTY', 'THIRD_PARTY')),
-    CONSTRAINT ck_oauth_client_management_managed_by CHECK (managed_by IN ('SYSTEM', 'ADMIN'))
+    CONSTRAINT ck_oauth_client_management_managed_by CHECK (managed_by IN ('SYSTEM', 'ADMIN')),
+    CONSTRAINT ck_oauth_client_management_configuration_version CHECK (configuration_version > 0)
 );
 
 CREATE TABLE oauth_service_principal (
