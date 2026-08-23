@@ -8,6 +8,7 @@ description = "Taskmigo HTTP and OAuth application"
 dependencies {
     implementation(libs.jspecify)
     implementation(project(":taskmigo-core"))
+    implementation(libs.spring.boot.starter.jdbc)
     implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.oauth2.authorization.server)

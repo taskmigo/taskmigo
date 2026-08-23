@@ -1,0 +1,73 @@
+---
+title: OAuth clients
+description: Persistence, ownership, and authorization rules for first-party OAuth clients.
+---
+
+## Client classification
+
+OAuth client type and Taskmigo ownership are independent properties.
+
+| Property      | Values                       | Meaning                                    |
+| ------------- | ---------------------------- | ------------------------------------------ |
+| `client_type` | `PUBLIC`, `CONFIDENTIAL`     | Whether the client can protect credentials |
+| `trust_level` | `FIRST_PARTY`, `THIRD_PARTY` | Whether the application is trusted         |
+| `managed_by`  | `SYSTEM`, `ADMIN`            | Who controls the registration lifecycle    |
+
+An internal client is `FIRST_PARTY` and `SYSTEM` managed. The `client_type` still depends on how that application is
+deployed. A browser application with a backend can be confidential; a browser-only application is public.
+
+System-managed clients are declared in server configuration and reconciled into PostgreSQL during startup. They are not
+editable through an HTTP management API. Removing a declaration does not delete its database registration; disable it
+explicitly instead.
+
+## Built-in CLI client
+
+The `cli` registration is the first system-managed client. It uses `client_credentials` and is also a service principal.
+The client requires both the `taskmigo.api` scope and the `system.resources.manage` service permission to access
+`/api/v0/**`.
+
+Scope alone is insufficient. This prevents a newly registered machine client from gaining resource-management access merely
+by requesting an API scope.
+
+Provide the client secret at startup:
+
+```bash
+export TASKMIGO_OAUTH_CLIENT_SECRET='replace-me'
+```
+
+There is no default client secret. The server rejects an empty secret while reconciling a confidential client.
+
+## Persistent protocol state
+
+The following state is stored in PostgreSQL and survives application restarts:
+
+- registered clients and their encoded secrets;
+- issued authorizations, including access and future refresh tokens;
+- authorization consent;
+- client ownership metadata;
+- service-principal permissions.
+
+An idempotent reconciler updates system-owned fields without changing the internal database identifier. A configured
+`client_id` becomes immutable after the first successful registration. Secrets may be rotated by changing the configured
+secret; unchanged secrets retain their existing encoded value.
+
+## Signing key
+
+JWTs are signed by an RSA private key stored in a PEM file. On the first start, the server creates the configured file with
+owner-only permissions. Later starts reuse the same key.
+
+```bash
+export TASKMIGO_OAUTH_SIGNING_KEY_FILE=/var/lib/taskmigo/oauth-signing-key.pem
+export TASKMIGO_OAUTH_SIGNING_KEY_ID=primary
+```
+
+The container defaults to `/var/lib/taskmigo/oauth-signing-key.pem`. Mount persistent storage or a managed secret at
+`/var/lib/taskmigo`; replacing or losing the file invalidates tokens signed by the previous key.
+
+The database never stores the private signing key.
+
+## Future interactive clients
+
+Each independently deployed frontend receives a separate registration. Interactive login will add OpenID Connect and
+Authorization Code with PKCE in a later phase. It must not reuse the CLI registration because user-delegated and machine
+credentials have different grants, permissions, rotation, and audit lifecycles.

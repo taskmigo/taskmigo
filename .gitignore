@@ -3,5 +3,6 @@
 /.idea/
 /.vscode/
 node_modules/
+**/data/
 *.iml
 .env

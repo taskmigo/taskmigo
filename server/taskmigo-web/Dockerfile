@@ -19,11 +19,14 @@ RUN ./gradlew --no-daemon :taskmigo-web:bootJar \
 FROM eclipse-temurin:26.0.2_10-jre-noble@sha256:22e4987440fe837f31150df046a5bcb88c118566d1168de7b0307497e196154a
 
 RUN groupadd --system --gid 10001 taskmigo \
-    && useradd --system --uid 10001 --gid taskmigo --home-dir /app --shell /usr/sbin/nologin taskmigo
+    && useradd --system --uid 10001 --gid taskmigo --home-dir /app --shell /usr/sbin/nologin taskmigo \
+    && install --directory --owner taskmigo --group taskmigo /var/lib/taskmigo
 
 WORKDIR /app
 
 COPY --from=build --chown=taskmigo:taskmigo /workspace/app.jar app.jar
+
+ENV TASKMIGO_OAUTH_SIGNING_KEY_FILE=/var/lib/taskmigo/oauth-signing-key.pem
 
 USER 10001:10001
 EXPOSE 8080

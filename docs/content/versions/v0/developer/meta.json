@@ -1,4 +1,4 @@
 {
   "title": "Developer",
-  "pages": ["index", "resource-model", "api-reference"]
+  "pages": ["index", "resource-model", "oauth-clients", "api-reference"]
 }

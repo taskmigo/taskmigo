@@ -45,8 +45,9 @@ valid polymorphic Project principals, Project-owned Role assignments, and archiv
 
 ## Authentication and authorization
 
-Only `taskmigo-web` exposes OAuth 2.1 and HTTP endpoints. The bootstrap client uses `client_credentials` and the
-`taskmigo.api` scope. Domain Users remain separate from authentication identities.
+Only `taskmigo-web` exposes OAuth and HTTP endpoints. The persistent system-managed CLI client uses `client_credentials`.
+Domain Users remain separate from authentication identities. Client ownership, persistence, service-principal authorization,
+and signing-key lifecycle are documented under **Developer → OAuth clients**.
 
 Set production credentials through environment variables:
 
@@ -57,7 +58,7 @@ export TASKMIGO_OAUTH_CLIENT_SECRET='replace-me'
 Get a local token:
 
 ```bash
-curl -u "taskmigo-cli:${TASKMIGO_OAUTH_CLIENT_SECRET:-taskmigo-dev-secret}" \
+curl -u "${TASKMIGO_OAUTH_CLIENT_ID:-cli}:${TASKMIGO_OAUTH_CLIENT_SECRET}" \
   -d grant_type=client_credentials \
   -d scope=taskmigo.api \
   http://localhost:8080/oauth2/token

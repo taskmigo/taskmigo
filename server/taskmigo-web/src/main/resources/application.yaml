@@ -18,5 +18,21 @@ scalar:
 taskmigo:
   security:
     issuer: ${TASKMIGO_ISSUER:http://localhost:8080}
-    client-id: ${TASKMIGO_OAUTH_CLIENT_ID:taskmigo-cli}
-    client-secret: ${TASKMIGO_OAUTH_CLIENT_SECRET:taskmigo-dev-secret}
+    signing-key-file: ${TASKMIGO_OAUTH_SIGNING_KEY_FILE:./data/oauth-signing-key.pem}
+    signing-key-id: ${TASKMIGO_OAUTH_SIGNING_KEY_ID:primary}
+    internal-clients:
+      cli:
+        client-id: ${TASKMIGO_OAUTH_CLIENT_ID:cli}
+        client-secret: ${TASKMIGO_OAUTH_CLIENT_SECRET:}
+        enabled: true
+        client-type: CONFIDENTIAL
+        grant-types:
+          - client_credentials
+        redirect-uris: []
+        post-logout-redirect-uris: []
+        scopes:
+          - taskmigo.api
+        service-permissions:
+          - system.resources.manage
+        require-proof-key: false
+        require-authorization-consent: false
