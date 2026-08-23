@@ -161,12 +161,16 @@ include:
   - name: ZeroLengthArrayInitialization
 
 exclude:
-  # JPA collection fields must remain mutable for portable persistence.
+  # Aggregate files intentionally contain related package-private types.
+  - name: ClassNameDiffersFromFileName
+    paths:
+      - taskmigo-core/src/main/java/io/taskmigo/resource/ResourceModel.java
+      - taskmigo-core/src/main/java/io/taskmigo/resource/ResourceRepositories.java
+
+  # JPA fields must remain mutable for portable persistence.
   - name: CanBeFinal
     paths:
-      - taskmigo-core/src/main/java/io/taskmigo/resource/GroupEntity.java
-      - taskmigo-core/src/main/java/io/taskmigo/resource/RoleEntity.java
-      - taskmigo-core/src/main/java/io/taskmigo/resource/ProjectMemberEntity.java
+      - taskmigo-core/src/main/java/io/taskmigo/resource/ResourceModel.java
 
   # Preserve the explicit-this policy represented by the two Unqualified* rules.
   - name: UnnecessaryThis
