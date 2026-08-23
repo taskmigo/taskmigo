@@ -40,10 +40,10 @@ class ResourceExceptionHandler {
             case CONFLICT -> "resource.conflict";
         };
         return this.responses.failure(
-                status,
-                messageCode,
-                message,
-                new ApiResponse.Error(errorCode, message, null)
-            );
+            status,
+            messageCode,
+            message,
+            new ApiResponse.Error(errorCode, message, null)
+        );
     }
 }
