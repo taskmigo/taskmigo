@@ -2,6 +2,8 @@ package io.taskmigo.web.api.v0.resource;
 
 import io.taskmigo.resource.PermissionCatalog;
 import io.taskmigo.resource.ResourceService;
+import io.taskmigo.web.api.v0.response.ApiResponse;
+import io.taskmigo.web.api.v0.response.ApiResponseFactory;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -28,54 +30,71 @@ import org.springframework.web.bind.annotation.RestController;
 class ResourceController {
 
     private final ResourceService resources;
+    private final ApiResponseFactory responses;
 
-    ResourceController(ResourceService resources) {
+    ResourceController(ResourceService resources, ApiResponseFactory responses) {
         this.resources = resources;
+        this.responses = responses;
     }
 
     @GetMapping("/permissions")
-    Set<String> permissions() {
-        return PermissionCatalog.ALL;
+    ResponseEntity<ApiResponse<Set<String>>> permissions() {
+        return this.responses.ok(PermissionCatalog.ALL, "resource.permissions.retrieved", "Permissions retrieved");
     }
 
     @PostMapping("/organizations")
-    ResponseEntity<Map<String, UUID>> createOrganization(@Valid @RequestBody OrganizationRequest request) {
+    ResponseEntity<ApiResponse<Map<String, UUID>>> createOrganization(@Valid @RequestBody OrganizationRequest request) {
         UUID id = this.resources.createOrganization(request.key(), request.name());
-        return created("/api/v0/organizations/" + id, id);
+        return this.responses.created(
+                URI.create("/api/v0/organizations/" + id),
+                Map.of("id", id),
+                "resource.organization.created",
+                "Organization created"
+            );
     }
 
     @PostMapping("/organizations/{organizationId}/users")
-    ResponseEntity<Map<String, UUID>> createUser(
+    ResponseEntity<ApiResponse<Map<String, UUID>>> createUser(
         @PathVariable UUID organizationId,
         @Valid @RequestBody UserRequest request
     ) {
         UUID id = this.resources.createUser(organizationId, request.username(), request.email(), request.displayName());
-        return created("/api/v0/users/" + id, id);
+        return this.responses.created(
+                URI.create("/api/v0/users/" + id),
+                Map.of("id", id),
+                "resource.user.created",
+                "User created"
+            );
     }
 
     @PostMapping("/organizations/{organizationId}/groups")
-    ResponseEntity<Map<String, UUID>> createGroup(
+    ResponseEntity<ApiResponse<Map<String, UUID>>> createGroup(
         @PathVariable UUID organizationId,
         @Valid @RequestBody NamedRequest request
     ) {
         UUID id = this.resources.createGroup(organizationId, request.name(), request.description());
-        return created("/api/v0/groups/" + id, id);
+        return this.responses.created(
+                URI.create("/api/v0/groups/" + id),
+                Map.of("id", id),
+                "resource.group.created",
+                "Group created"
+            );
     }
 
     @PutMapping("/groups/{groupId}/members/{userId}")
-    ResponseEntity<Void> addGroupMember(@PathVariable UUID groupId, @PathVariable UUID userId) {
+    ResponseEntity<ApiResponse<Void>> addGroupMember(@PathVariable UUID groupId, @PathVariable UUID userId) {
         this.resources.addGroupMember(groupId, userId);
-        return ResponseEntity.noContent().build();
+        return this.responses.ok("resource.group.member_added", "Group member added");
     }
 
     @DeleteMapping("/groups/{groupId}/members/{userId}")
-    ResponseEntity<Void> removeGroupMember(@PathVariable UUID groupId, @PathVariable UUID userId) {
+    ResponseEntity<ApiResponse<Void>> removeGroupMember(@PathVariable UUID groupId, @PathVariable UUID userId) {
         this.resources.removeGroupMember(groupId, userId);
-        return ResponseEntity.noContent().build();
+        return this.responses.ok("resource.group.member_removed", "Group member removed");
     }
 
     @PostMapping("/organizations/{organizationId}/roles")
-    ResponseEntity<Map<String, UUID>> createRole(
+    ResponseEntity<ApiResponse<Map<String, UUID>>> createRole(
         @PathVariable UUID organizationId,
         @Valid @RequestBody RoleRequest request
     ) {
@@ -85,26 +104,36 @@ class ResourceController {
             request.description(),
             request.permissions()
         );
-        return created("/api/v0/roles/" + id, id);
+        return this.responses.created(
+                URI.create("/api/v0/roles/" + id),
+                Map.of("id", id),
+                "resource.role.created",
+                "Role created"
+            );
     }
 
     @PostMapping("/organizations/{organizationId}/projects")
-    ResponseEntity<Map<String, UUID>> createProject(
+    ResponseEntity<ApiResponse<Map<String, UUID>>> createProject(
         @PathVariable UUID organizationId,
         @Valid @RequestBody ProjectRequest request
     ) {
         UUID id = this.resources.createProject(organizationId, request.key(), request.name(), request.description());
-        return created("/api/v0/projects/" + id, id);
+        return this.responses.created(
+                URI.create("/api/v0/projects/" + id),
+                Map.of("id", id),
+                "resource.project.created",
+                "Project created"
+            );
     }
 
     @PatchMapping("/projects/{projectId}/archive")
-    ResponseEntity<Void> archiveProject(@PathVariable UUID projectId) {
+    ResponseEntity<ApiResponse<Void>> archiveProject(@PathVariable UUID projectId) {
         this.resources.archiveProject(projectId);
-        return ResponseEntity.noContent().build();
+        return this.responses.ok("resource.project.archived", "Project archived");
     }
 
     @PostMapping("/projects/{projectId}/members")
-    ResponseEntity<Map<String, UUID>> addProjectMember(
+    ResponseEntity<ApiResponse<Map<String, UUID>>> addProjectMember(
         @PathVariable UUID projectId,
         @Valid @RequestBody ProjectMemberRequest request
     ) {
@@ -113,32 +142,43 @@ class ResourceController {
             request.principalType(),
             Objects.requireNonNull(request.principalId())
         );
-        return created("/api/v0/projects/" + projectId + "/members/" + id, id);
+        return this.responses.created(
+                URI.create("/api/v0/projects/" + projectId + "/members/" + id),
+                Map.of("id", id),
+                "resource.project.member_added",
+                "Project member added"
+            );
     }
 
     @DeleteMapping("/projects/{projectId}/members/{projectMemberId}")
-    ResponseEntity<Void> removeProjectMember(@PathVariable UUID projectId, @PathVariable UUID projectMemberId) {
+    ResponseEntity<ApiResponse<Void>> removeProjectMember(
+        @PathVariable UUID projectId,
+        @PathVariable UUID projectMemberId
+    ) {
         this.resources.removeProjectMember(projectId, projectMemberId);
-        return ResponseEntity.noContent().build();
+        return this.responses.ok("resource.project.member_removed", "Project member removed");
     }
 
     @PutMapping("/projects/{projectId}/members/{projectMemberId}/roles")
-    ResponseEntity<Void> setProjectMemberRoles(
+    ResponseEntity<ApiResponse<Void>> setProjectMemberRoles(
         @PathVariable UUID projectId,
         @PathVariable UUID projectMemberId,
         @Valid @RequestBody RoleAssignmentRequest request
     ) {
         this.resources.setProjectMemberRoles(projectId, projectMemberId, request.roleIds());
-        return ResponseEntity.noContent().build();
+        return this.responses.ok("resource.project.member_roles_updated", "Project member roles updated");
     }
 
     @GetMapping("/projects/{projectId}/users/{userId}/effective-permissions")
-    Set<String> effectivePermissions(@PathVariable UUID projectId, @PathVariable UUID userId) {
-        return this.resources.effectivePermissions(projectId, userId);
-    }
-
-    private static ResponseEntity<Map<String, UUID>> created(String location, UUID id) {
-        return ResponseEntity.created(URI.create(location)).body(Map.of("id", id));
+    ResponseEntity<ApiResponse<Set<String>>> effectivePermissions(
+        @PathVariable UUID projectId,
+        @PathVariable UUID userId
+    ) {
+        return this.responses.ok(
+                this.resources.effectivePermissions(projectId, userId),
+                "resource.project.effective_permissions_retrieved",
+                "Effective permissions retrieved"
+            );
     }
 
     record OrganizationRequest(@NotBlank @Nullable String key, @NotBlank @Nullable String name) {}
