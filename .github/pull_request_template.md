@@ -6,11 +6,11 @@
 
 ## Changes
 
-<!-- Describe the important implementation and architecture decisions. -->
+<!-- Describe the important implementation and architecture decisions. Start every bullet or sentence with a capital letter. -->
 
 ## Verification
 
-<!-- Add useful verification information not already covered by CI or the Checklist below, such as manual checks, scenarios validated outside CI, or relevant evidence. Avoid repeating pipeline steps or checklist items. -->
+<!-- Report only meaningful verification not already covered by CI or the Checklist below, such as manual checks, scenarios validated outside CI, or relevant evidence. Start every bullet or sentence with a capital letter. Do not include Git state or change-size metadata such as ahead/behind counts, commit counts, diff statistics, or file/line counts, and do not restate the Changes section. Use `N/A` when verification does not apply and `None` when there is no additional verification or evidence to report. -->
 
 ## Checklist
 
