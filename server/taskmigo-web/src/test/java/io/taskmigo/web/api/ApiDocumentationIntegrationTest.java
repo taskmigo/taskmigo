@@ -13,10 +13,11 @@ import org.springframework.web.client.RestClient;
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = {
-        "taskmigo.internal.clients[0].id=integration-client",
-        "taskmigo.internal.clients[0].secret=integration-secret",
-        "taskmigo.internal.clients[0].enabled=true",
-        "taskmigo.internal.clients[0].generation=1",
+        "spring.security.oauth2.authorizationserver.client.cli.registration.client-id=integration-client",
+        "spring.security.oauth2.authorizationserver.client.cli.registration.client-secret=integration-secret",
+        "spring.security.oauth2.authorizationserver.client.cli.registration.client-authentication-methods=client_secret_basic",
+        "spring.security.oauth2.authorizationserver.client.cli.registration.authorization-grant-types=client_credentials",
+        "spring.security.oauth2.authorizationserver.client.cli.registration.scopes=taskmigo.api",
         "taskmigo.security.signing-key-file=build/test-data/oauth-signing-key.pem",
         "taskmigo.security.signing-key-auto-create=true",
     }

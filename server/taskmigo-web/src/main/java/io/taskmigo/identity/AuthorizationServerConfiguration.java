@@ -8,6 +8,7 @@ import com.nimbusds.jose.proc.SecurityContext;
 import java.util.List;
 import java.util.Set;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -17,12 +18,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
-import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties({ IdentityProperties.class, InternalClientProperties.class })
+@EnableConfigurationProperties({ IdentityProperties.class, OAuth2AuthorizationServerProperties.class })
 @EnableScheduling
 class AuthorizationServerConfiguration {
 
@@ -61,10 +61,5 @@ class AuthorizationServerConfiguration {
             context.getClaims().claim("principal_type", "service");
             context.getClaims().claim("permissions", List.copyOf(permissions));
         };
-    }
-
-    @Bean
-    AuthorizationServerSettings authorizationServerSettings(IdentityProperties properties) {
-        return AuthorizationServerSettings.builder().issuer(properties.issuer()).build();
     }
 }

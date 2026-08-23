@@ -4,14 +4,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
-import io.taskmigo.identity.InternalClientProperties.Definition;
 import io.taskmigo.resource.PermissionCatalog;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties.Client;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
@@ -30,10 +32,11 @@ import org.springframework.web.client.RestClient;
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = {
-        "taskmigo.internal.clients[0].id=integration-client",
-        "taskmigo.internal.clients[0].secret=integration-secret",
-        "taskmigo.internal.clients[0].enabled=true",
-        "taskmigo.internal.clients[0].generation=1",
+        "spring.security.oauth2.authorizationserver.client.cli.registration.client-id=integration-client",
+        "spring.security.oauth2.authorizationserver.client.cli.registration.client-secret=integration-secret",
+        "spring.security.oauth2.authorizationserver.client.cli.registration.client-authentication-methods=client_secret_basic",
+        "spring.security.oauth2.authorizationserver.client.cli.registration.authorization-grant-types=client_credentials",
+        "spring.security.oauth2.authorizationserver.client.cli.registration.scopes=taskmigo.api",
         "taskmigo.security.signing-key-file=build/test-data/oauth-signing-key.pem",
         "taskmigo.security.signing-key-auto-create=true",
     }
@@ -74,8 +77,6 @@ class OAuthInfrastructureIntegrationTest {
 
         RegisteredClient client = storedClient("integration-client");
         assertThat(InternalClientMetadata.isManaged(client)).isTrue();
-        assertThat(InternalClientMetadata.isEnabled(client)).isTrue();
-        assertThat(InternalClientMetadata.generation(client)).isEqualTo(1);
         assertThat(InternalClientMetadata.permissions(client)).containsExactly(
             ServicePrincipalPermissions.SYSTEM_RESOURCES_MANAGE
         );
@@ -86,7 +87,7 @@ class OAuthInfrastructureIntegrationTest {
         String registeredClientId = managedClientId("integration-client");
         String encodedSecret = encodedSecret(registeredClientId);
 
-        reconciler.reconcile(List.of(definition("integration-client", "integration-secret", true, 1)));
+        reconciler.reconcile(Map.of("cli", client("integration-client", "integration-secret")));
 
         assertThat(managedClientId("integration-client")).isEqualTo(registeredClientId);
         assertThat(encodedSecret(registeredClientId)).isEqualTo(encodedSecret);
@@ -95,11 +96,11 @@ class OAuthInfrastructureIntegrationTest {
     @Test
     void concurrentReconciliationCreatesOneRegistration() throws Exception {
         String clientId = "concurrent-" + UUID.randomUUID();
-        var definitions = List.of(definition(clientId, "concurrent-secret", true, 1));
+        var configuredClients = Map.of("concurrent", client(clientId, "concurrent-secret"));
 
         try (var executor = Executors.newFixedThreadPool(2)) {
-            var first = executor.submit(() -> reconciler.reconcile(definitions));
-            var second = executor.submit(() -> reconciler.reconcile(definitions));
+            var first = executor.submit(() -> reconciler.reconcile(configuredClients));
+            var second = executor.submit(() -> reconciler.reconcile(configuredClients));
             first.get();
             second.get();
         }
@@ -114,17 +115,14 @@ class OAuthInfrastructureIntegrationTest {
     }
 
     @Test
-    void newerConfigurationCannotBeOverwrittenByAStaleInstance() {
-        String clientId = "versioned-" + UUID.randomUUID();
-        reconciler.reconcile(List.of(definition(clientId, "old-secret", true, 1)));
+    void changedSecretIsUpsertedWithoutChangingTheRegistrationId() {
+        String clientId = "upsert-" + UUID.randomUUID();
+        reconciler.reconcile(Map.of("upsert", client(clientId, "old-secret")));
         String registeredClientId = managedClientId(clientId);
-        reconciler.reconcile(List.of(definition(clientId, "new-secret", true, 2)));
-
-        reconciler.reconcile(List.of(definition(clientId, "old-secret", true, 1)));
+        reconciler.reconcile(Map.of("upsert", client(clientId, "new-secret")));
 
         assertThat(managedClientId(clientId)).isEqualTo(registeredClientId);
         assertThat(passwordEncoder.matches("new-secret", encodedSecret(registeredClientId))).isTrue();
-        assertThat(InternalClientMetadata.generation(storedClient(clientId))).isEqualTo(2);
     }
 
     @Test
@@ -133,37 +131,9 @@ class OAuthInfrastructureIntegrationTest {
 
         assertThatThrownBy(() ->
             reconciler.reconcile(
-                List.of(definition(clientId, "first-secret", true, 1), definition(clientId, "second-secret", true, 2))
+                Map.of("first", client(clientId, "first-secret"), "second", client(clientId, "second-secret"))
             )
         ).hasMessageContaining("Duplicate internal client-id");
-    }
-
-    @Test
-    void sameGenerationCannotDescribeDifferentConfiguration() {
-        String clientId = "conflict-" + UUID.randomUUID();
-        reconciler.reconcile(List.of(definition(clientId, "secret", true, 1)));
-
-        assertThatThrownBy(() ->
-            reconciler.reconcile(List.of(definition(clientId, "secret", false, 1)))
-        ).hasMessageContaining("without increasing generation");
-    }
-
-    @Test
-    void secretRotationRequiresANewerGeneration() {
-        String clientId = "secret-conflict-" + UUID.randomUUID();
-        reconciler.reconcile(List.of(definition(clientId, "first-secret", true, 1)));
-
-        assertThatThrownBy(() ->
-            reconciler.reconcile(List.of(definition(clientId, "second-secret", true, 1)))
-        ).hasMessageContaining("secret changed without increasing generation");
-    }
-
-    @Test
-    void disabledSystemClientIsUnavailableToTheTokenEndpoint() {
-        String clientId = "disabled-" + UUID.randomUUID();
-        reconciler.reconcile(List.of(definition(clientId, "secret", false, 1)));
-
-        assertThat(clients.findByClientId(clientId)).isNull();
     }
 
     @Test
@@ -181,7 +151,7 @@ class OAuthInfrastructureIntegrationTest {
         );
 
         assertThatThrownBy(() ->
-            reconciler.reconcile(List.of(definition(clientId, "secret", true, 1)))
+            reconciler.reconcile(Map.of("unmanaged", client(clientId, "secret")))
         ).hasMessageContaining("Refusing to adopt unmanaged OAuth client");
     }
 
@@ -290,8 +260,15 @@ class OAuthInfrastructureIntegrationTest {
         );
     }
 
-    private static Definition definition(String clientId, String clientSecret, boolean enabled, long generation) {
-        return new Definition(clientId, clientSecret, enabled, generation);
+    private static Client client(String clientId, String clientSecret) {
+        Client client = new Client();
+        var registration = client.getRegistration();
+        registration.setClientId(clientId);
+        registration.setClientSecret(clientSecret);
+        registration.setClientAuthenticationMethods(new LinkedHashSet<>(Set.of("client_secret_basic")));
+        registration.setAuthorizationGrantTypes(new LinkedHashSet<>(Set.of("client_credentials")));
+        registration.setScopes(new LinkedHashSet<>(Set.of("taskmigo.api")));
+        return client;
     }
 
     private record TokenResponse(String access_token) {}

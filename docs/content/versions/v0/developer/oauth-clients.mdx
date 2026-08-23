@@ -19,17 +19,19 @@ The client requires both the `taskmigo.api` scope and the `system.resources.mana
 Scope alone is insufficient. This prevents a newly registered machine client from gaining resource-management access merely
 by requesting an API scope.
 
-Provide every field explicitly. No client ID, secret, enabled state, or generation is inferred:
+Use Spring Boot's Authorization Server properties directly. Taskmigo does not expose parallel client properties that could
+conflict with Spring's configuration:
 
 ```bash
-export TASKMIGO_INTERNAL_CLIENTS_0_ID=cli
-export TASKMIGO_INTERNAL_CLIENTS_0_SECRET='replace-me'
-export TASKMIGO_INTERNAL_CLIENTS_0_ENABLED=true
-export TASKMIGO_INTERNAL_CLIENTS_0_GENERATION=1
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTID=cli
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTSECRET='replace-me'
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTAUTHENTICATIONMETHODS=client_secret_basic
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_AUTHORIZATIONGRANTTYPES=client_credentials
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_SCOPES=taskmigo.api
 ```
 
-Add another client by using index `1`, then `2`, and so on. The server rejects incomplete definitions and duplicate IDs.
-Each declared ID is the upsert key.
+Replace `CLI` with another registration name to add a client. The server rejects incomplete definitions, duplicate IDs, and
+registrations that do not match the phase 1 internal-client contract. Each declared client ID is the upsert key.
 
 ## Persistent protocol state
 
@@ -44,16 +46,9 @@ The migration copies the three JDBC schemas distributed by Spring Authorization 
 PostgreSQL substitutions (`timestamp` to `timestamptz` and `blob` to `text`). Taskmigo does not add OAuth tables, foreign
 keys, or indexes.
 
-An idempotent reconciler inserts or updates by client ID without changing the internal database identifier. Every definition
-has an explicit monotonic generation. Increase it whenever the secret or enabled state changes:
-
-```bash
-export TASKMIGO_INTERNAL_CLIENTS_0_GENERATION=2
-```
-
-An older application instance cannot overwrite a newer generation during a rolling deployment. Two different definitions with
-the same generation are rejected. An unchanged secret retains its encoded value. An existing client not marked as
-Taskmigo-managed is never adopted implicitly.
+An idempotent reconciler inserts or updates by client ID without changing the internal database identifier. An unchanged raw
+secret retains its encoded value; a changed secret is rotated during startup. An existing client not marked as
+Taskmigo-managed is never adopted implicitly. All instances must use the same client configuration during a deployment.
 
 Expired `client_credentials` authorizations are removed periodically. The cleanup interval and retention window default to
 one hour and seven days and can be configured with `TASKMIGO_OAUTH_AUTHORIZATION_CLEANUP_INTERVAL` and

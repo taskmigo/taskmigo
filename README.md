@@ -50,13 +50,15 @@ Only `taskmigo-web` exposes OAuth and HTTP endpoints. The persistent system-mana
 Domain Users remain separate from authentication identities. Client ownership, persistence, service-principal authorization,
 and signing-key lifecycle are documented under **Developer → OAuth clients**.
 
-Declare every internal client field explicitly. The index allows additional clients without changing application files:
+Declare internal clients with Spring Boot's Authorization Server properties. Taskmigo does not define a second client
+configuration namespace:
 
 ```bash
-export TASKMIGO_INTERNAL_CLIENTS_0_ID=cli
-export TASKMIGO_INTERNAL_CLIENTS_0_SECRET='replace-me'
-export TASKMIGO_INTERNAL_CLIENTS_0_ENABLED=true
-export TASKMIGO_INTERNAL_CLIENTS_0_GENERATION=1
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTID=cli
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTSECRET='replace-me'
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTAUTHENTICATIONMETHODS=client_secret_basic
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_AUTHORIZATIONGRANTTYPES=client_credentials
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_SCOPES=taskmigo.api
 export TASKMIGO_OAUTH_SIGNING_KEY_FILE=/run/secrets/oauth-signing-key.pem
 ```
 
@@ -66,7 +68,7 @@ default. For a single-instance local environment only, set `TASKMIGO_OAUTH_SIGNI
 Get a local token:
 
 ```bash
-curl -u "${TASKMIGO_INTERNAL_CLIENTS_0_ID}:${TASKMIGO_INTERNAL_CLIENTS_0_SECRET}" \
+curl -u "${SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTID}:${SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTSECRET}" \
   -d grant_type=client_credentials \
   -d scope=taskmigo.api \
   http://localhost:8080/oauth2/token
@@ -81,10 +83,11 @@ Start PostgreSQL, then run either application independently:
 ```bash
 cd server
 docker compose up -d
-export TASKMIGO_INTERNAL_CLIENTS_0_ID=cli
-export TASKMIGO_INTERNAL_CLIENTS_0_SECRET='local-secret'
-export TASKMIGO_INTERNAL_CLIENTS_0_ENABLED=true
-export TASKMIGO_INTERNAL_CLIENTS_0_GENERATION=1
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTID=cli
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTSECRET='local-secret'
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTAUTHENTICATIONMETHODS=client_secret_basic
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_AUTHORIZATIONGRANTTYPES=client_credentials
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_SCOPES=taskmigo.api
 export TASKMIGO_OAUTH_SIGNING_KEY_AUTO_CREATE=true
 ./gradlew :taskmigo-web:bootRun
 ```

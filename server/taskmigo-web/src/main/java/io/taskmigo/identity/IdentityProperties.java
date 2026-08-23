@@ -10,7 +10,6 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "taskmigo.security")
 record IdentityProperties(
-    @NotBlank String issuer,
     @NotNull Path signingKeyFile,
     @NotBlank String signingKeyId,
     boolean signingKeyAutoCreate,
