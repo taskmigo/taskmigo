@@ -1,9 +1,7 @@
 name: Format Preview
 
 on:
-  push:
-    branches:
-      - improve/api-versioning
+  pull_request:
 
 permissions:
   contents: read
