@@ -32,13 +32,13 @@ final class ApiV0SecurityErrorRenderer implements ApiSecurityErrorRenderer {
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         this.objectMapper.writeValue(
-                response.getOutputStream(),
-                this.responses.failureBody(
-                        status,
-                        messageCode,
-                        messageText,
-                        new ApiResponse.Error(errorCode, messageText, null)
-                    )
-            );
+            response.getOutputStream(),
+            this.responses.failureBody(
+                status,
+                messageCode,
+                messageText,
+                new ApiResponse.Error(errorCode, messageText, null)
+            )
+        );
     }
 }
