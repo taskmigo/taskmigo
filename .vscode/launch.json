@@ -9,6 +9,9 @@
       "projectName": "taskmigo-web",
       "cwd": "${workspaceFolder}/server",
       "env": {
+        "TASKMIGO_DATABASE_URL": "jdbc:postgresql://localhost:5432/taskmigo",
+        "TASKMIGO_DATABASE_USERNAME": "taskmigo",
+        "TASKMIGO_DATABASE_PASSWORD": "taskmigo",
         "SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTID": "cli",
         "SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTSECRET": "local-secret",
         "SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTAUTHENTICATIONMETHODS": "client_secret_basic",
@@ -23,7 +26,12 @@
       "request": "launch",
       "mainClass": "io.taskmigo.TaskmigoWorkerApplication",
       "projectName": "taskmigo-worker",
-      "cwd": "${workspaceFolder}/server"
+      "cwd": "${workspaceFolder}/server",
+      "env": {
+        "TASKMIGO_DATABASE_URL": "jdbc:postgresql://localhost:5432/taskmigo",
+        "TASKMIGO_DATABASE_USERNAME": "taskmigo",
+        "TASKMIGO_DATABASE_PASSWORD": "taskmigo"
+      }
     }
   ]
 }
