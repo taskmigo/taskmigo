@@ -30,7 +30,7 @@ final class ApiV0ExceptionHandler {
             });
         String message = "Request validation failed";
         return this.responses.failure(
-            HttpStatus.UNPROCESSABLE_ENTITY,
+            HttpStatus.UNPROCESSABLE_CONTENT,
             "validation.failed",
             message,
             new ApiResponse.Error("VALIDATION_ERROR", message, formErrors)
