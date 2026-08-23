@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "format:check": "prettier . --check --ignore-unknown",
-    "format:fix": "prettier . --write --ignore-unknown"
+    "format:fix": "prettier . --write --ignore-unknown --log-level silent"
   },
   "devDependencies": {
     "prettier": "3.9.6",
