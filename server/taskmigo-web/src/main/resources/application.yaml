@@ -8,7 +8,11 @@ springdoc:
 
 scalar:
   enabled: true
-  url: /api/docs/openapi.json
+  sources:
+    - url: /api/docs/openapi.json/v0
+      title: Taskmigo API v0
+      slug: v0
+      default: true
   path: /api/docs
   page-title: Taskmigo API Reference
   show-developer-tools: never
