@@ -1,6 +1,5 @@
 package io.taskmigo.web.security;
 
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -25,7 +24,7 @@ final class VersionedApiSecurityErrorHandler implements AuthenticationEntryPoint
         HttpServletRequest request,
         HttpServletResponse response,
         AuthenticationException authException
-    ) throws IOException, ServletException {
+    ) throws IOException {
         this.write(request, response, HttpStatus.UNAUTHORIZED, "security.unauthorized", "Authentication is required");
     }
 
@@ -34,7 +33,7 @@ final class VersionedApiSecurityErrorHandler implements AuthenticationEntryPoint
         HttpServletRequest request,
         HttpServletResponse response,
         org.springframework.security.access.AccessDeniedException accessDeniedException
-    ) throws IOException, ServletException {
+    ) throws IOException {
         this.write(request, response, HttpStatus.FORBIDDEN, "security.forbidden", "Access is forbidden");
     }
 
