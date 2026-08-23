@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Taskmigo Web",
+      "request": "launch",
+      "mainClass": "io.taskmigo.TaskmigoApplication",
+      "projectName": "taskmigo-web",
+      "cwd": "${workspaceFolder}/server",
+      "env": {
+        "SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTID": "cli",
+        "SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTSECRET": "local-secret",
+        "SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTAUTHENTICATIONMETHODS": "client_secret_basic",
+        "SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_AUTHORIZATIONGRANTTYPES": "client_credentials",
+        "SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_SCOPES": "taskmigo.api",
+        "TASKMIGO_OAUTH_SIGNING_KEY_AUTO_CREATE": "true"
+      }
+    },
+    {
+      "type": "java",
+      "name": "Taskmigo Worker",
+      "request": "launch",
+      "mainClass": "io.taskmigo.TaskmigoWorkerApplication",
+      "projectName": "taskmigo-worker",
+      "cwd": "${workspaceFolder}/server"
+    }
+  ]
+}
