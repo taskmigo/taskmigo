@@ -1,0 +1,21 @@
+---
+title: API reference
+description: Explore the Taskmigo HTTP API and its OpenAPI document.
+---
+
+The web application serves both an interactive API reference and its machine-readable OpenAPI document.
+
+| URL                      | Content                           |
+| ------------------------ | --------------------------------- |
+| `/api/docs`              | Interactive API reference         |
+| `/api/docs/openapi.json` | Machine-readable OpenAPI document |
+
+The OpenAPI document describes the OAuth 2.1 client-credentials scheme used by protected `/api/v0/**` endpoints.
+Request a local access token from `/oauth2/token`, then authorize requests with the returned bearer token.
+
+```bash
+curl -u "taskmigo-cli:${TASKMIGO_OAUTH_CLIENT_SECRET:-taskmigo-dev-secret}" \
+  -d grant_type=client_credentials \
+  -d scope=taskmigo.api \
+  http://localhost:8080/oauth2/token
+```
