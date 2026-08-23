@@ -1,0 +1,128 @@
+---
+title: Local development
+description: Run the server applications and documentation site on one workstation.
+---
+
+## Prerequisites
+
+Install the following tools:
+
+- Java 26;
+- Docker Desktop or Docker Engine with Compose;
+- Node.js 24 for repository formatting;
+- Node.js 26 for the documentation site.
+
+Clone the repository and install the locked Node.js dependencies before running their respective commands:
+
+```bash
+npm ci
+cd docs
+npm ci
+```
+
+## Start PostgreSQL
+
+The local Compose file starts PostgreSQL with the same connection details used by the server defaults.
+
+```bash
+cd server
+docker compose up -d
+docker compose ps
+```
+
+The database is available at `localhost:5432` with database, user, and password all set to `taskmigo`. Flyway applies the
+schema migrations when an application starts.
+
+To use another PostgreSQL instance, set `TASKMIGO_DATABASE_URL`, `TASKMIGO_DATABASE_USERNAME`, and
+`TASKMIGO_DATABASE_PASSWORD` before launching the application.
+
+## Run the web application
+
+The web application serves the HTTP API and OAuth endpoints on port 8080. The local configuration below defines the
+system-managed `cli` client and permits a local signing key to be created.
+
+```bash
+cd server
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTID=cli
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTSECRET='local-secret'
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTAUTHENTICATIONMETHODS=client_secret_basic
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_AUTHORIZATIONGRANTTYPES=client_credentials
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_SCOPES=taskmigo.api
+export TASKMIGO_OAUTH_SIGNING_KEY_AUTO_CREATE=true
+./gradlew :taskmigo-web:bootRun
+```
+
+Open [the API reference](http://localhost:8080/api/docs) after startup. The OpenAPI document is available at
+`/api/docs/openapi.json`.
+
+Automatic signing-key creation is only for one local instance. See [OAuth clients](/docs/v0/developer/oauth-clients) for
+the configuration and deployment rules.
+
+### Get a local access token
+
+In another terminal, request a token from the client configured above:
+
+```bash
+curl -u 'cli:local-secret' \
+  -d grant_type=client_credentials \
+  -d scope=taskmigo.api \
+  http://localhost:8080/oauth2/token
+```
+
+Send the returned `access_token` as a bearer token when calling `/api/v0/**`.
+
+## Run the worker
+
+The worker is a separate Spring Boot application without an HTTP server. It uses the same PostgreSQL database and runs
+the same Flyway migrations.
+
+```bash
+cd server
+./gradlew :taskmigo-worker:bootRun
+```
+
+## Run the documentation site
+
+The documentation site is independent of the server applications.
+
+```bash
+cd docs
+npm run dev
+```
+
+The development server prints its local URL. It normally listens on [http://localhost:3000](http://localhost:3000).
+
+## Stop and reset local services
+
+Stop PostgreSQL while preserving its data:
+
+```bash
+cd server
+docker compose down
+```
+
+To discard the local database and apply migrations again on the next server startup, remove the named volume:
+
+```bash
+cd server
+docker compose down --volumes
+```
+
+## Verify changes
+
+Run the checks affected by your change before opening a pull request.
+
+```bash
+npm run format:check
+cd server
+./gradlew --no-daemon build
+```
+
+For documentation changes, run the full documentation sequence from `docs/`:
+
+```bash
+npm run lint:check
+npm run format:check
+npm run types:check
+npm run build
+```
