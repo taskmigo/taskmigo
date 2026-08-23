@@ -46,9 +46,7 @@ class ApiDocumentationIntegrationTest {
             .contains("\"pagination\"");
 
         String reference = Objects.requireNonNull(this.http().get().uri("/api/docs").retrieve().body(String.class));
-        assertThat(reference)
-            .contains("Taskmigo API Reference")
-            .contains("/api/docs/openapi.json/v0");
+        assertThat(reference).contains("Taskmigo API Reference").contains("/api/docs/openapi.json/v0");
     }
 
     private RestClient http() {
