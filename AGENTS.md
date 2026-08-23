@@ -36,5 +36,7 @@ Instructions for AI agents and automated contributors working in this repository
 
 - A task is not complete until all required local verification and CI checks for the pull request have passed.
 - Run or observe all verification required by the applicable repository instructions, then monitor the required CI checks after pushing changes.
+- If the `Formatting` workflow fails, use the `prettier-formatted-files` artifact from that workflow run as the preferred formatting repair source. The artifact contains only files rewritten by Prettier, preserves repository-relative paths, and expires after 1 day.
+- Apply the files from `prettier-formatted-files` over the working tree instead of installing formatting tooling solely to reproduce CI formatting. Push the repaired files and use the next `Formatting` CI run to verify the result.
 - If any required CI check fails, inspect the failure, fix the cause when it is related to the task, push the correction, and continue this cycle until all required checks pass.
 - Do not stop work, report completion, or hand off a task while required verification is failing or pending. Stop only when all required checks pass or an external blocker that cannot be resolved from the repository is identified and clearly reported.
