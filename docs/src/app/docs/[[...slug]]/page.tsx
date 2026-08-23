@@ -14,7 +14,7 @@ import { getMDXComponents } from '@/components/mdx';
 import { gitConfig } from '@/lib/shared';
 import { getPageImageUrl, getPageMarkdownUrl, source } from '@/lib/source';
 
-export default async function Page(props: PageProps<'/versions/[[...slug]]'>) {
+export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   const params = await props.params;
   const page = source.getPage(params.slug);
   if (!page) notFound();
@@ -49,7 +49,7 @@ export async function generateStaticParams() {
   return source.generateParams();
 }
 
-export async function generateMetadata(props: PageProps<'/versions/[[...slug]]'>): Promise<Metadata> {
+export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): Promise<Metadata> {
   const params = await props.params;
   const page = source.getPage(params.slug);
   if (!page) notFound();

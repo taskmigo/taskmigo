@@ -6,8 +6,8 @@ export default function HomePage() {
       <h1 className='mb-4 text-2xl font-bold'>Welcome to Taskmigo</h1>
       <p>
         You can open{' '}
-        <Link href='/versions' className='font-medium underline'>
-          /versions
+        <Link href='/docs' className='font-medium underline'>
+          /docs
         </Link>{' '}
         and see the documentation.
       </p>
