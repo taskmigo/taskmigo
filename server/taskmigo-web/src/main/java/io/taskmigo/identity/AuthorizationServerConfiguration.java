@@ -11,7 +11,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,7 +22,6 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties({ IdentityProperties.class, OAuth2AuthorizationServerProperties.class })
-@EnableScheduling
 class AuthorizationServerConfiguration {
 
     @Bean

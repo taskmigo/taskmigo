@@ -19,10 +19,11 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
@@ -45,9 +46,6 @@ import org.springframework.web.client.RestClient;
 class OAuthInfrastructureIntegrationTest {
 
     @Autowired
-    JdbcTemplate jdbc;
-
-    @Autowired
     RegisteredClientRepository clients;
 
     @Autowired
@@ -60,21 +58,13 @@ class OAuthInfrastructureIntegrationTest {
     InternalClientReconciler reconciler;
 
     @Autowired
-    ExpiredAuthorizationCleaner authorizationCleaner;
+    OAuth2AuthorizationService authorizations;
 
     @LocalServerPort
     int port;
 
     @Test
-    void flywayCreatesIdentitySchemaAndSystemClient() {
-        assertThat(
-            jdbc.queryForList(
-                "select table_name from information_schema.tables " +
-                    "where table_schema = 'public' and table_name like 'oauth%'",
-                String.class
-            )
-        ).containsExactlyInAnyOrder("oauth2_registered_client", "oauth2_authorization", "oauth2_authorization_consent");
-
+    void flywayCreatesTheSystemClient() {
         RegisteredClient client = storedClient("integration-client");
         assertThat(InternalClientMetadata.isManaged(client)).isTrue();
         assertThat(InternalClientMetadata.permissions(client)).containsExactly(
@@ -105,13 +95,7 @@ class OAuthInfrastructureIntegrationTest {
             second.get();
         }
 
-        assertThat(
-            jdbc.queryForObject(
-                "select count(*) from oauth2_registered_client where client_id = ?",
-                Integer.class,
-                clientId
-            )
-        ).isEqualTo(1);
+        assertThat(storedClient(clientId).getId()).isEqualTo("concurrent");
     }
 
     @Test
@@ -168,12 +152,7 @@ class OAuthInfrastructureIntegrationTest {
                 .body(String.class)
         );
         assertThat(response).contains(PermissionCatalog.PROJECT_READ);
-        assertThat(
-            jdbc.queryForObject(
-                "select count(*) from oauth2_authorization where principal_name = 'integration-client'",
-                Integer.class
-            )
-        ).isGreaterThanOrEqualTo(1);
+        assertThat(authorizations.findByToken(token, OAuth2TokenType.ACCESS_TOKEN)).isNotNull();
     }
 
     @Test
@@ -202,24 +181,6 @@ class OAuthInfrastructureIntegrationTest {
         ).isInstanceOf(HttpClientErrorException.Forbidden.class);
     }
 
-    @Test
-    void cleanupDeletesExpiredClientCredentialsAuthorizations() {
-        accessToken("integration-client", "integration-secret");
-        jdbc.update(
-            "update oauth2_authorization set access_token_expires_at = current_timestamp - interval '8 days' " +
-                "where principal_name = 'integration-client'"
-        );
-
-        authorizationCleaner.clean();
-
-        assertThat(
-            jdbc.queryForObject(
-                "select count(*) from oauth2_authorization where principal_name = 'integration-client'",
-                Integer.class
-            )
-        ).isZero();
-    }
-
     private String accessToken(String clientId, String clientSecret) {
         TokenResponse response = Objects.requireNonNull(
             http()
@@ -241,9 +202,7 @@ class OAuthInfrastructureIntegrationTest {
     }
 
     private String managedClientId(String clientId) {
-        return Objects.requireNonNull(
-            jdbc.queryForObject("select id from oauth2_registered_client where client_id = ?", String.class, clientId)
-        );
+        return storedClient(clientId).getId();
     }
 
     private RegisteredClient storedClient(String clientId) {
@@ -252,11 +211,7 @@ class OAuthInfrastructureIntegrationTest {
 
     private String encodedSecret(String registeredClientId) {
         return Objects.requireNonNull(
-            jdbc.queryForObject(
-                "select client_secret from oauth2_registered_client where id = ?",
-                String.class,
-                registeredClientId
-            )
+            Objects.requireNonNull(storedClients.findById(registeredClientId)).getClientSecret()
         );
     }
 

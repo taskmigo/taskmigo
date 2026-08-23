@@ -50,10 +50,6 @@ An idempotent reconciler inserts or updates by client ID without changing the in
 secret retains its encoded value; a changed secret is rotated during startup. An existing client not marked as
 Taskmigo-managed is never adopted implicitly. All instances must use the same client configuration during a deployment.
 
-Expired `client_credentials` authorizations are removed periodically. The cleanup interval and retention window default to
-one hour and seven days and can be configured with `TASKMIGO_OAUTH_AUTHORIZATION_CLEANUP_INTERVAL` and
-`TASKMIGO_OAUTH_AUTHORIZATION_RETENTION`.
-
 ## Signing key
 
 JWTs are signed by an externally provisioned RSA private key stored in a PKCS#8 PEM file. Production startup fails if the
