@@ -43,6 +43,9 @@ cd server
 ./gradlew --no-daemon build
 ```
 
+The server build includes Checkstyle for production and test sources. Qodana runs in GitHub Actions when server files
+change.
+
 Documentation:
 
 ```bash
@@ -64,6 +67,7 @@ Dockerfiles are checked by Hadolint in GitHub Actions when a Dockerfile changes.
 - [ ] Application persistence uses Spring Data or the owning library API, without raw SQL.
 - [ ] `npm run format:check` passes.
 - [ ] `cd server && ./gradlew --no-daemon build` passes when server code changes.
+- [ ] Qodana passes when server code changes.
 - [ ] Documentation checks pass when files under `docs/` change.
 - [ ] Dockerfile checks pass when a Dockerfile changes.
 - [ ] The pull request description explains the change and lists the verification performed.

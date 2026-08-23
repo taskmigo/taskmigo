@@ -18,5 +18,6 @@
 - [ ] Database changes use Flyway and application code contains no raw SQL.
 - [ ] `npm run format:check` passes.
 - [ ] `cd server && ./gradlew --no-daemon build` passes, or no server code changed.
+- [ ] Qodana passes, or no server code changed.
 - [ ] Documentation checks pass, or no documentation changed.
 - [ ] Dockerfile checks pass, or no Dockerfile changed.

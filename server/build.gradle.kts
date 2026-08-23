@@ -1,4 +1,6 @@
 import net.ltgt.gradle.errorprone.errorprone
+import org.gradle.api.plugins.quality.Checkstyle
+import org.gradle.api.plugins.quality.CheckstyleExtension
 
 plugins {
     base
@@ -18,6 +20,12 @@ subprojects {
 
     plugins.withType<JavaPlugin> {
         apply(plugin = "net.ltgt.errorprone")
+        apply(plugin = "checkstyle")
+
+        extensions.configure<CheckstyleExtension> {
+            toolVersion = libs.versions.checkstyle.get()
+            configFile = rootProject.file("config/checkstyle/checkstyle.xml")
+        }
 
         extensions.configure<JavaPluginExtension> {
             toolchain {
@@ -47,6 +55,13 @@ subprojects {
 
         tasks.withType<Test>().configureEach {
             useJUnitPlatform()
+        }
+
+        tasks.withType<Checkstyle>().configureEach {
+            reports {
+                xml.required.set(false)
+                html.required.set(true)
+            }
         }
     }
 }
