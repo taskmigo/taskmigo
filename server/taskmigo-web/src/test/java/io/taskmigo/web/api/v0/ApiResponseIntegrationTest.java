@@ -37,11 +37,7 @@ class ApiResponseIntegrationTest {
     @Test
     void successfulResponsesUseTheV0Envelope() {
         String response = Objects.requireNonNull(
-            this.api()
-                .get()
-                .uri("/api/v0/permissions")
-                .retrieve()
-                .body(String.class)
+            this.api().get().uri("/api/v0/permissions").retrieve().body(String.class)
         );
 
         assertThat(response)
@@ -89,35 +85,33 @@ class ApiResponseIntegrationTest {
                 .body(Map.of("key", "", "name", ""))
                 .retrieve()
                 .body(String.class)
-        )
-            .isInstanceOfSatisfying(HttpClientErrorException.class, exception -> {
-                assertThat(exception.getStatusCode().value()).isEqualTo(422);
-                assertThat(exception.getResponseBodyAsString())
-                    .contains("\"success\":false")
-                    .contains("\"status_code\":422")
-                    .contains("\"code\":\"validation.failed\"")
-                    .contains("\"code\":\"VALIDATION_ERROR\"")
-                    .contains("\"form_errors\":{")
-                    .contains("\"key\":")
-                    .contains("\"name\":")
-                    .contains("\"data\":null");
-            });
+        ).isInstanceOfSatisfying(HttpClientErrorException.class, exception -> {
+            assertThat(exception.getStatusCode().value()).isEqualTo(422);
+            assertThat(exception.getResponseBodyAsString())
+                .contains("\"success\":false")
+                .contains("\"status_code\":422")
+                .contains("\"code\":\"validation.failed\"")
+                .contains("\"code\":\"VALIDATION_ERROR\"")
+                .contains("\"form_errors\":{")
+                .contains("\"key\":")
+                .contains("\"name\":")
+                .contains("\"data\":null");
+        });
     }
 
     @Test
     void authenticationErrorsUseTheSameV0Envelope() {
         assertThatThrownBy(() ->
             this.http().get().uri("/api/v0/permissions").retrieve().body(String.class)
-        )
-            .isInstanceOfSatisfying(HttpClientErrorException.Unauthorized.class, exception ->
-                assertThat(exception.getResponseBodyAsString())
-                    .contains("\"success\":false")
-                    .contains("\"status_code\":401")
-                    .contains("\"code\":\"security.unauthorized\"")
-                    .contains("\"code\":\"UNAUTHORIZED\"")
-                    .contains("\"pagination\":null")
-                    .contains("\"data\":null")
-            );
+        ).isInstanceOfSatisfying(HttpClientErrorException.Unauthorized.class, exception ->
+            assertThat(exception.getResponseBodyAsString())
+                .contains("\"success\":false")
+                .contains("\"status_code\":401")
+                .contains("\"code\":\"security.unauthorized\"")
+                .contains("\"code\":\"UNAUTHORIZED\"")
+                .contains("\"pagination\":null")
+                .contains("\"data\":null")
+        );
     }
 
     private RestClient api() {
