@@ -17,7 +17,7 @@ Guidance for writing concise, accurate Javadoc using Markdown documentation comm
 1. **Only document public API that actually needs explaining.** Public classes/interfaces, public methods on service/repository/controller-style classes, and package-level docs are worth it. Trivial getters/setters, private methods, and self-explanatory names (`isEmpty()`, `getId()`) don't need a doc comment.
 2. **The doc comment answers "why / what's the contract", not "what does the name already say".**
    - Bad: `/// Gets the user.`
-   - Good: `/// Returns the user currently authenticated in the request context, or `null` if no user is authenticated.`
+   - Good: ``/// Returns the user currently authenticated in the request context, or `null` if no user is authenticated.``
 3. **The first sentence is a self-contained summary sentence**, ending with a period — tools use it as the summary, so it must stand on its own.
 4. **Don't restate what's already visible from an annotation or the signature.**
 5. **Keep the doc comment in sync with the code.** If you change a signature or behavior, update the related doc comment in the same change — a wrong doc comment is worse than none.

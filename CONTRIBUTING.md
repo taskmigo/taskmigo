@@ -1,6 +1,6 @@
 # Contributing to Taskmigo
 
-Thank you for improving Taskmigo. Keep each pull request focused, reviewable, and independently verifiable.
+This file defines repository-wide contribution requirements. A more specific `CONTRIBUTING.md` in a subdirectory may add to or override these rules for that subtree.
 
 ## Development environment
 
@@ -16,6 +16,12 @@ npm ci
 cd docs
 npm ci
 ```
+
+## Change quality
+
+- Keep each change focused and exclude unrelated edits.
+- Add tests for new behavior and important failure cases.
+- Document public behavior, operational configuration, and significant decisions when applicable.
 
 ## Persistence rules
 
@@ -58,10 +64,18 @@ npm run build
 
 Dockerfiles are checked by Hadolint in GitHub Actions when a Dockerfile changes.
 
+Resolve all required pipeline failures before requesting review.
+
 ## Pull requests
 
-- Keep the change focused and exclude unrelated edits.
-- Add tests for new behavior and important failure cases.
-- Document public behavior, operational configuration, and significant decisions.
-- Describe what changed and how it was verified.
-- Resolve all required pipeline checks before requesting review.
+Keep the pull request title and description current throughout the change. Update them whenever the implementation, scope, or verification information changes so reviewers never see stale metadata.
+
+### Title
+
+Use a short, plain-language title that describes the main change. Do not use a Conventional Commit prefix such as `feat:` or `ci:`.
+
+Example: `Verify Markdown files`
+
+### Description
+
+Follow `.github/pull_request_template.md`. Keep its section structure and checklist, and update them to reflect the actual implementation and verification status.

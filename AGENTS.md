@@ -2,23 +2,27 @@
 
 Instructions for AI agents and automated contributors working in this repository.
 
-## Repository workflow
+## Instruction scope
 
 - Read this file before making repository changes.
-- Read more specific `AGENTS.md` files in subdirectories when working within their scope.
+- For every file being changed, discover applicable `AGENTS.md` and `CONTRIBUTING.md` files from the repository root down to that file's directory.
+- A file in a subdirectory applies to that directory and its descendants.
+- More specific instructions take precedence when they conflict; otherwise, applicable instructions are cumulative.
+
+## Working changes
+
 - Keep changes focused and preserve unrelated work.
-- Group related file changes into a logical chunk. Do not create or push one commit per file.
-- Prefer one commit per completed chunk; squash temporary or mechanical commits before updating the working branch.
+- Group related file changes into a logical chunk instead of creating one commit per file.
+- Prefer one commit per completed chunk. Squash temporary or mechanical commits before updating the working branch.
 
 ## Pull requests
 
-- Before creating or updating a pull request, read `.github/pull_request_template.md` from the target branch.
-- The pull request description must follow that template's section structure and checklist. Do not replace it with a custom structure.
-- Keep the description synchronized with the actual implementation as the pull request evolves.
-- Only check a checklist item when it is actually satisfied.
-- Do not claim the work is complete until all required CI checks have passed.
+- Before creating or updating a pull request, read the applicable contribution guidance and `.github/pull_request_template.md` from the target branch.
+- After every material change, re-evaluate the pull request title, description, and checklist and update them when needed so they never become stale.
+- Only mark checklist items complete when they are satisfied.
 
 ## Verification
 
-- Run or observe the repository's required verification for the affected areas before declaring completion.
-- If CI fails, inspect the failing job, fix the cause, and continue until the required checks pass or an external blocker is identified.
+- Run or observe all verification required by the applicable repository instructions before declaring the work complete.
+- If a required CI check fails, inspect the failure, fix the cause, and continue until the check passes or an external blocker is identified.
+- Do not claim completion while required verification is failing or still pending.
