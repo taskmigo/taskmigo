@@ -36,6 +36,7 @@ enum PrincipalType {
 
 @Entity
 @Table(name = "organizations")
+@SuppressWarnings("NotNullFieldNotInitialized")
 class OrganizationEntity {
 
     @Id
@@ -56,12 +57,13 @@ class OrganizationEntity {
     }
 
     UUID getId() {
-        return id;
+        return this.id;
     }
 }
 
 @Entity
 @Table(name = "users")
+@SuppressWarnings("NotNullFieldNotInitialized")
 class UserEntity {
 
     @Id
@@ -96,12 +98,13 @@ class UserEntity {
     }
 
     UUID getId() {
-        return id;
+        return this.id;
     }
 }
 
 @Entity
 @Table(name = "groups")
+@SuppressWarnings("NotNullFieldNotInitialized")
 class GroupEntity {
 
     @Id
@@ -136,12 +139,13 @@ class GroupEntity {
     }
 
     UUID getId() {
-        return id;
+        return this.id;
     }
 }
 
 @Entity
 @Table(name = "roles")
+@SuppressWarnings("NotNullFieldNotInitialized")
 class RoleEntity {
 
     @Id
@@ -180,12 +184,13 @@ class RoleEntity {
     }
 
     UUID getId() {
-        return id;
+        return this.id;
     }
 }
 
 @Entity
 @Table(name = "projects")
+@SuppressWarnings("NotNullFieldNotInitialized")
 class ProjectEntity {
 
     @Id
@@ -221,12 +226,13 @@ class ProjectEntity {
     }
 
     UUID getId() {
-        return id;
+        return this.id;
     }
 }
 
 @Entity
 @Table(name = "project_members")
+@SuppressWarnings("NotNullFieldNotInitialized")
 class ProjectMemberEntity {
 
     @Id
@@ -261,6 +267,6 @@ class ProjectMemberEntity {
     }
 
     UUID getId() {
-        return id;
+        return this.id;
     }
 }

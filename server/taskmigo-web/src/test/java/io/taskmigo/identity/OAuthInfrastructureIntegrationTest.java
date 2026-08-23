@@ -65,7 +65,7 @@ class OAuthInfrastructureIntegrationTest {
 
     @Test
     void flywayCreatesTheSystemClient() {
-        RegisteredClient client = storedClient("integration-client");
+        RegisteredClient client = this.storedClient("integration-client");
         assertThat(InternalClientMetadata.isManaged(client)).isTrue();
         assertThat(InternalClientMetadata.permissions(client)).containsExactly(
             ServicePrincipalPermissions.SYSTEM_RESOURCES_MANAGE
@@ -74,13 +74,13 @@ class OAuthInfrastructureIntegrationTest {
 
     @Test
     void reconciliationIsIdempotent() {
-        String registeredClientId = managedClientId("integration-client");
-        String encodedSecret = encodedSecret(registeredClientId);
+        String registeredClientId = this.managedClientId("integration-client");
+        String encodedSecret = this.encodedSecret(registeredClientId);
 
-        reconciler.reconcile(Map.of("cli", client("integration-client", "integration-secret")));
+        this.reconciler.reconcile(Map.of("cli", client("integration-client", "integration-secret")));
 
-        assertThat(managedClientId("integration-client")).isEqualTo(registeredClientId);
-        assertThat(encodedSecret(registeredClientId)).isEqualTo(encodedSecret);
+        assertThat(this.managedClientId("integration-client")).isEqualTo(registeredClientId);
+        assertThat(this.encodedSecret(registeredClientId)).isEqualTo(encodedSecret);
     }
 
     @Test
@@ -89,24 +89,24 @@ class OAuthInfrastructureIntegrationTest {
         var configuredClients = Map.of("concurrent", client(clientId, "concurrent-secret"));
 
         try (var executor = Executors.newFixedThreadPool(2)) {
-            var first = executor.submit(() -> reconciler.reconcile(configuredClients));
-            var second = executor.submit(() -> reconciler.reconcile(configuredClients));
+            var first = executor.submit(() -> this.reconciler.reconcile(configuredClients));
+            var second = executor.submit(() -> this.reconciler.reconcile(configuredClients));
             first.get();
             second.get();
         }
 
-        assertThat(storedClient(clientId).getId()).isEqualTo("concurrent");
+        assertThat(this.storedClient(clientId).getId()).isEqualTo("concurrent");
     }
 
     @Test
     void changedSecretIsUpsertedWithoutChangingTheRegistrationId() {
         String clientId = "upsert-" + UUID.randomUUID();
-        reconciler.reconcile(Map.of("upsert", client(clientId, "old-secret")));
-        String registeredClientId = managedClientId(clientId);
-        reconciler.reconcile(Map.of("upsert", client(clientId, "new-secret")));
+        this.reconciler.reconcile(Map.of("upsert", client(clientId, "old-secret")));
+        String registeredClientId = this.managedClientId(clientId);
+        this.reconciler.reconcile(Map.of("upsert", client(clientId, "new-secret")));
 
-        assertThat(managedClientId(clientId)).isEqualTo(registeredClientId);
-        assertThat(passwordEncoder.matches("new-secret", encodedSecret(registeredClientId))).isTrue();
+        assertThat(this.managedClientId(clientId)).isEqualTo(registeredClientId);
+        assertThat(this.passwordEncoder.matches("new-secret", this.encodedSecret(registeredClientId))).isTrue();
     }
 
     @Test
@@ -114,7 +114,7 @@ class OAuthInfrastructureIntegrationTest {
         String clientId = "duplicate-" + UUID.randomUUID();
 
         assertThatThrownBy(() ->
-            reconciler.reconcile(
+            this.reconciler.reconcile(
                 Map.of("first", client(clientId, "first-secret"), "second", client(clientId, "second-secret"))
             )
         ).hasMessageContaining("Duplicate internal client-id");
@@ -123,10 +123,10 @@ class OAuthInfrastructureIntegrationTest {
     @Test
     void systemReconciliationRefusesToAdoptUnmanagedClient() {
         String clientId = "unmanaged-" + UUID.randomUUID();
-        clients.save(
+        this.clients.save(
             RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId(clientId)
-                .clientSecret(passwordEncoder.encode("secret"))
+                .clientSecret(this.passwordEncoder.encode("secret"))
                 .clientName("Unmanaged")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
@@ -135,16 +135,16 @@ class OAuthInfrastructureIntegrationTest {
         );
 
         assertThatThrownBy(() ->
-            reconciler.reconcile(Map.of("unmanaged", client(clientId, "secret")))
+            this.reconciler.reconcile(Map.of("unmanaged", client(clientId, "secret")))
         ).hasMessageContaining("Refusing to adopt unmanaged OAuth client");
     }
 
     @Test
     void clientCredentialsTokenCarriesServicePermissionsAndPersistsAuthorization() {
-        String token = accessToken("integration-client", "integration-secret");
+        String token = this.accessToken("integration-client", "integration-secret");
 
         String response = Objects.requireNonNull(
-            http()
+            this.http()
                 .get()
                 .uri("/api/v0/permissions")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
@@ -152,27 +152,27 @@ class OAuthInfrastructureIntegrationTest {
                 .body(String.class)
         );
         assertThat(response).contains(PermissionCatalog.PROJECT_READ);
-        assertThat(authorizations.findByToken(token, OAuth2TokenType.ACCESS_TOKEN)).isNotNull();
+        assertThat(this.authorizations.findByToken(token, OAuth2TokenType.ACCESS_TOKEN)).isNotNull();
     }
 
     @Test
     void scopeWithoutServicePermissionCannotAccessApi() {
         String clientId = "scope-only-" + UUID.randomUUID();
         String clientSecret = "scope-only-secret";
-        clients.save(
+        this.clients.save(
             RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId(clientId)
-                .clientSecret(passwordEncoder.encode(clientSecret))
+                .clientSecret(this.passwordEncoder.encode(clientSecret))
                 .clientName("Scope only")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .scope("taskmigo.api")
                 .build()
         );
-        String token = accessToken(clientId, clientSecret);
+        String token = this.accessToken(clientId, clientSecret);
 
         assertThatThrownBy(() ->
-            http()
+            this.http()
                 .get()
                 .uri("/api/v0/permissions")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
@@ -183,7 +183,7 @@ class OAuthInfrastructureIntegrationTest {
 
     private String accessToken(String clientId, String clientSecret) {
         TokenResponse response = Objects.requireNonNull(
-            http()
+            this.http()
                 .post()
                 .uri("/oauth2/token")
                 .headers(headers -> headers.setBasicAuth(clientId, clientSecret))
@@ -197,21 +197,21 @@ class OAuthInfrastructureIntegrationTest {
 
     private RestClient http() {
         return RestClient.builder()
-            .baseUrl("http://localhost:" + port)
+            .baseUrl("http://localhost:" + this.port)
             .build();
     }
 
     private String managedClientId(String clientId) {
-        return storedClient(clientId).getId();
+        return this.storedClient(clientId).getId();
     }
 
     private RegisteredClient storedClient(String clientId) {
-        return Objects.requireNonNull(storedClients.findByClientId(clientId));
+        return Objects.requireNonNull(this.storedClients.findByClientId(clientId));
     }
 
     private String encodedSecret(String registeredClientId) {
         return Objects.requireNonNull(
-            Objects.requireNonNull(storedClients.findById(registeredClientId)).getClientSecret()
+            Objects.requireNonNull(this.storedClients.findById(registeredClientId)).getClientSecret()
         );
     }
 

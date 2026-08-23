@@ -29,6 +29,7 @@ interface ProjectMemberRepository extends JpaRepository<ProjectMemberEntity, UUI
         PrincipalType principalType,
         UUID principalId
     );
+
     List<ProjectMemberEntity> findAllByProjectIdAndPrincipalTypeAndPrincipalIdIn(
         UUID projectId,
         PrincipalType principalType,

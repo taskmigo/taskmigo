@@ -11,16 +11,22 @@ on:
       - "server/**/Dockerfile"
       - ".github/workflows/dockerfiles.yml"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
 jobs:
-  hadolint:
-    name: Verify Dockerfiles
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7.0.1
-      - name: Verify Dockerfiles
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Run Hadolint
         uses: hadolint/hadolint-action@v3.4.0
         with:
           dockerfile: Dockerfile

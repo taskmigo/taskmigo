@@ -42,13 +42,13 @@ class ResourceModelIntegrationTest {
 
     @Test
     void flywayBuildsTheSchemaAndHibernateOnlyValidatesIt() {
-        var current = Objects.requireNonNull(flyway.info().current());
+        var current = Objects.requireNonNull(this.flyway.info().current());
         assertThat(current.getVersion().getVersion()).isEqualTo("2");
         assertThat(
-            jdbc.queryForObject("select count(*) from flyway_schema_history where success", Integer.class)
+            this.jdbc.queryForObject("select count(*) from flyway_schema_history where success", Integer.class)
         ).isEqualTo(2);
         assertThat(
-            jdbc.queryForObject(
+            this.jdbc.queryForObject(
                 "select count(*) from information_schema.tables where table_name = 'project_members'",
                 Integer.class
             )
@@ -57,90 +57,97 @@ class ResourceModelIntegrationTest {
 
     @Test
     void flywayTriggerRejectsCrossOrganizationGroupMembershipEvenOutsideJpa() {
-        UUID orgA = resources.createOrganization("db-org-a-" + UUID.randomUUID(), "DB A");
-        UUID orgB = resources.createOrganization("db-org-b-" + UUID.randomUUID(), "DB B");
-        UUID userB = resources.createUser(
+        UUID orgA = this.resources.createOrganization("db-org-a-" + UUID.randomUUID(), "DB A");
+        UUID orgB = this.resources.createOrganization("db-org-b-" + UUID.randomUUID(), "DB B");
+        UUID userB = this.resources.createUser(
             orgB,
             "db-user-b-" + UUID.randomUUID(),
             UUID.randomUUID() + "@example.com",
             "DB User"
         );
-        UUID groupA = resources.createGroup(orgA, "DB Group", null);
+        UUID groupA = this.resources.createGroup(orgA, "DB Group", null);
         assertThatThrownBy(() ->
-            jdbc.update("insert into group_members(group_id, user_id) values (?, ?)", groupA, userB)
+            this.jdbc.update("insert into group_members(group_id, user_id) values (?, ?)", groupA, userB)
         ).hasMessageContaining("Group members must belong to the Group organization");
     }
 
     @Test
     void externalGroupAccessIsDerivedLiveAndAdditive() {
-        UUID customer = resources.createOrganization("customer-" + UUID.randomUUID(), "Customer");
-        UUID vendor = resources.createOrganization("vendor-" + UUID.randomUUID(), "Vendor");
-        UUID engineer = resources.createUser(
+        UUID customer = this.resources.createOrganization("customer-" + UUID.randomUUID(), "Customer");
+        UUID vendor = this.resources.createOrganization("vendor-" + UUID.randomUUID(), "Vendor");
+        UUID engineer = this.resources.createUser(
             vendor,
             "engineer-" + UUID.randomUUID(),
             UUID.randomUUID() + "@example.com",
             "Engineer"
         );
-        UUID vendorGroup = resources.createGroup(vendor, "Backend", null);
-        UUID project = resources.createProject(customer, "alpha-" + UUID.randomUUID(), "Alpha", null);
-        UUID directRole = resources.createRole(customer, "Reader", null, Set.of(PermissionCatalog.PROJECT_READ));
-        UUID groupRole = resources.createRole(
+        UUID vendorGroup = this.resources.createGroup(vendor, "Backend", null);
+        UUID project = this.resources.createProject(customer, "alpha-" + UUID.randomUUID(), "Alpha", null);
+        UUID directRole = this.resources.createRole(customer, "Reader", null, Set.of(PermissionCatalog.PROJECT_READ));
+        UUID groupRole = this.resources.createRole(
             customer,
             "Member manager",
             null,
             Set.of(PermissionCatalog.PROJECT_MEMBERS_MANAGE)
         );
 
-        resources.addGroupMember(vendorGroup, engineer);
-        UUID directMembership = resources.addProjectMember(project, "USER", engineer);
-        resources.setProjectMemberRoles(project, directMembership, Set.of(directRole));
-        UUID groupMembership = resources.addProjectMember(project, "GROUP", vendorGroup);
-        resources.setProjectMemberRoles(project, groupMembership, Set.of(groupRole));
+        this.resources.addGroupMember(vendorGroup, engineer);
+        UUID directMembership = this.resources.addProjectMember(project, "USER", engineer);
+        this.resources.setProjectMemberRoles(project, directMembership, Set.of(directRole));
+        UUID groupMembership = this.resources.addProjectMember(project, "GROUP", vendorGroup);
+        this.resources.setProjectMemberRoles(project, groupMembership, Set.of(groupRole));
 
-        assertThat(resources.effectivePermissions(project, engineer)).containsExactlyInAnyOrder(
+        assertThat(this.resources.effectivePermissions(project, engineer)).containsExactlyInAnyOrder(
             PermissionCatalog.PROJECT_READ,
             PermissionCatalog.PROJECT_MEMBERS_MANAGE
         );
 
-        resources.removeGroupMember(vendorGroup, engineer);
-        assertThat(resources.effectivePermissions(project, engineer)).containsExactly(PermissionCatalog.PROJECT_READ);
+        this.resources.removeGroupMember(vendorGroup, engineer);
+        assertThat(this.resources.effectivePermissions(project, engineer)).containsExactly(
+            PermissionCatalog.PROJECT_READ
+        );
     }
 
     @Test
     void groupMembershipAndProjectRoleOrganizationInvariantsAreRejected() {
-        UUID orgA = resources.createOrganization("org-a-" + UUID.randomUUID(), "A");
-        UUID orgB = resources.createOrganization("org-b-" + UUID.randomUUID(), "B");
-        UUID userB = resources.createUser(
+        UUID orgA = this.resources.createOrganization("org-a-" + UUID.randomUUID(), "A");
+        UUID orgB = this.resources.createOrganization("org-b-" + UUID.randomUUID(), "B");
+        UUID userB = this.resources.createUser(
             orgB,
             "user-b-" + UUID.randomUUID(),
             UUID.randomUUID() + "@example.com",
             "B User"
         );
-        UUID groupA = resources.createGroup(orgA, "A Group", null);
-        assertThatThrownBy(() -> resources.addGroupMember(groupA, userB))
+        UUID groupA = this.resources.createGroup(orgA, "A Group", null);
+        assertThatThrownBy(() -> this.resources.addGroupMember(groupA, userB))
             .isInstanceOf(ResourceException.class)
             .hasMessageContaining("owning Organization");
 
-        UUID projectA = resources.createProject(orgA, "p-" + UUID.randomUUID(), "Project", null);
-        UUID member = resources.addProjectMember(projectA, "USER", userB);
-        UUID roleB = resources.createRole(orgB, "Vendor Role", null, Set.of(PermissionCatalog.PROJECT_READ));
-        assertThatThrownBy(() -> resources.setProjectMemberRoles(projectA, member, Set.of(roleB)))
+        UUID projectA = this.resources.createProject(orgA, "p-" + UUID.randomUUID(), "Project", null);
+        UUID member = this.resources.addProjectMember(projectA, "USER", userB);
+        UUID roleB = this.resources.createRole(orgB, "Vendor Role", null, Set.of(PermissionCatalog.PROJECT_READ));
+        assertThatThrownBy(() -> this.resources.setProjectMemberRoles(projectA, member, Set.of(roleB)))
             .isInstanceOf(ResourceException.class)
             .hasMessageContaining("Project Organization");
     }
 
     @Test
     void archivedProjectIsReadOnlyForMembershipMutations() {
-        UUID org = resources.createOrganization("archive-" + UUID.randomUUID(), "Archive Org");
-        UUID user = resources.createUser(
+        UUID org = this.resources.createOrganization("archive-" + UUID.randomUUID(), "Archive Org");
+        UUID user = this.resources.createUser(
             org,
             "archive-user-" + UUID.randomUUID(),
             UUID.randomUUID() + "@example.com",
             "Archive User"
         );
-        UUID project = resources.createProject(org, "archive-project-" + UUID.randomUUID(), "Archive Project", null);
-        resources.archiveProject(project);
-        assertThatThrownBy(() -> resources.addProjectMember(project, "USER", user))
+        UUID project = this.resources.createProject(
+            org,
+            "archive-project-" + UUID.randomUUID(),
+            "Archive Project",
+            null
+        );
+        this.resources.archiveProject(project);
+        assertThatThrownBy(() -> this.resources.addProjectMember(project, "USER", user))
             .isInstanceOf(ResourceException.class)
             .hasMessageContaining("read-only");
     }

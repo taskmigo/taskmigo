@@ -1,6 +1,11 @@
 package io.taskmigo.resource;
 
+import java.io.Serial;
+
 public final class ResourceException extends RuntimeException {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     public enum Type {
         BAD_REQUEST,
@@ -21,6 +26,6 @@ public final class ResourceException extends RuntimeException {
     }
 
     public Type type() {
-        return type;
+        return this.type;
     }
 }

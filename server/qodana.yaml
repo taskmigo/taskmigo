@@ -1,0 +1,188 @@
+version: "1.0"
+linter: qodana-jvm-community
+profile:
+  name: qodana.recommended
+projectJDK: "26"
+failThreshold: 0
+
+include:
+  # Correctness and API contracts.
+  - name: QodanaJavaSanity
+  - name: EqualsAndHashcode
+  - name: CovariantEquals
+  - name: MisspelledEquals
+  - name: StringEquality
+  - name: FallthruInSwitchStatement
+  - name: DefaultNotLastCaseInSwitch
+  - name: CatchMayIgnoreException
+  - name: ErrorRethrown
+  - name: ReturnNull
+  - name: Finalize
+  - name: NoExplicitFinalizeCalls
+  - name: SerializableHasSerialVersionUIDField
+  - name: Since15
+  - name: RawUseOfParameterizedType
+  - name: AssignmentToNull
+  - name: AssignmentUsedAsCondition
+  - name: AssignmentToForLoopParameter
+  - name: AssignmentToLambdaParameter
+  - name: AssignmentToMethodParameter
+  - name: AssignmentToCatchBlockParameter
+  - name: AssignmentToStaticFieldFromInstanceMethod
+  - name: AssignmentToSuperclassField
+  - name: NestedAssignment
+  - name: IncrementDecrementUsedAsExpression
+  - name: UseOfObsoleteDateTimeApi
+  - name: ObsoleteCollection
+  - name: BigDecimalLegacyMethod
+
+  # Imports, declarations, and code style.
+  - name: MissingFinalNewline
+  - name: OnDemandImport
+  - name: UNUSED_IMPORT
+  - name: SamePackageImport
+  - name: JavaLangImport
+  - name: MissortedModifiers
+  - name: UnnecessaryModifier
+  - name: MultipleVariablesInDeclaration
+  - name: UnqualifiedFieldAccess
+  - name: UnqualifiedMethodAccess
+  - name: ControlFlowStatementWithoutBraces
+  - name: MissingOverrideAnnotation
+  - name: CStyleArrayDeclaration
+  - name: TodoComment
+  - name: BreakStatement
+  - name: ContinueStatement
+  - name: ConfusingElse
+  - name: AssertStatement
+  - name: SystemOutErr
+  - name: ClassNameDiffersFromFileName
+  - name: UpperCaseFieldNameNotConstant
+  - name: LocalVariableNamingConvention
+  - name: DollarSignInName
+  - name: ClassWithMultipleLoggers
+  - name: NonStaticFinalLogger
+  - name: ClassWithOnlyPrivateConstructors
+  - name: RedundantModifiersUtilityClassLombok
+
+  # Unused and redundant code.
+  - name: UnusedAssignment
+  - name: UnusedLabel
+  - name: UnusedReturnValue
+  - name: UnusedLibrary
+  - name: IgnoreResultOfCall
+  - name: ResultOfObjectAllocationIgnored
+  - name: CanBeFinal
+  - name: UnnecessaryBreak
+  - name: UnnecessaryCallToStringValueOf
+  - name: UnnecessaryConstantArrayCreationExpression
+  - name: UnnecessaryConstructor
+  - name: UnnecessaryContinue
+  - name: UnnecessaryDefault
+  - name: UnnecessaryExplicitNumericCast
+  - name: UnnecessaryFullyQualifiedName
+  - name: UnnecessaryLocalVariable
+  - name: UnnecessaryReturn
+  - name: UnnecessarySemicolon
+  - name: UnnecessaryToStringCall
+  - name: UnnecessaryBoxing
+  - name: UnnecessaryUnboxing
+  - name: RedundantArrayCreation
+  - name: RedundantCast
+  - name: RedundantCollectionOperation
+  - name: RedundantExplicitClose
+  - name: RedundantFieldInitialization
+  - name: RedundantFileCreation
+  - name: RedundantLambdaParameterType
+  - name: RedundantLengthCheck
+  - name: RedundantMethodOverride
+  - name: RedundantOperationOnEmptyContainer
+  - name: RedundantRecordConstructor
+  - name: RedundantStreamOptionalCall
+  - name: RedundantStringFormatCall
+  - name: RedundantSuppression
+  - name: RedundantThrows
+  - name: RedundantTypeArguments
+  - name: CastCanBeReplacedWithVariable
+  - name: ReplaceAssignmentWithOperatorAssignment
+  - name: NegatedEqualityExpression
+  - name: NegatedConditionalExpression
+  - name: ExpressionMayBeFactorized
+  - name: PointlessArithmeticExpression
+  - name: PointlessBitwiseExpression
+  - name: PointlessBooleanExpression
+  - name: PointlessIndexOfComparison
+  - name: PointlessNullCheck
+  - name: SimplifiableBooleanExpression
+  - name: TrivialIf
+
+  # Documentation and maintainability.
+  - name: MissingDeprecatedAnnotation
+  - name: MissingPackageInfo
+  - name: UnnecessaryInheritDoc
+  - name: UnnecessaryJavaDocLink
+  - name: IgnoreFileDuplicateEntry
+  - name: EmptyDirectory
+  - name: JvmLinesOfCodeInspection
+  - name: CyclomaticComplexityInspection
+
+  # Gradle configuration.
+  - name: IncorrectPluginDslStructure
+  - name: DeprecatedConfigurations
+  - name: ConfigurationAvoidance
+  - name: DependencyNotationArgument
+  - name: BintrayPublishingPlugin
+  - name: JCenterRepository
+  - name: MultipleRepositoryUrls
+  - name: ForeignDelegate
+
+  # Java modernization.
+  - name: MarkdownDocumentationCommentsMigration
+  - name: SequencedCollectionMethodCanBeUsed
+  - name: PatternVariableCanBeUsed
+  - name: ClassCanBeRecord
+  - name: EnhancedSwitchMigration
+  - name: Java9CollectionFactory
+  - name: IfCanBeSwitch
+  - name: EnumerationCanBeIteration
+  - name: UseCompareMethod
+  - name: ReplaceNullCheck
+  - name: Java8MapApi
+  - name: CodeBlock2Expr
+  - name: UseHashCodeMethodInspection
+  - name: FoldExpressionIntoStream
+  - name: Java8ListSort
+  - name: Convert2Diamond
+  - name: TryWithIdenticalCatches
+  - name: CollectionsFieldAccessReplaceableByMethodCall
+  - name: WhileCanBeForeach
+  - name: IndexOfReplaceableByContains
+  - name: ForCanBeForeach
+  - name: ZeroLengthArrayInitialization
+
+exclude:
+  # Aggregate files intentionally contain related package-private types.
+  - name: ClassNameDiffersFromFileName
+    paths:
+      - taskmigo-core/src/main/java/io/taskmigo/resource/ResourceModel.java
+      - taskmigo-core/src/main/java/io/taskmigo/resource/ResourceRepositories.java
+
+  # JPA fields must remain mutable for portable persistence.
+  - name: CanBeFinal
+    paths:
+      - taskmigo-core/src/main/java/io/taskmigo/resource/ResourceModel.java
+
+  # Preserve the explicit-this policy represented by the two Unqualified* rules.
+  - name: UnnecessaryThis
+
+  # Preserve mandatory braces for every control-flow statement.
+  - name: SingleStatementInBlock
+
+  # String templates are unavailable at the Java 26 language level.
+  - name: StringTemplateMigration
+
+  # This Java ME optimization can reduce clarity on a modern JVM.
+  - name: ArrayLengthInLoopCondition
+
+  # Fields may intentionally be excluded from toString, especially sensitive data.
+  - name: FieldNotUsedInToString

@@ -40,7 +40,7 @@ class ResourceController {
 
     @PostMapping("/organizations")
     ResponseEntity<Map<String, UUID>> createOrganization(@Valid @RequestBody OrganizationRequest request) {
-        UUID id = resources.createOrganization(request.key(), request.name());
+        UUID id = this.resources.createOrganization(request.key(), request.name());
         return created("/api/v0/organizations/" + id, id);
     }
 
@@ -49,7 +49,7 @@ class ResourceController {
         @PathVariable UUID organizationId,
         @Valid @RequestBody UserRequest request
     ) {
-        UUID id = resources.createUser(organizationId, request.username(), request.email(), request.displayName());
+        UUID id = this.resources.createUser(organizationId, request.username(), request.email(), request.displayName());
         return created("/api/v0/users/" + id, id);
     }
 
@@ -58,19 +58,19 @@ class ResourceController {
         @PathVariable UUID organizationId,
         @Valid @RequestBody NamedRequest request
     ) {
-        UUID id = resources.createGroup(organizationId, request.name(), request.description());
+        UUID id = this.resources.createGroup(organizationId, request.name(), request.description());
         return created("/api/v0/groups/" + id, id);
     }
 
     @PutMapping("/groups/{groupId}/members/{userId}")
     ResponseEntity<Void> addGroupMember(@PathVariable UUID groupId, @PathVariable UUID userId) {
-        resources.addGroupMember(groupId, userId);
+        this.resources.addGroupMember(groupId, userId);
         return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/groups/{groupId}/members/{userId}")
     ResponseEntity<Void> removeGroupMember(@PathVariable UUID groupId, @PathVariable UUID userId) {
-        resources.removeGroupMember(groupId, userId);
+        this.resources.removeGroupMember(groupId, userId);
         return ResponseEntity.noContent().build();
     }
 
@@ -79,7 +79,12 @@ class ResourceController {
         @PathVariable UUID organizationId,
         @Valid @RequestBody RoleRequest request
     ) {
-        UUID id = resources.createRole(organizationId, request.name(), request.description(), request.permissions());
+        UUID id = this.resources.createRole(
+            organizationId,
+            request.name(),
+            request.description(),
+            request.permissions()
+        );
         return created("/api/v0/roles/" + id, id);
     }
 
@@ -88,13 +93,13 @@ class ResourceController {
         @PathVariable UUID organizationId,
         @Valid @RequestBody ProjectRequest request
     ) {
-        UUID id = resources.createProject(organizationId, request.key(), request.name(), request.description());
+        UUID id = this.resources.createProject(organizationId, request.key(), request.name(), request.description());
         return created("/api/v0/projects/" + id, id);
     }
 
     @PatchMapping("/projects/{projectId}/archive")
     ResponseEntity<Void> archiveProject(@PathVariable UUID projectId) {
-        resources.archiveProject(projectId);
+        this.resources.archiveProject(projectId);
         return ResponseEntity.noContent().build();
     }
 
@@ -103,7 +108,7 @@ class ResourceController {
         @PathVariable UUID projectId,
         @Valid @RequestBody ProjectMemberRequest request
     ) {
-        UUID id = resources.addProjectMember(
+        UUID id = this.resources.addProjectMember(
             projectId,
             request.principalType(),
             Objects.requireNonNull(request.principalId())
@@ -113,7 +118,7 @@ class ResourceController {
 
     @DeleteMapping("/projects/{projectId}/members/{projectMemberId}")
     ResponseEntity<Void> removeProjectMember(@PathVariable UUID projectId, @PathVariable UUID projectMemberId) {
-        resources.removeProjectMember(projectId, projectMemberId);
+        this.resources.removeProjectMember(projectId, projectMemberId);
         return ResponseEntity.noContent().build();
     }
 
@@ -123,13 +128,13 @@ class ResourceController {
         @PathVariable UUID projectMemberId,
         @Valid @RequestBody RoleAssignmentRequest request
     ) {
-        resources.setProjectMemberRoles(projectId, projectMemberId, request.roleIds());
+        this.resources.setProjectMemberRoles(projectId, projectMemberId, request.roleIds());
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/projects/{projectId}/users/{userId}/effective-permissions")
     Set<String> effectivePermissions(@PathVariable UUID projectId, @PathVariable UUID userId) {
-        return resources.effectivePermissions(projectId, userId);
+        return this.resources.effectivePermissions(projectId, userId);
     }
 
     private static ResponseEntity<Map<String, UUID>> created(String location, UUID id) {

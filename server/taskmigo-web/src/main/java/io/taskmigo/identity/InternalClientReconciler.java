@@ -4,7 +4,6 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import org.jspecify.annotations.Nullable;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties;
@@ -43,14 +42,14 @@ final class InternalClientReconciler implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments arguments) {
-        reconcile(properties.getClient());
+        this.reconcile(this.properties.getClient());
     }
 
     void reconcile(Map<String, Client> configuredClients) {
-        validate(configuredClients);
+        this.validate(configuredClients);
         for (int attempt = 1; ; attempt++) {
             try {
-                transactions.executeWithoutResult(status ->
+                this.transactions.executeWithoutResult(status ->
                     configuredClients.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(this::reconcile)
                 );
                 return;
@@ -60,25 +59,24 @@ final class InternalClientReconciler implements ApplicationRunner {
         }
     }
 
-    private void validate(Map<String, Client> configuredClients) {
-        Set<String> clientIds = new HashSet<>();
-        configuredClients.values().forEach(client -> {
-            String clientId = clientId(client);
-            if (!clientIds.add(clientId)) {
-                throw new IllegalStateException("Duplicate internal client-id: " + clientId);
-            }
-        });
-    }
-
     private void reconcile(Map.Entry<String, Client> configuredClient) {
-        String clientId = clientId(configuredClient.getValue());
-        @Nullable
-        RegisteredClient existing = clients.findByClientId(clientId);
+        String clientId = this.clientId(configuredClient.getValue());
+        RegisteredClient existing = this.clients.findByClientId(clientId);
 
         if (existing != null && !InternalClientMetadata.isManaged(existing)) {
             throw new IllegalStateException("Refusing to adopt unmanaged OAuth client: " + clientId);
         }
-        clients.save(clientFactory.create(configuredClient.getKey(), configuredClient.getValue(), existing));
+        this.clients.save(this.clientFactory.create(configuredClient.getKey(), configuredClient.getValue(), existing));
+    }
+
+    private void validate(Map<String, Client> configuredClients) {
+        Set<String> clientIds = new HashSet<>();
+        configuredClients.values().forEach(client -> {
+            String clientId = this.clientId(client);
+            if (!clientIds.add(clientId)) {
+                throw new IllegalStateException("Duplicate internal client-id: " + clientId);
+            }
+        });
     }
 
     private String clientId(Client client) {
