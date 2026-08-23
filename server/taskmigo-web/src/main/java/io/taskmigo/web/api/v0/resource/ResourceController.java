@@ -46,11 +46,11 @@ class ResourceController {
     ResponseEntity<ApiResponse<Map<String, UUID>>> createOrganization(@Valid @RequestBody OrganizationRequest request) {
         UUID id = this.resources.createOrganization(request.key(), request.name());
         return this.responses.created(
-                URI.create("/api/v0/organizations/" + id),
-                Map.of("id", id),
-                "resource.organization.created",
-                "Organization created"
-            );
+            URI.create("/api/v0/organizations/" + id),
+            Map.of("id", id),
+            "resource.organization.created",
+            "Organization created"
+        );
     }
 
     @PostMapping("/organizations/{organizationId}/users")
@@ -60,11 +60,11 @@ class ResourceController {
     ) {
         UUID id = this.resources.createUser(organizationId, request.username(), request.email(), request.displayName());
         return this.responses.created(
-                URI.create("/api/v0/users/" + id),
-                Map.of("id", id),
-                "resource.user.created",
-                "User created"
-            );
+            URI.create("/api/v0/users/" + id),
+            Map.of("id", id),
+            "resource.user.created",
+            "User created"
+        );
     }
 
     @PostMapping("/organizations/{organizationId}/groups")
@@ -74,11 +74,11 @@ class ResourceController {
     ) {
         UUID id = this.resources.createGroup(organizationId, request.name(), request.description());
         return this.responses.created(
-                URI.create("/api/v0/groups/" + id),
-                Map.of("id", id),
-                "resource.group.created",
-                "Group created"
-            );
+            URI.create("/api/v0/groups/" + id),
+            Map.of("id", id),
+            "resource.group.created",
+            "Group created"
+        );
     }
 
     @PutMapping("/groups/{groupId}/members/{userId}")
@@ -105,11 +105,11 @@ class ResourceController {
             request.permissions()
         );
         return this.responses.created(
-                URI.create("/api/v0/roles/" + id),
-                Map.of("id", id),
-                "resource.role.created",
-                "Role created"
-            );
+            URI.create("/api/v0/roles/" + id),
+            Map.of("id", id),
+            "resource.role.created",
+            "Role created"
+        );
     }
 
     @PostMapping("/organizations/{organizationId}/projects")
@@ -119,11 +119,11 @@ class ResourceController {
     ) {
         UUID id = this.resources.createProject(organizationId, request.key(), request.name(), request.description());
         return this.responses.created(
-                URI.create("/api/v0/projects/" + id),
-                Map.of("id", id),
-                "resource.project.created",
-                "Project created"
-            );
+            URI.create("/api/v0/projects/" + id),
+            Map.of("id", id),
+            "resource.project.created",
+            "Project created"
+        );
     }
 
     @PatchMapping("/projects/{projectId}/archive")
@@ -143,11 +143,11 @@ class ResourceController {
             Objects.requireNonNull(request.principalId())
         );
         return this.responses.created(
-                URI.create("/api/v0/projects/" + projectId + "/members/" + id),
-                Map.of("id", id),
-                "resource.project.member_added",
-                "Project member added"
-            );
+            URI.create("/api/v0/projects/" + projectId + "/members/" + id),
+            Map.of("id", id),
+            "resource.project.member_added",
+            "Project member added"
+        );
     }
 
     @DeleteMapping("/projects/{projectId}/members/{projectMemberId}")
@@ -175,10 +175,10 @@ class ResourceController {
         @PathVariable UUID userId
     ) {
         return this.responses.ok(
-                this.resources.effectivePermissions(projectId, userId),
-                "resource.project.effective_permissions_retrieved",
-                "Effective permissions retrieved"
-            );
+            this.resources.effectivePermissions(projectId, userId),
+            "resource.project.effective_permissions_retrieved",
+            "Effective permissions retrieved"
+        );
     }
 
     record OrganizationRequest(@NotBlank @Nullable String key, @NotBlank @Nullable String name) {}
