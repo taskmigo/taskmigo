@@ -17,6 +17,19 @@
         <module name="ModifierOrder"/>
         <module name="MultipleVariableDeclarations"/>
         <module name="RedundantModifier"/>
+        <module name="MatchXpath">
+            <property
+                name="query"
+                value="//METHOD_DEF[
+                      MODIFIERS/ANNOTATION/IDENT[@text='Bean']
+                      and MODIFIERS/*[not(self::ANNOTATION)]
+                    ]"
+            />
+            <message
+                key="matchxpath.match"
+                value="@Bean methods must not declare any modifier keyword (package-private only)."
+            />
+        </module>
         <module name="SimplifyBooleanExpression"/>
         <module name="SimplifyBooleanReturn"/>
         <module name="StringLiteralEquality"/>
