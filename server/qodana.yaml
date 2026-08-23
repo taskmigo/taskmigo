@@ -1,4 +1,3 @@
 version: "1.0"
-pr-mode: false
 profile:
   name: qodana.recommended
