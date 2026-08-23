@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -18,11 +19,20 @@ public final class ApiResponseFactory {
     }
 
     public <T> ResponseEntity<ApiResponse<T>> ok(T data, String messageCode, String messageText) {
-        return ResponseEntity.ok(this.success(HttpStatus.OK, data, messageCode, messageText));
+        return ResponseEntity.ok(this.success(HttpStatus.OK, data, null, messageCode, messageText));
+    }
+
+    public <T> ResponseEntity<ApiResponse<T>> ok(
+        T data,
+        ApiResponse.Pagination pagination,
+        String messageCode,
+        String messageText
+    ) {
+        return ResponseEntity.ok(this.success(HttpStatus.OK, data, pagination, messageCode, messageText));
     }
 
     public ResponseEntity<ApiResponse<Void>> ok(String messageCode, String messageText) {
-        return ResponseEntity.ok(this.success(HttpStatus.OK, null, messageCode, messageText));
+        return ResponseEntity.ok(this.success(HttpStatus.OK, null, null, messageCode, messageText));
     }
 
     public <T> ResponseEntity<ApiResponse<T>> created(
@@ -31,7 +41,8 @@ public final class ApiResponseFactory {
         String messageCode,
         String messageText
     ) {
-        return ResponseEntity.created(location).body(this.success(HttpStatus.CREATED, data, messageCode, messageText));
+        return ResponseEntity.created(location)
+            .body(this.success(HttpStatus.CREATED, data, null, messageCode, messageText));
     }
 
     public ResponseEntity<ApiResponse<Void>> failure(
@@ -40,22 +51,43 @@ public final class ApiResponseFactory {
         String messageText,
         ApiResponse.Error error
     ) {
-        return ResponseEntity.status(status)
-            .body(new ApiResponse<>(false, status.value(), new ApiResponse.Message(messageCode, messageText), error, this.meta(), null));
+        return ResponseEntity.status(status).body(this.failureBody(status, messageCode, messageText, error));
     }
 
-    private <T> ApiResponse<T> success(HttpStatus status, T data, String messageCode, String messageText) {
+    public ApiResponse<Void> failureBody(
+        HttpStatus status,
+        String messageCode,
+        String messageText,
+        ApiResponse.Error error
+    ) {
+        return new ApiResponse<>(
+            false,
+            status.value(),
+            new ApiResponse.Message(messageCode, messageText),
+            error,
+            this.meta(null),
+            null
+        );
+    }
+
+    private <T> ApiResponse<T> success(
+        HttpStatus status,
+        @Nullable T data,
+        @Nullable ApiResponse.Pagination pagination,
+        String messageCode,
+        String messageText
+    ) {
         return new ApiResponse<>(
             true,
             status.value(),
             new ApiResponse.Message(messageCode, messageText),
             null,
-            this.meta(),
+            this.meta(pagination),
             data
         );
     }
 
-    private ApiResponse.Meta meta() {
+    private ApiResponse.Meta meta(@Nullable ApiResponse.Pagination pagination) {
         Instant startedAt = Instant.now();
         long durationMs = 0;
 
@@ -69,6 +101,6 @@ public final class ApiResponseFactory {
             durationMs = TimeUnit.NANOSECONDS.toMillis(Math.max(0, System.nanoTime() - value));
         }
 
-        return new ApiResponse.Meta(new ApiResponse.Execution(startedAt, durationMs), null);
+        return new ApiResponse.Meta(new ApiResponse.Execution(startedAt, durationMs), pagination);
     }
 }
