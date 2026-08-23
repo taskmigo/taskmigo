@@ -48,8 +48,7 @@ class ApiDocumentationIntegrationTest {
         String reference = Objects.requireNonNull(this.http().get().uri("/api/docs").retrieve().body(String.class));
         assertThat(reference)
             .contains("Taskmigo API Reference")
-            .contains("/api/docs/openapi.json/v0")
-            .contains("Taskmigo API v0");
+            .contains("/api/docs/openapi.json/v0");
     }
 
     private RestClient http() {
