@@ -8,7 +8,7 @@ import org.springframework.modulith.Modulithic;
 @SpringBootApplication
 public class TaskmigoApplication {
 
-    public static void main(String[] args) {
+    static void main(String[] args) {
         SpringApplication.run(TaskmigoApplication.class, args);
     }
 }

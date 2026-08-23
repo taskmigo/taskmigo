@@ -72,7 +72,6 @@ final class InternalClientReconciler implements ApplicationRunner {
 
     private void reconcile(Map.Entry<String, Client> configuredClient) {
         String clientId = clientId(configuredClient.getValue());
-        @Nullable
         RegisteredClient existing = clients.findByClientId(clientId);
 
         if (existing != null && !InternalClientMetadata.isManaged(existing)) {

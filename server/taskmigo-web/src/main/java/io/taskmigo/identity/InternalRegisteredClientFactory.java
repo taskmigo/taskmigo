@@ -85,7 +85,6 @@ final class InternalRegisteredClientFactory {
     }
 
     private String encodedSecret(String secret, @Nullable RegisteredClient existing) {
-        @Nullable
         String existingSecret = existing == null ? null : existing.getClientSecret();
         if (
             existingSecret != null && (secret.equals(existingSecret) || passwordEncoder.matches(secret, existingSecret))

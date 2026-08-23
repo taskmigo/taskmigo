@@ -36,6 +36,7 @@ enum PrincipalType {
 
 @Entity
 @Table(name = "organizations")
+@SuppressWarnings("NotNullFieldNotInitialized")
 class OrganizationEntity {
 
     @Id
@@ -62,6 +63,7 @@ class OrganizationEntity {
 
 @Entity
 @Table(name = "users")
+@SuppressWarnings("NotNullFieldNotInitialized")
 class UserEntity {
 
     @Id
@@ -102,6 +104,7 @@ class UserEntity {
 
 @Entity
 @Table(name = "groups")
+@SuppressWarnings("NotNullFieldNotInitialized")
 class GroupEntity {
 
     @Id
@@ -142,6 +145,7 @@ class GroupEntity {
 
 @Entity
 @Table(name = "roles")
+@SuppressWarnings("NotNullFieldNotInitialized")
 class RoleEntity {
 
     @Id
@@ -186,6 +190,7 @@ class RoleEntity {
 
 @Entity
 @Table(name = "projects")
+@SuppressWarnings("NotNullFieldNotInitialized")
 class ProjectEntity {
 
     @Id
@@ -227,6 +232,7 @@ class ProjectEntity {
 
 @Entity
 @Table(name = "project_members")
+@SuppressWarnings("NotNullFieldNotInitialized")
 class ProjectMemberEntity {
 
     @Id
