@@ -36,13 +36,15 @@ class ApiV0ResponseContractTest {
     void everyV0EndpointDeclaresTheStandardResponseEnvelope() {
         List<String> violations = new ArrayList<>();
 
-        this.mappings.getHandlerMethods()
-            .forEach((mapping, handler) -> {
-                boolean isV0 = mapping.getPatternValues().stream().anyMatch(pattern -> pattern.startsWith("/api/v0"));
-                if (isV0 && !usesApiResponse(handler.getMethod().getGenericReturnType())) {
-                    violations.add(handler.getMethod().toGenericString());
-                }
-            });
+        this.mappings.getHandlerMethods().forEach((mapping, handler) -> {
+            boolean isV0 = mapping
+                .getPatternValues()
+                .stream()
+                .anyMatch(pattern -> pattern.startsWith("/api/v0"));
+            if (isV0 && !usesApiResponse(handler.getMethod().getGenericReturnType())) {
+                violations.add(handler.getMethod().toGenericString());
+            }
+        });
 
         assertThat(violations)
             .as("Every /api/v0 endpoint must return ApiResponse so all v0 modules share one response contract")
