@@ -3,15 +3,15 @@ package io.taskmigo.web.api.v0.resource;
 import io.taskmigo.resource.ResourceException;
 import io.taskmigo.web.api.v0.response.ApiResponse;
 import io.taskmigo.web.api.v0.response.ApiResponseFactory;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice(basePackages = "io.taskmigo.web.api.v0")
+@Order(Ordered.HIGHEST_PRECEDENCE)
+@RestControllerAdvice(basePackageClasses = ResourceController.class)
 class ResourceExceptionHandler {
 
     private final ApiResponseFactory responses;
@@ -44,25 +44,6 @@ class ResourceExceptionHandler {
                 messageCode,
                 message,
                 new ApiResponse.Error(errorCode, message, null)
-            );
-    }
-
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException exception) {
-        Map<String, String> formErrors = new LinkedHashMap<>();
-        exception
-            .getBindingResult()
-            .getFieldErrors()
-            .forEach(error -> {
-                String defaultMessage = error.getDefaultMessage();
-                formErrors.putIfAbsent(error.getField(), defaultMessage == null ? "is invalid" : defaultMessage);
-            });
-        String message = "Request validation failed";
-        return this.responses.failure(
-                HttpStatus.valueOf(422),
-                "validation.failed",
-                message,
-                new ApiResponse.Error("VALIDATION_ERROR", message, formErrors)
             );
     }
 }
