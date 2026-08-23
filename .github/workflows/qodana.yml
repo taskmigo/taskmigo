@@ -30,9 +30,10 @@ jobs:
         with:
           distribution: temurin
           java-version: "26"
-      - uses: gradle/actions/setup-gradle@v6.1.0
-        with:
-          cache-read-only: false
+          cache: gradle
+          cache-dependency-path: |
+            server/**/*.gradle*
+            server/gradle/libs.versions.toml
       - name: Analyze code
         uses: JetBrains/qodana-action@v2026.2
         with:
