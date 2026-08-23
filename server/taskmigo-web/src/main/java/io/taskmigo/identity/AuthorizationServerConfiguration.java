@@ -5,7 +5,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
-import java.util.List;
+import java.util.ArrayList;
 import java.util.Set;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties;
@@ -57,7 +57,7 @@ class AuthorizationServerConfiguration {
             Set<String> permissions = InternalClientMetadata.permissions(context.getRegisteredClient());
             context.getClaims().subject(context.getRegisteredClient().getClientId());
             context.getClaims().claim("principal_type", "service");
-            context.getClaims().claim("permissions", List.copyOf(permissions));
+            context.getClaims().claim("permissions", new ArrayList<>(permissions));
         };
     }
 }
