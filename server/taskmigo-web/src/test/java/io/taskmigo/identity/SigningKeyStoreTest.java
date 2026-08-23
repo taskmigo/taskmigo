@@ -16,7 +16,7 @@ class SigningKeyStoreTest {
 
     @Test
     void requiresProvisionedKeyByDefault() {
-        Path keyFile = temporaryDirectory.resolve("missing.pem");
+        Path keyFile = this.temporaryDirectory.resolve("missing.pem");
 
         assertThatThrownBy(() -> SigningKeyStore.load(keyFile, "primary", false))
             .isInstanceOf(IllegalStateException.class)
@@ -25,7 +25,7 @@ class SigningKeyStoreTest {
 
     @Test
     void concurrentDevelopmentCreationReusesOnePrivateKey() throws Exception {
-        Path keyFile = temporaryDirectory.resolve("oauth-signing-key.pem");
+        Path keyFile = this.temporaryDirectory.resolve("oauth-signing-key.pem");
 
         try (var executor = Executors.newFixedThreadPool(2)) {
             var first = executor.submit(() -> SigningKeyStore.load(keyFile, "primary", true));
@@ -38,7 +38,7 @@ class SigningKeyStoreTest {
 
     @Test
     void rejectsCorruptProvisionedKey() throws Exception {
-        Path keyFile = temporaryDirectory.resolve("corrupt.pem");
+        Path keyFile = this.temporaryDirectory.resolve("corrupt.pem");
         Files.writeString(keyFile, "not-a-private-key");
 
         assertThatThrownBy(() -> SigningKeyStore.load(keyFile, "primary", false))

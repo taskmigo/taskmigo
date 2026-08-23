@@ -31,20 +31,20 @@ class ApiDocumentationIntegrationTest {
     @Test
     void rendersGeneratedOpenApiDocumentAndReference() {
         String openApi = Objects.requireNonNull(
-            http().get().uri("/api/docs/openapi.json").retrieve().body(String.class)
+            this.http().get().uri("/api/docs/openapi.json").retrieve().body(String.class)
         );
         assertThat(openApi)
             .contains("\"title\":\"Taskmigo API\"")
             .contains("\"taskmigoOAuth\"")
             .contains("\"/api/v0/permissions\"");
 
-        String reference = Objects.requireNonNull(http().get().uri("/api/docs").retrieve().body(String.class));
+        String reference = Objects.requireNonNull(this.http().get().uri("/api/docs").retrieve().body(String.class));
         assertThat(reference).contains("Taskmigo API Reference").contains("/api/docs/openapi.json");
     }
 
     private RestClient http() {
         return RestClient.builder()
-            .baseUrl("http://localhost:" + port)
+            .baseUrl("http://localhost:" + this.port)
             .build();
     }
 }
