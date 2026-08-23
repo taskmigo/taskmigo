@@ -30,32 +30,32 @@ final class ApiV0ExceptionHandler {
             });
         String message = "Request validation failed";
         return this.responses.failure(
-                HttpStatus.UNPROCESSABLE_ENTITY,
-                "validation.failed",
-                message,
-                new ApiResponse.Error("VALIDATION_ERROR", message, formErrors)
-            );
+            HttpStatus.UNPROCESSABLE_ENTITY,
+            "validation.failed",
+            message,
+            new ApiResponse.Error("VALIDATION_ERROR", message, formErrors)
+        );
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<ApiResponse<Void>> handleUnreadableRequest(HttpMessageNotReadableException exception) {
         String message = "Request body is malformed or unreadable";
         return this.responses.failure(
-                HttpStatus.BAD_REQUEST,
-                "request.malformed",
-                message,
-                new ApiResponse.Error("MALFORMED_REQUEST", message, null)
-            );
+            HttpStatus.BAD_REQUEST,
+            "request.malformed",
+            message,
+            new ApiResponse.Error("MALFORMED_REQUEST", message, null)
+        );
     }
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiResponse<Void>> handleUnexpected(Exception exception) {
         String message = "An unexpected error occurred";
         return this.responses.failure(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "internal.error",
-                message,
-                new ApiResponse.Error("INTERNAL_ERROR", message, null)
-            );
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "internal.error",
+            message,
+            new ApiResponse.Error("INTERNAL_ERROR", message, null)
+        );
     }
 }
