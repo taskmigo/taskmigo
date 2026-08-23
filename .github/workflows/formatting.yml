@@ -30,37 +30,14 @@ jobs:
         run: npm ci
 
       - name: Check formatting
-        id: formatting
-        continue-on-error: true
-        run: npm run format:check
-
-      - name: Format files
-        if: steps.formatting.outcome == 'failure'
-        run: npm run format:fix
-
-      - name: Collect formatted files
-        if: success() && steps.formatting.outcome == 'failure'
         run: |
-          artifact_dir="${RUNNER_TEMP}/prettier-formatted-files"
-          mkdir -p "$artifact_dir"
-          while IFS= read -r -d '' file; do
-            destination="$artifact_dir/$file"
-            mkdir -p "$(dirname "$destination")"
-            cp "$file" "$destination"
-          done < <(git diff --name-only --diff-filter=ACMRTUXB -z)
+          if npm run format:check; then
+            exit 0
+          fi
 
-      - name: Upload formatted files
-        if: success() && steps.formatting.outcome == 'failure'
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: prettier-formatted-files
-          path: ${{ runner.temp }}/prettier-formatted-files
-          if-no-files-found: error
-          retention-days: 1
-          include-hidden-files: true
-
-      - name: Fail formatting check
-        if: always() && steps.formatting.outcome == 'failure'
-        run: |
-          echo "::error::Formatting check failed. Use the prettier-formatted-files artifact from this run."
+          npm run format:fix
+          echo "::group::Formatting diff"
+          git --no-pager diff
+          echo "::endgroup::"
+          echo "::error::Formatting check failed. Apply the diff shown above."
           exit 1
