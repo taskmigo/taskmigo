@@ -69,8 +69,11 @@ class OAuthInfrastructureIntegrationTest {
             jdbc.queryForObject(
                 """
                 select count(*)
-                from oauth_service_principal_permissions
-                where permission_key = 'system.resources.manage'
+                from oauth_service_principal_permissions permissions
+                join oauth_client_management client
+                  on client.registered_client_id = permissions.registered_client_id
+                where client.registration_key = 'cli'
+                  and permissions.permission_key = 'system.resources.manage'
                 """,
                 Integer.class
             )
