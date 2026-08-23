@@ -19,7 +19,9 @@ final class ApiV0ExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleValidation(MethodArgumentNotValidException exception) {
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleValidation(
+        MethodArgumentNotValidException exception
+    ) {
         Map<String, String> formErrors = new LinkedHashMap<>();
         exception
             .getBindingResult()
