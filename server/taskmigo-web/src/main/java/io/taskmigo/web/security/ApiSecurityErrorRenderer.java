@@ -6,6 +6,7 @@ import java.io.IOException;
 import org.springframework.http.HttpStatus;
 
 public interface ApiSecurityErrorRenderer {
+
     boolean supports(HttpServletRequest request);
 
     void write(HttpServletResponse response, HttpStatus status, String messageCode, String messageText) throws IOException;
