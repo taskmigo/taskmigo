@@ -18,35 +18,52 @@ public final class ApiResponseFactory {
         this.request = request;
     }
 
-    public <T> ResponseEntity<ApiResponse<T, Void>> ok(T data, String messageCode, String messageText) {
-        return ResponseEntity.ok(this.success(HttpStatus.OK, data, null, messageCode, messageText));
-    }
-
-    public <T, P> ResponseEntity<ApiResponse<T, P>> ok(
+    public <T> ResponseEntity<ApiResponse<T, ApiResponse.BasicMeta>> ok(
         T data,
-        P pagination,
         String messageCode,
         String messageText
     ) {
-        return ResponseEntity.ok(this.success(HttpStatus.OK, data, pagination, messageCode, messageText));
+        return ResponseEntity.ok(this.success(HttpStatus.OK, data, this.basicMeta(), messageCode, messageText));
     }
 
-    public ResponseEntity<ApiResponse<Void, Void>> ok(String messageCode, String messageText) {
-        return ResponseEntity.ok(this.success(HttpStatus.OK, null, null, messageCode, messageText));
+    public <T> ResponseEntity<ApiResponse<T, ApiResponse.OffsetMeta>> ok(
+        T data,
+        ApiResponse.OffsetPagination pagination,
+        String messageCode,
+        String messageText
+    ) {
+        return ResponseEntity.ok(
+            this.success(HttpStatus.OK, data, new ApiResponse.OffsetMeta(this.execution(), pagination), messageCode, messageText)
+        );
     }
 
-    public <T> ResponseEntity<ApiResponse<T, Void>> created(
+    public <T> ResponseEntity<ApiResponse<T, ApiResponse.CursorMeta>> ok(
+        T data,
+        ApiResponse.CursorPagination pagination,
+        String messageCode,
+        String messageText
+    ) {
+        return ResponseEntity.ok(
+            this.success(HttpStatus.OK, data, new ApiResponse.CursorMeta(this.execution(), pagination), messageCode, messageText)
+        );
+    }
+
+    public ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> ok(String messageCode, String messageText) {
+        return ResponseEntity.ok(this.success(HttpStatus.OK, null, this.basicMeta(), messageCode, messageText));
+    }
+
+    public <T> ResponseEntity<ApiResponse<T, ApiResponse.BasicMeta>> created(
         URI location,
         T data,
         String messageCode,
         String messageText
     ) {
         return ResponseEntity.created(location).body(
-            this.success(HttpStatus.CREATED, data, null, messageCode, messageText)
+            this.success(HttpStatus.CREATED, data, this.basicMeta(), messageCode, messageText)
         );
     }
 
-    public ResponseEntity<ApiResponse<Void, Void>> failure(
+    public ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> failure(
         HttpStatus status,
         String messageCode,
         String messageText,
@@ -55,7 +72,7 @@ public final class ApiResponseFactory {
         return ResponseEntity.status(status).body(this.failureBody(status, messageCode, messageText, error));
     }
 
-    public ApiResponse<Void, Void> failureBody(
+    public ApiResponse<Void, ApiResponse.BasicMeta> failureBody(
         HttpStatus status,
         String messageCode,
         String messageText,
@@ -66,15 +83,15 @@ public final class ApiResponseFactory {
             status.value(),
             new ApiResponse.Message(messageCode, messageText),
             error,
-            this.meta(null),
+            this.basicMeta(),
             null
         );
     }
 
-    private <T, P> ApiResponse<T, P> success(
+    private <T, M extends ApiResponse.Meta> ApiResponse<T, M> success(
         HttpStatus status,
         @Nullable T data,
-        @Nullable P pagination,
+        M meta,
         String messageCode,
         String messageText
     ) {
@@ -83,12 +100,16 @@ public final class ApiResponseFactory {
             status.value(),
             new ApiResponse.Message(messageCode, messageText),
             null,
-            this.meta(pagination),
+            meta,
             data
         );
     }
 
-    private <P> ApiResponse.Meta<P> meta(@Nullable P pagination) {
+    private ApiResponse.BasicMeta basicMeta() {
+        return new ApiResponse.BasicMeta(this.execution());
+    }
+
+    private ApiResponse.Execution execution() {
         Instant startedAt = Instant.now();
         long durationMs = 0;
 
@@ -102,6 +123,6 @@ public final class ApiResponseFactory {
             durationMs = TimeUnit.NANOSECONDS.toMillis(Math.max(0, System.nanoTime() - value));
         }
 
-        return new ApiResponse.Meta<>(new ApiResponse.Execution(startedAt, durationMs), pagination);
+        return new ApiResponse.Execution(startedAt, durationMs);
     }
 }
