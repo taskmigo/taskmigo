@@ -3,3 +3,79 @@ profile:
   name: qodana.recommended
 projectJDK: "26"
 failThreshold: 0
+
+include:
+  # Rules owned by Qodana instead of duplicating their Checkstyle equivalents.
+  - name: MissingFinalNewline
+  - name: OnDemandImport
+  - name: UNUSED_IMPORT
+  - name: SamePackageImport
+  - name: JavaLangImport
+  - name: EqualsOrHashCode
+  - name: CovariantEquals
+  - name: FallthruInSwitchStatement
+  - name: DefaultNotLastCaseInSwitch
+  - name: MissortedModifiers
+  - name: UnnecessaryModifier
+  - name: MultipleVariablesInDeclaration
+  - name: UnqualifiedFieldAccess
+  - name: UnqualifiedMethodAccess
+  - name: PointlessBooleanExpression
+  - name: SimplifiableBooleanExpression
+  - name: TrivialIf
+  - name: StringEquality
+  - name: ControlFlowStatementWithoutBraces
+  - name: MissingOverrideAnnotation
+  - name: CStyleArrayDeclaration
+  - name: NestedAssignment
+  - name: AssignmentUsedAsCondition
+  - name: AssignmentToMethodParameter
+  - name: AssignmentToCatchBlockParameter
+  - name: AssignmentToLambdaParameter
+  - name: Finalize
+  - name: NoExplicitFinalizeCalls
+  - name: CatchMayIgnoreException
+
+  # High-signal inspections for removing unused or redundant code.
+  - name: UnusedAssignment
+  - name: UnusedEquals
+  - name: UnusedExpression
+  - name: UnusedLabel
+  - name: UnusedReturnValue
+  - name: UnusedVariable
+  - name: ResultOfObjectAllocationIgnored
+  - name: UnnecessaryBreak
+  - name: UnnecessaryCallToStringValueOf
+  - name: UnnecessaryConstructor
+  - name: UnnecessaryContinue
+  - name: UnnecessaryDefault
+  - name: UnnecessaryExplicitNumericCast
+  - name: UnnecessaryLocalVariable
+  - name: UnnecessaryReturn
+  - name: UnnecessarySemicolon
+  - name: UnnecessaryToStringCall
+  - name: UnnecessaryVariable
+  - name: RedundantArrayCreation
+  - name: RedundantCast
+  - name: RedundantCollectionOperation
+  - name: RedundantElseInIf
+  - name: RedundantExplicitClose
+  - name: RedundantFieldInitialization
+  - name: RedundantFileCreation
+  - name: RedundantIf
+  - name: RedundantLengthCheck
+  - name: RedundantMethodOverride
+  - name: RedundantOperationOnEmptyContainer
+  - name: RedundantRecordConstructor
+  - name: RedundantStreamOptionalCall
+  - name: RedundantStringFormatCall
+  - name: RedundantSuppression
+  - name: RedundantThrows
+  - name: RedundantTypeArguments
+
+exclude:
+  # Preserve the explicit-this policy represented by the two Unqualified* rules.
+  - name: UnnecessaryThis
+
+  # Preserve mandatory braces for every control-flow statement.
+  - name: SingleStatementInBlock
