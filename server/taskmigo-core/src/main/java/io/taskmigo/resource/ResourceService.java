@@ -10,6 +10,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/// Coordinates resource lifecycle operations and enforces organization and project membership invariants.
+///
+/// Validation failures are reported as [ResourceException] values so transport adapters can map domain failures
+/// without depending on persistence exceptions.
 @Service
 public class ResourceService {
 
@@ -36,6 +40,12 @@ public class ResourceService {
         this.projectMembers = projectMembers;
     }
 
+    /// Creates an organization after trimming required text fields and enforcing key uniqueness.
+    ///
+    /// @param key the external organization key
+    /// @param name the organization display name
+    /// @return the generated organization id
+    /// @throws ResourceException if a required field is blank or the organization key already exists
     @Transactional
     public UUID createOrganization(@Nullable String key, @Nullable String name) {
         try {
@@ -47,6 +57,15 @@ public class ResourceService {
         }
     }
 
+    /// Creates a user in an organization, normalizing the email address before uniqueness is checked.
+    ///
+    /// @param organizationId the organization that owns the user
+    /// @param username the username unique within the persistence model
+    /// @param email the email address, normalized to lowercase using [Locale#ROOT]
+    /// @param displayName the user-facing display name
+    /// @return the generated user id
+    /// @throws ResourceException if the organization does not exist, a required field is blank, or username/email
+    ///     uniqueness is violated
     @Transactional
     public UUID createUser(
         UUID organizationId,
@@ -73,6 +92,13 @@ public class ResourceService {
         }
     }
 
+    /// Creates a group owned by an existing organization.
+    ///
+    /// @param organizationId the organization that owns the group
+    /// @param name the group name
+    /// @param description the optional group description
+    /// @return the generated group id
+    /// @throws ResourceException if the organization does not exist or the group name is blank
     @Transactional
     public UUID createGroup(UUID organizationId, @Nullable String name, @Nullable String description) {
         return this.groups
@@ -87,6 +113,11 @@ public class ResourceService {
             .getId();
     }
 
+    /// Adds a user to a group only when both resources belong to the same organization.
+    ///
+    /// @param groupId the target group
+    /// @param userId the user to add
+    /// @throws ResourceException if either resource does not exist or belongs to a different organization
     @Transactional
     public void addGroupMember(UUID groupId, UUID userId) {
         GroupEntity group = this.group(groupId);
@@ -98,6 +129,11 @@ public class ResourceService {
         this.groups.flush();
     }
 
+    /// Removes a user from a group; removing a user that is not currently a member is a no-op.
+    ///
+    /// @param groupId the target group
+    /// @param userId the user to remove
+    /// @throws ResourceException if the group does not exist
     @Transactional
     public void removeGroupMember(UUID groupId, UUID userId) {
         GroupEntity group = this.group(groupId);
@@ -105,6 +141,15 @@ public class ResourceService {
         this.groups.flush();
     }
 
+    /// Creates an organization-owned role containing only permissions from [PermissionCatalog#ALL].
+    ///
+    /// @param organizationId the organization that owns the role
+    /// @param name the role name
+    /// @param description the optional role description
+    /// @param permissions permission keys to assign; an absent set creates a role without permissions
+    /// @return the generated role id
+    /// @throws ResourceException if the organization does not exist, the role name is blank, or an unknown permission
+    ///     is requested
     @Transactional
     public UUID createRole(
         UUID organizationId,
@@ -131,6 +176,15 @@ public class ResourceService {
             .getId();
     }
 
+    /// Creates an active project and enforces project-key uniqueness within its organization.
+    ///
+    /// @param organizationId the organization that owns the project
+    /// @param key the project key unique within the organization
+    /// @param name the project display name
+    /// @param description the optional project description
+    /// @return the generated project id
+    /// @throws ResourceException if the organization does not exist, a required field is blank, or the project key
+    ///     already exists in the organization
     @Transactional
     public UUID createProject(
         UUID organizationId,
@@ -155,11 +209,23 @@ public class ResourceService {
         }
     }
 
+    /// Archives a project, making subsequent membership mutations fail as conflicts.
+    ///
+    /// @param projectId the project to archive
+    /// @throws ResourceException if the project does not exist
     @Transactional
     public void archiveProject(UUID projectId) {
         this.project(projectId).status = ProjectStatus.ARCHIVED;
     }
 
+    /// Adds a user or group principal to an active project.
+    ///
+    /// @param projectId the active project receiving the member
+    /// @param principalType either `USER` or `GROUP`, case-insensitively
+    /// @param principalId the id of the referenced user or group
+    /// @return the generated project-member id
+    /// @throws ResourceException if the project is archived, the principal type is invalid, the principal does not
+    ///     exist, or the principal is already a member
     @Transactional
     public UUID addProjectMember(UUID projectId, @Nullable String principalType, UUID principalId) {
         ProjectEntity project = this.activeProject(projectId);
@@ -174,6 +240,12 @@ public class ResourceService {
         }
     }
 
+    /// Removes a membership only when it belongs to the specified active project.
+    ///
+    /// @param projectId the project that must own the membership
+    /// @param projectMemberId the membership to remove
+    /// @throws ResourceException if the project is archived, the project or member does not exist, or the member
+    ///     belongs to another project
     @Transactional
     public void removeProjectMember(UUID projectId, UUID projectMemberId) {
         this.activeProject(projectId);
@@ -183,6 +255,13 @@ public class ResourceService {
         this.projectMembers.flush();
     }
 
+    /// Replaces a project member's roles, allowing only roles owned by the project's organization.
+    ///
+    /// @param projectId the active project that owns the membership
+    /// @param projectMemberId the membership whose roles are replaced
+    /// @param roleIds the complete desired role set; an absent set removes all roles
+    /// @throws ResourceException if the project is archived, a referenced resource is missing, or a role belongs to
+    ///     another organization
     @Transactional
     public void setProjectMemberRoles(UUID projectId, UUID projectMemberId, @Nullable Set<UUID> roleIds) {
         ProjectEntity project = this.activeProject(projectId);
@@ -201,6 +280,14 @@ public class ResourceService {
         this.projectMembers.flush();
     }
 
+    /// Computes the union of permissions granted directly to a user and through all of the user's project-member groups.
+    ///
+    /// Duplicate permissions are collapsed and the returned set is immutable.
+    ///
+    /// @param projectId the project whose grants are evaluated
+    /// @param userId the user whose direct and group-based memberships are evaluated
+    /// @return the effective permission keys granted to the user for the project
+    /// @throws ResourceException if the project or user does not exist
     @Transactional(readOnly = true)
     public Set<String> effectivePermissions(UUID projectId, UUID userId) {
         this.project(projectId);

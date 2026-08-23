@@ -9,6 +9,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
+/// Builds API v0 response envelopes and attaches execution metadata captured for the current HTTP request.
+///
+/// When timing attributes are unavailable, execution metadata falls back to the current instant and a zero duration.
 @Component
 public final class ApiResponseFactory {
 
@@ -84,6 +87,15 @@ public final class ApiResponseFactory {
         return ResponseEntity.status(status).body(this.failureBody(status, messageCode, messageText, error));
     }
 
+    /// Creates a failure envelope without coupling the caller to a [ResponseEntity].
+    ///
+    /// This is useful for adapters that must render the standard v0 error body through a lower-level response API.
+    ///
+    /// @param status the HTTP status represented by the envelope
+    /// @param messageCode the stable machine-readable message code
+    /// @param messageText the human-readable message text
+    /// @param error the structured error details
+    /// @return a failure envelope with basic execution metadata and no data payload
     public ApiResponse<Void, ApiResponse.BasicMeta> failureBody(
         HttpStatus status,
         String messageCode,

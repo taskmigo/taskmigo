@@ -17,6 +17,10 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
+/// Reconciles configured internal OAuth clients into the persistent client registry when the application starts.
+///
+/// Reconciliation runs in a serializable transaction, retries transient or concurrent persistence conflicts up to
+/// three times, and refuses to adopt an existing client that was not previously marked as Taskmigo-managed.
 @Component
 final class InternalClientReconciler implements ApplicationRunner {
 

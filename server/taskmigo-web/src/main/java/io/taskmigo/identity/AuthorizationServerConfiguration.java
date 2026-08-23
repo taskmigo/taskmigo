@@ -20,6 +20,11 @@ import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 
+/// Configures the OAuth authorization-server primitives and the claims used to identify Taskmigo service principals.
+///
+/// Access tokens issued through `client_credentials` use the registered client id as their subject and include
+/// `principal_type=service` plus the permissions assigned to managed internal clients. Other token flows keep Spring
+/// Authorization Server's default claims.
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties({ IdentityProperties.class, OAuth2AuthorizationServerProperties.class })
 class AuthorizationServerConfiguration {

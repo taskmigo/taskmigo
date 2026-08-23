@@ -10,6 +10,11 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 
+/// Routes authentication and authorization failures to the response renderer for the matching API version.
+///
+/// Renderers are tried in their configured order and the first match owns the response. If no renderer supports the
+/// request, the handler falls back to the servlet container's default error response so shared security code remains
+/// independent of version-specific API envelopes.
 @Component
 final class VersionedApiSecurityErrorHandler implements AuthenticationEntryPoint, AccessDeniedHandler {
 
