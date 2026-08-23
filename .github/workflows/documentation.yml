@@ -4,20 +4,20 @@ on:
   pull_request:
     paths:
       - "docs/**"
-      - ".github/workflows/docs.yml"
+      - ".github/workflows/documentation.yml"
   push:
     branches: [next]
     paths:
       - "docs/**"
-      - ".github/workflows/docs.yml"
+      - ".github/workflows/documentation.yml"
   workflow_dispatch:
-
-permissions:
-  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
 
 jobs:
   verify:
