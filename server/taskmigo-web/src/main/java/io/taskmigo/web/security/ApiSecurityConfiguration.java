@@ -18,11 +18,13 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableWebSecurity
 class ApiSecurityConfiguration {
 
+    private static final String VERSIONED_API_PATTERN = "/api/v*/**";
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) {
         http.authorizeHttpRequests(authorize ->
             authorize
-                .requestMatchers("/api/v0/**")
+                .requestMatchers(VERSIONED_API_PATTERN)
                 .hasAllAuthorities(
                     "SCOPE_taskmigo.api",
                     "PERMISSION_" + ServicePrincipalPermissions.SYSTEM_RESOURCES_MANAGE
@@ -30,7 +32,7 @@ class ApiSecurityConfiguration {
                 .anyRequest()
                 .permitAll()
         )
-            .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v0/**"))
+            .csrf(csrf -> csrf.ignoringRequestMatchers(VERSIONED_API_PATTERN))
             .oauth2AuthorizationServer(Customizer.withDefaults())
             .oauth2ResourceServer(resourceServer ->
                 resourceServer.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
