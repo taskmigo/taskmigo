@@ -37,9 +37,7 @@ public record ApiResponse<T>(
         @JsonProperty("started_at")
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED, format = "date-time")
         Instant startedAt,
-        @JsonProperty("duration_ms")
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, minimum = "0")
-        long durationMs
+        @JsonProperty("duration_ms") @Schema(requiredMode = Schema.RequiredMode.REQUIRED, minimum = "0") long durationMs
     ) {}
 
     @Schema(oneOf = { OffsetPagination.class, CursorPagination.class })
@@ -57,9 +55,13 @@ public record ApiResponse<T>(
     }
 
     public record Offset(
-        @JsonProperty("current_page") @Schema(requiredMode = Schema.RequiredMode.REQUIRED, minimum = "1") int currentPage,
+        @JsonProperty("current_page")
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, minimum = "1")
+        int currentPage,
         @JsonProperty("per_page") @Schema(requiredMode = Schema.RequiredMode.REQUIRED, minimum = "1") int perPage,
-        @JsonProperty("total_items") @Schema(requiredMode = Schema.RequiredMode.REQUIRED, minimum = "0") long totalItems,
+        @JsonProperty("total_items")
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, minimum = "0")
+        long totalItems,
         @JsonProperty("total_pages") @Schema(requiredMode = Schema.RequiredMode.REQUIRED, minimum = "0") long totalPages
     ) {}
 
@@ -75,10 +77,12 @@ public record ApiResponse<T>(
     public record Cursor(
         @JsonProperty("next_cursor")
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
-        @Nullable String nextCursor,
+        @Nullable
+        String nextCursor,
         @JsonProperty("prev_cursor")
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED, nullable = true)
-        @Nullable String prevCursor,
+        @Nullable
+        String prevCursor,
         @JsonProperty("has_more") @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean hasMore
     ) {}
 }
