@@ -38,12 +38,14 @@ class ResourceController {
     }
 
     @GetMapping("/permissions")
-    ResponseEntity<ApiResponse<Set<String>>> permissions() {
+    ResponseEntity<ApiResponse<Set<String>, ApiResponse.BasicMeta>> permissions() {
         return this.responses.ok(PermissionCatalog.ALL, "resource.permissions.retrieved", "Permissions retrieved");
     }
 
     @PostMapping("/organizations")
-    ResponseEntity<ApiResponse<Map<String, UUID>>> createOrganization(@Valid @RequestBody OrganizationRequest request) {
+    ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> createOrganization(
+        @Valid @RequestBody OrganizationRequest request
+    ) {
         UUID id = this.resources.createOrganization(request.key(), request.name());
         return this.responses.created(
             URI.create("/api/v0/organizations/" + id),
@@ -54,7 +56,7 @@ class ResourceController {
     }
 
     @PostMapping("/organizations/{organizationId}/users")
-    ResponseEntity<ApiResponse<Map<String, UUID>>> createUser(
+    ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> createUser(
         @PathVariable UUID organizationId,
         @Valid @RequestBody UserRequest request
     ) {
@@ -68,7 +70,7 @@ class ResourceController {
     }
 
     @PostMapping("/organizations/{organizationId}/groups")
-    ResponseEntity<ApiResponse<Map<String, UUID>>> createGroup(
+    ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> createGroup(
         @PathVariable UUID organizationId,
         @Valid @RequestBody NamedRequest request
     ) {
@@ -82,19 +84,25 @@ class ResourceController {
     }
 
     @PutMapping("/groups/{groupId}/members/{userId}")
-    ResponseEntity<ApiResponse<Void>> addGroupMember(@PathVariable UUID groupId, @PathVariable UUID userId) {
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> addGroupMember(
+        @PathVariable UUID groupId,
+        @PathVariable UUID userId
+    ) {
         this.resources.addGroupMember(groupId, userId);
         return this.responses.ok("resource.group.member_added", "Group member added");
     }
 
     @DeleteMapping("/groups/{groupId}/members/{userId}")
-    ResponseEntity<ApiResponse<Void>> removeGroupMember(@PathVariable UUID groupId, @PathVariable UUID userId) {
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> removeGroupMember(
+        @PathVariable UUID groupId,
+        @PathVariable UUID userId
+    ) {
         this.resources.removeGroupMember(groupId, userId);
         return this.responses.ok("resource.group.member_removed", "Group member removed");
     }
 
     @PostMapping("/organizations/{organizationId}/roles")
-    ResponseEntity<ApiResponse<Map<String, UUID>>> createRole(
+    ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> createRole(
         @PathVariable UUID organizationId,
         @Valid @RequestBody RoleRequest request
     ) {
@@ -113,7 +121,7 @@ class ResourceController {
     }
 
     @PostMapping("/organizations/{organizationId}/projects")
-    ResponseEntity<ApiResponse<Map<String, UUID>>> createProject(
+    ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> createProject(
         @PathVariable UUID organizationId,
         @Valid @RequestBody ProjectRequest request
     ) {
@@ -127,13 +135,13 @@ class ResourceController {
     }
 
     @PatchMapping("/projects/{projectId}/archive")
-    ResponseEntity<ApiResponse<Void>> archiveProject(@PathVariable UUID projectId) {
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> archiveProject(@PathVariable UUID projectId) {
         this.resources.archiveProject(projectId);
         return this.responses.ok("resource.project.archived", "Project archived");
     }
 
     @PostMapping("/projects/{projectId}/members")
-    ResponseEntity<ApiResponse<Map<String, UUID>>> addProjectMember(
+    ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> addProjectMember(
         @PathVariable UUID projectId,
         @Valid @RequestBody ProjectMemberRequest request
     ) {
@@ -151,7 +159,7 @@ class ResourceController {
     }
 
     @DeleteMapping("/projects/{projectId}/members/{projectMemberId}")
-    ResponseEntity<ApiResponse<Void>> removeProjectMember(
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> removeProjectMember(
         @PathVariable UUID projectId,
         @PathVariable UUID projectMemberId
     ) {
@@ -160,7 +168,7 @@ class ResourceController {
     }
 
     @PutMapping("/projects/{projectId}/members/{projectMemberId}/roles")
-    ResponseEntity<ApiResponse<Void>> setProjectMemberRoles(
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setProjectMemberRoles(
         @PathVariable UUID projectId,
         @PathVariable UUID projectMemberId,
         @Valid @RequestBody RoleAssignmentRequest request
@@ -170,7 +178,7 @@ class ResourceController {
     }
 
     @GetMapping("/projects/{projectId}/users/{userId}/effective-permissions")
-    ResponseEntity<ApiResponse<Set<String>>> effectivePermissions(
+    ResponseEntity<ApiResponse<Set<String>, ApiResponse.BasicMeta>> effectivePermissions(
         @PathVariable UUID projectId,
         @PathVariable UUID userId
     ) {
