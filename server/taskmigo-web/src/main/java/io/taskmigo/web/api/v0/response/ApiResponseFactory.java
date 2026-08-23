@@ -1,6 +1,5 @@
 package io.taskmigo.web.api.v0.response;
 
-import io.taskmigo.web.api.v0.response.ApiResponse.Pagination;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.time.Instant;
@@ -19,30 +18,35 @@ public final class ApiResponseFactory {
         this.request = request;
     }
 
-    public <T> ResponseEntity<ApiResponse<T>> ok(T data, String messageCode, String messageText) {
+    public <T> ResponseEntity<ApiResponse<T, Void>> ok(T data, String messageCode, String messageText) {
         return ResponseEntity.ok(this.success(HttpStatus.OK, data, null, messageCode, messageText));
     }
 
-    public <T> ResponseEntity<ApiResponse<T>> ok(
+    public <T, P> ResponseEntity<ApiResponse<T, P>> ok(
         T data,
-        Pagination pagination,
+        P pagination,
         String messageCode,
         String messageText
     ) {
         return ResponseEntity.ok(this.success(HttpStatus.OK, data, pagination, messageCode, messageText));
     }
 
-    public ResponseEntity<ApiResponse<Void>> ok(String messageCode, String messageText) {
+    public ResponseEntity<ApiResponse<Void, Void>> ok(String messageCode, String messageText) {
         return ResponseEntity.ok(this.success(HttpStatus.OK, null, null, messageCode, messageText));
     }
 
-    public <T> ResponseEntity<ApiResponse<T>> created(URI location, T data, String messageCode, String messageText) {
+    public <T> ResponseEntity<ApiResponse<T, Void>> created(
+        URI location,
+        T data,
+        String messageCode,
+        String messageText
+    ) {
         return ResponseEntity.created(location).body(
             this.success(HttpStatus.CREATED, data, null, messageCode, messageText)
         );
     }
 
-    public ResponseEntity<ApiResponse<Void>> failure(
+    public ResponseEntity<ApiResponse<Void, Void>> failure(
         HttpStatus status,
         String messageCode,
         String messageText,
@@ -51,7 +55,7 @@ public final class ApiResponseFactory {
         return ResponseEntity.status(status).body(this.failureBody(status, messageCode, messageText, error));
     }
 
-    public ApiResponse<Void> failureBody(
+    public ApiResponse<Void, Void> failureBody(
         HttpStatus status,
         String messageCode,
         String messageText,
@@ -67,10 +71,10 @@ public final class ApiResponseFactory {
         );
     }
 
-    private <T> ApiResponse<T> success(
+    private <T, P> ApiResponse<T, P> success(
         HttpStatus status,
         @Nullable T data,
-        @Nullable Pagination pagination,
+        @Nullable P pagination,
         String messageCode,
         String messageText
     ) {
@@ -84,7 +88,7 @@ public final class ApiResponseFactory {
         );
     }
 
-    private ApiResponse.Meta meta(@Nullable Pagination pagination) {
+    private <P> ApiResponse.Meta<P> meta(@Nullable P pagination) {
         Instant startedAt = Instant.now();
         long durationMs = 0;
 
@@ -98,6 +102,6 @@ public final class ApiResponseFactory {
             durationMs = TimeUnit.NANOSECONDS.toMillis(Math.max(0, System.nanoTime() - value));
         }
 
-        return new ApiResponse.Meta(new ApiResponse.Execution(startedAt, durationMs), pagination);
+        return new ApiResponse.Meta<>(new ApiResponse.Execution(startedAt, durationMs), pagination);
     }
 }
