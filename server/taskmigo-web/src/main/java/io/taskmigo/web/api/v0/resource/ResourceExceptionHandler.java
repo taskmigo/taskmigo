@@ -21,7 +21,7 @@ class ResourceExceptionHandler {
     }
 
     @ExceptionHandler(ResourceException.class)
-    ResponseEntity<ApiResponse<Void>> handleResourceException(ResourceException exception) {
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleResourceException(ResourceException exception) {
         HttpStatus status = switch (exception.type()) {
             case BAD_REQUEST -> HttpStatus.BAD_REQUEST;
             case NOT_FOUND -> HttpStatus.NOT_FOUND;
