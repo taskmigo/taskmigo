@@ -11,6 +11,7 @@ scalar:
   url: /api/docs/openapi.json
   path: /api/docs
   page-title: Taskmigo API Reference
+  show-developer-tools: never
   telemetry: false
   agent:
     disabled: true
