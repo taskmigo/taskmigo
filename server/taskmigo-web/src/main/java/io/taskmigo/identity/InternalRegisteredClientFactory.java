@@ -13,6 +13,11 @@ import org.springframework.security.oauth2.server.authorization.settings.OAuth2T
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.stereotype.Component;
 
+/// Builds the persistent OAuth registration for Taskmigo-managed machine-to-machine clients.
+///
+/// Managed clients are constrained to `client_secret_basic`, the `client_credentials` grant, and the `taskmigo.api`
+/// scope. When an existing encoded secret still matches the configured value, it is retained to avoid unnecessary
+/// re-encoding during startup reconciliation.
 @Component
 final class InternalRegisteredClientFactory {
 
