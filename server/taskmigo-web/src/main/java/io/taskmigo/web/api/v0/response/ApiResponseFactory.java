@@ -1,5 +1,6 @@
 package io.taskmigo.web.api.v0.response;
 
+import io.taskmigo.web.api.v0.response.ApiResponse.Pagination;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.time.Instant;
@@ -24,7 +25,7 @@ public final class ApiResponseFactory {
 
     public <T> ResponseEntity<ApiResponse<T>> ok(
         T data,
-        ApiResponse.Pagination pagination,
+        Pagination pagination,
         String messageCode,
         String messageText
     ) {
@@ -73,7 +74,7 @@ public final class ApiResponseFactory {
     private <T> ApiResponse<T> success(
         HttpStatus status,
         @Nullable T data,
-        @Nullable ApiResponse.Pagination pagination,
+        @Nullable Pagination pagination,
         String messageCode,
         String messageText
     ) {
@@ -87,7 +88,7 @@ public final class ApiResponseFactory {
         );
     }
 
-    private ApiResponse.Meta meta(@Nullable ApiResponse.Pagination pagination) {
+    private ApiResponse.Meta meta(@Nullable Pagination pagination) {
         Instant startedAt = Instant.now();
         long durationMs = 0;
 
