@@ -3,7 +3,7 @@ package io.taskmigo.web.api.v0;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.taskmigo.PostgresTestConfiguration;
-import io.taskmigo.web.api.v0.response.ApiResponse;
+import io.taskmigo.web.api.v0.infrastructure.response.ApiResponse;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;

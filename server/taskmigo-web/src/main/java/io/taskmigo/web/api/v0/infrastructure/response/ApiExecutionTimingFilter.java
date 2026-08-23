@@ -1,4 +1,4 @@
-package io.taskmigo.web.api.v0.response;
+package io.taskmigo.web.api.v0.infrastructure.response;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;

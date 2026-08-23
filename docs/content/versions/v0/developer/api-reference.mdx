@@ -21,10 +21,29 @@ curl -u "${SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CL
   http://localhost:8080/oauth2/token
 ```
 
+## v0 package boundaries
+
+API v0 separates feature code from shared HTTP infrastructure:
+
+```text
+io.taskmigo.web.api.v0
+├── feature
+│   └── <feature>
+└── infrastructure
+    ├── response
+    └── security
+```
+
+Put controllers and feature-specific exception translation under `feature.<feature>`, for example
+`feature.resource`. Put reusable v0 transport concerns under `infrastructure`. Feature packages may depend on infrastructure;
+infrastructure must not depend on a concrete feature package.
+
+The shared response classes are under `io.taskmigo.web.api.v0.infrastructure.response`.
+
 ## v0 response envelope
 
 Every `/api/v0/**` controller must return `ApiResponse` through `ApiResponseFactory`. Do not build the envelope manually in a
-controller. The factory keeps status codes, messages, execution metadata, errors, and pagination consistent across modules.
+controller. The factory keeps status codes, messages, execution metadata, errors, and pagination consistent across features.
 
 `ApiResponse` has the form `ApiResponse<Data, Meta>`. `Data` is the endpoint payload. `Meta` is part of the endpoint contract
 and determines whether the generated OpenAPI response contains pagination.
@@ -62,7 +81,7 @@ result, and call `responses.ok(data, pagination, messageCode, messageText)`.
 Use `responses.created(...)` for successful creation endpoints and `responses.ok(...)` for successful operations that do not
 create a resource. These non-list mutation responses use `BasicMeta` because pagination is not applicable.
 
-Module-specific exception handlers should translate domain exceptions into the shared v0 envelope through
+Feature-specific exception handlers should translate domain exceptions into the shared v0 envelope through
 `ApiResponseFactory.failure(...)`. Common validation, malformed-request, fallback, and security errors are already handled by
 the shared v0 infrastructure.
 

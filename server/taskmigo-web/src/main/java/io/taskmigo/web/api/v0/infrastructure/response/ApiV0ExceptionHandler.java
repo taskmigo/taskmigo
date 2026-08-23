@@ -1,4 +1,4 @@
-package io.taskmigo.web.api.v0.response;
+package io.taskmigo.web.api.v0.infrastructure.response;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

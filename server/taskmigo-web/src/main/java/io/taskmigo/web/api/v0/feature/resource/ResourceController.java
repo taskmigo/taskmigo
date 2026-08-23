@@ -1,9 +1,9 @@
-package io.taskmigo.web.api.v0.resource;
+package io.taskmigo.web.api.v0.feature.resource;
 
 import io.taskmigo.resource.PermissionCatalog;
 import io.taskmigo.resource.ResourceService;
-import io.taskmigo.web.api.v0.response.ApiResponse;
-import io.taskmigo.web.api.v0.response.ApiResponseFactory;
+import io.taskmigo.web.api.v0.infrastructure.response.ApiResponse;
+import io.taskmigo.web.api.v0.infrastructure.response.ApiResponseFactory;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

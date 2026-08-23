@@ -1,8 +1,8 @@
-package io.taskmigo.web.api.v0.resource;
+package io.taskmigo.web.api.v0.feature.resource;
 
 import io.taskmigo.resource.ResourceException;
-import io.taskmigo.web.api.v0.response.ApiResponse;
-import io.taskmigo.web.api.v0.response.ApiResponseFactory;
+import io.taskmigo.web.api.v0.infrastructure.response.ApiResponse;
+import io.taskmigo.web.api.v0.infrastructure.response.ApiResponseFactory;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
