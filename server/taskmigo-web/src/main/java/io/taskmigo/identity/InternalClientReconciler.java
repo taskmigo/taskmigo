@@ -59,16 +59,6 @@ final class InternalClientReconciler implements ApplicationRunner {
         }
     }
 
-    private void validate(Map<String, Client> configuredClients) {
-        Set<String> clientIds = new HashSet<>();
-        configuredClients.values().forEach(client -> {
-            String clientId = this.clientId(client);
-            if (!clientIds.add(clientId)) {
-                throw new IllegalStateException("Duplicate internal client-id: " + clientId);
-            }
-        });
-    }
-
     private void reconcile(Map.Entry<String, Client> configuredClient) {
         String clientId = this.clientId(configuredClient.getValue());
         RegisteredClient existing = this.clients.findByClientId(clientId);
@@ -77,6 +67,16 @@ final class InternalClientReconciler implements ApplicationRunner {
             throw new IllegalStateException("Refusing to adopt unmanaged OAuth client: " + clientId);
         }
         this.clients.save(this.clientFactory.create(configuredClient.getKey(), configuredClient.getValue(), existing));
+    }
+
+    private void validate(Map<String, Client> configuredClients) {
+        Set<String> clientIds = new HashSet<>();
+        configuredClients.values().forEach(client -> {
+            String clientId = this.clientId(client);
+            if (!clientIds.add(clientId)) {
+                throw new IllegalStateException("Duplicate internal client-id: " + clientId);
+            }
+        });
     }
 
     private String clientId(Client client) {

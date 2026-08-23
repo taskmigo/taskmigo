@@ -19,7 +19,7 @@ import org.springframework.security.web.SecurityFilterChain;
 class ApiSecurityConfiguration {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http) {
         http.authorizeHttpRequests(authorize ->
             authorize
                 .requestMatchers("/api/v0/**")
