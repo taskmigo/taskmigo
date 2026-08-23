@@ -35,7 +35,7 @@ class ApiResponseIntegrationTest {
     int port;
 
     @Test
-    void successfulResponsesUseTheV0Envelope() {
+    void successfulResponsesUseTheV0EnvelopeWithoutPaginationWhenReturningAllData() {
         String response = Objects.requireNonNull(
             this.api().get().uri("/api/v0/permissions").retrieve().body(String.class)
         );
@@ -50,7 +50,7 @@ class ApiResponseIntegrationTest {
             .contains("\"execution\":{")
             .contains("\"started_at\":")
             .contains("\"duration_ms\":")
-            .contains("\"pagination\":null")
+            .doesNotContain("\"pagination\"")
             .contains("\"data\":[");
     }
 
@@ -72,6 +72,7 @@ class ApiResponseIntegrationTest {
             .contains("\"status_code\":201")
             .contains("\"code\":\"resource.organization.created\"")
             .contains("\"error\":null")
+            .doesNotContain("\"pagination\"")
             .contains("\"id\":");
     }
 
@@ -95,6 +96,7 @@ class ApiResponseIntegrationTest {
                 .contains("\"form_errors\":{")
                 .contains("\"key\":")
                 .contains("\"name\":")
+                .doesNotContain("\"pagination\"")
                 .contains("\"data\":null");
         });
     }
@@ -109,7 +111,7 @@ class ApiResponseIntegrationTest {
                 .contains("\"status_code\":401")
                 .contains("\"code\":\"security.unauthorized\"")
                 .contains("\"code\":\"UNAUTHORIZED\"")
-                .contains("\"pagination\":null")
+                .doesNotContain("\"pagination\"")
                 .contains("\"data\":null")
         );
     }
