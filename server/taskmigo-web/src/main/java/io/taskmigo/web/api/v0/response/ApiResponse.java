@@ -8,12 +8,12 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 @Schema(name = "ApiResponse", description = "Standard response envelope for every Taskmigo API v0 endpoint")
-public record ApiResponse<T, P>(
+public record ApiResponse<T, M extends ApiResponse.Meta>(
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean success,
     @JsonProperty("status_code") @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int statusCode,
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Message message,
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED, nullable = true) @Nullable Error error,
-    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Meta<P> meta,
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) M meta,
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED, nullable = true) @Nullable T data
 ) {
     public record Message(
@@ -28,16 +28,24 @@ public record ApiResponse<T, P>(
         @JsonProperty("form_errors") @Nullable Map<String, String> formErrors
     ) {}
 
-    public record Meta<P>(
+    public sealed interface Meta permits BasicMeta, OffsetMeta, CursorMeta {
+        Execution execution();
+    }
+
+    @Schema(description = "Response metadata for an operation that does not paginate its data")
+    public record BasicMeta(@Schema(requiredMode = Schema.RequiredMode.REQUIRED) Execution execution) implements Meta {}
+
+    @Schema(description = "Response metadata for an operation using offset pagination")
+    public record OffsetMeta(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Execution execution,
-        @Schema(
-            requiredMode = Schema.RequiredMode.REQUIRED,
-            nullable = true,
-            description = "Pagination metadata for this operation. Null when the operation is not paginated. The concrete schema is determined by the operation response type."
-        )
-        @Nullable
-        P pagination
-    ) {}
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) OffsetPagination pagination
+    ) implements Meta {}
+
+    @Schema(description = "Response metadata for an operation using cursor pagination")
+    public record CursorMeta(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Execution execution,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) CursorPagination pagination
+    ) implements Meta {}
 
     public record Execution(
         @JsonProperty("started_at")
