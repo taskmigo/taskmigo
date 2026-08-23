@@ -21,7 +21,7 @@ class ApiSecurityConfiguration {
     private static final String VERSIONED_API_PATTERN = "/api/v*/**";
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, VersionedApiSecurityErrorHandler securityErrors) {
         http.authorizeHttpRequests(authorize ->
             authorize
                 .requestMatchers(VERSIONED_API_PATTERN)
@@ -35,7 +35,10 @@ class ApiSecurityConfiguration {
             .csrf(csrf -> csrf.ignoringRequestMatchers(VERSIONED_API_PATTERN))
             .oauth2AuthorizationServer(Customizer.withDefaults())
             .oauth2ResourceServer(resourceServer ->
-                resourceServer.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
+                resourceServer
+                    .authenticationEntryPoint(securityErrors)
+                    .accessDeniedHandler(securityErrors)
+                    .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
             );
         return http.build();
     }
