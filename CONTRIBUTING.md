@@ -42,6 +42,8 @@ Repository formatting:
 npm run format:check
 ```
 
+When the `Formatting` CI workflow reports differences, it uploads a `prettier-formatted-files` artifact containing only the files rewritten by Prettier, with repository-relative paths preserved. The artifact expires after 1 day. If local formatting tooling is unavailable, apply those files over the working tree instead of installing Node.js or Prettier solely to reproduce the CI formatter output, then push the result and use the next `Formatting` CI run as verification.
+
 Server:
 
 ```bash
