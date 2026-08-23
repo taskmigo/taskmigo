@@ -1,0 +1,78 @@
+---
+title: OAuth clients
+description: Persistence, ownership, and authorization rules for first-party OAuth clients.
+---
+
+## Internal clients
+
+Phase 1 system-managed registrations are confidential service clients using `client_credentials`. They are declared in
+server configuration and reconciled into PostgreSQL during startup. They are not editable through an HTTP management API.
+Removing a declaration does not delete its database registration; disable it explicitly instead. Interactive client fields
+are added with the interactive login phase rather than being accepted before they are supported.
+
+## Built-in CLI client
+
+The `cli` registration is the first system-managed client. It uses `client_credentials` and is also a service principal.
+The client requires both the `taskmigo.api` scope and the `system.resources.manage` service permission to access
+`/api/v0/**`.
+
+Scope alone is insufficient. This prevents a newly registered machine client from gaining resource-management access merely
+by requesting an API scope.
+
+Use Spring Boot's Authorization Server properties directly. Taskmigo does not expose parallel client properties that could
+conflict with Spring's configuration:
+
+```bash
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTID=cli
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTSECRET='replace-me'
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTAUTHENTICATIONMETHODS=client_secret_basic
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_AUTHORIZATIONGRANTTYPES=client_credentials
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_SCOPES=taskmigo.api
+```
+
+Replace `CLI` with another registration name to add a client. The server rejects incomplete definitions, duplicate IDs, and
+registrations that do not match the phase 1 internal-client contract. Each declared client ID is the upsert key.
+
+## Persistent protocol state
+
+The following state is stored in PostgreSQL and survives application restarts:
+
+- registered clients and their encoded secrets;
+- issued authorizations, including access and future refresh tokens;
+- authorization consent;
+- internal-client management metadata in the registered client's `client_settings`.
+
+The migration copies the three JDBC schemas distributed by Spring Authorization Server, with only the library-prescribed
+PostgreSQL substitutions (`timestamp` to `timestamptz` and `blob` to `text`). Taskmigo does not add OAuth tables, foreign
+keys, or indexes.
+
+An idempotent reconciler inserts or updates by client ID without changing the internal database identifier. An unchanged raw
+secret retains its encoded value; a changed secret is rotated during startup. An existing client not marked as
+Taskmigo-managed is never adopted implicitly. All instances must use the same client configuration during a deployment.
+
+## Signing key
+
+JWTs are signed by an externally provisioned RSA private key stored in a PKCS#8 PEM file. Production startup fails if the
+configured file does not exist. Every instance must mount the same key material; sharing only the key ID is insufficient.
+
+```bash
+export TASKMIGO_OAUTH_SIGNING_KEY_FILE=/var/lib/taskmigo/oauth-signing-key.pem
+export TASKMIGO_OAUTH_SIGNING_KEY_ID=primary
+```
+
+The container defaults to `/var/lib/taskmigo/oauth-signing-key.pem`. Mount a managed secret at that path. Replacing or losing
+the file invalidates tokens signed by the previous key. Development and test environments may opt into local generation:
+
+```bash
+export TASKMIGO_OAUTH_SIGNING_KEY_AUTO_CREATE=true
+```
+
+Do not enable automatic generation for a multi-instance deployment.
+
+The database never stores the private signing key.
+
+## Future interactive clients
+
+Each independently deployed frontend receives a separate registration. Interactive login will add OpenID Connect and
+Authorization Code with PKCE in a later phase. It must not reuse the CLI registration because user-delegated and machine
+credentials have different grants, permissions, rotation, and audit lifecycles.

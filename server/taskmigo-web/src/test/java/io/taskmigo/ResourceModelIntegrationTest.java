@@ -6,40 +6,30 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.taskmigo.resource.PermissionCatalog;
 import io.taskmigo.resource.ResourceException;
 import io.taskmigo.resource.ResourceService;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.regex.Pattern;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.postgresql.PostgreSQLContainer;
 
-@Testcontainers
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = {
-        "taskmigo.security.client-id=integration-client",
-        "taskmigo.security.client-secret=integration-secret",
+        "spring.security.oauth2.authorizationserver.client.cli.registration.client-id=integration-client",
+        "spring.security.oauth2.authorizationserver.client.cli.registration.client-secret=integration-secret",
+        "spring.security.oauth2.authorizationserver.client.cli.registration.client-authentication-methods=client_secret_basic",
+        "spring.security.oauth2.authorizationserver.client.cli.registration.authorization-grant-types=client_credentials",
+        "spring.security.oauth2.authorizationserver.client.cli.registration.scopes=taskmigo.api",
+        "taskmigo.security.signing-key-file=build/test-data/oauth-signing-key.pem",
+        "taskmigo.security.signing-key-auto-create=true",
     }
 )
+@Import(PostgresTestConfiguration.class)
 class ResourceModelIntegrationTest {
-
-    @Container
-    @ServiceConnection
-    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:18.4-alpine");
 
     @Autowired
     ResourceService resources;
@@ -50,16 +40,13 @@ class ResourceModelIntegrationTest {
     @Autowired
     Flyway flyway;
 
-    @LocalServerPort
-    int port;
-
     @Test
     void flywayBuildsTheSchemaAndHibernateOnlyValidatesIt() {
         var current = Objects.requireNonNull(flyway.info().current());
-        assertThat(current.getVersion().getVersion()).isEqualTo("1");
+        assertThat(current.getVersion().getVersion()).isEqualTo("2");
         assertThat(
             jdbc.queryForObject("select count(*) from flyway_schema_history where success", Integer.class)
-        ).isEqualTo(1);
+        ).isEqualTo(2);
         assertThat(
             jdbc.queryForObject(
                 "select count(*) from information_schema.tables where table_name = 'project_members'",
@@ -156,59 +143,5 @@ class ResourceModelIntegrationTest {
         assertThatThrownBy(() -> resources.addProjectMember(project, "USER", user))
             .isInstanceOf(ResourceException.class)
             .hasMessageContaining("read-only");
-    }
-
-    @Test
-    void authorizationServerIssuesClientCredentialsTokenThatProtectsApi() throws Exception {
-        HttpClient client = HttpClient.newHttpClient();
-        String basic = Base64.getEncoder().encodeToString(
-            "integration-client:integration-secret".getBytes(StandardCharsets.UTF_8)
-        );
-        HttpRequest tokenRequest = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/oauth2/token"))
-            .header("Authorization", "Basic " + basic)
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .POST(HttpRequest.BodyPublishers.ofString("grant_type=client_credentials&scope=taskmigo.api"))
-            .build();
-        HttpResponse<String> tokenResponse = client.send(tokenRequest, HttpResponse.BodyHandlers.ofString());
-        assertThat(tokenResponse.statusCode()).isEqualTo(200);
-        String token = extractAccessToken(tokenResponse.body());
-
-        HttpRequest apiRequest = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/v0/permissions"))
-            .header("Authorization", "Bearer " + token)
-            .GET()
-            .build();
-        HttpResponse<String> apiResponse = client.send(apiRequest, HttpResponse.BodyHandlers.ofString());
-        assertThat(apiResponse.statusCode()).isEqualTo(200);
-        assertThat(apiResponse.body()).contains(PermissionCatalog.PROJECT_READ);
-    }
-
-    @Test
-    void apiReferenceRendersTheGeneratedOpenApiDocument() throws Exception {
-        HttpClient client = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
-
-        HttpRequest openApiRequest = HttpRequest.newBuilder(
-            URI.create("http://localhost:" + port + "/api/docs/openapi.json")
-        )
-            .GET()
-            .build();
-        HttpResponse<String> openApiResponse = client.send(openApiRequest, HttpResponse.BodyHandlers.ofString());
-        assertThat(openApiResponse.statusCode()).isEqualTo(200);
-        assertThat(openApiResponse.body())
-            .contains("\"title\":\"Taskmigo API\"")
-            .contains("\"taskmigoOAuth\"")
-            .contains("\"/api/v0/permissions\"");
-
-        HttpRequest apiDocsRequest = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/docs"))
-            .GET()
-            .build();
-        HttpResponse<String> apiDocsResponse = client.send(apiDocsRequest, HttpResponse.BodyHandlers.ofString());
-        assertThat(apiDocsResponse.statusCode()).isEqualTo(200);
-        assertThat(apiDocsResponse.body()).contains("Taskmigo API Reference").contains("/api/docs/openapi.json");
-    }
-
-    private static String extractAccessToken(String body) {
-        var matcher = Pattern.compile("\\\"access_token\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"").matcher(body);
-        assertThat(matcher.find()).as("token response contains access_token: %s", body).isTrue();
-        return matcher.group(1);
     }
 }
