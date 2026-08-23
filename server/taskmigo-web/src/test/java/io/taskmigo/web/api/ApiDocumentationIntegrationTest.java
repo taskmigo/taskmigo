@@ -39,11 +39,12 @@ class ApiDocumentationIntegrationTest {
             .contains("\"taskmigoOAuth\"")
             .contains("\"/api/v0/permissions\"")
             .contains("\"ApiResponse\"")
+            .contains("\"BasicMeta\"")
             .contains("\"status_code\"")
             .contains("\"form_errors\"")
             .contains("\"started_at\"")
             .contains("\"duration_ms\"")
-            .contains("\"pagination\"");
+            .doesNotContain("\"pagination\"");
 
         String reference = Objects.requireNonNull(this.http().get().uri("/api/docs").retrieve().body(String.class));
         assertThat(reference).contains("Taskmigo API Reference").contains("/api/docs/openapi.json/v0");
