@@ -1,14 +1,14 @@
 ---
 title: API reference
-description: Explore the Taskmigo HTTP API and its OpenAPI document.
+description: Explore the Taskmigo HTTP API, OpenAPI document, and v0 response contract.
 ---
 
-The web application serves both an interactive API reference and its machine-readable OpenAPI document.
+The web application serves both an interactive API reference and a machine-readable OpenAPI document.
 
-| URL                      | Content                           |
-| ------------------------ | --------------------------------- |
-| `/api/docs`              | Interactive API reference         |
-| `/api/docs/openapi.json` | Machine-readable OpenAPI document |
+| URL                         | Content                           |
+| --------------------------- | --------------------------------- |
+| `/api/docs`                 | Interactive API reference         |
+| `/api/docs/openapi.json/v0` | Machine-readable v0 OpenAPI document |
 
 The OpenAPI document describes the client-credentials scheme used by protected `/api/v0/**` endpoints. The built-in `cli`
 client is a [system-managed service principal](./oauth-clients). Request a local access token from `/oauth2/token`, then
@@ -20,3 +20,113 @@ curl -u "${SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CL
   -d scope=taskmigo.api \
   http://localhost:8080/oauth2/token
 ```
+
+## v0 response envelope
+
+Every `/api/v0/**` controller must return `ApiResponse` through `ApiResponseFactory`. Do not build the envelope manually in a
+controller. The factory keeps status codes, messages, execution metadata, errors, and pagination consistent across modules.
+
+`ApiResponse` has two generic parameters:
+
+```java
+ApiResponse<Data, Meta>
+```
+
+`Data` is the endpoint payload. `Meta` is part of the endpoint contract and determines whether the generated OpenAPI response
+contains pagination.
+
+### Choose the meta type per endpoint
+
+| Endpoint behavior | Return meta type | `meta.pagination` in JSON/OpenAPI |
+| --- | --- | --- |
+| Returns all data or is not a collection | `ApiResponse.BasicMeta` | Absent |
+| Uses page/offset pagination | `ApiResponse.OffsetMeta` | Required, offset shape only |
+| Uses cursor pagination | `ApiResponse.CursorMeta` | Required, cursor shape only |
+
+The controller method signature is the source of truth for OpenAPI. Never declare a general pagination type for an endpoint.
+An endpoint must expose exactly the pagination strategy it implements.
+
+### No pagination
+
+Use the regular `ok` factory method when the endpoint returns the complete result set or pagination is not applicable.
+
+```java
+@GetMapping("/permissions")
+ResponseEntity<ApiResponse<Set<String>, ApiResponse.BasicMeta>> permissions() {
+    return this.responses.ok(
+        PermissionCatalog.ALL,
+        "resource.permissions.retrieved",
+        "Permissions retrieved"
+    );
+}
+```
+
+`BasicMeta` contains only execution metadata. The serialized response does not contain a `pagination` field, and the generated
+OpenAPI schema must not advertise one.
+
+### Offset pagination
+
+Use `ApiResponse.OffsetMeta` in the method signature and pass `ApiResponse.OffsetPagination` to the corresponding factory
+overload.
+
+```java
+@GetMapping("/items")
+ResponseEntity<ApiResponse<List<ItemDto>, ApiResponse.OffsetMeta>> items() {
+    var page = this.items.list(/* query arguments */);
+    var pagination = new ApiResponse.OffsetPagination(
+        new ApiResponse.Offset(
+            page.currentPage(),
+            page.perPage(),
+            page.totalItems(),
+            page.totalPages()
+        )
+    );
+
+    return this.responses.ok(page.items(), pagination, "item.list.retrieved", "Items retrieved");
+}
+```
+
+OpenAPI for this endpoint exposes only the offset fields under `meta.pagination`. It must not expose cursor pagination as an
+alternative.
+
+### Cursor pagination
+
+Use `ApiResponse.CursorMeta` in the method signature and pass `ApiResponse.CursorPagination` to the cursor factory overload.
+
+```java
+@GetMapping("/events")
+ResponseEntity<ApiResponse<List<EventDto>, ApiResponse.CursorMeta>> events() {
+    var result = this.events.list(/* query arguments */);
+    var pagination = new ApiResponse.CursorPagination(
+        new ApiResponse.Cursor(result.nextCursor(), result.prevCursor(), result.hasMore())
+    );
+
+    return this.responses.ok(result.items(), pagination, "event.list.retrieved", "Events retrieved");
+}
+```
+
+OpenAPI for this endpoint exposes only the cursor fields under `meta.pagination`.
+
+## Mutations and errors
+
+Use `responses.created(...)` for successful creation endpoints and `responses.ok(...)` for successful operations that do not
+create a resource. These methods return `BasicMeta` because pagination is not applicable.
+
+Module-specific exception handlers should translate domain exceptions into the shared v0 envelope through
+`ApiResponseFactory.failure(...)`. Common validation, malformed-request, fallback, and security errors are already handled by
+the shared v0 infrastructure.
+
+## OpenAPI rules
+
+When adding or changing a `/api/v0/**` endpoint:
+
+1. Declare `ApiResponse<Data, ApiResponse.BasicMeta>`, `ApiResponse<Data, ApiResponse.OffsetMeta>`, or
+   `ApiResponse<Data, ApiResponse.CursorMeta>` explicitly in the controller return type.
+2. Use the matching `ApiResponseFactory` overload. Do not instantiate response/meta objects in controllers except the concrete
+   pagination value passed to the factory.
+3. Use `BasicMeta` when the endpoint returns the complete data set. Do not return `pagination: null`.
+4. Never use `oneOf` to advertise multiple pagination strategies for one endpoint.
+5. Verify `/api/docs/openapi.json/v0` and ensure the operation shows exactly the pagination contract implemented by that API.
+
+`ApiV0ResponseContractTest` enforces that every v0 controller returns the standard envelope. OpenAPI integration coverage must
+also be updated when introducing a new pagination shape or changing how an endpoint is documented.
