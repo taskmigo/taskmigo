@@ -161,6 +161,13 @@ include:
   - name: ZeroLengthArrayInitialization
 
 exclude:
+  # JPA collection fields must remain mutable for portable persistence.
+  - name: CanBeFinal
+    paths:
+      - taskmigo-core/src/main/java/io/taskmigo/resource/GroupEntity.java
+      - taskmigo-core/src/main/java/io/taskmigo/resource/RoleEntity.java
+      - taskmigo-core/src/main/java/io/taskmigo/resource/ProjectMemberEntity.java
+
   # Preserve the explicit-this policy represented by the two Unqualified* rules.
   - name: UnnecessaryThis
 

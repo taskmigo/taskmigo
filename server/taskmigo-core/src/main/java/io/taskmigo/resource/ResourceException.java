@@ -2,6 +2,8 @@ package io.taskmigo.resource;
 
 public final class ResourceException extends RuntimeException {
 
+    private static final long serialVersionUID = 1L;
+
     public enum Type {
         BAD_REQUEST,
         NOT_FOUND,
