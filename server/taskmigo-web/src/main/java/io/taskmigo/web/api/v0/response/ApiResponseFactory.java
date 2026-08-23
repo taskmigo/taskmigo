@@ -33,7 +33,13 @@ public final class ApiResponseFactory {
         String messageText
     ) {
         return ResponseEntity.ok(
-            this.success(HttpStatus.OK, data, new ApiResponse.OffsetMeta(this.execution(), pagination), messageCode, messageText)
+            this.success(
+                HttpStatus.OK,
+                data,
+                new ApiResponse.OffsetMeta(this.execution(), pagination),
+                messageCode,
+                messageText
+            )
         );
     }
 
@@ -44,7 +50,13 @@ public final class ApiResponseFactory {
         String messageText
     ) {
         return ResponseEntity.ok(
-            this.success(HttpStatus.OK, data, new ApiResponse.CursorMeta(this.execution(), pagination), messageCode, messageText)
+            this.success(
+                HttpStatus.OK,
+                data,
+                new ApiResponse.CursorMeta(this.execution(), pagination),
+                messageCode,
+                messageText
+            )
         );
     }
 
