@@ -34,6 +34,7 @@ Instructions for AI agents and automated contributors working in this repository
 
 ## Verification
 
-- Run or observe all verification required by the applicable repository instructions before declaring the work complete.
-- If a required CI check fails, inspect the failure, fix the cause, and continue until the check passes or an external blocker is identified.
-- Do not claim completion while required verification is failing or still pending.
+- A task is not complete until all required local verification and CI checks for the pull request have passed.
+- Run or observe all verification required by the applicable repository instructions, then monitor the required CI checks after pushing changes.
+- If any required CI check fails, inspect the failure, fix the cause when it is related to the task, push the correction, and continue this cycle until all required checks pass.
+- Do not stop work, report completion, or hand off a task while required verification is failing or pending. Stop only when all required checks pass or an external blocker that cannot be resolved from the repository is identified and clearly reported.
