@@ -182,6 +182,30 @@ class ResourceModelIntegrationTest {
         assertThat(apiResponse.body()).contains(PermissionCatalog.PROJECT_READ);
     }
 
+    @Test
+    void apiReferenceRendersTheGeneratedOpenApiDocument() throws Exception {
+        HttpClient client = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build();
+
+        HttpRequest openApiRequest = HttpRequest.newBuilder(
+            URI.create("http://localhost:" + port + "/api/docs/openapi.json")
+        )
+            .GET()
+            .build();
+        HttpResponse<String> openApiResponse = client.send(openApiRequest, HttpResponse.BodyHandlers.ofString());
+        assertThat(openApiResponse.statusCode()).isEqualTo(200);
+        assertThat(openApiResponse.body())
+            .contains("\"title\":\"Taskmigo API\"")
+            .contains("\"taskmigoOAuth\"")
+            .contains("\"/api/v0/permissions\"");
+
+        HttpRequest apiDocsRequest = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/docs"))
+            .GET()
+            .build();
+        HttpResponse<String> apiDocsResponse = client.send(apiDocsRequest, HttpResponse.BodyHandlers.ofString());
+        assertThat(apiDocsResponse.statusCode()).isEqualTo(200);
+        assertThat(apiDocsResponse.body()).contains("Taskmigo API Reference").contains("/api/docs/openapi.json");
+    }
+
     private static String extractAccessToken(String body) {
         var matcher = Pattern.compile("\\\"access_token\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"").matcher(body);
         assertThat(matcher.find()).as("token response contains access_token: %s", body).isTrue();

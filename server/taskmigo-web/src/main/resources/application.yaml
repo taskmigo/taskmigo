@@ -2,6 +2,19 @@ spring:
   config:
     import: classpath:application-core.yaml
 
+springdoc:
+  api-docs:
+    path: /api/docs/openapi.json
+
+scalar:
+  enabled: true
+  url: /api/docs/openapi.json
+  path: /api/docs
+  page-title: Taskmigo API Reference
+  telemetry: false
+  agent:
+    disabled: true
+
 taskmigo:
   security:
     issuer: ${TASKMIGO_ISSUER:http://localhost:8080}

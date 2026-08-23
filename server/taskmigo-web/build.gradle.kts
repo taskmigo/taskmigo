@@ -12,6 +12,7 @@ dependencies {
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.oauth2.authorization.server)
     implementation(libs.spring.boot.starter.oauth2.resource.server)
+    implementation(libs.springdoc.openapi.starter.webmvc.scalar)
 
     runtimeOnly(libs.postgresql.driver)
 

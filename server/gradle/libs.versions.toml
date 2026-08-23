@@ -1,6 +1,7 @@
 [versions]
 spring-boot = "4.1.1"
 spring-modulith = "2.1.0"
+springdoc-openapi = "3.1.0"
 errorprone-gradle-plugin = "5.1.0"
 errorprone-core = "2.50.0"
 nullaway = "0.14.0"
@@ -15,6 +16,7 @@ nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
 spring-modulith-starter-core = { module = "org.springframework.modulith:spring-modulith-starter-core" }
 spring-modulith-starter-test = { module = "org.springframework.modulith:spring-modulith-starter-test" }
+springdoc-openapi-starter-webmvc-scalar = { module = "org.springdoc:springdoc-openapi-starter-webmvc-scalar", version.ref = "springdoc-openapi" }
 spring-boot-core-starter = { module = "org.springframework.boot:spring-boot-starter" }
 spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
 spring-boot-starter-flyway = { module = "org.springframework.boot:spring-boot-starter-flyway" }

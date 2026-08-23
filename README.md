@@ -12,6 +12,7 @@ worker applications plus the product documentation site.
 - NullAway with JSpecify
 - Prettier with prettier-plugin-java
 - Spring Security Authorization Server
+- OpenAPI
 - PostgreSQL
 - Flyway
 - Testcontainers
