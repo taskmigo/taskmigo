@@ -25,10 +25,10 @@ Open <http://localhost:3000> in your browser.
 | Route                   | Description                           |
 | ----------------------- | ------------------------------------- |
 | `src/app/(home)`        | Landing page and home routes          |
-| `src/app/versions`      | Versioned documentation pages         |
+| `src/app/docs`          | Versioned documentation pages         |
 | `src/app/llms.txt`      | Plain-text documentation index        |
 | `src/app/llms-full.txt` | Complete plain-text documentation     |
-| `src/app/og/versions`   | Open Graph images for versioned pages |
+| `src/app/og/docs`       | Open Graph images for versioned pages |
 
 The root `.github/workflows/docs.yml` workflow verifies documentation changes in pull requests and deploys the static
 export to GitHub Pages after documentation changes are merged into `next`.
