@@ -2,7 +2,7 @@
   "name": "taskmigo",
   "private": true,
   "scripts": {
-    "format:check": "prettier . --write --ignore-unknown && git diff --no-ext-diff --unified=100 && exit 1",
+    "format:check": "prettier . --check --ignore-unknown",
     "format:fix": "prettier . --write --ignore-unknown"
   },
   "devDependencies": {
