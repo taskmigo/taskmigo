@@ -19,8 +19,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = {
-        "taskmigo.security.internal-clients.cli.client-id=integration-client",
-        "taskmigo.security.internal-clients.cli.client-secret=integration-secret",
+        "taskmigo.internal.clients[0].id=integration-client",
+        "taskmigo.internal.clients[0].secret=integration-secret",
+        "taskmigo.internal.clients[0].enabled=true",
+        "taskmigo.internal.clients[0].generation=1",
         "taskmigo.security.signing-key-file=build/test-data/oauth-signing-key.pem",
         "taskmigo.security.signing-key-auto-create=true",
     }

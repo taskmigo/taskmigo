@@ -1,14 +1,17 @@
 package io.taskmigo.identity;
 
-import io.taskmigo.identity.IdentityProperties.InternalClientDefinition;
-import io.taskmigo.identity.InternalClientRepository.ManagedRegistration;
-import java.util.Map;
+import io.taskmigo.identity.InternalClientProperties.Definition;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.jdbc.core.JdbcOperations;
+import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -20,15 +23,15 @@ final class InternalClientReconciler implements ApplicationRunner {
     private static final Logger LOGGER = LoggerFactory.getLogger(InternalClientReconciler.class);
     private static final long RECONCILIATION_LOCK_ID = 827_319_409L;
 
-    private final IdentityProperties properties;
-    private final InternalClientRepository clients;
+    private final InternalClientProperties properties;
+    private final JdbcRegisteredClientRepository clients;
     private final InternalRegisteredClientFactory clientFactory;
     private final JdbcOperations jdbc;
     private final TransactionTemplate transactions;
 
     InternalClientReconciler(
-        IdentityProperties properties,
-        InternalClientRepository clients,
+        InternalClientProperties properties,
+        JdbcRegisteredClientRepository clients,
         InternalRegisteredClientFactory clientFactory,
         JdbcOperations jdbc,
         PlatformTransactionManager transactionManager
@@ -42,58 +45,56 @@ final class InternalClientReconciler implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments arguments) {
-        reconcile(properties.internalClients());
+        reconcile(properties.clients());
     }
 
-    void reconcile(Map<String, InternalClientDefinition> definitions) {
+    void reconcile(List<Definition> definitions) {
+        validate(definitions);
         transactions.executeWithoutResult(status -> {
             jdbc.execute("select pg_advisory_xact_lock(" + RECONCILIATION_LOCK_ID + ")");
-            definitions
-                .entrySet()
-                .stream()
-                .sorted(Map.Entry.comparingByKey())
-                .forEach(entry -> reconcile(entry.getKey(), entry.getValue()));
+            definitions.stream().sorted(Comparator.comparing(Definition::id)).forEach(this::reconcile);
         });
     }
 
-    private void reconcile(String registrationKey, InternalClientDefinition definition) {
-        InternalClientDefinitionValidator.validate(registrationKey, definition);
-        String definitionHash = InternalClientFingerprint.calculate(definition);
-        @Nullable
-        ManagedRegistration managed = clients.findManagedRegistration(registrationKey).orElse(null);
-        @Nullable
-        RegisteredClient existing = managed == null ? null : clients.findById(managed.registeredClientId());
+    private void validate(List<Definition> definitions) {
+        Set<String> clientIds = new HashSet<>();
+        definitions.forEach(definition -> {
+            if (!clientIds.add(definition.id())) {
+                throw new IllegalStateException("Duplicate internal client-id: " + definition.id());
+            }
+        });
+    }
 
-        if (managed != null && existing == null) {
-            throw new IllegalStateException("Managed OAuth client is missing: " + registrationKey);
+    private void reconcile(Definition definition) {
+        String definitionHash = InternalClientMetadata.definitionHash(definition);
+        @Nullable
+        RegisteredClient existing = clients.findByClientId(definition.id());
+
+        if (existing != null && !InternalClientMetadata.isManaged(existing)) {
+            throw new IllegalStateException("Refusing to adopt unmanaged OAuth client: " + definition.id());
         }
-        if (managed != null && managed.configurationVersion() > definition.configurationVersion()) {
+        long currentGeneration = existing == null ? 0 : InternalClientMetadata.generation(existing);
+        if (currentGeneration > definition.generation()) {
             LOGGER.info(
-                "Ignoring stale internal client definition {} at version {}; database is at version {}",
-                registrationKey,
-                definition.configurationVersion(),
-                managed.configurationVersion()
+                "Ignoring stale internal client definition {} at generation {}; database is at generation {}",
+                definition.id(),
+                definition.generation(),
+                currentGeneration
             );
             return;
         }
         if (
-            managed != null &&
-            managed.configurationVersion() == definition.configurationVersion() &&
-            !managed.definitionHash().equals(definitionHash)
+            existing != null &&
+            currentGeneration == definition.generation() &&
+            !InternalClientMetadata.definitionHash(existing).equals(definitionHash)
         ) {
             throw new IllegalStateException(
-                "Internal client definition changed without increasing configuration-version: " + registrationKey
+                "Internal client definition changed without increasing generation: " + definition.id()
             );
         }
-        if (existing == null && clients.findByClientId(definition.clientId()) != null) {
-            throw new IllegalStateException("Refusing to adopt unmanaged OAuth client: " + definition.clientId());
-        }
 
-        boolean secretRotationAllowed =
-            managed == null || definition.configurationVersion() > managed.configurationVersion();
-        RegisteredClient desired = clientFactory.create(registrationKey, definition, existing, secretRotationAllowed);
+        boolean secretRotationAllowed = existing == null || definition.generation() > currentGeneration;
+        RegisteredClient desired = clientFactory.create(definition, existing, secretRotationAllowed, definitionHash);
         clients.save(desired);
-        clients.saveManagement(registrationKey, definition, definitionHash, desired.getId());
-        clients.replaceServicePrincipal(definition, desired.getId());
     }
 }

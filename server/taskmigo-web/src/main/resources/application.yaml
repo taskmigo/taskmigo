@@ -24,13 +24,3 @@ taskmigo:
     authorization-cleanup:
       interval: ${TASKMIGO_OAUTH_AUTHORIZATION_CLEANUP_INTERVAL:PT1H}
       retention: ${TASKMIGO_OAUTH_AUTHORIZATION_RETENTION:P7D}
-    internal-clients:
-      cli:
-        client-id: ${TASKMIGO_OAUTH_CLIENT_ID:cli}
-        client-secret: ${TASKMIGO_OAUTH_CLIENT_SECRET:}
-        enabled: true
-        configuration-version: ${TASKMIGO_OAUTH_CLIENT_CONFIGURATION_VERSION:1}
-        scopes:
-          - taskmigo.api
-        service-permissions:
-          - system.resources.manage

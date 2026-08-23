@@ -15,7 +15,7 @@ client is a [system-managed service principal](./oauth-clients). Request a local
 authorize requests with the returned bearer token.
 
 ```bash
-curl -u "${TASKMIGO_OAUTH_CLIENT_ID:-cli}:${TASKMIGO_OAUTH_CLIENT_SECRET}" \
+curl -u "${TASKMIGO_INTERNAL_CLIENTS_0_ID}:${TASKMIGO_INTERNAL_CLIENTS_0_SECRET}" \
   -d grant_type=client_credentials \
   -d scope=taskmigo.api \
   http://localhost:8080/oauth2/token

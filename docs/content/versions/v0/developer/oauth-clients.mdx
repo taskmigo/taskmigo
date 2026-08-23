@@ -3,18 +3,7 @@ title: OAuth clients
 description: Persistence, ownership, and authorization rules for first-party OAuth clients.
 ---
 
-## Client classification
-
-OAuth client type and Taskmigo ownership are independent properties.
-
-| Property      | Values                       | Meaning                                    |
-| ------------- | ---------------------------- | ------------------------------------------ |
-| `client_type` | `PUBLIC`, `CONFIDENTIAL`     | Whether the client can protect credentials |
-| `trust_level` | `FIRST_PARTY`, `THIRD_PARTY` | Whether the application is trusted         |
-| `managed_by`  | `SYSTEM`, `ADMIN`            | Who controls the registration lifecycle    |
-
-An internal client is `FIRST_PARTY` and `SYSTEM` managed. The `client_type` still depends on how that application is
-deployed. A browser application with a backend can be confidential; a browser-only application is public.
+## Internal clients
 
 Phase 1 system-managed registrations are confidential service clients using `client_credentials`. They are declared in
 server configuration and reconciled into PostgreSQL during startup. They are not editable through an HTTP management API.
@@ -30,13 +19,17 @@ The client requires both the `taskmigo.api` scope and the `system.resources.mana
 Scope alone is insufficient. This prevents a newly registered machine client from gaining resource-management access merely
 by requesting an API scope.
 
-Provide the client secret at startup:
+Provide every field explicitly. No client ID, secret, enabled state, or generation is inferred:
 
 ```bash
-export TASKMIGO_OAUTH_CLIENT_SECRET='replace-me'
+export TASKMIGO_INTERNAL_CLIENTS_0_ID=cli
+export TASKMIGO_INTERNAL_CLIENTS_0_SECRET='replace-me'
+export TASKMIGO_INTERNAL_CLIENTS_0_ENABLED=true
+export TASKMIGO_INTERNAL_CLIENTS_0_GENERATION=1
 ```
 
-There is no default client secret. The server rejects an empty secret while reconciling a confidential client.
+Add another client by using index `1`, then `2`, and so on. The server rejects incomplete definitions and duplicate IDs.
+Each declared ID is the upsert key.
 
 ## Persistent protocol state
 
@@ -45,19 +38,22 @@ The following state is stored in PostgreSQL and survives application restarts:
 - registered clients and their encoded secrets;
 - issued authorizations, including access and future refresh tokens;
 - authorization consent;
-- client ownership metadata;
-- service-principal permissions.
+- internal-client management metadata in the registered client's `client_settings`.
 
-An idempotent reconciler updates system-owned fields without changing the internal database identifier. A configured
-`client_id` becomes immutable after the first successful registration. Every definition has a monotonic
-`configuration-version`. Increase it whenever the secret, scopes, enabled state, or permissions change:
+The migration copies the three JDBC schemas distributed by Spring Authorization Server, with only the library-prescribed
+PostgreSQL substitutions (`timestamp` to `timestamptz` and `blob` to `text`). Taskmigo does not add OAuth tables, foreign
+keys, or indexes.
+
+An idempotent reconciler inserts or updates by client ID without changing the internal database identifier. Every definition
+has an explicit monotonic generation. Increase it whenever the secret or enabled state changes:
 
 ```bash
-export TASKMIGO_OAUTH_CLIENT_CONFIGURATION_VERSION=2
+export TASKMIGO_INTERNAL_CLIENTS_0_GENERATION=2
 ```
 
-An older application instance cannot overwrite a newer version during a rolling deployment. Two different definitions with
-the same version are rejected. An unchanged secret retains its encoded value.
+An older application instance cannot overwrite a newer generation during a rolling deployment. Two different definitions with
+the same generation are rejected. An unchanged secret retains its encoded value. An existing client not marked as
+Taskmigo-managed is never adopted implicitly.
 
 Expired `client_credentials` authorizations are removed periodically. The cleanup interval and retention window default to
 one hour and seven days and can be configured with `TASKMIGO_OAUTH_AUTHORIZATION_CLEANUP_INTERVAL` and

@@ -50,10 +50,13 @@ Only `taskmigo-web` exposes OAuth and HTTP endpoints. The persistent system-mana
 Domain Users remain separate from authentication identities. Client ownership, persistence, service-principal authorization,
 and signing-key lifecycle are documented under **Developer → OAuth clients**.
 
-Set production credentials through environment variables:
+Declare every internal client field explicitly. The index allows additional clients without changing application files:
 
 ```bash
-export TASKMIGO_OAUTH_CLIENT_SECRET='replace-me'
+export TASKMIGO_INTERNAL_CLIENTS_0_ID=cli
+export TASKMIGO_INTERNAL_CLIENTS_0_SECRET='replace-me'
+export TASKMIGO_INTERNAL_CLIENTS_0_ENABLED=true
+export TASKMIGO_INTERNAL_CLIENTS_0_GENERATION=1
 export TASKMIGO_OAUTH_SIGNING_KEY_FILE=/run/secrets/oauth-signing-key.pem
 ```
 
@@ -63,7 +66,7 @@ default. For a single-instance local environment only, set `TASKMIGO_OAUTH_SIGNI
 Get a local token:
 
 ```bash
-curl -u "${TASKMIGO_OAUTH_CLIENT_ID:-cli}:${TASKMIGO_OAUTH_CLIENT_SECRET}" \
+curl -u "${TASKMIGO_INTERNAL_CLIENTS_0_ID}:${TASKMIGO_INTERNAL_CLIENTS_0_SECRET}" \
   -d grant_type=client_credentials \
   -d scope=taskmigo.api \
   http://localhost:8080/oauth2/token
@@ -78,7 +81,10 @@ Start PostgreSQL, then run either application independently:
 ```bash
 cd server
 docker compose up -d
-export TASKMIGO_OAUTH_CLIENT_SECRET='local-secret'
+export TASKMIGO_INTERNAL_CLIENTS_0_ID=cli
+export TASKMIGO_INTERNAL_CLIENTS_0_SECRET='local-secret'
+export TASKMIGO_INTERNAL_CLIENTS_0_ENABLED=true
+export TASKMIGO_INTERNAL_CLIENTS_0_GENERATION=1
 export TASKMIGO_OAUTH_SIGNING_KEY_AUTO_CREATE=true
 ./gradlew :taskmigo-web:bootRun
 ```

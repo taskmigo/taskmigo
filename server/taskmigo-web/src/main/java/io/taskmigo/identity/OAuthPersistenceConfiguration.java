@@ -4,7 +4,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcOperations;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
@@ -22,8 +21,8 @@ class OAuthPersistenceConfiguration {
 
     @Bean
     @Primary
-    RegisteredClientRepository registeredClientRepository(JdbcRegisteredClientRepository clients, JdbcClient jdbc) {
-        return new ManagedRegisteredClientRepository(clients, jdbc);
+    RegisteredClientRepository registeredClientRepository(JdbcRegisteredClientRepository clients) {
+        return new ManagedRegisteredClientRepository(clients);
     }
 
     @Bean

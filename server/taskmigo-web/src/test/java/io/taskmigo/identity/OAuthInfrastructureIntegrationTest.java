@@ -4,11 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
-import io.taskmigo.identity.IdentityProperties.InternalClientDefinition;
+import io.taskmigo.identity.InternalClientProperties.Definition;
 import io.taskmigo.resource.PermissionCatalog;
-import java.util.Map;
+import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import org.junit.jupiter.api.Test;
@@ -22,6 +21,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.web.client.HttpClientErrorException;
@@ -30,8 +30,10 @@ import org.springframework.web.client.RestClient;
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = {
-        "taskmigo.security.internal-clients.cli.client-id=integration-client",
-        "taskmigo.security.internal-clients.cli.client-secret=integration-secret",
+        "taskmigo.internal.clients[0].id=integration-client",
+        "taskmigo.internal.clients[0].secret=integration-secret",
+        "taskmigo.internal.clients[0].enabled=true",
+        "taskmigo.internal.clients[0].generation=1",
         "taskmigo.security.signing-key-file=build/test-data/oauth-signing-key.pem",
         "taskmigo.security.signing-key-auto-create=true",
     }
@@ -44,6 +46,9 @@ class OAuthInfrastructureIntegrationTest {
 
     @Autowired
     RegisteredClientRepository clients;
+
+    @Autowired
+    JdbcRegisteredClientRepository storedClients;
 
     @Autowired
     PasswordEncoder passwordEncoder;
@@ -60,41 +65,37 @@ class OAuthInfrastructureIntegrationTest {
     @Test
     void flywayCreatesIdentitySchemaAndSystemClient() {
         assertThat(
-            jdbc.queryForObject(
-                "select count(*) from oauth_client_management where registration_key = 'cli' and managed_by = 'SYSTEM'",
-                Integer.class
+            jdbc.queryForList(
+                "select table_name from information_schema.tables " +
+                    "where table_schema = 'public' and table_name like 'oauth%'",
+                String.class
             )
-        ).isEqualTo(1);
-        assertThat(
-            jdbc.queryForObject(
-                """
-                select count(*)
-                from oauth_service_principal_permissions permissions
-                join oauth_client_management client
-                  on client.registered_client_id = permissions.registered_client_id
-                where client.registration_key = 'cli'
-                  and permissions.permission_key = 'system.resources.manage'
-                """,
-                Integer.class
-            )
-        ).isEqualTo(1);
+        ).containsExactlyInAnyOrder("oauth2_registered_client", "oauth2_authorization", "oauth2_authorization_consent");
+
+        RegisteredClient client = storedClient("integration-client");
+        assertThat(InternalClientMetadata.isManaged(client)).isTrue();
+        assertThat(InternalClientMetadata.isEnabled(client)).isTrue();
+        assertThat(InternalClientMetadata.generation(client)).isEqualTo(1);
+        assertThat(InternalClientMetadata.permissions(client)).containsExactly(
+            ServicePrincipalPermissions.SYSTEM_RESOURCES_MANAGE
+        );
     }
 
     @Test
     void reconciliationIsIdempotent() {
-        String registeredClientId = managedClientId("cli");
+        String registeredClientId = managedClientId("integration-client");
         String encodedSecret = encodedSecret(registeredClientId);
 
-        reconciler.reconcile(Map.of("cli", definition("integration-client", "integration-secret", true, 1)));
+        reconciler.reconcile(List.of(definition("integration-client", "integration-secret", true, 1)));
 
-        assertThat(managedClientId("cli")).isEqualTo(registeredClientId);
+        assertThat(managedClientId("integration-client")).isEqualTo(registeredClientId);
         assertThat(encodedSecret(registeredClientId)).isEqualTo(encodedSecret);
     }
 
     @Test
     void concurrentReconciliationCreatesOneRegistration() throws Exception {
-        String registrationKey = "concurrent-" + UUID.randomUUID();
-        var definitions = Map.of(registrationKey, definition(registrationKey, "concurrent-secret", true, 1));
+        String clientId = "concurrent-" + UUID.randomUUID();
+        var definitions = List.of(definition(clientId, "concurrent-secret", true, 1));
 
         try (var executor = Executors.newFixedThreadPool(2)) {
             var first = executor.submit(() -> reconciler.reconcile(definitions));
@@ -105,60 +106,62 @@ class OAuthInfrastructureIntegrationTest {
 
         assertThat(
             jdbc.queryForObject(
-                "select count(*) from oauth_client_management where registration_key = ?",
+                "select count(*) from oauth2_registered_client where client_id = ?",
                 Integer.class,
-                registrationKey
+                clientId
             )
         ).isEqualTo(1);
     }
 
     @Test
     void newerConfigurationCannotBeOverwrittenByAStaleInstance() {
-        String registrationKey = "versioned-" + UUID.randomUUID();
-        String clientId = registrationKey + "-client";
-        reconciler.reconcile(Map.of(registrationKey, definition(clientId, "old-secret", true, 1)));
-        reconciler.reconcile(Map.of(registrationKey, definition(clientId, "new-secret", true, 2)));
+        String clientId = "versioned-" + UUID.randomUUID();
+        reconciler.reconcile(List.of(definition(clientId, "old-secret", true, 1)));
+        String registeredClientId = managedClientId(clientId);
+        reconciler.reconcile(List.of(definition(clientId, "new-secret", true, 2)));
 
-        reconciler.reconcile(Map.of(registrationKey, definition(clientId, "old-secret", true, 1)));
+        reconciler.reconcile(List.of(definition(clientId, "old-secret", true, 1)));
 
-        String registeredClientId = managedClientId(registrationKey);
+        assertThat(managedClientId(clientId)).isEqualTo(registeredClientId);
         assertThat(passwordEncoder.matches("new-secret", encodedSecret(registeredClientId))).isTrue();
-        assertThat(
-            jdbc.queryForObject(
-                "select configuration_version from oauth_client_management where registration_key = ?",
-                Long.class,
-                registrationKey
+        assertThat(InternalClientMetadata.generation(storedClient(clientId))).isEqualTo(2);
+    }
+
+    @Test
+    void duplicateClientIdsAreRejectedBeforeReconciliation() {
+        String clientId = "duplicate-" + UUID.randomUUID();
+
+        assertThatThrownBy(() ->
+            reconciler.reconcile(
+                List.of(definition(clientId, "first-secret", true, 1), definition(clientId, "second-secret", true, 2))
             )
-        ).isEqualTo(2);
+        ).hasMessageContaining("Duplicate internal client-id");
     }
 
     @Test
-    void sameVersionCannotDescribeDifferentConfiguration() {
-        String registrationKey = "conflict-" + UUID.randomUUID();
-        String clientId = registrationKey + "-client";
-        reconciler.reconcile(Map.of(registrationKey, definition(clientId, "secret", true, 1)));
+    void sameGenerationCannotDescribeDifferentConfiguration() {
+        String clientId = "conflict-" + UUID.randomUUID();
+        reconciler.reconcile(List.of(definition(clientId, "secret", true, 1)));
 
         assertThatThrownBy(() ->
-            reconciler.reconcile(Map.of(registrationKey, definition(clientId, "secret", false, 1)))
-        ).hasMessageContaining("without increasing configuration-version");
+            reconciler.reconcile(List.of(definition(clientId, "secret", false, 1)))
+        ).hasMessageContaining("without increasing generation");
     }
 
     @Test
-    void secretRotationRequiresANewerConfigurationVersion() {
-        String registrationKey = "secret-conflict-" + UUID.randomUUID();
-        String clientId = registrationKey + "-client";
-        reconciler.reconcile(Map.of(registrationKey, definition(clientId, "first-secret", true, 1)));
+    void secretRotationRequiresANewerGeneration() {
+        String clientId = "secret-conflict-" + UUID.randomUUID();
+        reconciler.reconcile(List.of(definition(clientId, "first-secret", true, 1)));
 
         assertThatThrownBy(() ->
-            reconciler.reconcile(Map.of(registrationKey, definition(clientId, "second-secret", true, 1)))
-        ).hasMessageContaining("client-secret changed without increasing configuration-version");
+            reconciler.reconcile(List.of(definition(clientId, "second-secret", true, 1)))
+        ).hasMessageContaining("secret changed without increasing generation");
     }
 
     @Test
     void disabledSystemClientIsUnavailableToTheTokenEndpoint() {
-        String registrationKey = "disabled-" + UUID.randomUUID();
-        String clientId = registrationKey + "-client";
-        reconciler.reconcile(Map.of(registrationKey, definition(clientId, "secret", false, 1)));
+        String clientId = "disabled-" + UUID.randomUUID();
+        reconciler.reconcile(List.of(definition(clientId, "secret", false, 1)));
 
         assertThat(clients.findByClientId(clientId)).isNull();
     }
@@ -178,7 +181,7 @@ class OAuthInfrastructureIntegrationTest {
         );
 
         assertThatThrownBy(() ->
-            reconciler.reconcile(Map.of("system-" + UUID.randomUUID(), definition(clientId, "secret", true, 1)))
+            reconciler.reconcile(List.of(definition(clientId, "secret", true, 1)))
         ).hasMessageContaining("Refusing to adopt unmanaged OAuth client");
     }
 
@@ -267,14 +270,14 @@ class OAuthInfrastructureIntegrationTest {
             .build();
     }
 
-    private String managedClientId(String registrationKey) {
+    private String managedClientId(String clientId) {
         return Objects.requireNonNull(
-            jdbc.queryForObject(
-                "select registered_client_id from oauth_client_management where registration_key = ?",
-                String.class,
-                registrationKey
-            )
+            jdbc.queryForObject("select id from oauth2_registered_client where client_id = ?", String.class, clientId)
         );
+    }
+
+    private RegisteredClient storedClient(String clientId) {
+        return Objects.requireNonNull(storedClients.findByClientId(clientId));
     }
 
     private String encodedSecret(String registeredClientId) {
@@ -287,20 +290,8 @@ class OAuthInfrastructureIntegrationTest {
         );
     }
 
-    private static InternalClientDefinition definition(
-        String clientId,
-        String clientSecret,
-        boolean enabled,
-        long version
-    ) {
-        return new InternalClientDefinition(
-            clientId,
-            clientSecret,
-            enabled,
-            version,
-            Set.of("taskmigo.api"),
-            Set.of(ServicePrincipalPermissions.SYSTEM_RESOURCES_MANAGE)
-        );
+    private static Definition definition(String clientId, String clientSecret, boolean enabled, long generation) {
+        return new Definition(clientId, clientSecret, enabled, generation);
     }
 
     private record TokenResponse(String access_token) {}

@@ -1,8 +1,6 @@
 package io.taskmigo.identity;
 
-import java.util.Optional;
 import org.jspecify.annotations.Nullable;
-import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
@@ -10,11 +8,9 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 final class ManagedRegisteredClientRepository implements RegisteredClientRepository {
 
     private final JdbcRegisteredClientRepository clients;
-    private final JdbcClient jdbc;
 
-    ManagedRegisteredClientRepository(JdbcRegisteredClientRepository clients, JdbcClient jdbc) {
+    ManagedRegisteredClientRepository(JdbcRegisteredClientRepository clients) {
         this.clients = clients;
-        this.jdbc = jdbc;
     }
 
     @Override
@@ -34,11 +30,6 @@ final class ManagedRegisteredClientRepository implements RegisteredClientReposit
 
     private @Nullable RegisteredClient enabled(@Nullable RegisteredClient client) {
         if (client == null) return null;
-        Optional<Boolean> enabled = jdbc
-            .sql("select enabled from oauth_client_management where registered_client_id = :clientId")
-            .param("clientId", client.getId())
-            .query(Boolean.class)
-            .optional();
-        return enabled.orElse(true) ? client : null;
+        return !InternalClientMetadata.isManaged(client) || InternalClientMetadata.isEnabled(client) ? client : null;
     }
 }

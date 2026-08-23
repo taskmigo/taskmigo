@@ -22,7 +22,7 @@ import org.springframework.security.oauth2.server.authorization.token.JwtEncodin
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(IdentityProperties.class)
+@EnableConfigurationProperties({ IdentityProperties.class, InternalClientProperties.class })
 @EnableScheduling
 class AuthorizationServerConfiguration {
 
@@ -51,12 +51,12 @@ class AuthorizationServerConfiguration {
     }
 
     @Bean
-    OAuth2TokenCustomizer<JwtEncodingContext> servicePrincipalClaims(ServicePrincipalAuthorization servicePrincipals) {
+    OAuth2TokenCustomizer<JwtEncodingContext> servicePrincipalClaims() {
         return context -> {
             if (!OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) return;
             if (!AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) return;
 
-            Set<String> permissions = servicePrincipals.permissions(context.getRegisteredClient().getId());
+            Set<String> permissions = InternalClientMetadata.permissions(context.getRegisteredClient());
             context.getClaims().subject(context.getRegisteredClient().getClientId());
             context.getClaims().claim("principal_type", "service");
             context.getClaims().claim("permissions", List.copyOf(permissions));
