@@ -26,25 +26,25 @@ final class InternalClientMetadata {
         return ClientSettings.builder()
             .requireProofKey(false)
             .requireAuthorizationConsent(false)
-            .setting(MANAGED, true)
-            .setting(ENABLED, enabled)
-            .setting(GENERATION, generation)
+            .setting(MANAGED, "v1")
+            .setting(ENABLED, Boolean.toString(enabled))
+            .setting(GENERATION, Long.toString(generation))
             .setting(DEFINITION_HASH, definitionHash)
             .build();
     }
 
     static boolean isManaged(RegisteredClient client) {
-        return Boolean.TRUE.equals(setting(client, MANAGED));
+        return "v1".equals(setting(client, MANAGED));
     }
 
     static boolean isEnabled(RegisteredClient client) {
-        return Boolean.TRUE.equals(setting(client, ENABLED));
+        return "true".equals(setting(client, ENABLED));
     }
 
     static long generation(RegisteredClient client) {
         Object generation = setting(client, GENERATION);
-        if (generation instanceof Number number) return number.longValue();
-        throw new IllegalStateException("Internal OAuth client has no valid generation: " + client.getClientId());
+        if (generation instanceof String value) return Long.parseLong(value);
+        throw new IllegalStateException("Internal OAuth client has no generation: " + client.getClientId());
     }
 
     static String definitionHash(RegisteredClient client) {
