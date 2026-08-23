@@ -8,12 +8,12 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 @Schema(name = "ApiResponse", description = "Standard response envelope for every Taskmigo API v0 endpoint")
-public record ApiResponse<T>(
+public record ApiResponse<T, P>(
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED) boolean success,
     @JsonProperty("status_code") @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int statusCode,
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Message message,
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED, nullable = true) @Nullable Error error,
-    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Meta meta,
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Meta<P> meta,
     @Schema(requiredMode = Schema.RequiredMode.REQUIRED, nullable = true) @Nullable T data
 ) {
     public record Message(
@@ -28,9 +28,15 @@ public record ApiResponse<T>(
         @JsonProperty("form_errors") @Nullable Map<String, String> formErrors
     ) {}
 
-    public record Meta(
+    public record Meta<P>(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Execution execution,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, nullable = true) @Nullable Pagination pagination
+        @Schema(
+            requiredMode = Schema.RequiredMode.REQUIRED,
+            nullable = true,
+            description = "Pagination metadata for this operation. Null when the operation is not paginated. The concrete schema is determined by the operation response type."
+        )
+        @Nullable
+        P pagination
     ) {}
 
     public record Execution(
@@ -40,15 +46,11 @@ public record ApiResponse<T>(
         @JsonProperty("duration_ms") @Schema(requiredMode = Schema.RequiredMode.REQUIRED, minimum = "0") long durationMs
     ) {}
 
-    @Schema(oneOf = { OffsetPagination.class, CursorPagination.class })
-    public sealed interface Pagination permits OffsetPagination, CursorPagination {
-        String type();
-    }
-
+    @Schema(description = "Offset pagination metadata")
     public record OffsetPagination(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED, allowableValues = "offset") String type,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Offset offset
-    ) implements Pagination {
+    ) {
         public OffsetPagination(Offset offset) {
             this("offset", offset);
         }
@@ -65,10 +67,11 @@ public record ApiResponse<T>(
         @JsonProperty("total_pages") @Schema(requiredMode = Schema.RequiredMode.REQUIRED, minimum = "0") long totalPages
     ) {}
 
+    @Schema(description = "Cursor pagination metadata")
     public record CursorPagination(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED, allowableValues = "cursor") String type,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Cursor cursor
-    ) implements Pagination {
+    ) {
         public CursorPagination(Cursor cursor) {
             this("cursor", cursor);
         }
