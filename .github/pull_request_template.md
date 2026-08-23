@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD041 -->
+
 ## Summary
 
 <!-- What problem does this pull request solve? -->
@@ -8,7 +10,7 @@
 
 ## Verification
 
-<!-- List the tests and manual checks that were run. -->
+<!-- Add useful verification information not already covered by CI or the Checklist below, such as manual checks, scenarios validated outside CI, or relevant evidence. Avoid repeating pipeline steps or checklist items. -->
 
 ## Checklist
 
