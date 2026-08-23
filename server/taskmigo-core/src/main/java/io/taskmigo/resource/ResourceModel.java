@@ -57,7 +57,7 @@ class OrganizationEntity {
     }
 
     UUID getId() {
-        return id;
+        return this.id;
     }
 }
 
@@ -98,7 +98,7 @@ class UserEntity {
     }
 
     UUID getId() {
-        return id;
+        return this.id;
     }
 }
 
@@ -139,7 +139,7 @@ class GroupEntity {
     }
 
     UUID getId() {
-        return id;
+        return this.id;
     }
 }
 
@@ -184,7 +184,7 @@ class RoleEntity {
     }
 
     UUID getId() {
-        return id;
+        return this.id;
     }
 }
 
@@ -226,7 +226,7 @@ class ProjectEntity {
     }
 
     UUID getId() {
-        return id;
+        return this.id;
     }
 }
 
@@ -267,6 +267,6 @@ class ProjectMemberEntity {
     }
 
     UUID getId() {
-        return id;
+        return this.id;
     }
 }

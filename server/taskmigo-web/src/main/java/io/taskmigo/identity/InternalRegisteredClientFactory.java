@@ -25,14 +25,14 @@ final class InternalRegisteredClientFactory {
     RegisteredClient create(String registrationId, Client client, @Nullable RegisteredClient existing) {
         Registration registration = client.getRegistration();
         String clientId = Objects.requireNonNull(registration.getClientId());
-        String secret = validate(clientId, registration);
+        String secret = this.validate(clientId, registration);
         RegisteredClient.Builder builder =
             existing == null
                 ? RegisteredClient.withId(registrationId).clientId(clientId)
                 : RegisteredClient.from(existing);
 
         return builder
-            .clientSecret(encodedSecret(secret, existing))
+            .clientSecret(this.encodedSecret(secret, existing))
             .clientName(registration.getClientName() == null ? "Internal " + clientId : registration.getClientName())
             .clientAuthenticationMethods(methods -> {
                 methods.clear();
@@ -87,10 +87,11 @@ final class InternalRegisteredClientFactory {
     private String encodedSecret(String secret, @Nullable RegisteredClient existing) {
         String existingSecret = existing == null ? null : existing.getClientSecret();
         if (
-            existingSecret != null && (secret.equals(existingSecret) || passwordEncoder.matches(secret, existingSecret))
+            existingSecret != null &&
+            (secret.equals(existingSecret) || this.passwordEncoder.matches(secret, existingSecret))
         ) {
             return existingSecret;
         }
-        return secret.startsWith("{") ? secret : passwordEncoder.encode(secret);
+        return secret.startsWith("{") ? secret : this.passwordEncoder.encode(secret);
     }
 }

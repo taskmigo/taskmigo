@@ -21,6 +21,6 @@ public final class ResourceException extends RuntimeException {
     }
 
     public Type type() {
-        return type;
+        return this.type;
     }
 }
