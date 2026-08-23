@@ -39,11 +39,6 @@ class ResourceExceptionHandler {
             case NOT_FOUND -> "resource.not_found";
             case CONFLICT -> "resource.conflict";
         };
-        return this.responses.failure(
-            status,
-            messageCode,
-            message,
-            new ApiResponse.Error(errorCode, message, null)
-        );
+        return this.responses.failure(status, messageCode, message, new ApiResponse.Error(errorCode, message, null));
     }
 }
