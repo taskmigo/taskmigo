@@ -10,7 +10,7 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.stereotype.Repository;
 
 @Repository
-final class InternalClientRepository {
+class InternalClientRepository {
 
     private static final String INSERT_PERMISSION =
         "insert into oauth_service_principal_permissions(registered_client_id, permission_key) values (?, ?)";
