@@ -32,6 +32,8 @@ jobs:
         uses: actions/checkout@v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # Keep full history for Qodana. Do not reduce this to a shallow checkout:
+          # Qodana/PR analysis relies on accurate Git history and merge-base data.
           fetch-depth: 0
 
       - name: Set up Java
@@ -41,12 +43,25 @@ jobs:
           java-version: "26"
           cache: gradle
 
+      - name: Cache native Qodana linter
+        uses: actions/cache@v5.1.0
+        with:
+          path: |
+            ${{ runner.temp }}/qodana-system
+            !${{ runner.temp }}/qodana-system/state
+          key: qodana-native-v1-2026.2-qodana-jvm-community-${{ runner.os }}-${{ runner.arch }}
+
       - name: Scan
         uses: JetBrains/qodana-action@v2026.2
         with:
           pr-mode: false
           upload-result: false
           use-caches: true
+          # Keep the action-managed project cache under a dedicated subtree.
+          # Qodana native mode derives its system directory by walking two
+          # levels up from cache-dir, so this makes qodana-system the stable
+          # root that the preceding cache step persists for the IDE/linter.
+          cache-dir: ${{ runner.temp }}/qodana-system/state/cache
           # Qodana caches IntelliJ/Gradle project state, while GitHub keeps PR
           # caches isolated from the default branch. Keep each saved cache tied
           # to the analyzed commit, and allow fallback only within the exact
