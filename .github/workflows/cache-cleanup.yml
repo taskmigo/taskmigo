@@ -1,0 +1,102 @@
+name: Cache cleanup
+
+on:
+  pull_request_target:
+    types: [closed]
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: cache-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Remove unused caches
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Remove caches for closed PR
+        if: ${{ github.event_name == 'pull_request_target' }}
+        env:
+          CACHE_REF: refs/pull/${{ github.event.pull_request.number }}/merge
+        run: |
+          set -euo pipefail
+
+          gh api --paginate \
+            "repos/$GH_REPO/actions/caches?ref=$CACHE_REF&per_page=100" \
+            --jq '.actions_caches[].id' > "$RUNNER_TEMP/cache-ids"
+
+          count=0
+          while IFS= read -r cache_id; do
+            [[ -n "$cache_id" ]] || continue
+            gh api --method DELETE "repos/$GH_REPO/actions/caches/$cache_id"
+            count=$((count + 1))
+          done < "$RUNNER_TEMP/cache-ids"
+
+          echo "Removed $count cache(s) for $CACHE_REF."
+
+      - name: Remove stale and orphaned caches
+        if: ${{ github.event_name != 'pull_request_target' }}
+        run: |
+          set -euo pipefail
+
+          cutoff=$(date -u -d '24 hours ago' +%s)
+
+          gh api --paginate "repos/$GH_REPO/branches?per_page=100" \
+            --jq '.[] | "refs/heads/\(.name)"' \
+            | sort -u > "$RUNNER_TEMP/live-branches"
+
+          gh api --paginate "repos/$GH_REPO/pulls?state=open&per_page=100" \
+            --jq '.[].number' \
+            | sort -n -u > "$RUNNER_TEMP/open-prs"
+
+          gh api --paginate \
+            "repos/$GH_REPO/actions/caches?per_page=100&sort=last_accessed_at&direction=asc" \
+            --jq '.actions_caches[] | [.id, .ref, .key, .last_accessed_at, .size_in_bytes] | @tsv' \
+            > "$RUNNER_TEMP/caches.tsv"
+
+          removed=0
+          failed=0
+          while IFS=$'\t' read -r cache_id cache_ref cache_key last_accessed size_in_bytes; do
+            [[ -n "$cache_id" ]] || continue
+
+            reason=''
+            last_accessed_epoch=$(date -u -d "$last_accessed" +%s)
+
+            if (( last_accessed_epoch <= cutoff )); then
+              reason='not accessed for 24 hours'
+            elif [[ "$cache_ref" =~ ^refs/pull/([0-9]+)/merge$ ]]; then
+              pr_number=${BASH_REMATCH[1]}
+              if ! grep -Fxq "$pr_number" "$RUNNER_TEMP/open-prs"; then
+                reason='pull request is closed or merged'
+              fi
+            elif [[ "$cache_ref" == refs/heads/* ]] \
+              && ! grep -Fxq "$cache_ref" "$RUNNER_TEMP/live-branches"; then
+              reason='branch no longer exists'
+            fi
+
+            [[ -n "$reason" ]] || continue
+
+            size_mib=$(awk -v bytes="$size_in_bytes" 'BEGIN { printf "%.1f", bytes / 1048576 }')
+            echo "Removing cache $cache_id ($size_mib MiB): $cache_ref :: $cache_key — $reason"
+
+            if gh api --method DELETE "repos/$GH_REPO/actions/caches/$cache_id" >/dev/null; then
+              removed=$((removed + 1))
+            else
+              echo "::warning::Failed to remove cache $cache_id"
+              failed=$((failed + 1))
+            fi
+          done < "$RUNNER_TEMP/caches.tsv"
+
+          echo "Removed $removed cache(s); $failed deletion(s) failed."
+          (( failed == 0 ))
