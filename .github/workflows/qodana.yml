@@ -47,13 +47,15 @@ jobs:
           pr-mode: false
           upload-result: false
           use-caches: true
-          # Qodana's cached IntelliJ model contains paths into Gradle User Home.
-          # Restore it only for the exact Gradle graph so that the model cannot
-          # outlive the dependency artifacts it references. The v2 namespace
-          # intentionally invalidates project-model caches created before this
-          # cache-coherency rule.
+          # Qodana caches IntelliJ/Gradle project state, while GitHub keeps PR
+          # caches isolated from the default branch. Keep each saved cache tied
+          # to the analyzed commit, and allow fallback only within the exact
+          # Qodana/JDK/OS/Gradle-graph compatibility boundary. The v3 namespace
+          # also prevents restoration of the stale broad fallback cache.
           primary-cache-key: >-
-            qodana-project-v2-2026.2-java26-${{ runner.os }}-${{ hashFiles('server/**/*.gradle*', 'server/gradle/libs.versions.toml') }}
+            qodana-project-v3-2026.2-java26-${{ runner.os }}-${{ hashFiles('server/**/*.gradle*', 'server/gradle/libs.versions.toml') }}-${{ github.event.pull_request.head.sha || github.sha }}
+          additional-cache-key: >-
+            qodana-project-v3-2026.2-java26-${{ runner.os }}-${{ hashFiles('server/**/*.gradle*', 'server/gradle/libs.versions.toml') }}-
           args: >-
             --linter qodana-jvm-community
             --within-docker false
