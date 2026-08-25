@@ -24,8 +24,8 @@ files covered by Prettier.
 Tables, JSX/Fumadocs components, wrapped prose, or embedded content may look
 correct by inspection but still differ from Prettier output.
 
-**Workaround:** Do not reproduce Prettier output manually. In a writable checkout
-with locked dependencies installed, run:
+**Workaround:** If this is a local failure in a writable checkout with locked
+dependencies installed, run:
 
 ```bash
 npm run format:fix
@@ -38,10 +38,14 @@ sequence from:
 npm run lint:check
 ```
 
+If the GitHub Actions `Formatting` workflow failed, inspect the failed
+`Check formatting` step first. The workflow prints a `Formatting patch for AI
+agents` directly in the job log. Apply that exact patch to the working tree rather
+than installing formatting tooling or downloading an artifact solely to reproduce
+the same output. Then push the repair and use the next workflow run to verify it.
+
 Continue with `format:check`, `types:check`, and `build` only after the preceding
-gate passes. If the current environment cannot provide a writable checkout, move
-the formatting step to another valid environment rather than guessing spacing or
-rewriting MDX by hand.
+gate passes.
 
 ## npm cannot write to its default cache
 
@@ -73,8 +77,10 @@ that environment from creating or refreshing a local checkout.
 
 **Workaround:** Do not substitute manual formatting or skip verification. Use an
 existing checkout when available, or move the work to another writable environment
-that can obtain the repository and run the required commands. GitHub Actions can
-verify a pushed head with `lint:check`, `format:check`, `types:check`, and `build`,
-but a check-only workflow does not replace `npm run format:fix` when files need to
-be rewritten. After any formatter or code fix, restart verification from
-`npm run lint:check`.
+that can obtain the repository and run the required commands. When the relevant
+GitHub Actions workflow already emits an agent-readable patch, diff, finding
+index, or explicit repair instruction in its log, use that output directly. Do
+not recreate the same diagnostic locally just because the current environment is
+restricted. After any formatter or code fix, restart verification from
+`npm run lint:check` or rely on the corresponding required CI checks when local
+execution is unavailable.

@@ -40,22 +40,38 @@ jobs:
           distribution: temurin
           java-version: "26"
           cache: gradle
-          cache-dependency-path: |
-            server/**/*.gradle*
-            server/gradle/libs.versions.toml
 
       - name: Scan
         uses: JetBrains/qodana-action@v2026.2
         with:
           pr-mode: false
-          upload-result: true
+          upload-result: false
+          use-caches: true
+          # Qodana's cached IntelliJ model contains paths into Gradle User Home.
+          # Restore it only for the exact Gradle graph so that the model cannot
+          # outlive the dependency artifacts it references. The v2 namespace
+          # intentionally invalidates project-model caches created before this
+          # cache-coherency rule.
+          primary-cache-key: >-
+            qodana-project-v2-2026.2-java26-${{ runner.os }}-${{ hashFiles('server/**/*.gradle*', 'server/gradle/libs.versions.toml') }}
           args: >-
             --linter qodana-jvm-community
             --within-docker false
             --project-dir server
+
+      - name: Upload SARIF for AI agents
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: qodana-sarif
+          path: ${{ runner.temp }}/qodana/results/qodana.sarif.json
+          if-no-files-found: warn
+          compression-level: 9
+          retention-days: 1
 
       - name: Upload SARIF
         if: ${{ always() }}
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ${{ runner.temp }}/qodana/results/qodana.sarif.json
+          wait-for-processing: false

@@ -15,6 +15,7 @@ junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher
 errorprone-core = { module = "com.google.errorprone:error_prone_core", version.ref = "errorprone-core" }
 nullaway = { module = "com.uber.nullaway:nullaway", version.ref = "nullaway" }
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
+jackson-databind = { module = "tools.jackson.core:jackson-databind" }
 spring-modulith-starter-core = { module = "org.springframework.modulith:spring-modulith-starter-core" }
 spring-modulith-starter-test = { module = "org.springframework.modulith:spring-modulith-starter-test" }
 springdoc-openapi-starter-webmvc-scalar = { module = "org.springdoc:springdoc-openapi-starter-webmvc-scalar", version.ref = "springdoc-openapi" }

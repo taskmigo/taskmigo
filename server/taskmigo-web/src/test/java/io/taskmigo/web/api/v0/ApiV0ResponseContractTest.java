@@ -9,10 +9,10 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.TestConstructor;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 @SpringBootTest(
@@ -27,10 +27,14 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
     }
 )
 @Import(PostgresTestConfiguration.class)
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 class ApiV0ResponseContractTest {
 
-    @Autowired
-    RequestMappingHandlerMapping mappings;
+    private final RequestMappingHandlerMapping mappings;
+
+    ApiV0ResponseContractTest(RequestMappingHandlerMapping mappings) {
+        this.mappings = mappings;
+    }
 
     @Test
     void everyV0EndpointDeclaresTheStandardResponseEnvelope() {

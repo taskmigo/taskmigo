@@ -19,6 +19,21 @@
         <!-- Require overloaded methods to be declared together. -->
         <module name="OverloadMethodsDeclarationOrder"/>
 
+        <!-- Constructor injection is mandatory; never use an @Autowired injection annotation. -->
+        <module name="MatchXpath">
+            <property
+                name="query"
+                value="//ANNOTATION[
+                      IDENT[@text='Autowired']
+                      or DOT/IDENT[@text='Autowired']
+                    ]"
+            />
+            <message
+                key="matchxpath.match"
+                value="@Autowired is forbidden. Use constructor injection with an unannotated constructor."
+            />
+        </module>
+
         <!-- Require Bean methods to remain package-private. -->
         <module name="MatchXpath">
             <property

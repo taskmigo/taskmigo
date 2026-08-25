@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
-import io.taskmigo.resource.PermissionCatalog;
+import io.taskmigo.access.PermissionCatalog;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -12,7 +12,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties.Client;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -27,6 +26,7 @@ import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.test.context.TestConstructor;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
@@ -43,25 +43,31 @@ import org.springframework.web.client.RestClient;
     }
 )
 @Import(PostgresTestConfiguration.class)
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 class OAuthInfrastructureIntegrationTest {
 
-    @Autowired
-    RegisteredClientRepository clients;
-
-    @Autowired
-    JdbcRegisteredClientRepository storedClients;
-
-    @Autowired
-    PasswordEncoder passwordEncoder;
-
-    @Autowired
-    InternalClientReconciler reconciler;
-
-    @Autowired
-    OAuth2AuthorizationService authorizations;
+    private final RegisteredClientRepository clients;
+    private final JdbcRegisteredClientRepository storedClients;
+    private final PasswordEncoder passwordEncoder;
+    private final InternalClientReconciler reconciler;
+    private final OAuth2AuthorizationService authorizations;
 
     @LocalServerPort
-    int port;
+    private int port;
+
+    OAuthInfrastructureIntegrationTest(
+        RegisteredClientRepository clients,
+        JdbcRegisteredClientRepository storedClients,
+        PasswordEncoder passwordEncoder,
+        InternalClientReconciler reconciler,
+        OAuth2AuthorizationService authorizations
+    ) {
+        this.clients = clients;
+        this.storedClients = storedClients;
+        this.passwordEncoder = passwordEncoder;
+        this.reconciler = reconciler;
+        this.authorizations = authorizations;
+    }
 
     @Test
     void flywayCreatesTheSystemClient() {

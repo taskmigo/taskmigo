@@ -31,13 +31,14 @@ jobs:
 
       - name: Check formatting
         run: |
-          if npm run format:check; then
+          npm run format:fix
+
+          if git diff --quiet; then
             exit 0
           fi
 
-          npm run format:fix
-          echo "::group::Formatting diff"
-          git --no-pager diff
+          echo "::group::Formatting patch for AI agents"
+          git --no-pager diff --no-ext-diff --unified=3
           echo "::endgroup::"
-          echo "::error::Formatting check failed. Apply the diff shown above."
+          echo "::error::Formatting differs. Apply the patch shown above."
           exit 1
