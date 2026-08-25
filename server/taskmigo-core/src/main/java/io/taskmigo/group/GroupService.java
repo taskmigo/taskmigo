@@ -35,7 +35,10 @@ public class GroupService {
         GroupEntity group = this.entity(groupId);
         var user = this.users.require(userId);
         if (!group.organizationId.equals(user.organizationId())) {
-            throw new GroupException(GroupException.Type.BAD_REQUEST, "A Group can contain only Users from its owning Organization");
+            throw new GroupException(
+                GroupException.Type.BAD_REQUEST,
+                "A Group can contain only Users from its owning Organization"
+            );
         }
         group.memberIds.add(userId);
         this.groups.flush();
@@ -62,11 +65,16 @@ public class GroupService {
     public record GroupInfo(UUID id, UUID organizationId, String name) {}
 
     private GroupEntity entity(UUID id) {
-        return this.groups.findById(id).orElseThrow(() -> new GroupException(GroupException.Type.NOT_FOUND, "Group not found"));
+        return this.groups
+            .findById(id)
+            .orElseThrow(() -> new GroupException(GroupException.Type.NOT_FOUND, "Group not found"));
     }
 
     private static String required(@Nullable String value, String field) {
-        if (value == null || value.isBlank()) throw new GroupException(GroupException.Type.BAD_REQUEST, field + " is required");
+        if (value == null || value.isBlank()) throw new GroupException(
+            GroupException.Type.BAD_REQUEST,
+            field + " is required"
+        );
         return value.trim();
     }
 }

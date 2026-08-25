@@ -1,6 +1,7 @@
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.plugins.quality.Checkstyle
 import org.gradle.api.plugins.quality.CheckstyleExtension
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 
 plugins {
     base
@@ -55,6 +56,9 @@ subprojects {
 
         tasks.withType<Test>().configureEach {
             useJUnitPlatform()
+            testLogging {
+                exceptionFormat = TestExceptionFormat.FULL
+            }
         }
 
         tasks.withType<Checkstyle>().configureEach {

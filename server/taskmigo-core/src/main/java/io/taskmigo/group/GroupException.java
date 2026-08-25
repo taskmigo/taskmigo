@@ -8,7 +8,10 @@ public final class GroupException extends RuntimeException {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    public enum Type { BAD_REQUEST, NOT_FOUND }
+    public enum Type {
+        BAD_REQUEST,
+        NOT_FOUND,
+    }
 
     private final Type type;
 

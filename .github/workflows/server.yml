@@ -35,6 +35,20 @@ jobs:
           distribution: temurin
           java-version: "26"
           cache: gradle
+          cache-dependency-path: |
+            server/**/*.gradle*
+            server/gradle/libs.versions.toml
 
       - name: Run Gradle build
-        run: ./gradlew --no-daemon build
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon --console=plain --continue build 2>&1 | tee "$RUNNER_TEMP/server-build.log"
+
+      - name: Agent failure summary
+        if: ${{ failure() }}
+        run: |
+          echo "::group::Server failures for AI agents"
+          grep -E "(FAILED|error:|\[ERROR\]|Caused by:|Invalid explicit module dependency|There were failing tests|Checkstyle rule violations)" \
+            "$RUNNER_TEMP/server-build.log" | tail -n 200 || true
+          echo "::endgroup::"
+          echo "::error::Server build failed. Inspect the grouped summary and the Run Gradle build step above."

@@ -44,14 +44,23 @@ public class AccessService {
     @Transactional(readOnly = true)
     public List<RoleInfo> requireRoles(Collection<UUID> ids) {
         List<RoleEntity> found = this.roles.findAllByIdIn(ids);
-        if (found.size() != ids.size()) throw new AccessException(AccessException.Type.BAD_REQUEST, "One or more Roles do not exist");
-        return found.stream().map(role -> new RoleInfo(role.id, role.organizationId, role.name, Set.copyOf(role.permissions))).toList();
+        if (found.size() != ids.size()) throw new AccessException(
+            AccessException.Type.BAD_REQUEST,
+            "One or more Roles do not exist"
+        );
+        return found
+            .stream()
+            .map(role -> new RoleInfo(role.id, role.organizationId, role.name, Set.copyOf(role.permissions)))
+            .toList();
     }
 
     public record RoleInfo(UUID id, UUID organizationId, String name, Set<String> permissions) {}
 
     private static String required(@Nullable String value, String field) {
-        if (value == null || value.isBlank()) throw new AccessException(AccessException.Type.BAD_REQUEST, field + " is required");
+        if (value == null || value.isBlank()) throw new AccessException(
+            AccessException.Type.BAD_REQUEST,
+            field + " is required"
+        );
         return value.trim();
     }
 }

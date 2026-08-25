@@ -42,6 +42,7 @@ include:
   - name: UNUSED_IMPORT
   - name: SamePackageImport
   - name: JavaLangImport
+  - name: UnnecessaryFullyQualifiedName
   - name: MissortedModifiers
   - name: UnnecessaryModifier
   - name: MultipleVariablesInDeclaration
@@ -80,7 +81,6 @@ include:
   - name: UnnecessaryContinue
   - name: UnnecessaryDefault
   - name: UnnecessaryExplicitNumericCast
-  - name: UnnecessaryFullyQualifiedName
   - name: UnnecessaryLocalVariable
   - name: UnnecessaryReturn
   - name: UnnecessarySemicolon
@@ -164,13 +164,16 @@ exclude:
   # Aggregate files intentionally contain related package-private types.
   - name: ClassNameDiffersFromFileName
     paths:
-      - taskmigo-core/src/main/java/io/taskmigo/resource/ResourceModel.java
-      - taskmigo-core/src/main/java/io/taskmigo/resource/ResourceRepositories.java
+      - taskmigo-core/src/main/java/io/taskmigo/project/ProjectModel.java
+      - taskmigo-core/src/main/java/io/taskmigo/project/ProjectRepositories.java
+      - taskmigo-core/src/main/java/io/taskmigo/user/UserModel.java
 
   # JPA fields must remain mutable for portable persistence.
   - name: CanBeFinal
     paths:
-      - taskmigo-core/src/main/java/io/taskmigo/resource/ResourceModel.java
+      - taskmigo-core/src/main/java/io/taskmigo/access/RoleEntity.java
+      - taskmigo-core/src/main/java/io/taskmigo/group/GroupEntity.java
+      - taskmigo-core/src/main/java/io/taskmigo/project/ProjectModel.java
 
   # Preserve the explicit-this policy represented by the two Unqualified* rules.
   - name: UnnecessaryThis

@@ -22,7 +22,12 @@ public class UserService {
 
     /// Creates a user after validating its owning organization and normalizing the email address.
     @Transactional
-    public UUID create(UUID organizationId, @Nullable String username, @Nullable String email, @Nullable String displayName) {
+    public UUID create(
+        UUID organizationId,
+        @Nullable String username,
+        @Nullable String email,
+        @Nullable String displayName
+    ) {
         this.organizations.require(organizationId);
         String normalizedEmail = required(email, "email").toLowerCase(Locale.ROOT);
         try {
@@ -38,21 +43,30 @@ public class UserService {
             );
             return id;
         } catch (DataIntegrityViolationException exception) {
-            throw new UserException(UserException.Type.CONFLICT, "Username or normalized email already exists", exception);
+            throw new UserException(
+                UserException.Type.CONFLICT,
+                "Username or normalized email already exists",
+                exception
+            );
         }
     }
 
     /// Returns a stable user snapshot for cross-module validation and presentation.
     @Transactional(readOnly = true)
     public UserInfo require(UUID id) {
-        UserEntity user = this.users.findById(id).orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"));
+        UserEntity user = this.users
+            .findById(id)
+            .orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"));
         return new UserInfo(user.id, user.organizationId, user.displayName);
     }
 
     public record UserInfo(UUID id, UUID organizationId, String displayName) {}
 
     private static String required(@Nullable String value, String field) {
-        if (value == null || value.isBlank()) throw new UserException(UserException.Type.BAD_REQUEST, field + " is required");
+        if (value == null || value.isBlank()) throw new UserException(
+            UserException.Type.BAD_REQUEST,
+            field + " is required"
+        );
         return value.trim();
     }
 }

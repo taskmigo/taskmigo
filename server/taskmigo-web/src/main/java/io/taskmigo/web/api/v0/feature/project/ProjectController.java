@@ -51,14 +51,28 @@ class ProjectController {
         @Valid @RequestBody ProjectRequest request,
         Authentication authentication
     ) {
-        UUID id = this.projects.create(organizationId, request.key(), request.name(), request.description(), actor(authentication));
-        return this.responses.created(URI.create("/api/v0/projects/" + id), Map.of("id", id), "project.created", "Project created");
+        UUID id = this.projects.create(
+            organizationId,
+            request.key(),
+            request.name(),
+            request.description(),
+            actor(authentication)
+        );
+        return this.responses.created(
+            URI.create("/api/v0/projects/" + id),
+            Map.of("id", id),
+            "resource.project.created",
+            "Project created"
+        );
     }
 
     @PatchMapping("/projects/{projectId}/archive")
-    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> archive(@PathVariable UUID projectId, Authentication authentication) {
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> archive(
+        @PathVariable UUID projectId,
+        Authentication authentication
+    ) {
         this.projects.archive(projectId, actor(authentication));
-        return this.responses.ok("project.archived", "Project archived");
+        return this.responses.ok("resource.project.archived", "Project archived");
     }
 
     @PostMapping("/projects/{projectId}/members")
@@ -67,11 +81,16 @@ class ProjectController {
         @Valid @RequestBody MemberRequest request,
         Authentication authentication
     ) {
-        UUID id = this.projects.addMember(projectId, request.principalType(), Objects.requireNonNull(request.principalId()), actor(authentication));
+        UUID id = this.projects.addMember(
+            projectId,
+            request.principalType(),
+            Objects.requireNonNull(request.principalId()),
+            actor(authentication)
+        );
         return this.responses.created(
             URI.create("/api/v0/projects/" + projectId + "/members/" + id),
             Map.of("id", id),
-            "project.member_added",
+            "resource.project.member_added",
             "Project member added"
         );
     }
@@ -83,7 +102,7 @@ class ProjectController {
         Authentication authentication
     ) {
         this.projects.removeMember(projectId, projectMemberId, actor(authentication));
-        return this.responses.ok("project.member_removed", "Project member removed");
+        return this.responses.ok("resource.project.member_removed", "Project member removed");
     }
 
     @PutMapping("/projects/{projectId}/members/{projectMemberId}/roles")
@@ -94,7 +113,7 @@ class ProjectController {
         Authentication authentication
     ) {
         this.projects.setMemberRoles(projectId, projectMemberId, request.roleIds(), actor(authentication));
-        return this.responses.ok("project.member_roles_updated", "Project member roles updated");
+        return this.responses.ok("resource.project.member_roles_updated", "Project member roles updated");
     }
 
     @GetMapping("/projects/{projectId}/history")
@@ -108,7 +127,7 @@ class ProjectController {
         return this.responses.ok(
             page.items(),
             new ApiResponse.CursorPagination(new ApiResponse.Cursor(nextCursor, null, nextCursor != null)),
-            "project.history_retrieved",
+            "resource.project.history_retrieved",
             "Project history retrieved"
         );
     }
@@ -118,7 +137,11 @@ class ProjectController {
         @PathVariable UUID projectId,
         @PathVariable UUID userId
     ) {
-        return this.responses.ok(this.projects.effectivePermissions(projectId, userId), "project.effective_permissions_retrieved", "Effective permissions retrieved");
+        return this.responses.ok(
+            this.projects.effectivePermissions(projectId, userId),
+            "resource.project.effective_permissions_retrieved",
+            "Effective permissions retrieved"
+        );
     }
 
     private static ProjectChanged.Actor actor(Authentication authentication) {
@@ -137,7 +160,13 @@ class ProjectController {
         return new ProjectChanged.Actor(type, id, displayName);
     }
 
-    record ProjectRequest(@NotBlank @Nullable String key, @NotBlank @Nullable String name, @Nullable String description) {}
+    record ProjectRequest(
+        @NotBlank @Nullable String key,
+        @NotBlank @Nullable String name,
+        @Nullable String description
+    ) {}
+
     record MemberRequest(@NotBlank @Nullable String principalType, @NotNull @Nullable UUID principalId) {}
+
     record RoleAssignmentRequest(@Nullable Set<UUID> roleIds) {}
 }

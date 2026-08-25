@@ -24,7 +24,11 @@ public class OrganizationService {
             this.organizations.saveAndFlush(new OrganizationEntity(id, required(key, "key"), required(name, "name")));
             return id;
         } catch (DataIntegrityViolationException exception) {
-            throw new OrganizationException(OrganizationException.Type.CONFLICT, "Organization key already exists", exception);
+            throw new OrganizationException(
+                OrganizationException.Type.CONFLICT,
+                "Organization key already exists",
+                exception
+            );
         }
     }
 

@@ -38,7 +38,9 @@ public class ProjectHistory {
 
     @EventListener
     void on(ProjectChanged event) {
-        this.entries.saveAndFlush(new ProjectHistoryEntity(event, this.write(event.changes()), this.write(event.data())));
+        this.entries.saveAndFlush(
+            new ProjectHistoryEntity(event, this.write(event.changes()), this.write(event.data()))
+        );
     }
 
     @Transactional(readOnly = true)
@@ -59,16 +61,25 @@ public class ProjectHistory {
     }
 
     private static Specification<ProjectHistoryEntity> before(Cursor cursor) {
-        return (root, query, builder) -> builder.or(
-            builder.lessThan(root.get("occurredAt"), cursor.occurredAt()),
-            builder.and(builder.equal(root.get("occurredAt"), cursor.occurredAt()), builder.lessThan(root.get("id"), cursor.id()))
-        );
+        return (root, query, builder) ->
+            builder.or(
+                builder.lessThan(root.get("occurredAt"), cursor.occurredAt()),
+                builder.and(
+                    builder.equal(root.get("occurredAt"), cursor.occurredAt()),
+                    builder.lessThan(root.get("id"), cursor.id())
+                )
+            );
     }
 
     private Entry toEntry(ProjectHistoryEntity entity) {
-        ProjectChanged.@Nullable Target target = entity.targetType == null
-            ? null
-            : new ProjectChanged.Target(entity.targetType, Objects.requireNonNull(entity.targetId), Objects.requireNonNull(entity.targetDisplayName));
+        ProjectChanged.@Nullable Target target =
+            entity.targetType == null
+                ? null
+                : new ProjectChanged.Target(
+                      entity.targetType,
+                      Objects.requireNonNull(entity.targetId),
+                      Objects.requireNonNull(entity.targetDisplayName)
+                  );
         return new Entry(
             entity.id,
             entity.projectId,
@@ -98,7 +109,9 @@ public class ProjectHistory {
     }
 
     private static String encode(ProjectHistoryEntity entity) {
-        return Base64.getUrlEncoder().withoutPadding().encodeToString((entity.occurredAt + "|" + entity.id).getBytes(StandardCharsets.UTF_8));
+        return Base64.getUrlEncoder()
+            .withoutPadding()
+            .encodeToString((entity.occurredAt + "|" + entity.id).getBytes(StandardCharsets.UTF_8));
     }
 
     private static Cursor decode(String cursor) {
@@ -106,7 +119,10 @@ public class ProjectHistory {
             String raw = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
             int separator = raw.lastIndexOf('|');
             if (separator < 1) throw new IllegalArgumentException();
-            return new Cursor(Instant.parse(raw.substring(0, separator)), UUID.fromString(raw.substring(separator + 1)));
+            return new Cursor(
+                Instant.parse(raw.substring(0, separator)),
+                UUID.fromString(raw.substring(separator + 1))
+            );
         } catch (RuntimeException exception) {
             throw new IllegalArgumentException("Invalid history cursor", exception);
         }

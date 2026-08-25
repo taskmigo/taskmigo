@@ -30,7 +30,12 @@ class OrganizationController {
     @PostMapping
     ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(@Valid @RequestBody Request request) {
         UUID id = this.organizations.create(request.key(), request.name());
-        return this.responses.created(URI.create("/api/v0/organizations/" + id), Map.of("id", id), "organization.created", "Organization created");
+        return this.responses.created(
+            URI.create("/api/v0/organizations/" + id),
+            Map.of("id", id),
+            "resource.organization.created",
+            "Organization created"
+        );
     }
 
     record Request(@NotBlank @Nullable String key, @NotBlank @Nullable String name) {}

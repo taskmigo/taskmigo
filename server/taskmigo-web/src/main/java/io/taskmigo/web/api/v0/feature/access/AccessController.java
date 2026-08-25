@@ -33,7 +33,7 @@ class AccessController {
 
     @GetMapping("/permissions")
     ResponseEntity<ApiResponse<Set<String>, ApiResponse.BasicMeta>> permissions() {
-        return this.responses.ok(PermissionCatalog.ALL, "access.permissions.retrieved", "Permissions retrieved");
+        return this.responses.ok(PermissionCatalog.ALL, "resource.permissions.retrieved", "Permissions retrieved");
     }
 
     @PostMapping("/organizations/{organizationId}/roles")
@@ -42,7 +42,12 @@ class AccessController {
         @Valid @RequestBody Request request
     ) {
         UUID id = this.access.createRole(organizationId, request.name(), request.description(), request.permissions());
-        return this.responses.created(URI.create("/api/v0/roles/" + id), Map.of("id", id), "access.role.created", "Role created");
+        return this.responses.created(
+            URI.create("/api/v0/roles/" + id),
+            Map.of("id", id),
+            "resource.role.created",
+            "Role created"
+        );
     }
 
     record Request(@NotBlank @Nullable String name, @Nullable String description, @Nullable Set<String> permissions) {}

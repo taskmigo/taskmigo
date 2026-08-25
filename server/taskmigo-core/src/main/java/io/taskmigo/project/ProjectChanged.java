@@ -33,9 +33,17 @@ public record ProjectChanged(
         MEMBER_ROLES_CHANGED,
     }
 
-    public enum ActorType { USER, SERVICE, SYSTEM }
+    public enum ActorType {
+        USER,
+        SERVICE,
+        SYSTEM,
+    }
 
-    public enum TargetType { PROJECT, USER, GROUP }
+    public enum TargetType {
+        PROJECT,
+        USER,
+        GROUP,
+    }
 
     public record Actor(ActorType type, String id, String displayName) {}
 

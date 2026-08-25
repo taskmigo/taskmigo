@@ -8,7 +8,11 @@ public final class ProjectException extends RuntimeException {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    public enum Type { BAD_REQUEST, NOT_FOUND, CONFLICT }
+    public enum Type {
+        BAD_REQUEST,
+        NOT_FOUND,
+        CONFLICT,
+    }
 
     private final Type type;
 

@@ -71,10 +71,21 @@ public class ProjectService {
                 description
             );
             this.projects.saveAndFlush(project);
-            this.publish(project, ProjectChanged.Action.PROJECT_CREATED, actor, projectTarget(project), List.of(), projectSnapshot(project));
+            this.publish(
+                project,
+                ProjectChanged.Action.PROJECT_CREATED,
+                actor,
+                projectTarget(project),
+                List.of(),
+                projectSnapshot(project)
+            );
             return project.id;
         } catch (DataIntegrityViolationException exception) {
-            throw new ProjectException(ProjectException.Type.CONFLICT, "Project key already exists in the Organization", exception);
+            throw new ProjectException(
+                ProjectException.Type.CONFLICT,
+                "Project key already exists in the Organization",
+                exception
+            );
         }
     }
 
@@ -103,18 +114,29 @@ public class ProjectService {
     }
 
     @Transactional
-    public UUID addMember(UUID projectId, @Nullable String principalType, UUID principalId, ProjectChanged.Actor actor) {
+    public UUID addMember(
+        UUID projectId,
+        @Nullable String principalType,
+        UUID principalId,
+        ProjectChanged.Actor actor
+    ) {
         ProjectEntity project = this.activeProject(projectId);
         PrincipalType type = principalType(principalType);
-        ProjectChanged.Target target = principalTarget(type, principalId);
+        ProjectChanged.Target target = this.principalTarget(type, principalId);
         try {
             ProjectMemberEntity member = new ProjectMemberEntity(UUID.randomUUID(), project.id, type, principalId);
             this.members.saveAndFlush(member);
-            ProjectChanged.Action action = isSelf(actor, target) ? ProjectChanged.Action.MEMBER_JOINED : ProjectChanged.Action.MEMBER_ADDED;
+            ProjectChanged.Action action = isSelf(actor, target)
+                ? ProjectChanged.Action.MEMBER_JOINED
+                : ProjectChanged.Action.MEMBER_ADDED;
             this.publish(project, action, actor, target, List.of(), Map.of("membershipId", member.id));
             return member.id;
         } catch (DataIntegrityViolationException exception) {
-            throw new ProjectException(ProjectException.Type.CONFLICT, "Principal is already a Project Member", exception);
+            throw new ProjectException(
+                ProjectException.Type.CONFLICT,
+                "Principal is already a Project Member",
+                exception
+            );
         }
     }
 
@@ -128,10 +150,12 @@ public class ProjectService {
         ProjectEntity project = this.activeProject(projectId);
         ProjectMemberEntity member = this.member(projectMemberId);
         if (!member.projectId.equals(projectId)) throw notFound("Project Member not found in Project");
-        ProjectChanged.Target target = principalTarget(member.principalType, member.principalId);
+        ProjectChanged.Target target = this.principalTarget(member.principalType, member.principalId);
         this.members.delete(member);
         this.members.flush();
-        ProjectChanged.Action action = isSelf(actor, target) ? ProjectChanged.Action.MEMBER_LEFT : ProjectChanged.Action.MEMBER_REMOVED;
+        ProjectChanged.Action action = isSelf(actor, target)
+            ? ProjectChanged.Action.MEMBER_LEFT
+            : ProjectChanged.Action.MEMBER_REMOVED;
         this.publish(project, action, actor, target, List.of(), Map.of("membershipId", projectMemberId));
     }
 
@@ -167,7 +191,7 @@ public class ProjectService {
                 project,
                 ProjectChanged.Action.MEMBER_ROLES_CHANGED,
                 actor,
-                principalTarget(member.principalType, member.principalId),
+                this.principalTarget(member.principalType, member.principalId),
                 List.of(new ProjectChanged.Change("roles", before, after)),
                 Map.of("membershipId", projectMemberId)
             );
@@ -181,7 +205,7 @@ public class ProjectService {
         Set<String> permissions = new LinkedHashSet<>();
         this.members
             .findByProjectIdAndPrincipalTypeAndPrincipalId(projectId, PrincipalType.USER, userId)
-            .ifPresent(member -> collectPermissions(member, permissions));
+            .ifPresent(member -> this.collectPermissions(member, permissions));
         List<UUID> groupIds = this.groups.groupsForUser(userId);
         if (!groupIds.isEmpty()) {
             for (ProjectMemberEntity member : this.members.findAllByProjectIdAndPrincipalTypeAndPrincipalIdIn(
@@ -189,7 +213,7 @@ public class ProjectService {
                 PrincipalType.GROUP,
                 groupIds
             )) {
-                collectPermissions(member, permissions);
+                this.collectPermissions(member, permissions);
             }
         }
         return Set.copyOf(permissions);
@@ -201,8 +225,16 @@ public class ProjectService {
 
     private ProjectChanged.Target principalTarget(PrincipalType type, UUID id) {
         return switch (type) {
-            case USER -> new ProjectChanged.Target(ProjectChanged.TargetType.USER, id.toString(), this.users.require(id).displayName());
-            case GROUP -> new ProjectChanged.Target(ProjectChanged.TargetType.GROUP, id.toString(), this.groups.require(id).name());
+            case USER -> new ProjectChanged.Target(
+                ProjectChanged.TargetType.USER,
+                id.toString(),
+                this.users.require(id).displayName()
+            );
+            case GROUP -> new ProjectChanged.Target(
+                ProjectChanged.TargetType.GROUP,
+                id.toString(),
+                this.groups.require(id).name()
+            );
         };
     }
 
@@ -210,11 +242,13 @@ public class ProjectService {
         ProjectEntity project,
         ProjectChanged.Action action,
         ProjectChanged.Actor actor,
-        @Nullable ProjectChanged.Target target,
+        ProjectChanged.@Nullable Target target,
         List<ProjectChanged.Change> changes,
         Map<String, Object> data
     ) {
-        this.events.publishEvent(new ProjectChanged(UUID.randomUUID(), project.id, action, actor, target, changes, data, Instant.now()));
+        this.events.publishEvent(
+            new ProjectChanged(UUID.randomUUID(), project.id, action, actor, target, changes, data, Instant.now())
+        );
     }
 
     private static ProjectChanged.Target projectTarget(ProjectEntity project) {
@@ -222,9 +256,11 @@ public class ProjectService {
     }
 
     private static boolean isSelf(ProjectChanged.Actor actor, ProjectChanged.Target target) {
-        return actor.type() == ProjectChanged.ActorType.USER &&
+        return (
+            actor.type() == ProjectChanged.ActorType.USER &&
             target.type() == ProjectChanged.TargetType.USER &&
-            actor.id().equals(target.id());
+            actor.id().equals(target.id())
+        );
     }
 
     private static Map<String, Object> projectSnapshot(ProjectEntity project) {
@@ -237,7 +273,8 @@ public class ProjectService {
     }
 
     private static List<Map<String, Object>> roleSnapshots(List<AccessService.RoleInfo> roles) {
-        return roles.stream()
+        return roles
+            .stream()
             .sorted((left, right) -> left.id().compareTo(right.id()))
             .map(role -> Map.<String, Object>of("id", role.id(), "name", role.name()))
             .toList();
@@ -249,7 +286,10 @@ public class ProjectService {
 
     private ProjectEntity activeProject(UUID id) {
         ProjectEntity project = this.project(id);
-        if (project.status == ProjectStatus.ARCHIVED) throw new ProjectException(ProjectException.Type.CONFLICT, "Archived Projects are read-only");
+        if (project.status == ProjectStatus.ARCHIVED) throw new ProjectException(
+            ProjectException.Type.CONFLICT,
+            "Archived Projects are read-only"
+        );
         return project;
     }
 

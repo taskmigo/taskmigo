@@ -7,6 +7,7 @@ import io.taskmigo.project.ProjectException;
 import io.taskmigo.user.UserException;
 import io.taskmigo.web.api.v0.infrastructure.response.ApiResponse;
 import io.taskmigo.web.api.v0.infrastructure.response.ApiResponseFactory;
+import org.jspecify.annotations.Nullable;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -26,30 +27,33 @@ class DomainExceptionHandler {
 
     @ExceptionHandler(OrganizationException.class)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> organization(OrganizationException exception) {
-        return failure(exception.type().name(), exception.getMessage());
+        return this.failure(exception.type().name(), exception.getMessage());
     }
 
     @ExceptionHandler(UserException.class)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> user(UserException exception) {
-        return failure(exception.type().name(), exception.getMessage());
+        return this.failure(exception.type().name(), exception.getMessage());
     }
 
     @ExceptionHandler(GroupException.class)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> group(GroupException exception) {
-        return failure(exception.type().name(), exception.getMessage());
+        return this.failure(exception.type().name(), exception.getMessage());
     }
 
     @ExceptionHandler(AccessException.class)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> access(AccessException exception) {
-        return failure(exception.type().name(), exception.getMessage());
+        return this.failure(exception.type().name(), exception.getMessage());
     }
 
     @ExceptionHandler(ProjectException.class)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> project(ProjectException exception) {
-        return failure(exception.type().name(), exception.getMessage());
+        return this.failure(exception.type().name(), exception.getMessage());
     }
 
-    private ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> failure(String type, String exceptionMessage) {
+    private ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> failure(
+        String type,
+        @Nullable String exceptionMessage
+    ) {
         HttpStatus status = switch (type) {
             case "NOT_FOUND" -> HttpStatus.NOT_FOUND;
             case "CONFLICT" -> HttpStatus.CONFLICT;
@@ -57,6 +61,11 @@ class DomainExceptionHandler {
         };
         String message = exceptionMessage == null ? "Operation failed" : exceptionMessage;
         String code = "DOMAIN_" + type;
-        return this.responses.failure(status, "domain." + type.toLowerCase(), message, new ApiResponse.Error(code, message, null));
+        return this.responses.failure(
+            status,
+            "domain." + type.toLowerCase(),
+            message,
+            new ApiResponse.Error(code, message, null)
+        );
     }
 }

@@ -35,7 +35,12 @@ class UserController {
         @Valid @RequestBody Request request
     ) {
         UUID id = this.users.create(organizationId, request.username(), request.email(), request.displayName());
-        return this.responses.created(URI.create("/api/v0/users/" + id), Map.of("id", id), "user.created", "User created");
+        return this.responses.created(
+            URI.create("/api/v0/users/" + id),
+            Map.of("id", id),
+            "resource.user.created",
+            "User created"
+        );
     }
 
     record Request(

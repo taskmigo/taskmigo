@@ -8,7 +8,9 @@ public final class AccessException extends RuntimeException {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    public enum Type { BAD_REQUEST }
+    public enum Type {
+        BAD_REQUEST,
+    }
 
     private final Type type;
 

@@ -36,19 +36,30 @@ class GroupController {
         @Valid @RequestBody Request request
     ) {
         UUID id = this.groups.create(organizationId, request.name(), request.description());
-        return this.responses.created(URI.create("/api/v0/groups/" + id), Map.of("id", id), "group.created", "Group created");
+        return this.responses.created(
+            URI.create("/api/v0/groups/" + id),
+            Map.of("id", id),
+            "resource.group.created",
+            "Group created"
+        );
     }
 
     @PutMapping("/groups/{groupId}/members/{userId}")
-    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> addMember(@PathVariable UUID groupId, @PathVariable UUID userId) {
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> addMember(
+        @PathVariable UUID groupId,
+        @PathVariable UUID userId
+    ) {
         this.groups.addMember(groupId, userId);
-        return this.responses.ok("group.member_added", "Group member added");
+        return this.responses.ok("resource.group.member_added", "Group member added");
     }
 
     @DeleteMapping("/groups/{groupId}/members/{userId}")
-    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> removeMember(@PathVariable UUID groupId, @PathVariable UUID userId) {
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> removeMember(
+        @PathVariable UUID groupId,
+        @PathVariable UUID userId
+    ) {
         this.groups.removeMember(groupId, userId);
-        return this.responses.ok("group.member_removed", "Group member removed");
+        return this.responses.ok("resource.group.member_removed", "Group member removed");
     }
 
     record Request(@NotBlank @Nullable String name, @Nullable String description) {}
