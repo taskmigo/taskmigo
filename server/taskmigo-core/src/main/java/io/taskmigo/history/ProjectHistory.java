@@ -1,6 +1,6 @@
 package io.taskmigo.history;
 
-import io.taskmigo.resource.ProjectChanged;
+import io.taskmigo.project.ProjectChanged;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
@@ -38,35 +38,20 @@ public class ProjectHistory {
 
     @EventListener
     void on(ProjectChanged event) {
-        this.entries.saveAndFlush(
-            new ProjectHistoryEntity(event, this.write(event.changes()), this.write(event.data()))
-        );
+        this.entries.saveAndFlush(new ProjectHistoryEntity(event, this.write(event.changes()), this.write(event.data())));
     }
 
-    /// Returns project history using a stable keyset cursor ordered newest first.
-    ///
-    /// @param projectId the project whose audit timeline is requested
-    /// @param cursor the opaque cursor returned by the previous page, or `null` for the first page
-    /// @param limit the requested page size from 1 through 100
-    /// @return the audit entries and a cursor for the next page when more entries exist
-    /// @throws IllegalArgumentException if the cursor or limit is invalid
     @Transactional(readOnly = true)
     public Page list(UUID projectId, @Nullable String cursor, int limit) {
         if (limit < 1 || limit > MAX_PAGE_SIZE) throw new IllegalArgumentException("limit must be between 1 and 100");
-
         Pageable pageable = PageRequest.of(0, limit + 1, HISTORY_SORT);
         Specification<ProjectHistoryEntity> specification = projectId(projectId);
-        if (cursor != null && !cursor.isBlank()) {
-            Cursor decoded = decode(cursor);
-            specification = specification.and(before(decoded));
-        }
-
+        if (cursor != null && !cursor.isBlank()) specification = specification.and(before(decode(cursor)));
         List<ProjectHistoryEntity> rows = this.entries.findAll(specification, pageable).getContent();
         boolean hasMore = rows.size() > limit;
         List<ProjectHistoryEntity> pageRows = hasMore ? rows.subList(0, limit) : rows;
         List<Entry> items = pageRows.stream().map(this::toEntry).toList();
-        String nextCursor = hasMore ? encode(pageRows.getLast()) : null;
-        return new Page(items, nextCursor);
+        return new Page(items, hasMore ? encode(pageRows.getLast()) : null);
     }
 
     private static Specification<ProjectHistoryEntity> projectId(UUID projectId) {
@@ -74,25 +59,16 @@ public class ProjectHistory {
     }
 
     private static Specification<ProjectHistoryEntity> before(Cursor cursor) {
-        return (root, query, builder) ->
-            builder.or(
-                builder.lessThan(root.get("occurredAt"), cursor.occurredAt()),
-                builder.and(
-                    builder.equal(root.get("occurredAt"), cursor.occurredAt()),
-                    builder.lessThan(root.get("id"), cursor.id())
-                )
-            );
+        return (root, query, builder) -> builder.or(
+            builder.lessThan(root.get("occurredAt"), cursor.occurredAt()),
+            builder.and(builder.equal(root.get("occurredAt"), cursor.occurredAt()), builder.lessThan(root.get("id"), cursor.id()))
+        );
     }
 
     private Entry toEntry(ProjectHistoryEntity entity) {
-        ProjectChanged.@Nullable Target target =
-            entity.targetType == null
-                ? null
-                : new ProjectChanged.Target(
-                      entity.targetType,
-                      Objects.requireNonNull(entity.targetId),
-                      Objects.requireNonNull(entity.targetDisplayName)
-                  );
+        ProjectChanged.@Nullable Target target = entity.targetType == null
+            ? null
+            : new ProjectChanged.Target(entity.targetType, Objects.requireNonNull(entity.targetId), Objects.requireNonNull(entity.targetDisplayName));
         return new Entry(
             entity.id,
             entity.projectId,
@@ -122,8 +98,7 @@ public class ProjectHistory {
     }
 
     private static String encode(ProjectHistoryEntity entity) {
-        String raw = entity.occurredAt + "|" + entity.id;
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+        return Base64.getUrlEncoder().withoutPadding().encodeToString((entity.occurredAt + "|" + entity.id).getBytes(StandardCharsets.UTF_8));
     }
 
     private static Cursor decode(String cursor) {
@@ -131,16 +106,12 @@ public class ProjectHistory {
             String raw = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
             int separator = raw.lastIndexOf('|');
             if (separator < 1) throw new IllegalArgumentException();
-            return new Cursor(
-                Instant.parse(raw.substring(0, separator)),
-                UUID.fromString(raw.substring(separator + 1))
-            );
+            return new Cursor(Instant.parse(raw.substring(0, separator)), UUID.fromString(raw.substring(separator + 1)));
         } catch (RuntimeException exception) {
             throw new IllegalArgumentException("Invalid history cursor", exception);
         }
     }
 
-    /// One immutable project audit entry ready for API presentation.
     public record Entry(
         UUID id,
         UUID projectId,
@@ -152,7 +123,6 @@ public class ProjectHistory {
         Instant occurredAt
     ) {}
 
-    /// A cursor-paginated project history page.
     public record Page(List<Entry> items, @Nullable String nextCursor) {}
 
     private record Cursor(Instant occurredAt, UUID id) {}

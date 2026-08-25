@@ -1,4 +1,4 @@
-package io.taskmigo.resource;
+package io.taskmigo.project;
 
 import java.time.Instant;
 import java.util.List;
@@ -7,8 +7,6 @@ import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /// Describes one project-domain audit event retained by the history module.
-///
-/// Actor and target display names are snapshots so old history remains readable after later renames or deletion.
 public record ProjectChanged(
     UUID id,
     UUID projectId,
@@ -35,17 +33,9 @@ public record ProjectChanged(
         MEMBER_ROLES_CHANGED,
     }
 
-    public enum ActorType {
-        USER,
-        SERVICE,
-        SYSTEM,
-    }
+    public enum ActorType { USER, SERVICE, SYSTEM }
 
-    public enum TargetType {
-        PROJECT,
-        USER,
-        GROUP,
-    }
+    public enum TargetType { PROJECT, USER, GROUP }
 
     public record Actor(ActorType type, String id, String displayName) {}
 
