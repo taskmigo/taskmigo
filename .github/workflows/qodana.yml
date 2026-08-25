@@ -59,64 +59,15 @@ jobs:
             --within-docker false
             --project-dir server
 
-      - name: Qodana failure summary
+      - name: Upload SARIF for AI agents
         if: ${{ failure() }}
-        env:
-          SARIF_FILE: ${{ runner.temp }}/qodana/results/qodana.sarif.json
-          FINDING_LIMIT: "80"
-          GROUP_LIMIT: "15"
-        run: |
-          if [[ ! -f "$SARIF_FILE" ]]; then
-            echo "::error::Qodana failed before producing SARIF: $SARIF_FILE"
-            exit 0
-          fi
-
-          echo "::group::Qodana failure summary for AI agents"
-          if ! jq -r --argjson findingLimit "$FINDING_LIMIT" --argjson groupLimit "$GROUP_LIMIT" '
-            [.runs[].results[]] as $results |
-            ($results | length) as $total |
-            "Total findings: \($total)",
-            "Affected rules: \($results | map(.ruleId // "<unknown>") | unique | length)",
-            "Affected files: \($results | map(.locations[0].physicalLocation.artifactLocation.uri // "<unknown>") | unique | length)",
-            "",
-            "Top rules:",
-            (
-              $results
-              | sort_by(.ruleId // "<unknown>")
-              | group_by(.ruleId // "<unknown>")
-              | map({name: (.[0].ruleId // "<unknown>"), count: length})
-              | sort_by([-.count, .name])
-              | .[:$groupLimit][]
-              | "  \(.count)\t\(.name)"
-            ),
-            "",
-            "Top files:",
-            (
-              $results
-              | sort_by(.locations[0].physicalLocation.artifactLocation.uri // "<unknown>")
-              | group_by(.locations[0].physicalLocation.artifactLocation.uri // "<unknown>")
-              | map({name: (.[0].locations[0].physicalLocation.artifactLocation.uri // "<unknown>"), count: length})
-              | sort_by([-.count, .name])
-              | .[:$groupLimit][]
-              | "  \(.count)\t\(.name)"
-            ),
-            "",
-            "Concrete findings (showing \([$total, $findingLimit] | min) of \($total)):",
-            (
-              $results[:$findingLimit][] |
-              . as $result |
-              ($result.locations[0].physicalLocation // {}) as $location |
-              (($result.message.text // "") | gsub("[\\r\\n\\t]+"; " ") | .[:500]) as $message |
-              "\($location.artifactLocation.uri // "<unknown>"):\($location.region.startLine // "?") [\($result.ruleId // "<unknown>")] \($message)"
-            ),
-            if $total > $findingLimit then
-              "",
-              "Output truncated: \($total - $findingLimit) additional findings are available in GitHub code scanning."
-            else empty end
-          ' "$SARIF_FILE"; then
-            echo "::warning::Could not parse Qodana SARIF; inspect the Scan step above."
-          fi
-          echo "::endgroup::"
+        uses: actions/upload-artifact@v4
+        with:
+          name: qodana-sarif
+          path: ${{ runner.temp }}/qodana/results/qodana.sarif.json
+          if-no-files-found: warn
+          compression-level: 9
+          retention-days: 1
 
       - name: Upload SARIF
         if: ${{ always() }}
