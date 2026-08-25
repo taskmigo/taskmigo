@@ -8,6 +8,7 @@ dependencies {
     api(libs.jspecify)
     api(libs.spring.modulith.starter.core)
 
+    implementation(libs.jackson.databind)
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.boot.starter.flyway)
     implementation(libs.flyway.postgresql)

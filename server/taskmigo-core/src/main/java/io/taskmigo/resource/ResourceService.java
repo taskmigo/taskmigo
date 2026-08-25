@@ -1,11 +1,16 @@
 package io.taskmigo.resource;
 
+import java.time.Instant;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +28,7 @@ public class ResourceService {
     private final RoleRepository roles;
     private final ProjectRepository projects;
     private final ProjectMemberRepository projectMembers;
+    private final ApplicationEventPublisher events;
 
     ResourceService(
         OrganizationRepository organizations,
@@ -30,7 +36,8 @@ public class ResourceService {
         GroupRepository groups,
         RoleRepository roles,
         ProjectRepository projects,
-        ProjectMemberRepository projectMembers
+        ProjectMemberRepository projectMembers,
+        ApplicationEventPublisher events
     ) {
         this.organizations = organizations;
         this.users = users;
@@ -38,6 +45,7 @@ public class ResourceService {
         this.roles = roles;
         this.projects = projects;
         this.projectMembers = projectMembers;
+        this.events = events;
     }
 
     /// Creates an organization after trimming required text fields and enforcing key uniqueness.
@@ -177,14 +185,6 @@ public class ResourceService {
     }
 
     /// Creates an active project and enforces project-key uniqueness within its organization.
-    ///
-    /// @param organizationId the organization that owns the project
-    /// @param key the project key unique within the organization
-    /// @param name the project display name
-    /// @param description the optional project description
-    /// @return the generated project id
-    /// @throws ResourceException if the organization does not exist, a required field is blank, or the project key
-    ///     already exists in the organization
     @Transactional
     public UUID createProject(
         UUID organizationId,
@@ -192,78 +192,129 @@ public class ResourceService {
         @Nullable String name,
         @Nullable String description
     ) {
+        return this.createProject(organizationId, key, name, description, systemActor());
+    }
+
+    /// Creates an active project and records the actor responsible for the change.
+    @Transactional
+    public UUID createProject(
+        UUID organizationId,
+        @Nullable String key,
+        @Nullable String name,
+        @Nullable String description,
+        ProjectChanged.Actor actor
+    ) {
         try {
-            return this.projects
-                .saveAndFlush(
-                    new ProjectEntity(
-                        UUID.randomUUID(),
-                        this.organization(organizationId),
-                        required(key, "key"),
-                        required(name, "name"),
-                        description
-                    )
+            ProjectEntity project = this.projects.saveAndFlush(
+                new ProjectEntity(
+                    UUID.randomUUID(),
+                    this.organization(organizationId),
+                    required(key, "key"),
+                    required(name, "name"),
+                    description
                 )
-                .getId();
+            );
+            this.publish(
+                project,
+                ProjectChanged.Action.PROJECT_CREATED,
+                actor,
+                this.projectTarget(project),
+                List.of(),
+                projectSnapshot(project)
+            );
+            return project.getId();
         } catch (DataIntegrityViolationException exception) {
             throw conflict("Project key already exists in the Organization", exception);
         }
     }
 
     /// Archives a project, making subsequent membership mutations fail as conflicts.
-    ///
-    /// @param projectId the project to archive
-    /// @throws ResourceException if the project does not exist
     @Transactional
     public void archiveProject(UUID projectId) {
-        this.project(projectId).status = ProjectStatus.ARCHIVED;
+        this.archiveProject(projectId, systemActor());
+    }
+
+    /// Archives a project and records the actor responsible for the change.
+    @Transactional
+    public void archiveProject(UUID projectId, ProjectChanged.Actor actor) {
+        ProjectEntity project = this.project(projectId);
+        project.status = ProjectStatus.ARCHIVED;
+        this.publish(
+            project,
+            ProjectChanged.Action.PROJECT_ARCHIVED,
+            actor,
+            this.projectTarget(project),
+            List.of(new ProjectChanged.Change("status", ProjectStatus.ACTIVE.name(), ProjectStatus.ARCHIVED.name())),
+            Map.of()
+        );
     }
 
     /// Adds a user or group principal to an active project.
-    ///
-    /// @param projectId the active project receiving the member
-    /// @param principalType either `USER` or `GROUP`, case-insensitively
-    /// @param principalId the id of the referenced user or group
-    /// @return the generated project-member id
-    /// @throws ResourceException if the project is archived, the principal type is invalid, the principal does not
-    ///     exist, or the principal is already a member
     @Transactional
     public UUID addProjectMember(UUID projectId, @Nullable String principalType, UUID principalId) {
+        return this.addProjectMember(projectId, principalType, principalId, systemActor());
+    }
+
+    /// Adds a user or group principal to an active project and records the actor responsible for the change.
+    @Transactional
+    public UUID addProjectMember(
+        UUID projectId,
+        @Nullable String principalType,
+        UUID principalId,
+        ProjectChanged.Actor actor
+    ) {
         ProjectEntity project = this.activeProject(projectId);
         PrincipalType type = principalType(principalType);
-        this.assertPrincipalExists(type, principalId);
+        ProjectChanged.Target target = this.principalTarget(type, principalId);
         try {
-            return this.projectMembers
-                .saveAndFlush(new ProjectMemberEntity(UUID.randomUUID(), project, type, principalId))
-                .getId();
+            ProjectMemberEntity member = this.projectMembers.saveAndFlush(
+                new ProjectMemberEntity(UUID.randomUUID(), project, type, principalId)
+            );
+            ProjectChanged.Action action = isSelf(actor, target)
+                ? ProjectChanged.Action.MEMBER_JOINED
+                : ProjectChanged.Action.MEMBER_ADDED;
+            this.publish(project, action, actor, target, List.of(), Map.of("membershipId", member.getId()));
+            return member.getId();
         } catch (DataIntegrityViolationException exception) {
             throw conflict("Principal is already a Project Member", exception);
         }
     }
 
     /// Removes a membership only when it belongs to the specified active project.
-    ///
-    /// @param projectId the project that must own the membership
-    /// @param projectMemberId the membership to remove
-    /// @throws ResourceException if the project is archived, the project or member does not exist, or the member
-    ///     belongs to another project
     @Transactional
     public void removeProjectMember(UUID projectId, UUID projectMemberId) {
-        this.activeProject(projectId);
+        this.removeProjectMember(projectId, projectMemberId, systemActor());
+    }
+
+    /// Removes a project membership and distinguishes self-leave from removal by another actor.
+    @Transactional
+    public void removeProjectMember(UUID projectId, UUID projectMemberId, ProjectChanged.Actor actor) {
+        ProjectEntity project = this.activeProject(projectId);
         ProjectMemberEntity member = this.projectMember(projectMemberId);
         if (!member.project.getId().equals(projectId)) throw notFound("Project Member not found in Project");
+        ProjectChanged.Target target = this.principalTarget(member.principalType, member.principalId);
         this.projectMembers.delete(member);
         this.projectMembers.flush();
+        ProjectChanged.Action action = isSelf(actor, target)
+            ? ProjectChanged.Action.MEMBER_LEFT
+            : ProjectChanged.Action.MEMBER_REMOVED;
+        this.publish(project, action, actor, target, List.of(), Map.of("membershipId", projectMemberId));
     }
 
     /// Replaces a project member's roles, allowing only roles owned by the project's organization.
-    ///
-    /// @param projectId the active project that owns the membership
-    /// @param projectMemberId the membership whose roles are replaced
-    /// @param roleIds the complete desired role set; an absent set removes all roles
-    /// @throws ResourceException if the project is archived, a referenced resource is missing, or a role belongs to
-    ///     another organization
     @Transactional
     public void setProjectMemberRoles(UUID projectId, UUID projectMemberId, @Nullable Set<UUID> roleIds) {
+        this.setProjectMemberRoles(projectId, projectMemberId, roleIds, systemActor());
+    }
+
+    /// Replaces a project member's roles and records before/after role snapshots for audit presentation.
+    @Transactional
+    public void setProjectMemberRoles(
+        UUID projectId,
+        UUID projectMemberId,
+        @Nullable Set<UUID> roleIds,
+        ProjectChanged.Actor actor
+    ) {
         ProjectEntity project = this.activeProject(projectId);
         ProjectMemberEntity member = this.projectMember(projectMemberId);
         if (!member.project.getId().equals(projectId)) throw notFound("Project Member not found in Project");
@@ -275,9 +326,21 @@ public class ResourceService {
                 throw badRequest("A Project Member can receive only Roles owned by the Project Organization");
             }
         }
+        List<Map<String, Object>> before = roleSnapshots(member.roles);
         member.roles.clear();
         member.roles.addAll(requestedRoles);
         this.projectMembers.flush();
+        List<Map<String, Object>> after = roleSnapshots(member.roles);
+        if (!before.equals(after)) {
+            this.publish(
+                project,
+                ProjectChanged.Action.MEMBER_ROLES_CHANGED,
+                actor,
+                this.principalTarget(member.principalType, member.principalId),
+                List.of(new ProjectChanged.Change("roles", before, after)),
+                Map.of("membershipId", projectMemberId)
+            );
+        }
     }
 
     /// Computes the union of permissions granted directly to a user and through all of the user's project-member groups.
@@ -309,6 +372,65 @@ public class ResourceService {
         return Set.copyOf(permissions);
     }
 
+    private void publish(
+        ProjectEntity project,
+        ProjectChanged.Action action,
+        ProjectChanged.Actor actor,
+        ProjectChanged.@Nullable Target target,
+        List<ProjectChanged.Change> changes,
+        Map<String, Object> data
+    ) {
+        this.events.publishEvent(
+            new ProjectChanged(UUID.randomUUID(), project.getId(), action, actor, target, changes, data, Instant.now())
+        );
+    }
+
+    private ProjectChanged.Target projectTarget(ProjectEntity project) {
+        return new ProjectChanged.Target(ProjectChanged.TargetType.PROJECT, project.getId().toString(), project.name);
+    }
+
+    private ProjectChanged.Target principalTarget(PrincipalType type, UUID id) {
+        return switch (type) {
+            case USER -> {
+                UserEntity user = this.user(id);
+                yield new ProjectChanged.Target(ProjectChanged.TargetType.USER, id.toString(), user.displayName);
+            }
+            case GROUP -> {
+                GroupEntity group = this.group(id);
+                yield new ProjectChanged.Target(ProjectChanged.TargetType.GROUP, id.toString(), group.name);
+            }
+        };
+    }
+
+    private static boolean isSelf(ProjectChanged.Actor actor, ProjectChanged.Target target) {
+        return (
+            actor.type() == ProjectChanged.ActorType.USER &&
+            target.type() == ProjectChanged.TargetType.USER &&
+            actor.id().equals(target.id())
+        );
+    }
+
+    private static Map<String, Object> projectSnapshot(ProjectEntity project) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("key", project.key);
+        snapshot.put("name", project.name);
+        if (project.description != null) snapshot.put("description", project.description);
+        snapshot.put("status", project.status.name());
+        return Map.copyOf(snapshot);
+    }
+
+    private static List<Map<String, Object>> roleSnapshots(Set<RoleEntity> roles) {
+        return roles
+            .stream()
+            .sorted((left, right) -> left.getId().compareTo(right.getId()))
+            .map(role -> Map.<String, Object>of("id", role.getId(), "name", role.name))
+            .toList();
+    }
+
+    private static ProjectChanged.Actor systemActor() {
+        return new ProjectChanged.Actor(ProjectChanged.ActorType.SYSTEM, "taskmigo", "Taskmigo System");
+    }
+
     private void collectPermissions(ProjectMemberEntity member, Set<String> permissions) {
         for (RoleEntity role : member.roles) permissions.addAll(role.permissions);
     }
@@ -337,14 +459,6 @@ public class ResourceService {
 
     private ProjectMemberEntity projectMember(UUID id) {
         return this.projectMembers.findById(id).orElseThrow(() -> notFound("Project Member not found"));
-    }
-
-    private void assertPrincipalExists(PrincipalType type, UUID principalId) {
-        boolean exists = switch (type) {
-            case USER -> this.users.existsById(principalId);
-            case GROUP -> this.groups.existsById(principalId);
-        };
-        if (!exists) throw badRequest("Project Member principal does not exist");
     }
 
     private static PrincipalType principalType(@Nullable String value) {

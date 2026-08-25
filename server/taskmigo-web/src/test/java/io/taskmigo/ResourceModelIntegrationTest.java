@@ -3,7 +3,9 @@ package io.taskmigo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.taskmigo.history.ProjectHistory;
 import io.taskmigo.resource.PermissionCatalog;
+import io.taskmigo.resource.ProjectChanged;
 import io.taskmigo.resource.ResourceException;
 import io.taskmigo.resource.ResourceService;
 import java.util.Objects;
@@ -35,6 +37,9 @@ class ResourceModelIntegrationTest {
     ResourceService resources;
 
     @Autowired
+    ProjectHistory history;
+
+    @Autowired
     JdbcTemplate jdbc;
 
     @Autowired
@@ -43,16 +48,91 @@ class ResourceModelIntegrationTest {
     @Test
     void flywayBuildsTheSchemaAndHibernateOnlyValidatesIt() {
         var current = Objects.requireNonNull(this.flyway.info().current());
-        assertThat(current.getVersion().getVersion()).isEqualTo("2");
+        assertThat(current.getVersion().getVersion()).isEqualTo("3");
         assertThat(
             this.jdbc.queryForObject("select count(*) from flyway_schema_history where success", Integer.class)
-        ).isEqualTo(2);
+        ).isEqualTo(3);
         assertThat(
             this.jdbc.queryForObject(
                 "select count(*) from information_schema.tables where table_name = 'project_members'",
                 Integer.class
             )
         ).isEqualTo(1);
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from information_schema.tables where table_name = 'project_history'",
+                Integer.class
+            )
+        ).isEqualTo(1);
+    }
+
+    @Test
+    void projectMutationsRecordStructuredHistoryWithStableCursorPagination() {
+        UUID org = this.resources.createOrganization("history-" + UUID.randomUUID(), "History Org");
+        UUID user = this.resources.createUser(
+            org,
+            "history-user-" + UUID.randomUUID(),
+            UUID.randomUUID() + "@example.com",
+            "History User"
+        );
+        var admin = new ProjectChanged.Actor(ProjectChanged.ActorType.USER, UUID.randomUUID().toString(), "Admin User");
+        var self = new ProjectChanged.Actor(ProjectChanged.ActorType.USER, user.toString(), "History User");
+        UUID project = this.resources.createProject(
+            org,
+            "history-project-" + UUID.randomUUID(),
+            "History Project",
+            null,
+            admin
+        );
+        UUID role = this.resources.createRole(org, "History Role", null, Set.of(PermissionCatalog.PROJECT_READ));
+        UUID member = this.resources.addProjectMember(project, "USER", user, self);
+        this.resources.setProjectMemberRoles(project, member, Set.of(role), admin);
+        this.resources.removeProjectMember(project, member, admin);
+        this.resources.archiveProject(project, admin);
+
+        ProjectHistory.Page first = this.history.list(project, null, 2);
+        assertThat(first.items()).hasSize(2);
+        assertThat(first.nextCursor()).isNotNull();
+        assertThat(first.items().getFirst().action()).isEqualTo(ProjectChanged.Action.PROJECT_ARCHIVED);
+        assertThat(first.items().get(1).action()).isEqualTo(ProjectChanged.Action.MEMBER_REMOVED);
+        assertThat(first.items().get(1).actor().displayName()).isEqualTo("Admin User");
+        ProjectChanged.Target removedTarget = Objects.requireNonNull(first.items().get(1).target());
+        assertThat(removedTarget.displayName()).isEqualTo("History User");
+
+        String firstCursor = Objects.requireNonNull(first.nextCursor());
+        ProjectHistory.Page second = this.history.list(project, firstCursor, 2);
+        assertThat(second.items())
+            .extracting(ProjectHistory.Entry::action)
+            .containsExactly(ProjectChanged.Action.MEMBER_ROLES_CHANGED, ProjectChanged.Action.MEMBER_JOINED);
+        assertThat(second.items().getFirst().changes())
+            .singleElement()
+            .satisfies(change -> {
+                assertThat(change.field()).isEqualTo("roles");
+                assertThat(change.before()).isInstanceOf(java.util.List.class);
+                assertThat(change.after()).isInstanceOf(java.util.List.class);
+            });
+        assertThat(second.nextCursor()).isNotNull();
+
+        String secondCursor = Objects.requireNonNull(second.nextCursor());
+        ProjectHistory.Page third = this.history.list(project, secondCursor, 2);
+        assertThat(third.items())
+            .extracting(ProjectHistory.Entry::action)
+            .containsExactly(ProjectChanged.Action.PROJECT_CREATED);
+        assertThat(third.nextCursor()).isNull();
+
+        assertThat(
+            this.jdbc.queryForList(
+                "select action from project_history where project_id = ? order by occurred_at, id",
+                String.class,
+                project
+            )
+        ).containsExactlyInAnyOrder(
+            "PROJECT_CREATED",
+            "MEMBER_JOINED",
+            "MEMBER_ROLES_CHANGED",
+            "MEMBER_REMOVED",
+            "PROJECT_ARCHIVED"
+        );
     }
 
     @Test
