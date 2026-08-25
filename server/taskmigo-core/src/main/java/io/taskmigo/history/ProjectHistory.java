@@ -70,16 +70,16 @@ public class ProjectHistory {
     }
 
     private static Specification<ProjectHistoryEntity> projectId(UUID projectId) {
-        return (root, query, builder) -> builder.equal(root.<UUID>get("projectId"), projectId);
+        return (root, query, builder) -> builder.equal(root.get("projectId"), projectId);
     }
 
     private static Specification<ProjectHistoryEntity> before(Cursor cursor) {
         return (root, query, builder) ->
             builder.or(
-                builder.lessThan(root.<Instant>get("occurredAt"), cursor.occurredAt()),
+                builder.lessThan(root.get("occurredAt"), cursor.occurredAt()),
                 builder.and(
-                    builder.equal(root.<Instant>get("occurredAt"), cursor.occurredAt()),
-                    builder.lessThan(root.<UUID>get("id"), cursor.id())
+                    builder.equal(root.get("occurredAt"), cursor.occurredAt()),
+                    builder.lessThan(root.get("id"), cursor.id())
                 )
             );
     }
