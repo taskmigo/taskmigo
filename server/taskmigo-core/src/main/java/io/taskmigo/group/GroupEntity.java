@@ -14,7 +14,7 @@ import org.jspecify.annotations.Nullable;
 
 @Entity
 @Table(name = "groups")
-@SuppressWarnings("NotNullFieldNotInitialized")
+@SuppressWarnings({ "CanBeFinal", "NotNullFieldNotInitialized" })
 class GroupEntity {
 
     @Id

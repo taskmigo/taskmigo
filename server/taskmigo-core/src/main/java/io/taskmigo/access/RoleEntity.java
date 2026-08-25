@@ -15,7 +15,7 @@ import org.jspecify.annotations.Nullable;
 
 @Entity
 @Table(name = "roles")
-@SuppressWarnings("NotNullFieldNotInitialized")
+@SuppressWarnings({ "CanBeFinal", "NotNullFieldNotInitialized" })
 class RoleEntity {
 
     @Id

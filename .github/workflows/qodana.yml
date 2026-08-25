@@ -40,19 +40,6 @@ jobs:
           distribution: temurin
           java-version: "26"
           cache: gradle
-          cache-dependency-path: |
-            server/**/*.gradle*
-            server/gradle/libs.versions.toml
-
-      - name: Resolve project dependencies
-        working-directory: server
-        run: >-
-          ./gradlew --no-daemon --console=plain
-          :taskmigo-core:classes
-          :taskmigo-web:classes
-          :taskmigo-web:testClasses
-          :taskmigo-worker:classes
-          :taskmigo-worker:testClasses
 
       - name: Scan
         uses: JetBrains/qodana-action@v2026.2
@@ -60,45 +47,45 @@ jobs:
           pr-mode: false
           upload-result: false
           use-caches: true
+          # Save an exact cache for the current Gradle graph, but when the graph
+          # changes restore the newest cache produced by the same Qodana/JDK/OS
+          # combination. Qodana then resyncs the Gradle model instead of doing a
+          # completely cold IDE import and downloading source artifacts again.
           primary-cache-key: >-
             qodana-2026.2-java26-${{ runner.os }}-${{ hashFiles('server/**/*.gradle*', 'server/gradle/libs.versions.toml') }}
-          additional-cache-key: >-
-            qodana-2026.2-java26-${{ runner.os }}-${{ hashFiles('server/**/*.gradle*', 'server/gradle/libs.versions.toml') }}
+          additional-cache-key: qodana-2026.2-java26-${{ runner.os }}-
           args: >-
             --linter qodana-jvm-community
             --within-docker false
             --project-dir server
 
-      - name: Agent failure summary
+      - name: Qodana failure summary
         if: ${{ failure() }}
         env:
           SARIF_FILE: ${{ runner.temp }}/qodana/results/qodana.sarif.json
         run: |
-          python3 - <<'PY'
-          import json
-          import os
-          from pathlib import Path
+          if [[ ! -f "$SARIF_FILE" ]]; then
+            echo "::error::Qodana failed before producing SARIF: $SARIF_FILE"
+            exit 0
+          fi
 
-          path = Path(os.environ["SARIF_FILE"])
-          print("::group::Qodana findings for AI agents")
-          if not path.is_file():
-              print(f"SARIF not found: {path}")
-          else:
-              sarif = json.loads(path.read_text())
-              findings = []
-              for run in sarif.get("runs", []):
-                  for result in run.get("results", []):
-                      location = (result.get("locations") or [{}])[0].get("physicalLocation", {})
-                      artifact = location.get("artifactLocation", {}).get("uri", "<unknown>")
-                      line = location.get("region", {}).get("startLine", "?")
-                      rule = result.get("ruleId", "<unknown>")
-                      message = result.get("message", {}).get("text", "").replace("\n", " ")
-                      findings.append(f"{artifact}:{line} [{rule}] {message}")
-              for finding in findings[:200]:
-                  print(finding)
-              print(f"Total findings: {len(findings)}")
-          print("::endgroup::")
-          PY
+          jq -r '
+            [.runs[].results[]] as $results |
+            "Qodana findings: \($results | length)",
+            "Affected rules: \($results | map(.ruleId // "<unknown>") | unique | length)",
+            "Affected files: \($results | map(.locations[0].physicalLocation.artifactLocation.uri // "<unknown>") | unique | length)",
+            "Full details: download the qodana-sarif workflow artifact."
+          ' "$SARIF_FILE" || echo "::warning::Could not parse Qodana SARIF. Download the qodana-sarif artifact for details."
+
+      - name: Upload SARIF artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: qodana-sarif
+          path: ${{ runner.temp }}/qodana/results/qodana.sarif.json
+          if-no-files-found: ignore
+          compression-level: 6
+          retention-days: 7
 
       - name: Upload SARIF
         if: ${{ always() }}

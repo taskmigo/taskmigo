@@ -6,8 +6,10 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+@SuppressWarnings("ClassNameDiffersFromFileName")
 interface ProjectRepository extends JpaRepository<ProjectEntity, UUID> {}
 
+@SuppressWarnings("ClassNameDiffersFromFileName")
 interface ProjectMemberRepository extends JpaRepository<ProjectMemberEntity, UUID> {
     Optional<ProjectMemberEntity> findByProjectIdAndPrincipalTypeAndPrincipalId(
         UUID projectId,

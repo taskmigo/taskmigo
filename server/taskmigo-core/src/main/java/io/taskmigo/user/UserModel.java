@@ -10,7 +10,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "users")
-@SuppressWarnings("NotNullFieldNotInitialized")
+@SuppressWarnings({ "ClassNameDiffersFromFileName", "NotNullFieldNotInitialized" })
 class UserEntity {
 
     @Id
@@ -44,6 +44,7 @@ class UserEntity {
     }
 }
 
+@SuppressWarnings("ClassNameDiffersFromFileName")
 enum UserStatus {
     ACTIVE,
     SUSPENDED,

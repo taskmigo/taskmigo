@@ -17,7 +17,7 @@ import org.jspecify.annotations.Nullable;
 
 @Entity
 @Table(name = "projects")
-@SuppressWarnings("NotNullFieldNotInitialized")
+@SuppressWarnings({ "CanBeFinal", "ClassNameDiffersFromFileName", "NotNullFieldNotInitialized" })
 class ProjectEntity {
 
     @Id
@@ -54,7 +54,7 @@ class ProjectEntity {
 
 @Entity
 @Table(name = "project_members")
-@SuppressWarnings("NotNullFieldNotInitialized")
+@SuppressWarnings({ "CanBeFinal", "ClassNameDiffersFromFileName", "NotNullFieldNotInitialized" })
 class ProjectMemberEntity {
 
     @Id
@@ -85,11 +85,13 @@ class ProjectMemberEntity {
     }
 }
 
+@SuppressWarnings("ClassNameDiffersFromFileName")
 enum ProjectStatus {
     ACTIVE,
     ARCHIVED,
 }
 
+@SuppressWarnings("ClassNameDiffersFromFileName")
 enum PrincipalType {
     USER,
     GROUP,
