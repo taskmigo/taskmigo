@@ -1,0 +1,17 @@
+plugins {
+    java
+    id("org.springframework.boot")
+}
+
+description = "Taskmigo background worker application"
+
+dependencies {
+    implementation(libs.jspecify)
+    implementation(project(":modules:database"))
+    implementation(project(":modules:organization"))
+    implementation(project(":modules:project"))
+    implementation(libs.spring.boot.core.starter)
+
+    testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.spring.modulith.starter.test)
+}

@@ -1,7 +1,10 @@
 rootProject.name = "taskmigo"
 
 include(
-    "taskmigo-core",
-    "taskmigo-web",
-    "taskmigo-worker",
+    ":modules:foundation",
+    ":modules:database",
+    ":modules:organization",
+    ":modules:project",
+    ":apps:web",
+    ":apps:worker",
 )

@@ -43,34 +43,18 @@ jobs:
           java-version: "26"
           cache: gradle
 
-      - name: Cache native Qodana linter
-        uses: actions/cache@v5.1.0
-        with:
-          path: |
-            ${{ runner.temp }}/qodana-system
-            !${{ runner.temp }}/qodana-system/state
-          key: qodana-native-v1-2026.2-qodana-jvm-community-${{ runner.os }}-${{ runner.arch }}
-
       - name: Scan
         uses: JetBrains/qodana-action@v2026.2
         with:
           pr-mode: false
           upload-result: false
-          use-caches: true
-          # Keep the action-managed project cache under a dedicated subtree.
-          # Qodana native mode derives its system directory by walking two
-          # levels up from cache-dir, so this makes qodana-system the stable
-          # root that the preceding cache step persists for the IDE/linter.
+          # Do not enable cross-run Qodana caches in native mode. The cached IDE
+          # project model contains absolute Gradle library roots under the runner's
+          # home directory. Restoring that model on another ephemeral runner can
+          # leave those roots unresolved and turn a healthy project into thousands
+          # of false Java sanity findings. Gradle's own cache remains enabled above.
+          use-caches: false
           cache-dir: ${{ runner.temp }}/qodana-system/state/cache
-          # Qodana caches IntelliJ/Gradle project state, while GitHub keeps PR
-          # caches isolated from the default branch. Keep each saved cache tied
-          # to the analyzed commit, and allow fallback only within the exact
-          # Qodana/JDK/OS/Gradle-graph compatibility boundary. The v3 namespace
-          # also prevents restoration of the stale broad fallback cache.
-          primary-cache-key: >-
-            qodana-project-v3-2026.2-java26-${{ runner.os }}-${{ hashFiles('server/**/*.gradle*', 'server/gradle/libs.versions.toml') }}-${{ github.event.pull_request.head.sha || github.sha }}
-          additional-cache-key: >-
-            qodana-project-v3-2026.2-java26-${{ runner.os }}-${{ hashFiles('server/**/*.gradle*', 'server/gradle/libs.versions.toml') }}-
           args: >-
             --linter qodana-jvm-community
             --within-docker false

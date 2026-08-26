@@ -1,0 +1,27 @@
+spring:
+  config:
+    import: classpath:application-database.yaml
+
+springdoc:
+  api-docs:
+    path: /api/docs/openapi.json
+
+scalar:
+  enabled: true
+  sources:
+    - url: /api/docs/openapi.json/v0
+      title: Taskmigo API v0
+      slug: v0
+      default: true
+  path: /api/docs
+  page-title: Taskmigo API Reference
+  show-developer-tools: never
+  telemetry: false
+  agent:
+    disabled: true
+
+taskmigo:
+  security:
+    signing-key-file: ${TASKMIGO_OAUTH_SIGNING_KEY_FILE:./data/oauth-signing-key.pem}
+    signing-key-id: ${TASKMIGO_OAUTH_SIGNING_KEY_ID:primary}
+    signing-key-auto-create: ${TASKMIGO_OAUTH_SIGNING_KEY_AUTO_CREATE:false}

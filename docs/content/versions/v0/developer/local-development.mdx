@@ -49,7 +49,7 @@ export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENT
 export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_AUTHORIZATIONGRANTTYPES=client_credentials
 export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_SCOPES=taskmigo.api
 export TASKMIGO_OAUTH_SIGNING_KEY_AUTO_CREATE=true
-./gradlew :taskmigo-web:bootRun
+./gradlew :apps:web:bootRun
 ```
 
 Open [the API reference](http://localhost:8080/api/docs) after startup. The OpenAPI document is available at
@@ -78,7 +78,7 @@ the same Flyway migrations.
 
 ```bash
 cd server
-./gradlew :taskmigo-worker:bootRun
+./gradlew :apps:worker:bootRun
 ```
 
 ## Run the documentation site
