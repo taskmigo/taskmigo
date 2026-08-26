@@ -1,12 +1,10 @@
 package io.taskmigo.organization;
 
-import java.io.Serial;
+import io.taskmigo.foundation.domain.DomainException;
+import io.taskmigo.foundation.domain.DomainFailureType;
 
 /// Reports an organization-domain failure with a transport-neutral category.
-public final class OrganizationException extends RuntimeException {
-
-    @Serial
-    private static final long serialVersionUID = 1L;
+public final class OrganizationException extends DomainException {
 
     public enum Type {
         BAD_REQUEST,
@@ -14,19 +12,11 @@ public final class OrganizationException extends RuntimeException {
         CONFLICT,
     }
 
-    private final Type type;
-
     OrganizationException(Type type, String message) {
-        super(message);
-        this.type = type;
+        super(DomainFailureType.valueOf(type.name()), message);
     }
 
     OrganizationException(Type type, String message, Throwable cause) {
-        super(message, cause);
-        this.type = type;
-    }
-
-    public Type type() {
-        return this.type;
+        super(DomainFailureType.valueOf(type.name()), message, cause);
     }
 }
