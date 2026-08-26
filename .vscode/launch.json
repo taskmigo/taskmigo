@@ -6,7 +6,7 @@
       "name": "Taskmigo Web",
       "request": "launch",
       "mainClass": "io.taskmigo.TaskmigoApplication",
-      "projectName": "taskmigo-web",
+      "projectName": "web",
       "cwd": "${workspaceFolder}/server",
       "env": {
         "TASKMIGO_DATABASE_URL": "jdbc:postgresql://localhost:5432/taskmigo",
@@ -25,7 +25,7 @@
       "name": "Taskmigo Worker",
       "request": "launch",
       "mainClass": "io.taskmigo.TaskmigoWorkerApplication",
-      "projectName": "taskmigo-worker",
+      "projectName": "worker",
       "cwd": "${workspaceFolder}/server",
       "env": {
         "TASKMIGO_DATABASE_URL": "jdbc:postgresql://localhost:5432/taskmigo",
