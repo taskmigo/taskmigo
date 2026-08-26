@@ -1,10 +1,6 @@
 package io.taskmigo.web.api.v0.feature;
 
-import io.taskmigo.access.AccessException;
-import io.taskmigo.group.GroupException;
-import io.taskmigo.organization.OrganizationException;
-import io.taskmigo.project.ProjectException;
-import io.taskmigo.user.UserException;
+import io.taskmigo.foundation.domain.DomainException;
 import io.taskmigo.web.api.v0.infrastructure.response.ApiResponse;
 import io.taskmigo.web.api.v0.infrastructure.response.ApiResponseFactory;
 import org.jspecify.annotations.Nullable;
@@ -25,28 +21,8 @@ class DomainExceptionHandler {
         this.responses = responses;
     }
 
-    @ExceptionHandler(OrganizationException.class)
-    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> organization(OrganizationException exception) {
-        return this.failure(exception.type().name(), exception.getMessage());
-    }
-
-    @ExceptionHandler(UserException.class)
-    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> user(UserException exception) {
-        return this.failure(exception.type().name(), exception.getMessage());
-    }
-
-    @ExceptionHandler(GroupException.class)
-    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> group(GroupException exception) {
-        return this.failure(exception.type().name(), exception.getMessage());
-    }
-
-    @ExceptionHandler(AccessException.class)
-    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> access(AccessException exception) {
-        return this.failure(exception.type().name(), exception.getMessage());
-    }
-
-    @ExceptionHandler(ProjectException.class)
-    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> project(ProjectException exception) {
+    @ExceptionHandler(DomainException.class)
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> domain(DomainException exception) {
         return this.failure(exception.type().name(), exception.getMessage());
     }
 
