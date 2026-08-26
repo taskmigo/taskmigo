@@ -1,5 +1,6 @@
 package io.taskmigo.web.api.v0.feature.project;
 
+import io.taskmigo.foundation.pagination.CursorPage;
 import io.taskmigo.history.ProjectHistory;
 import io.taskmigo.project.ProjectChanged;
 import io.taskmigo.project.ProjectService;
@@ -122,7 +123,7 @@ class ProjectController {
         @RequestParam(required = false) @Nullable String cursor,
         @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit
     ) {
-        ProjectHistory.Page page = this.history.list(projectId, cursor, limit);
+        CursorPage<ProjectHistory.Entry> page = this.history.list(projectId, cursor, limit);
         String nextCursor = page.nextCursor();
         return this.responses.ok(
             page.items(),
