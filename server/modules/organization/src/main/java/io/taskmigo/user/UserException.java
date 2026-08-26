@@ -1,12 +1,10 @@
 package io.taskmigo.user;
 
-import java.io.Serial;
+import io.taskmigo.foundation.domain.DomainException;
+import io.taskmigo.foundation.domain.DomainFailureType;
 
 /// Reports a user-domain failure with a transport-neutral category.
-public final class UserException extends RuntimeException {
-
-    @Serial
-    private static final long serialVersionUID = 1L;
+public final class UserException extends DomainException {
 
     public enum Type {
         BAD_REQUEST,
@@ -14,19 +12,11 @@ public final class UserException extends RuntimeException {
         CONFLICT,
     }
 
-    private final Type type;
-
     UserException(Type type, String message) {
-        super(message);
-        this.type = type;
+        super(DomainFailureType.valueOf(type.name()), message);
     }
 
     UserException(Type type, String message, Throwable cause) {
-        super(message, cause);
-        this.type = type;
-    }
-
-    public Type type() {
-        return this.type;
+        super(DomainFailureType.valueOf(type.name()), message, cause);
     }
 }
