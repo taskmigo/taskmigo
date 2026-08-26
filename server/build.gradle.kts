@@ -71,5 +71,11 @@ subprojects {
 }
 
 tasks.named("build") {
-    dependsOn(subprojects.map { "${it.path}:build" })
+    dependsOn(
+        subprojects.flatMap { project ->
+            project.subprojects.ifEmpty { setOf(project) }.mapNotNull { leaf ->
+                leaf.tasks.findByName("build")?.path
+            }
+        }
+    )
 }
