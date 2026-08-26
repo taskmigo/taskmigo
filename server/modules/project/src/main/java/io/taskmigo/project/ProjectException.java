@@ -2,9 +2,13 @@ package io.taskmigo.project;
 
 import io.taskmigo.foundation.DomainException;
 import io.taskmigo.foundation.DomainFailureType;
+import java.io.Serial;
 
 /// Reports a project-domain failure with a transport-neutral category.
 public final class ProjectException extends DomainException {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     public enum Type {
         BAD_REQUEST,
