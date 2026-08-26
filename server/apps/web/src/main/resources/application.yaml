@@ -1,6 +1,6 @@
 spring:
   config:
-    import: classpath:application-core.yaml
+    import: classpath:application-database.yaml
 
 springdoc:
   api-docs:
