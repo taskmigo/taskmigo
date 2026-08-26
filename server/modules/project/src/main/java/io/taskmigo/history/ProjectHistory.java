@@ -1,5 +1,7 @@
 package io.taskmigo.history;
 
+import io.taskmigo.foundation.pagination.CursorPage;
+import io.taskmigo.foundation.pagination.PageLimit;
 import io.taskmigo.project.ProjectChanged;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -23,7 +25,7 @@ import tools.jackson.databind.json.JsonMapper;
 @Service
 public class ProjectHistory {
 
-    private static final int MAX_PAGE_SIZE = 100;
+    private static final PageLimit PAGE_LIMIT = new PageLimit(20, 100);
     private static final Sort HISTORY_SORT = Sort.by(Sort.Order.desc("occurredAt"), Sort.Order.desc("id"));
     private static final TypeReference<List<ProjectChanged.Change>> CHANGES_TYPE = new TypeReference<>() {};
     private static final TypeReference<Map<String, Object>> DATA_TYPE = new TypeReference<>() {};
@@ -44,16 +46,16 @@ public class ProjectHistory {
     }
 
     @Transactional(readOnly = true)
-    public Page list(UUID projectId, @Nullable String cursor, int limit) {
-        if (limit < 1 || limit > MAX_PAGE_SIZE) throw new IllegalArgumentException("limit must be between 1 and 100");
-        Pageable pageable = PageRequest.of(0, limit + 1, HISTORY_SORT);
+    public CursorPage<Entry> list(UUID projectId, @Nullable String cursor, int limit) {
+        int pageSize = PAGE_LIMIT.require(limit);
+        Pageable pageable = PageRequest.of(0, pageSize + 1, HISTORY_SORT);
         Specification<ProjectHistoryEntity> specification = projectId(projectId);
         if (cursor != null && !cursor.isBlank()) specification = specification.and(before(decode(cursor)));
         List<ProjectHistoryEntity> rows = this.entries.findAll(specification, pageable).getContent();
-        boolean hasMore = rows.size() > limit;
-        List<ProjectHistoryEntity> pageRows = hasMore ? rows.subList(0, limit) : rows;
+        boolean hasMore = rows.size() > pageSize;
+        List<ProjectHistoryEntity> pageRows = hasMore ? rows.subList(0, pageSize) : rows;
         List<Entry> items = pageRows.stream().map(this::toEntry).toList();
-        return new Page(items, hasMore ? encode(pageRows.getLast()) : null);
+        return new CursorPage<>(items, hasMore ? encode(pageRows.getLast()) : null);
     }
 
     private static Specification<ProjectHistoryEntity> projectId(UUID projectId) {
@@ -138,8 +140,6 @@ public class ProjectHistory {
         Map<String, Object> data,
         Instant occurredAt
     ) {}
-
-    public record Page(List<Entry> items, @Nullable String nextCursor) {}
 
     private record Cursor(Instant occurredAt, UUID id) {}
 }
