@@ -1,7 +1,7 @@
 package io.taskmigo.access;
 
-import io.taskmigo.foundation.domain.DomainException;
-import io.taskmigo.foundation.domain.DomainFailureType;
+import io.taskmigo.foundation.DomainException;
+import io.taskmigo.foundation.DomainFailureType;
 
 /// Reports an access-domain failure with a transport-neutral category.
 public final class AccessException extends DomainException {

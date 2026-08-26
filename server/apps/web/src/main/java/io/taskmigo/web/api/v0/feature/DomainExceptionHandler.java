@@ -1,6 +1,6 @@
 package io.taskmigo.web.api.v0.feature;
 
-import io.taskmigo.foundation.domain.DomainException;
+import io.taskmigo.foundation.DomainException;
 import io.taskmigo.web.api.v0.infrastructure.response.ApiResponse;
 import io.taskmigo.web.api.v0.infrastructure.response.ApiResponseFactory;
 import org.jspecify.annotations.Nullable;

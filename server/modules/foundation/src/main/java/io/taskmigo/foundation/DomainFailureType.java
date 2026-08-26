@@ -1,4 +1,4 @@
-package io.taskmigo.foundation.domain;
+package io.taskmigo.foundation;
 
 /// Classifies transport-neutral domain failures shared across business capabilities.
 public enum DomainFailureType {

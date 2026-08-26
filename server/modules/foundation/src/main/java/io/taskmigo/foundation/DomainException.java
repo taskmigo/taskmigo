@@ -1,4 +1,4 @@
-package io.taskmigo.foundation.domain;
+package io.taskmigo.foundation;
 
 import java.io.Serial;
 

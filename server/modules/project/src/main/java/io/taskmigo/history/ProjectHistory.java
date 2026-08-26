@@ -1,7 +1,7 @@
 package io.taskmigo.history;
 
-import io.taskmigo.foundation.pagination.CursorPage;
-import io.taskmigo.foundation.pagination.PageLimit;
+import io.taskmigo.foundation.CursorPage;
+import io.taskmigo.foundation.PageLimit;
 import io.taskmigo.project.ProjectChanged;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;

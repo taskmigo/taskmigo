@@ -1,4 +1,4 @@
-package io.taskmigo.foundation.pagination;
+package io.taskmigo.foundation;
 
 /// Defines reusable bounds for a cursor-paginated endpoint without imposing feature-specific values.
 public record PageLimit(int defaultValue, int maximum) {

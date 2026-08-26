@@ -1,4 +1,3 @@
-/// Provides transport-neutral domain failure primitives to capability modules.
-@org.springframework.modulith.ApplicationModule
+/// Provides framework-neutral primitives shared across capability modules.
 @org.jspecify.annotations.NullMarked
 package io.taskmigo.foundation;

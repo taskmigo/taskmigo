@@ -1,7 +1,7 @@
 package io.taskmigo.project;
 
-import io.taskmigo.foundation.domain.DomainException;
-import io.taskmigo.foundation.domain.DomainFailureType;
+import io.taskmigo.foundation.DomainException;
+import io.taskmigo.foundation.DomainFailureType;
 
 /// Reports a project-domain failure with a transport-neutral category.
 public final class ProjectException extends DomainException {

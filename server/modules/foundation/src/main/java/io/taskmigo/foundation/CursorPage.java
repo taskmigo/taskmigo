@@ -1,4 +1,4 @@
-package io.taskmigo.foundation.pagination;
+package io.taskmigo.foundation;
 
 import java.util.List;
 import org.jspecify.annotations.Nullable;

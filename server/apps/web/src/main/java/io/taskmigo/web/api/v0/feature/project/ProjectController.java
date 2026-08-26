@@ -1,6 +1,6 @@
 package io.taskmigo.web.api.v0.feature.project;
 
-import io.taskmigo.foundation.pagination.CursorPage;
+import io.taskmigo.foundation.CursorPage;
 import io.taskmigo.history.ProjectHistory;
 import io.taskmigo.project.ProjectChanged;
 import io.taskmigo.project.ProjectService;
