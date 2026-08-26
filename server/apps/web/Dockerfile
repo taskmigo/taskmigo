@@ -4,19 +4,21 @@ WORKDIR /workspace
 
 COPY gradle gradle
 COPY gradlew settings.gradle.kts build.gradle.kts ./
-COPY organization/build.gradle.kts organization/build.gradle.kts
-COPY project/build.gradle.kts project/build.gradle.kts
-COPY web/build.gradle.kts web/build.gradle.kts
-COPY worker/build.gradle.kts worker/build.gradle.kts
+COPY modules/database/build.gradle.kts modules/database/build.gradle.kts
+COPY modules/organization/build.gradle.kts modules/organization/build.gradle.kts
+COPY modules/project/build.gradle.kts modules/project/build.gradle.kts
+COPY apps/web/build.gradle.kts apps/web/build.gradle.kts
+COPY apps/worker/build.gradle.kts apps/worker/build.gradle.kts
 
-RUN chmod +x gradlew && ./gradlew --no-daemon :web:dependencies
+RUN chmod +x gradlew && ./gradlew --no-daemon :apps:web:dependencies
 
-COPY organization/src organization/src
-COPY project/src project/src
-COPY web/src web/src
+COPY modules/database/src modules/database/src
+COPY modules/organization/src modules/organization/src
+COPY modules/project/src modules/project/src
+COPY apps/web/src apps/web/src
 
-RUN ./gradlew --no-daemon :web:bootJar \
-    && cp web/build/libs/*.jar /workspace/app.jar
+RUN ./gradlew --no-daemon :apps:web:bootJar \
+    && cp apps/web/build/libs/*.jar /workspace/app.jar
 
 FROM eclipse-temurin:26.0.2_10-jre-noble@sha256:22e4987440fe837f31150df046a5bcb88c118566d1168de7b0307497e196154a
 

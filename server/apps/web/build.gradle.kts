@@ -7,16 +7,15 @@ description = "Taskmigo HTTP and OAuth application"
 
 dependencies {
     implementation(libs.jspecify)
-    implementation(project(":organization"))
-    implementation(project(":project"))
+    implementation(project(":modules:database"))
+    implementation(project(":modules:organization"))
+    implementation(project(":modules:project"))
     implementation(libs.spring.boot.starter.jdbc)
     implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.oauth2.authorization.server)
     implementation(libs.spring.boot.starter.oauth2.resource.server)
     implementation(libs.springdoc.openapi.starter.webmvc.scalar)
-
-    runtimeOnly(libs.postgresql.driver)
 
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.spring.boot.testcontainers)
