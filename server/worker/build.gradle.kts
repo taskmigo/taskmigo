@@ -7,7 +7,8 @@ description = "Taskmigo background worker application"
 
 dependencies {
     implementation(libs.jspecify)
-    implementation(project(":taskmigo-core"))
+    implementation(project(":organization"))
+    implementation(project(":project"))
     implementation(libs.spring.boot.core.starter)
 
     runtimeOnly(libs.postgresql.driver)

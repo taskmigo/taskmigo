@@ -2,11 +2,12 @@ plugins {
     `java-library`
 }
 
-description = "Shared Taskmigo domain and persistence modules"
+description = "Projects, memberships, authorization, and project history"
 
 dependencies {
     api(libs.jspecify)
     api(libs.spring.modulith.starter.core)
+    api(project(":organization"))
 
     implementation(libs.jackson.databind)
     implementation(libs.spring.boot.starter.data.jpa)

@@ -1,7 +1,8 @@
 rootProject.name = "taskmigo"
 
 include(
-    "taskmigo-core",
-    "taskmigo-web",
-    "taskmigo-worker",
+    "organization",
+    "project",
+    "web",
+    "worker",
 )
