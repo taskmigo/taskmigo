@@ -43,34 +43,27 @@ jobs:
           java-version: "26"
           cache: gradle
 
-      - name: Cache native Qodana linter
-        uses: actions/cache@v5.1.0
-        with:
-          path: |
-            ${{ runner.temp }}/qodana-system
-            !${{ runner.temp }}/qodana-system/state
-          key: qodana-native-v1-2026.2-qodana-jvm-community-${{ runner.os }}-${{ runner.arch }}
-
       - name: Scan
         uses: JetBrains/qodana-action@v2026.2
         with:
           pr-mode: false
           upload-result: false
           use-caches: true
-          # Keep the action-managed project cache under a dedicated subtree.
-          # Qodana native mode derives its system directory by walking two
-          # levels up from cache-dir, so this makes qodana-system the stable
-          # root that the preceding cache step persists for the IDE/linter.
+          # Keep only the action-managed project cache persistent. Native mode
+          # derives its mutable IDE/linter system directory two levels above
+          # cache-dir; that parent must remain runner-ephemeral and must never be
+          # persisted with actions/cache, otherwise stale indexes can survive a
+          # Gradle project-graph change and produce false classpath findings.
           cache-dir: ${{ runner.temp }}/qodana-system/state/cache
-          # Qodana caches IntelliJ/Gradle project state, while GitHub keeps PR
-          # caches isolated from the default branch. Keep each saved cache tied
-          # to the analyzed commit, and allow fallback only within the exact
-          # Qodana/JDK/OS/Gradle-graph compatibility boundary. The v3 namespace
-          # also prevents restoration of the stale broad fallback cache.
+          # Tie reusable project state to every input that can change Gradle's
+          # imported model. Each analyzed commit gets its own primary entry;
+          # fallback reuse is allowed only inside the same compatibility graph.
+          # v4 also makes every cache saved before the system/project isolation
+          # unreachable after this fix.
           primary-cache-key: >-
-            qodana-project-v3-2026.2-java26-${{ runner.os }}-${{ hashFiles('server/**/*.gradle*', 'server/gradle/libs.versions.toml') }}-${{ github.event.pull_request.head.sha || github.sha }}
+            qodana-project-v4-2026.2-java26-${{ runner.os }}-${{ hashFiles('server/**/*.gradle*', 'server/gradle/libs.versions.toml', 'server/gradle/wrapper/gradle-wrapper.properties', 'server/gradle.properties') }}-${{ github.event.pull_request.head.sha || github.sha }}
           additional-cache-key: >-
-            qodana-project-v3-2026.2-java26-${{ runner.os }}-${{ hashFiles('server/**/*.gradle*', 'server/gradle/libs.versions.toml') }}-
+            qodana-project-v4-2026.2-java26-${{ runner.os }}-${{ hashFiles('server/**/*.gradle*', 'server/gradle/libs.versions.toml', 'server/gradle/wrapper/gradle-wrapper.properties', 'server/gradle.properties') }}-
           args: >-
             --linter qodana-jvm-community
             --within-docker false
