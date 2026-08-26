@@ -1,5 +1,5 @@
 spring:
   config:
-    import: classpath:application-core.yaml
+    import: classpath:application-database.yaml
   main:
     web-application-type: none
