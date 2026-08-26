@@ -7,6 +7,7 @@ description = "Taskmigo HTTP and OAuth application"
 
 dependencies {
     implementation(libs.jspecify)
+    implementation(project(":modules:foundation"))
     implementation(project(":modules:database"))
     implementation(project(":modules:organization"))
     implementation(project(":modules:project"))
