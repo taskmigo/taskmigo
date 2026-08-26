@@ -2,7 +2,6 @@ package io.taskmigo.foundation.pagination;
 
 /// Defines reusable bounds for a cursor-paginated endpoint without imposing feature-specific values.
 public record PageLimit(int defaultValue, int maximum) {
-
     public PageLimit {
         if (defaultValue < 1) throw new IllegalArgumentException("defaultValue must be positive");
         if (maximum < defaultValue) throw new IllegalArgumentException("maximum must be at least defaultValue");
