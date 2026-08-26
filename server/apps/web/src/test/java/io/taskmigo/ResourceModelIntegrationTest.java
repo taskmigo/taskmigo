@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.access.AccessService;
 import io.taskmigo.access.PermissionCatalog;
+import io.taskmigo.foundation.CursorPage;
 import io.taskmigo.group.GroupService;
 import io.taskmigo.history.ProjectHistory;
 import io.taskmigo.organization.OrganizationService;
@@ -113,7 +114,7 @@ class ResourceModelIntegrationTest {
         this.projects.removeMember(project, member, admin);
         this.projects.archive(project, admin);
 
-        ProjectHistory.Page first = this.history.list(project, null, 2);
+        CursorPage<ProjectHistory.Entry> first = this.history.list(project, null, 2);
         assertThat(first.items()).hasSize(2);
         assertThat(first.nextCursor()).isNotNull();
         assertThat(first.items().getFirst().action()).isEqualTo(ProjectChanged.Action.PROJECT_ARCHIVED);
@@ -122,7 +123,11 @@ class ResourceModelIntegrationTest {
         ProjectChanged.Target removedTarget = Objects.requireNonNull(first.items().get(1).target());
         assertThat(removedTarget.displayName()).isEqualTo("History User");
 
-        ProjectHistory.Page second = this.history.list(project, Objects.requireNonNull(first.nextCursor()), 2);
+        CursorPage<ProjectHistory.Entry> second = this.history.list(
+            project,
+            Objects.requireNonNull(first.nextCursor()),
+            2
+        );
         assertThat(second.items())
             .extracting(ProjectHistory.Entry::action)
             .containsExactly(ProjectChanged.Action.MEMBER_ROLES_CHANGED, ProjectChanged.Action.MEMBER_JOINED);
@@ -133,7 +138,11 @@ class ResourceModelIntegrationTest {
                 assertThat(change.before()).isInstanceOf(List.class);
                 assertThat(change.after()).isInstanceOf(List.class);
             });
-        ProjectHistory.Page third = this.history.list(project, Objects.requireNonNull(second.nextCursor()), 2);
+        CursorPage<ProjectHistory.Entry> third = this.history.list(
+            project,
+            Objects.requireNonNull(second.nextCursor()),
+            2
+        );
         assertThat(third.items())
             .extracting(ProjectHistory.Entry::action)
             .containsExactly(ProjectChanged.Action.PROJECT_CREATED);
