@@ -13,26 +13,30 @@ const session: Session = {
 };
 
 class StubAuthorizationClient implements AuthorizationClient {
-  constructor(private readonly overrides: Partial<AuthorizationClient> = {}) {}
+  readonly #overrides: Partial<AuthorizationClient>;
+
+  constructor(overrides: Partial<AuthorizationClient> = {}) {
+    this.#overrides = overrides;
+  }
 
   begin(redirectUri: URL) {
     return (
-      this.overrides.begin?.(redirectUri) ??
+      this.#overrides.begin?.(redirectUri) ??
       Promise.resolve({ redirectTo: new URL("https://auth.example/authorize"), state: "transaction" })
     );
   }
 
   complete(callbackUrl: URL, state: string) {
-    return this.overrides.complete?.(callbackUrl, state) ?? Promise.resolve(session);
+    return this.#overrides.complete?.(callbackUrl, state) ?? Promise.resolve(session);
   }
 
   renew(current: Session) {
-    return this.overrides.renew?.(current) ?? Promise.resolve(session);
+    return this.#overrides.renew?.(current) ?? Promise.resolve(session);
   }
 
   end(current: Session, postLogoutRedirectUri: URL) {
     return (
-      this.overrides.end?.(current, postLogoutRedirectUri) ?? Promise.resolve(new URL("https://auth.example/logout"))
+      this.#overrides.end?.(current, postLogoutRedirectUri) ?? Promise.resolve(new URL("https://auth.example/logout"))
     );
   }
 }

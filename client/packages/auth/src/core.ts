@@ -36,39 +36,42 @@ export interface AuthManager {
 }
 
 export class DefaultAuthManager implements AuthManager {
-  private static readonly REFRESH_SKEW_MILLISECONDS = 30_000;
+  static readonly #REFRESH_SKEW_MILLISECONDS = 30_000;
 
-  constructor(
-    private readonly client: AuthorizationClient,
-    private readonly navigation: AuthNavigation,
-  ) {}
+  readonly #client: AuthorizationClient;
+  readonly #navigation: AuthNavigation;
+
+  constructor(client: AuthorizationClient, navigation: AuthNavigation) {
+    this.#client = client;
+    this.#navigation = navigation;
+  }
 
   async beginSignIn(returnTo?: string | null) {
-    const { redirectTo, state } = await this.client.begin(this.navigation.callbackUrl);
+    const { redirectTo, state } = await this.#client.begin(this.#navigation.callbackUrl);
     return {
       redirectTo,
-      transaction: { state, returnTo: this.navigation.resolveReturnTo(returnTo) },
+      transaction: { state, returnTo: this.#navigation.resolveReturnTo(returnTo) },
     };
   }
 
   async completeSignIn(callbackUrl: URL, transaction: AuthorizationTransaction) {
     return {
-      session: await this.client.complete(callbackUrl, transaction.state),
-      redirectTo: this.navigation.returnToUrl(transaction.returnTo),
+      session: await this.#client.complete(callbackUrl, transaction.state),
+      redirectTo: this.#navigation.returnToUrl(transaction.returnTo),
     };
   }
 
   async renew(session: Session): Promise<Session> {
-    if (session.expiresAt > Date.now() + DefaultAuthManager.REFRESH_SKEW_MILLISECONDS) return session;
+    if (session.expiresAt > Date.now() + DefaultAuthManager.#REFRESH_SKEW_MILLISECONDS) return session;
 
-    const renewed = await this.client.renew(session);
+    const renewed = await this.#client.renew(session);
     if (renewed.user.id !== session.user.id) throw new Error("Authorization subject changed during renewal");
     return renewed;
   }
 
   async signOut(session?: Session): Promise<URL> {
-    const redirectUrl = this.navigation.postLogoutRedirectUrl;
+    const redirectUrl = this.#navigation.postLogoutRedirectUrl;
     if (!session) return redirectUrl;
-    return this.client.end(session, redirectUrl).catch(() => redirectUrl);
+    return this.#client.end(session, redirectUrl).catch(() => redirectUrl);
   }
 }

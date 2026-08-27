@@ -6,19 +6,19 @@ import { OpenIdAuthorizationClient } from "@taskmigo/auth/openid-client";
 import { getConfig } from "@taskmigo/config/server";
 
 class AuthRuntime {
-  private static readonly CLIENT_ID = "taskmigo-client";
+  static readonly #CLIENT_ID = "taskmigo-client";
 
-  private auth?: NextAuth;
+  #auth?: NextAuth;
 
   get(): NextAuth {
-    return (this.auth ??= this.create());
+    return (this.#auth ??= this.#create());
   }
 
-  private create(): NextAuth {
+  #create(): NextAuth {
     const config = getConfig();
     const authorizationClient = new OpenIdAuthorizationClient({
       issuer: config.issuer,
-      clientId: AuthRuntime.CLIENT_ID,
+      clientId: AuthRuntime.#CLIENT_ID,
       clientSecret: config.clientSecret,
       allowInsecureRequests: config.issuer.protocol === "http:",
     });
