@@ -6,12 +6,7 @@ import unicorn from "eslint-plugin-unicorn";
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
-  {
-    plugins: { unicorn },
-    rules: {
-      "unicorn/no-new-buffer": "error",
-    },
-  },
+  unicorn.configs.recommended,
   {
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
