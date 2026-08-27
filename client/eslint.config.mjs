@@ -12,5 +12,16 @@ export default defineConfig([
       "unicorn/no-new-buffer": "error",
     },
   },
+  {
+    files: ["**/*.{ts,tsx}"],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-deprecated": "error",
+    },
+  },
   globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
 ]);
