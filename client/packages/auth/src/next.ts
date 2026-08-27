@@ -5,7 +5,15 @@ import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import type { AuthManager, AuthorizationTransaction, Session } from "./core";
-import { SealedCookie } from "./sealed-cookie";
+import { SealedCookie, type SealedCookieOptions } from "./sealed-cookie";
+
+type CookieConfig<T> = Omit<SealedCookieOptions<T>, "schema">;
+
+export interface NextAuthOptions {
+  returnToParameter: string;
+  sessionCookie: CookieConfig<Session>;
+  transactionCookie: CookieConfig<AuthorizationTransaction>;
+}
 
 class CookieState<T> {
   readonly #cookie: SealedCookie<T>;
@@ -28,10 +36,6 @@ class CookieState<T> {
 }
 
 export class NextAuth {
-  static readonly #SESSION_COOKIE = "taskmigo_session";
-  static readonly #TRANSACTION_COOKIE = "taskmigo_auth_transaction";
-  static readonly #SESSION_MAX_AGE_SECONDS = 8 * 60 * 60;
-  static readonly #TRANSACTION_MAX_AGE_SECONDS = 10 * 60;
   static readonly #TRANSACTION_SCHEMA = z.object({ state: z.string().min(1), returnTo: z.string().min(1) });
   static readonly #SESSION_SCHEMA = z.object({
     user: z.object({ id: z.string().min(1), name: z.string().min(1).optional() }),
@@ -40,34 +44,26 @@ export class NextAuth {
   });
 
   readonly #manager: AuthManager;
+  readonly #returnToParameter: string;
   readonly #sessionCookie: SealedCookie<Session>;
   readonly #sessions: CookieState<Session>;
   readonly #transactions: CookieState<AuthorizationTransaction>;
 
-  constructor(manager: AuthManager, sessionSecret: string) {
+  constructor(manager: AuthManager, options: NextAuthOptions) {
     this.#manager = manager;
-    this.#sessionCookie = new SealedCookie({
-      name: NextAuth.#SESSION_COOKIE,
-      purpose: "session",
-      schema: NextAuth.#SESSION_SCHEMA,
-      secret: sessionSecret,
-      maxAge: NextAuth.#SESSION_MAX_AGE_SECONDS,
-    });
+    this.#returnToParameter = options.returnToParameter;
+    this.#sessionCookie = new SealedCookie({ ...options.sessionCookie, schema: NextAuth.#SESSION_SCHEMA });
     this.#sessions = new CookieState(this.#sessionCookie);
     this.#transactions = new CookieState(
-      new SealedCookie({
-        name: NextAuth.#TRANSACTION_COOKIE,
-        purpose: "transaction",
-        schema: NextAuth.#TRANSACTION_SCHEMA,
-        secret: sessionSecret,
-        maxAge: NextAuth.#TRANSACTION_MAX_AGE_SECONDS,
-      }),
+      new SealedCookie({ ...options.transactionCookie, schema: NextAuth.#TRANSACTION_SCHEMA }),
     );
   }
 
   readonly login = async (request: NextRequest): Promise<NextResponse> => {
     try {
-      const { redirectTo, transaction } = await this.#manager.beginSignIn(request.nextUrl.searchParams.get("returnTo"));
+      const { redirectTo, transaction } = await this.#manager.beginSignIn(
+        request.nextUrl.searchParams.get(this.#returnToParameter),
+      );
       const response = NextResponse.redirect(redirectTo);
       this.#transactions.write(response, transaction);
       return response;

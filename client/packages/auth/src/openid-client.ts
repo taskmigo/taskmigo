@@ -5,45 +5,57 @@ import { z } from "zod";
 
 import type { AuthorizationClient, Session, User } from "./core";
 
-type AuthorizationState = { version: 1; state: string; nonce: string; codeVerifier: string };
-type SessionState = { version: 1; accessToken: string; refreshToken: string; idToken: string };
+type AuthorizationState = { version: string; state: string; nonce: string; codeVerifier: string };
+type SessionState = { version: string; accessToken: string; refreshToken: string; idToken: string };
 type Tokens = client.TokenEndpointResponse & client.TokenEndpointResponseHelpers;
 
 export interface OpenIdClientConfig {
   issuer: URL;
   clientId: string;
   clientSecret: string;
+  scope: string;
+  stateVersion: string;
   allowInsecureRequests?: boolean;
 }
 
 export class OpenIdAuthorizationClient implements AuthorizationClient {
-  static readonly #STATE_VERSION = 1 as const;
-  static readonly #SCOPE = "openid profile taskmigo.api";
   static readonly #PKCE_METHOD = "S256";
-  static readonly #AUTHORIZATION_STATE_SCHEMA: z.ZodType<AuthorizationState> = z.object({
-    version: z.literal(OpenIdAuthorizationClient.#STATE_VERSION),
-    state: z.string(),
-    nonce: z.string(),
-    codeVerifier: z.string(),
-  });
-  static readonly #SESSION_STATE_SCHEMA: z.ZodType<SessionState> = z.object({
-    version: z.literal(OpenIdAuthorizationClient.#STATE_VERSION),
-    accessToken: z.string(),
-    refreshToken: z.string(),
-    idToken: z.string(),
-  });
 
-  readonly #config: OpenIdClientConfig;
+  readonly #issuer: URL;
+  readonly #clientId: string;
+  readonly #clientSecret: string;
+  readonly #scope: string;
+  readonly #stateVersion: string;
+  readonly #allowInsecureRequests: boolean;
+  readonly #authorizationStateSchema: z.ZodType<AuthorizationState>;
+  readonly #sessionStateSchema: z.ZodType<SessionState>;
   #configurationPromise?: Promise<client.Configuration>;
 
   constructor(config: OpenIdClientConfig) {
-    this.#config = config;
+    this.#issuer = new URL(config.issuer);
+    this.#clientId = config.clientId;
+    this.#clientSecret = config.clientSecret;
+    this.#scope = config.scope;
+    this.#stateVersion = config.stateVersion;
+    this.#allowInsecureRequests = config.allowInsecureRequests ?? false;
+    this.#authorizationStateSchema = z.object({
+      version: z.literal(this.#stateVersion),
+      state: z.string(),
+      nonce: z.string(),
+      codeVerifier: z.string(),
+    });
+    this.#sessionStateSchema = z.object({
+      version: z.literal(this.#stateVersion),
+      accessToken: z.string(),
+      refreshToken: z.string(),
+      idToken: z.string(),
+    });
   }
 
   async begin(redirectUri: URL) {
     const codeVerifier = client.randomPKCECodeVerifier();
     const authorizationState: AuthorizationState = {
-      version: OpenIdAuthorizationClient.#STATE_VERSION,
+      version: this.#stateVersion,
       state: client.randomState(),
       nonce: client.randomNonce(),
       codeVerifier,
@@ -52,7 +64,7 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
     return {
       redirectTo: client.buildAuthorizationUrl(await this.#configuration(), {
         redirect_uri: redirectUri.href,
-        scope: OpenIdAuthorizationClient.#SCOPE,
+        scope: this.#scope,
         state: authorizationState.state,
         nonce: authorizationState.nonce,
         code_challenge: await client.calculatePKCECodeChallenge(codeVerifier),
@@ -63,10 +75,7 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
   }
 
   async complete(callbackUrl: URL, state: string): Promise<Session> {
-    const authorizationState = OpenIdAuthorizationClient.#decode(
-      state,
-      OpenIdAuthorizationClient.#AUTHORIZATION_STATE_SCHEMA,
-    );
+    const authorizationState = OpenIdAuthorizationClient.#decode(state, this.#authorizationStateSchema);
     const tokens = await client.authorizationCodeGrant(await this.#configuration(), callbackUrl, {
       pkceCodeVerifier: authorizationState.codeVerifier,
       expectedState: authorizationState.state,
@@ -86,10 +95,7 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
   }
 
   async renew(session: Session): Promise<Session> {
-    const previous = OpenIdAuthorizationClient.#decode(
-      session.authorizationState,
-      OpenIdAuthorizationClient.#SESSION_STATE_SCHEMA,
-    );
+    const previous = OpenIdAuthorizationClient.#decode(session.authorizationState, this.#sessionStateSchema);
     const tokens = await client.refreshTokenGrant(await this.#configuration(), previous.refreshToken);
     const claims = tokens.claims();
 
@@ -104,10 +110,7 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
   }
 
   async end(session: Session, postLogoutRedirectUri: URL): Promise<URL> {
-    const { idToken } = OpenIdAuthorizationClient.#decode(
-      session.authorizationState,
-      OpenIdAuthorizationClient.#SESSION_STATE_SCHEMA,
-    );
+    const { idToken } = OpenIdAuthorizationClient.#decode(session.authorizationState, this.#sessionStateSchema);
     return client.buildEndSessionUrl(await this.#configuration(), {
       id_token_hint: idToken,
       post_logout_redirect_uri: postLogoutRedirectUri.href,
@@ -122,7 +125,7 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
       user,
       expiresAt: OpenIdAuthorizationClient.#tokenExpiresAt(tokens),
       authorizationState: OpenIdAuthorizationClient.#encode({
-        version: OpenIdAuthorizationClient.#STATE_VERSION,
+        version: this.#stateVersion,
         accessToken: tokens.access_token,
         refreshToken,
         idToken,
@@ -137,11 +140,11 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
   async #discover(): Promise<client.Configuration> {
     try {
       return await client.discovery(
-        this.#config.issuer,
-        this.#config.clientId,
-        { client_secret: this.#config.clientSecret },
-        client.ClientSecretBasic(this.#config.clientSecret),
-        this.#config.allowInsecureRequests ? OpenIdAuthorizationClient.#developmentDiscoveryOptions() : undefined,
+        this.#issuer,
+        this.#clientId,
+        { client_secret: this.#clientSecret },
+        client.ClientSecretBasic(this.#clientSecret),
+        this.#allowInsecureRequests ? OpenIdAuthorizationClient.#developmentDiscoveryOptions() : undefined,
       );
     } catch (error) {
       this.#configurationPromise = undefined;

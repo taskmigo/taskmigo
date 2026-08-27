@@ -35,15 +35,19 @@ export interface AuthManager {
   signOut(session?: Session): Promise<URL>;
 }
 
-export class DefaultAuthManager implements AuthManager {
-  static readonly #REFRESH_SKEW_MILLISECONDS = 30_000;
+export interface AuthManagerOptions {
+  refreshSkewMilliseconds: number;
+}
 
+export class DefaultAuthManager implements AuthManager {
   readonly #client: AuthorizationClient;
   readonly #navigation: AuthNavigation;
+  readonly #refreshSkewMilliseconds: number;
 
-  constructor(client: AuthorizationClient, navigation: AuthNavigation) {
+  constructor(client: AuthorizationClient, navigation: AuthNavigation, options: AuthManagerOptions) {
     this.#client = client;
     this.#navigation = navigation;
+    this.#refreshSkewMilliseconds = options.refreshSkewMilliseconds;
   }
 
   async beginSignIn(returnTo?: string | null) {
@@ -62,7 +66,7 @@ export class DefaultAuthManager implements AuthManager {
   }
 
   async renew(session: Session): Promise<Session> {
-    if (session.expiresAt > Date.now() + DefaultAuthManager.#REFRESH_SKEW_MILLISECONDS) return session;
+    if (session.expiresAt > Date.now() + this.#refreshSkewMilliseconds) return session;
 
     const renewed = await this.#client.renew(session);
     if (renewed.user.id !== session.user.id) throw new Error("Authorization subject changed during renewal");

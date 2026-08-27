@@ -41,34 +41,57 @@ class StubAuthorizationClient implements AuthorizationClient {
   }
 }
 
+function navigation() {
+  return new AuthNavigation({
+    appUrl,
+    callbackUrl: new URL("/api/auth/callback", appUrl),
+    postLogoutRedirectUrl: new URL("/", appUrl),
+    defaultReturnTo: "/account",
+  });
+}
+
 function authManager(overrides: Partial<AuthorizationClient> = {}) {
-  return new DefaultAuthManager(new StubAuthorizationClient(overrides), new AuthNavigation(appUrl));
+  return new DefaultAuthManager(new StubAuthorizationClient(overrides), navigation(), {
+    refreshSkewMilliseconds: 30_000,
+  });
 }
 
 describe("auth navigation", () => {
   test("normalizes only same-origin return targets", () => {
-    const navigation = new AuthNavigation(appUrl);
+    const authNavigation = navigation();
 
-    expect(navigation.resolveReturnTo("/projects?mine=true#active")).toBe("/projects?mine=true#active");
-    expect(navigation.resolveReturnTo("//attacker.example/path")).toBe("/account");
-    expect(navigation.resolveReturnTo(String.raw`/\attacker.example/path`)).toBe("/account");
+    expect(authNavigation.resolveReturnTo("/projects?mine=true#active")).toBe("/projects?mine=true#active");
+    expect(authNavigation.resolveReturnTo("//attacker.example/path")).toBe("/account");
+    expect(authNavigation.resolveReturnTo(String.raw`/\attacker.example/path`)).toBe("/account");
   });
 
   test("rejects unsafe navigation configuration", () => {
-    expect(() => new AuthNavigation(appUrl, { defaultReturnTo: "https://attacker.example" })).toThrow(
-      "Default return target must resolve to the application origin",
-    );
-    expect(() => new AuthNavigation(appUrl, { callbackPath: "https://attacker.example/callback" })).toThrow(
-      "Callback URL must resolve to the application origin",
-    );
+    expect(
+      () =>
+        new AuthNavigation({
+          appUrl,
+          callbackUrl: new URL("/api/auth/callback", appUrl),
+          postLogoutRedirectUrl: new URL("/", appUrl),
+          defaultReturnTo: "https://attacker.example",
+        }),
+    ).toThrow("Default return target must resolve to the application origin");
+    expect(
+      () =>
+        new AuthNavigation({
+          appUrl,
+          callbackUrl: new URL("https://attacker.example/callback"),
+          postLogoutRedirectUrl: new URL("/", appUrl),
+          defaultReturnTo: "/account",
+        }),
+    ).toThrow("Callback URL must resolve to the application origin");
   });
 
   test("does not expose mutable URL state", () => {
-    const navigation = new AuthNavigation(appUrl);
-    const callback = navigation.callbackUrl;
+    const authNavigation = navigation();
+    const callback = authNavigation.callbackUrl;
     callback.pathname = "/tampered";
 
-    expect(navigation.callbackUrl.pathname).toBe("/api/auth/callback");
+    expect(authNavigation.callbackUrl.pathname).toBe("/api/auth/callback");
   });
 });
 
@@ -89,13 +112,22 @@ describe("auth core", () => {
 
   test("separates and validates encrypted cookie state", () => {
     const schema = z.object({ subject: z.string() });
-    const sessionCookie = new SealedCookie({ name: "session", purpose: "session", schema, secret, maxAge: 60 });
-    const transactionCookie = new SealedCookie({
-      name: "transaction",
-      purpose: "transaction",
+    const attributes = { httpOnly: true, sameSite: "lax" as const, secure: true, path: "/", maxAge: 60 };
+    const sessionCookie = new SealedCookie({
+      name: "session",
       schema,
       secret,
-      maxAge: 60,
+      version: "v1",
+      additionalAuthenticatedData: "session",
+      attributes,
+    });
+    const transactionCookie = new SealedCookie({
+      name: "transaction",
+      schema,
+      secret,
+      version: "v1",
+      additionalAuthenticatedData: "transaction",
+      attributes,
     });
     const value = sessionCookie.encode({ subject: "developer" });
 
