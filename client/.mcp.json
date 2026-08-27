@@ -3,6 +3,9 @@
     "next-devtools": {
       "command": "npx",
       "args": ["-y", "next-devtools-mcp@0.4.0"]
+    },
+    "zod": {
+      "url": "https://mcp.inkeep.com/zod/mcp"
     }
   }
 }
