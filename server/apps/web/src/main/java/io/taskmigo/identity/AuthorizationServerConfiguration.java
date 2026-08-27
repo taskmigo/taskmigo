@@ -12,6 +12,7 @@ import org.springframework.boot.security.oauth2.server.authorization.autoconfigu
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -19,6 +20,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 
 /// Configures the OAuth authorization-server primitives and the claims used to identify Taskmigo service principals.
 ///
@@ -26,12 +28,38 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 /// `principal_type=service` plus the permissions assigned to managed internal clients. Other token flows keep Spring
 /// Authorization Server's default claims.
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties({ IdentityProperties.class, OAuth2AuthorizationServerProperties.class })
+@EnableConfigurationProperties({
+    IdentityProperties.class,
+    BrowserAuthenticationProperties.class,
+    OAuth2AuthorizationServerProperties.class,
+})
 class AuthorizationServerConfiguration {
 
     @Bean
     PasswordEncoder passwordEncoder() {
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    }
+
+    @Bean
+    InMemoryUserDetailsManager interactiveUsers(
+        BrowserAuthenticationProperties properties,
+        PasswordEncoder passwordEncoder
+    ) {
+        var users = new InMemoryUserDetailsManager();
+        var developmentUser = properties.developmentUser();
+        if (!developmentUser.enabled()) return users;
+        if (developmentUser.password().isBlank()) {
+            throw new IllegalStateException(
+                "Development login password must not be blank when the development user is enabled"
+            );
+        }
+        users.createUser(
+            User.withUsername(developmentUser.username())
+                .password(passwordEncoder.encode(developmentUser.password()))
+                .roles("USER")
+                .build()
+        );
+        return users;
     }
 
     @Bean

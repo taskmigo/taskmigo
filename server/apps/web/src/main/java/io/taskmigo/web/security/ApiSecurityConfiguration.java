@@ -33,7 +33,8 @@ class ApiSecurityConfiguration {
                 .permitAll()
         )
             .csrf(csrf -> csrf.ignoringRequestMatchers(VERSIONED_API_PATTERN))
-            .oauth2AuthorizationServer(Customizer.withDefaults())
+            .formLogin(Customizer.withDefaults())
+            .oauth2AuthorizationServer(authorizationServer -> authorizationServer.oidc(Customizer.withDefaults()))
             .oauth2ResourceServer(resourceServer ->
                 resourceServer
                     .authenticationEntryPoint(securityErrors)
