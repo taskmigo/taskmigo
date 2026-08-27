@@ -26,12 +26,20 @@ export interface PublicSession {
   user: User;
 }
 
-export interface Auth {
+export interface AuthManager {
   beginSignIn(returnTo?: string | null): Promise<{ redirectTo: URL; transaction: AuthorizationTransaction }>;
-  completeSignIn(callbackUrl: URL, transaction: AuthorizationTransaction): Promise<{ redirectTo: URL; session: Session }>;
+  completeSignIn(
+    callbackUrl: URL,
+    transaction: AuthorizationTransaction,
+  ): Promise<{ redirectTo: URL; session: Session }>;
   currentSession(session: Session): Promise<Session>;
   publicSession(session: Session): PublicSession;
   signOut(session?: Session): Promise<URL>;
+}
+
+export interface AuthManagerOptions {
+  appUrl: URL;
+  defaultReturnTo?: string;
 }
 
 const RETURN_TO_BASE = new URL("https://taskmigo.invalid");
@@ -49,52 +57,59 @@ function safeReturnTo(value: string | null | undefined, fallback: string): strin
   }
 }
 
-export function createAuth(config: {
-  appUrl: URL;
-  authorizationClient: AuthorizationClient;
-  defaultReturnTo?: string;
-}): Auth {
-  const callbackUrl = new URL(CALLBACK_PATH, config.appUrl);
-  const postLogoutRedirectUrl = new URL("/", config.appUrl);
-  const defaultReturnTo = config.defaultReturnTo ?? DEFAULT_RETURN_TO;
+export class DefaultAuthManager implements AuthManager {
+  private readonly appUrl: URL;
+  private readonly callbackUrl: URL;
+  private readonly postLogoutRedirectUrl: URL;
+  private readonly defaultReturnTo: string;
 
-  return {
-    async beginSignIn(returnTo) {
-      const authorization = await config.authorizationClient.begin(callbackUrl);
-      return {
-        redirectTo: authorization.redirectTo,
-        transaction: {
-          state: authorization.state,
-          returnTo: safeReturnTo(returnTo, defaultReturnTo),
-        },
-      };
-    },
+  constructor(
+    private readonly authorizationClient: AuthorizationClient,
+    options: AuthManagerOptions,
+  ) {
+    this.appUrl = new URL(options.appUrl);
+    this.callbackUrl = new URL(CALLBACK_PATH, this.appUrl);
+    this.postLogoutRedirectUrl = new URL("/", this.appUrl);
+    this.defaultReturnTo = options.defaultReturnTo ?? DEFAULT_RETURN_TO;
+  }
 
-    async completeSignIn(callbackUrl, transaction) {
-      const session = await config.authorizationClient.complete({ callbackUrl, state: transaction.state });
-      return { redirectTo: new URL(transaction.returnTo, config.appUrl), session };
-    },
+  async beginSignIn(returnTo?: string | null) {
+    const authorization = await this.authorizationClient.begin(this.callbackUrl);
+    return {
+      redirectTo: authorization.redirectTo,
+      transaction: {
+        state: authorization.state,
+        returnTo: safeReturnTo(returnTo, this.defaultReturnTo),
+      },
+    };
+  }
 
-    async currentSession(session) {
-      if (session.expiresAt > Date.now() + REFRESH_SKEW_MILLISECONDS) return session;
+  async completeSignIn(callbackUrl: URL, transaction: AuthorizationTransaction) {
+    const session = await this.authorizationClient.complete({ callbackUrl, state: transaction.state });
+    return { redirectTo: new URL(transaction.returnTo, this.appUrl), session };
+  }
 
-      const renewed = await config.authorizationClient.renew(session);
-      if (renewed.user.id !== session.user.id) throw new Error("Renewed identity changed the authenticated subject");
-      return renewed;
-    },
+  async currentSession(session: Session): Promise<Session> {
+    if (session.expiresAt > Date.now() + REFRESH_SKEW_MILLISECONDS) return session;
 
-    publicSession(session) {
-      return { authenticated: true, user: session.user };
-    },
+    const renewed = await this.authorizationClient.renew(session);
+    if (renewed.user.id !== session.user.id) {
+      throw new Error("Renewed identity changed the authenticated subject");
+    }
+    return renewed;
+  }
 
-    async signOut(session) {
-      if (!session) return postLogoutRedirectUrl;
+  publicSession(session: Session): PublicSession {
+    return { authenticated: true, user: session.user };
+  }
 
-      try {
-        return await config.authorizationClient.end(session, postLogoutRedirectUrl);
-      } catch {
-        return postLogoutRedirectUrl;
-      }
-    },
-  };
+  async signOut(session?: Session): Promise<URL> {
+    if (!session) return this.postLogoutRedirectUrl;
+
+    try {
+      return await this.authorizationClient.end(session, this.postLogoutRedirectUrl);
+    } catch {
+      return this.postLogoutRedirectUrl;
+    }
+  }
 }

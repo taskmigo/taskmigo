@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
 
-import { createAuth, type AuthorizationClient, type Session } from "./core";
+import { DefaultAuthManager, type AuthorizationClient, type Session } from "./core";
 import { createSealedCookie } from "./sealed-cookie";
 
 const secret = "01234567890123456789012345678901";
@@ -11,19 +11,38 @@ const session: Session = {
   authorizationState: "opaque",
 };
 
-function authorizationClient(overrides: Partial<AuthorizationClient> = {}): AuthorizationClient {
-  return {
-    begin: async () => ({ redirectTo: new URL("https://auth.example/authorize"), state: "transaction" }),
-    complete: async () => session,
-    renew: async () => session,
-    end: async () => new URL("https://auth.example/logout"),
-    ...overrides,
-  };
+class StubAuthorizationClient implements AuthorizationClient {
+  constructor(private readonly overrides: Partial<AuthorizationClient> = {}) {}
+
+  begin(redirectUri: URL) {
+    return (
+      this.overrides.begin?.(redirectUri) ??
+      Promise.resolve({ redirectTo: new URL("https://auth.example/authorize"), state: "transaction" })
+    );
+  }
+
+  complete(input: { callbackUrl: URL; state: string }) {
+    return this.overrides.complete?.(input) ?? Promise.resolve(session);
+  }
+
+  renew(current: Session) {
+    return this.overrides.renew?.(current) ?? Promise.resolve(session);
+  }
+
+  end(current: Session, postLogoutRedirectUri: URL) {
+    return (
+      this.overrides.end?.(current, postLogoutRedirectUri) ?? Promise.resolve(new URL("https://auth.example/logout"))
+    );
+  }
+}
+
+function authManager(overrides: Partial<AuthorizationClient> = {}) {
+  return new DefaultAuthManager(new StubAuthorizationClient(overrides), { appUrl: new URL("https://app.example") });
 }
 
 describe("auth core", () => {
   test("keeps authorization details behind the client boundary", async () => {
-    const auth = createAuth({ appUrl: new URL("https://app.example"), authorizationClient: authorizationClient() });
+    const auth = authManager();
     const signIn = await auth.beginSignIn("/projects?mine=true");
 
     expect(signIn.redirectTo.href).toBe("https://auth.example/authorize");
@@ -32,7 +51,7 @@ describe("auth core", () => {
   });
 
   test("rejects external return targets", async () => {
-    const auth = createAuth({ appUrl: new URL("https://app.example"), authorizationClient: authorizationClient() });
+    const auth = authManager();
 
     await expect(auth.beginSignIn("//attacker.example/path")).resolves.toMatchObject({
       transaction: { returnTo: "/account" },

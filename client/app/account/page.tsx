@@ -11,7 +11,7 @@ export default async function AccountPage() {
   return (
     <main>
       <h1>Account</h1>
-      <p>Signed in as {session.name ?? session.subject}</p>
+      <p>Signed in as {session.user.name ?? session.user.id}</p>
       <form action="/api/auth/logout" method="post">
         <button type="submit">Sign out</button>
       </form>

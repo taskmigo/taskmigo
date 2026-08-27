@@ -62,8 +62,10 @@ function localDevelopmentDiscoveryOptions(): client.DiscoveryRequestOptions {
   return { execute: [client.allowInsecureRequests] };
 }
 
-function claimName(claims: { name?: unknown } | undefined): string | undefined {
-  return typeof claims?.name === "string" && claims.name.length > 0 ? claims.name : undefined;
+function claimName(claims: unknown): string | undefined {
+  if (typeof claims !== "object" || claims === null || !("name" in claims)) return;
+  const name = claims.name;
+  return typeof name === "string" && name.length > 0 ? name : undefined;
 }
 
 export interface OpenIdClientConfig {
@@ -73,95 +75,97 @@ export interface OpenIdClientConfig {
   allowInsecureRequests?: boolean;
 }
 
-export function createOpenIdAuthorizationClient(config: OpenIdClientConfig): AuthorizationClient {
-  let configurationPromise: Promise<client.Configuration> | undefined;
+export class OpenIdAuthorizationClient implements AuthorizationClient {
+  private configurationPromise: Promise<client.Configuration> | undefined;
 
-  async function configuration(): Promise<client.Configuration> {
-    configurationPromise ??= client
-      .discovery(
-        config.issuer,
-        config.clientId,
-        { client_secret: config.clientSecret },
-        client.ClientSecretBasic(config.clientSecret),
-        config.allowInsecureRequests ? localDevelopmentDiscoveryOptions() : undefined,
-      )
-      .catch((error: unknown) => {
-        configurationPromise = undefined;
-        throw error;
-      });
-    return configurationPromise;
+  constructor(private readonly config: OpenIdClientConfig) {}
+
+  async begin(redirectUri: URL) {
+    const codeVerifier = client.randomPKCECodeVerifier();
+    const authorizationState: AuthorizationState = {
+      version: STATE_VERSION,
+      state: client.randomState(),
+      nonce: client.randomNonce(),
+      codeVerifier,
+    };
+    const redirectTo = client.buildAuthorizationUrl(await this.configuration(), {
+      redirect_uri: redirectUri.href,
+      scope: "openid profile taskmigo.api",
+      state: authorizationState.state,
+      nonce: authorizationState.nonce,
+      code_challenge: await client.calculatePKCECodeChallenge(codeVerifier),
+      code_challenge_method: "S256",
+    });
+    return { redirectTo, state: encode(authorizationState) };
   }
 
-  return {
-    async begin(redirectUri) {
-      const codeVerifier = client.randomPKCECodeVerifier();
-      const authorizationState: AuthorizationState = {
+  async complete({ callbackUrl, state }: { callbackUrl: URL; state: string }): Promise<Session> {
+    const authorizationState = decodeAuthorizationState(state);
+    const tokens = await client.authorizationCodeGrant(await this.configuration(), callbackUrl, {
+      pkceCodeVerifier: authorizationState.codeVerifier,
+      expectedState: authorizationState.state,
+      expectedNonce: authorizationState.nonce,
+      idTokenExpected: true,
+    });
+    const claims = tokens.claims();
+    if (!claims) throw new Error("Authorization server did not return validated ID token claims");
+    if (!tokens.refresh_token || !tokens.id_token) {
+      throw new Error("Authorization server did not return a renewable session");
+    }
+
+    return {
+      user: { id: claims.sub, name: claimName(claims) },
+      expiresAt: tokenExpiresAt(tokens),
+      authorizationState: encode({
         version: STATE_VERSION,
-        state: client.randomState(),
-        nonce: client.randomNonce(),
-        codeVerifier,
-      };
-      const redirectTo = client.buildAuthorizationUrl(await configuration(), {
-        redirect_uri: redirectUri.href,
-        scope: "openid profile taskmigo.api",
-        state: authorizationState.state,
-        nonce: authorizationState.nonce,
-        code_challenge: await client.calculatePKCECodeChallenge(codeVerifier),
-        code_challenge_method: "S256",
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        idToken: tokens.id_token,
+      }),
+    };
+  }
+
+  async renew(session: Session): Promise<Session> {
+    const previous = decodeSessionState(session.authorizationState);
+    const tokens = await client.refreshTokenGrant(await this.configuration(), previous.refreshToken);
+    const claims = tokens.claims();
+
+    return {
+      user: {
+        id: claims?.sub ?? session.user.id,
+        name: claimName(claims) ?? session.user.name,
+      },
+      expiresAt: tokenExpiresAt(tokens),
+      authorizationState: encode({
+        version: STATE_VERSION,
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token ?? previous.refreshToken,
+        idToken: tokens.id_token ?? previous.idToken,
+      }),
+    };
+  }
+
+  async end(session: Session, postLogoutRedirectUri: URL): Promise<URL> {
+    const state = decodeSessionState(session.authorizationState);
+    return client.buildEndSessionUrl(await this.configuration(), {
+      id_token_hint: state.idToken,
+      post_logout_redirect_uri: postLogoutRedirectUri.href,
+    });
+  }
+
+  private async configuration(): Promise<client.Configuration> {
+    this.configurationPromise ??= client
+      .discovery(
+        this.config.issuer,
+        this.config.clientId,
+        { client_secret: this.config.clientSecret },
+        client.ClientSecretBasic(this.config.clientSecret),
+        this.config.allowInsecureRequests ? localDevelopmentDiscoveryOptions() : undefined,
+      )
+      .catch((error: unknown) => {
+        this.configurationPromise = undefined;
+        throw error;
       });
-      return { redirectTo, state: encode(authorizationState) };
-    },
-
-    async complete({ callbackUrl, state }) {
-      const authorizationState = decodeAuthorizationState(state);
-      const tokens = await client.authorizationCodeGrant(await configuration(), callbackUrl, {
-        pkceCodeVerifier: authorizationState.codeVerifier,
-        expectedState: authorizationState.state,
-        expectedNonce: authorizationState.nonce,
-        idTokenExpected: true,
-      });
-      const claims = tokens.claims();
-      if (!claims) throw new Error("Authorization server did not return validated ID token claims");
-      if (!tokens.refresh_token || !tokens.id_token) throw new Error("Authorization server did not return a renewable session");
-
-      return {
-        user: { id: claims.sub, name: claimName(claims) },
-        expiresAt: tokenExpiresAt(tokens),
-        authorizationState: encode({
-          version: STATE_VERSION,
-          accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token,
-          idToken: tokens.id_token,
-        }),
-      } satisfies Session;
-    },
-
-    async renew(session) {
-      const previous = decodeSessionState(session.authorizationState);
-      const tokens = await client.refreshTokenGrant(await configuration(), previous.refreshToken);
-      const claims = tokens.claims();
-
-      return {
-        user: {
-          id: claims?.sub ?? session.user.id,
-          name: claimName(claims) ?? session.user.name,
-        },
-        expiresAt: tokenExpiresAt(tokens),
-        authorizationState: encode({
-          version: STATE_VERSION,
-          accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token ?? previous.refreshToken,
-          idToken: tokens.id_token ?? previous.idToken,
-        }),
-      } satisfies Session;
-    },
-
-    async end(session, postLogoutRedirectUri) {
-      const state = decodeSessionState(session.authorizationState);
-      return client.buildEndSessionUrl(await configuration(), {
-        id_token_hint: state.idToken,
-        post_logout_redirect_uri: postLogoutRedirectUri.href,
-      });
-    },
-  };
+    return this.configurationPromise;
+  }
 }
