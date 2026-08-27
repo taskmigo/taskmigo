@@ -7,7 +7,7 @@ on:
       - ".github/workflows/client-lockfile.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   generate:
@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
+        with:
+          ref: init-nextjs-client
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -26,7 +28,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v7.0.0
         with:
-          node-version: 26
+          node-version: 26.7.0
 
       - name: Generate lockfile
         working-directory: client
@@ -34,10 +36,11 @@ jobs:
           rm pnpm-lock.yaml
           pnpm install --lockfile-only
 
-      - name: Upload lockfile
-        uses: actions/upload-artifact@v4.6.2
-        with:
-          name: client-pnpm-lock
-          path: client/pnpm-lock.yaml
-          if-no-files-found: error
-          retention-days: 1
+      - name: Commit lockfile
+        run: |
+          rm .github/workflows/client-lockfile.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add client/pnpm-lock.yaml .github/workflows/client-lockfile.yml
+          git commit -m "Regenerate client pnpm lockfile"
+          git push origin HEAD:init-nextjs-client
