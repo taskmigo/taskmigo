@@ -2,77 +2,78 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 
 import type { ZodType } from "zod";
 
-const VERSION = "v1";
-const IV_LENGTH = 12;
-const TAG_LENGTH = 16;
-
-function key(secret: string): Buffer {
-  return createHash("sha256").update(secret, "utf8").digest();
-}
-
-function additionalData(purpose: string): Buffer {
-  return Buffer.from(`taskmigo:${purpose}:${VERSION}`, "utf8");
-}
-
-function seal(value: unknown, secret: string, purpose: string): string {
-  const iv = randomBytes(IV_LENGTH);
-  const cipher = createCipheriv("aes-256-gcm", key(secret), iv);
-  cipher.setAAD(additionalData(purpose));
-  const encrypted = Buffer.concat([cipher.update(JSON.stringify(value), "utf8"), cipher.final()]);
-  return `${VERSION}.${Buffer.concat([iv, cipher.getAuthTag(), encrypted]).toString("base64url")}`;
-}
-
-function unseal(value: string, secret: string, purpose: string): unknown | undefined {
-  const [version, encoded] = value.split(".", 2);
-  if (version !== VERSION || !encoded) return undefined;
-
-  try {
-    const payload = Buffer.from(encoded, "base64url");
-    if (payload.length <= IV_LENGTH + TAG_LENGTH) return undefined;
-    const decipher = createDecipheriv("aes-256-gcm", key(secret), payload.subarray(0, IV_LENGTH));
-    decipher.setAAD(additionalData(purpose));
-    decipher.setAuthTag(payload.subarray(IV_LENGTH, IV_LENGTH + TAG_LENGTH));
-    const plaintext = Buffer.concat([decipher.update(payload.subarray(IV_LENGTH + TAG_LENGTH)), decipher.final()]);
-    return JSON.parse(plaintext.toString("utf8")) as unknown;
-  } catch {
-    return undefined;
-  }
-}
-
-export interface SealedCookie<T> {
-  readonly name: string;
-  encode(value: T): string;
-  decode(value: string | undefined): T | undefined;
-  readonly options: {
-    httpOnly: true;
-    sameSite: "lax";
-    secure: boolean;
-    path: "/";
-    maxAge: number;
-  };
-}
-
-export function createSealedCookie<T>(input: {
+export interface SealedCookieOptions<T> {
   name: string;
   purpose: string;
   schema: ZodType<T>;
   secret: string;
   maxAge: number;
-}): SealedCookie<T> {
-  return {
-    name: input.name,
-    encode: (value) => seal(value, input.secret, input.purpose),
-    decode(value) {
-      if (!value) return;
-      const parsed = input.schema.safeParse(unseal(value, input.secret, input.purpose));
-      return parsed.success ? parsed.data : undefined;
-    },
-    options: {
+}
+
+export class SealedCookie<T> {
+  private static readonly VERSION = "v1";
+  private static readonly IV_LENGTH = 12;
+  private static readonly TAG_LENGTH = 16;
+
+  readonly name: string;
+  readonly options: Readonly<{
+    httpOnly: true;
+    sameSite: "lax";
+    secure: boolean;
+    path: "/";
+    maxAge: number;
+  }>;
+
+  private readonly schema: ZodType<T>;
+  private readonly key: Buffer;
+  private readonly additionalData: Buffer;
+
+  constructor({ name, purpose, schema, secret, maxAge }: SealedCookieOptions<T>) {
+    this.name = name;
+    this.schema = schema;
+    this.key = createHash("sha256").update(secret, "utf8").digest();
+    this.additionalData = Buffer.from(`taskmigo:${purpose}:${SealedCookie.VERSION}`, "utf8");
+    this.options = Object.freeze({
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
       path: "/",
-      maxAge: input.maxAge,
-    },
-  };
+      maxAge,
+    });
+  }
+
+  encode(value: T): string {
+    const iv = randomBytes(SealedCookie.IV_LENGTH);
+    const cipher = createCipheriv("aes-256-gcm", this.key, iv);
+    cipher.setAAD(this.additionalData);
+    const encrypted = Buffer.concat([cipher.update(JSON.stringify(value), "utf8"), cipher.final()]);
+    const payload = Buffer.concat([iv, cipher.getAuthTag(), encrypted]).toString("base64url");
+    return `${SealedCookie.VERSION}.${payload}`;
+  }
+
+  decode(value: string | undefined): T | undefined {
+    if (!value) return;
+
+    const parsed = this.schema.safeParse(this.unseal(value));
+    return parsed.success ? parsed.data : undefined;
+  }
+
+  private unseal(value: string): unknown | undefined {
+    const [version, encoded] = value.split(".", 2);
+    if (version !== SealedCookie.VERSION || !encoded) return;
+
+    try {
+      const payload = Buffer.from(encoded, "base64url");
+      if (payload.length <= SealedCookie.IV_LENGTH + SealedCookie.TAG_LENGTH) return;
+
+      const tagEnd = SealedCookie.IV_LENGTH + SealedCookie.TAG_LENGTH;
+      const decipher = createDecipheriv("aes-256-gcm", this.key, payload.subarray(0, SealedCookie.IV_LENGTH));
+      decipher.setAAD(this.additionalData);
+      decipher.setAuthTag(payload.subarray(SealedCookie.IV_LENGTH, tagEnd));
+      const plaintext = Buffer.concat([decipher.update(payload.subarray(tagEnd)), decipher.final()]);
+      return JSON.parse(plaintext.toString("utf8")) as unknown;
+    } catch {
+      return;
+    }
+  }
 }

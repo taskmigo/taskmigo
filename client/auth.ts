@@ -1,26 +1,36 @@
 import "server-only";
 
-import { DefaultAuthManager } from "@taskmigo/auth";
+import { AuthNavigation, DefaultAuthManager } from "@taskmigo/auth";
 import { NextAuth } from "@taskmigo/auth/next";
 import { OpenIdAuthorizationClient } from "@taskmigo/auth/openid-client";
 import { getConfig } from "@taskmigo/config/server";
 
-const CLIENT_ID = "taskmigo-client";
+class AuthRuntime {
+  private static readonly CLIENT_ID = "taskmigo-client";
 
-let auth: NextAuth | undefined;
+  private auth?: NextAuth;
+
+  get(): NextAuth {
+    return (this.auth ??= this.create());
+  }
+
+  private create(): NextAuth {
+    const config = getConfig();
+    const authorizationClient = new OpenIdAuthorizationClient({
+      issuer: config.issuer,
+      clientId: AuthRuntime.CLIENT_ID,
+      clientSecret: config.clientSecret,
+      allowInsecureRequests: config.issuer.protocol === "http:",
+    });
+    const navigation = new AuthNavigation(config.appUrl);
+    const authManager = new DefaultAuthManager(authorizationClient, navigation);
+
+    return new NextAuth(authManager, config.sessionSecret);
+  }
+}
+
+const authRuntime = new AuthRuntime();
 
 export function getAuth(): NextAuth {
-  if (auth) return auth;
-
-  const config = getConfig();
-  const authorizationClient = new OpenIdAuthorizationClient({
-    issuer: config.issuer,
-    clientId: CLIENT_ID,
-    clientSecret: config.clientSecret,
-    allowInsecureRequests: config.issuer.protocol === "http:",
-  });
-  const authManager = new DefaultAuthManager(authorizationClient, { appUrl: config.appUrl });
-
-  auth = new NextAuth(authManager, config.sessionSecret);
-  return auth;
+  return authRuntime.get();
 }

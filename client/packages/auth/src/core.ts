@@ -1,3 +1,7 @@
+import { AuthNavigation } from "./navigation";
+
+export { AuthNavigation, type AuthNavigationOptions } from "./navigation";
+
 export interface User {
   id: string;
   name?: string;
@@ -31,59 +35,31 @@ export interface AuthManager {
   signOut(session?: Session): Promise<URL>;
 }
 
-export interface AuthManagerOptions {
-  appUrl: URL;
-  defaultReturnTo?: string;
-}
-
-const DEFAULT_RETURN_TO = "/account";
-const CALLBACK_PATH = "/api/auth/callback";
-const REFRESH_SKEW_MILLISECONDS = 30_000;
-
-function safeReturnTo(value: string | null | undefined, appUrl: URL, fallback: string): string {
-  if (!value?.startsWith("/")) return fallback;
-
-  try {
-    const resolved = new URL(value, appUrl);
-    return resolved.origin === appUrl.origin ? `${resolved.pathname}${resolved.search}${resolved.hash}` : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 export class DefaultAuthManager implements AuthManager {
-  private readonly appUrl: URL;
-  private readonly callbackUrl: URL;
-  private readonly postLogoutRedirectUrl: URL;
-  private readonly defaultReturnTo: string;
+  private static readonly REFRESH_SKEW_MILLISECONDS = 30_000;
 
   constructor(
     private readonly client: AuthorizationClient,
-    { appUrl, defaultReturnTo = DEFAULT_RETURN_TO }: AuthManagerOptions,
-  ) {
-    this.appUrl = new URL(appUrl);
-    this.callbackUrl = new URL(CALLBACK_PATH, this.appUrl);
-    this.postLogoutRedirectUrl = new URL("/", this.appUrl);
-    this.defaultReturnTo = defaultReturnTo;
-  }
+    private readonly navigation: AuthNavigation,
+  ) {}
 
   async beginSignIn(returnTo?: string | null) {
-    const { redirectTo, state } = await this.client.begin(this.callbackUrl);
+    const { redirectTo, state } = await this.client.begin(this.navigation.callbackUrl);
     return {
       redirectTo,
-      transaction: { state, returnTo: safeReturnTo(returnTo, this.appUrl, this.defaultReturnTo) },
+      transaction: { state, returnTo: this.navigation.resolveReturnTo(returnTo) },
     };
   }
 
   async completeSignIn(callbackUrl: URL, transaction: AuthorizationTransaction) {
     return {
       session: await this.client.complete(callbackUrl, transaction.state),
-      redirectTo: new URL(transaction.returnTo, this.appUrl),
+      redirectTo: this.navigation.returnToUrl(transaction.returnTo),
     };
   }
 
   async renew(session: Session): Promise<Session> {
-    if (session.expiresAt > Date.now() + REFRESH_SKEW_MILLISECONDS) return session;
+    if (session.expiresAt > Date.now() + DefaultAuthManager.REFRESH_SKEW_MILLISECONDS) return session;
 
     const renewed = await this.client.renew(session);
     if (renewed.user.id !== session.user.id) throw new Error("Authorization subject changed during renewal");
@@ -91,7 +67,8 @@ export class DefaultAuthManager implements AuthManager {
   }
 
   async signOut(session?: Session): Promise<URL> {
-    if (!session) return this.postLogoutRedirectUrl;
-    return this.client.end(session, this.postLogoutRedirectUrl).catch(() => this.postLogoutRedirectUrl);
+    const redirectUrl = this.navigation.postLogoutRedirectUrl;
+    if (!session) return redirectUrl;
+    return this.client.end(session, redirectUrl).catch(() => redirectUrl);
   }
 }

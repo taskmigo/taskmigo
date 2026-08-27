@@ -1,10 +1,11 @@
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
 
-import { DefaultAuthManager, type AuthorizationClient, type Session } from "./core";
-import { createSealedCookie } from "./sealed-cookie";
+import { AuthNavigation, DefaultAuthManager, type AuthorizationClient, type Session } from "./core";
+import { SealedCookie } from "./sealed-cookie";
 
 const secret = "01234567890123456789012345678901";
+const appUrl = new URL("https://app.example");
 const session: Session = {
   user: { id: "developer", name: "Developer" },
   expiresAt: Date.now() + 60_000,
@@ -37,8 +38,35 @@ class StubAuthorizationClient implements AuthorizationClient {
 }
 
 function authManager(overrides: Partial<AuthorizationClient> = {}) {
-  return new DefaultAuthManager(new StubAuthorizationClient(overrides), { appUrl: new URL("https://app.example") });
+  return new DefaultAuthManager(new StubAuthorizationClient(overrides), new AuthNavigation(appUrl));
 }
+
+describe("auth navigation", () => {
+  test("normalizes only same-origin return targets", () => {
+    const navigation = new AuthNavigation(appUrl);
+
+    expect(navigation.resolveReturnTo("/projects?mine=true#active")).toBe("/projects?mine=true#active");
+    expect(navigation.resolveReturnTo("//attacker.example/path")).toBe("/account");
+    expect(navigation.resolveReturnTo(String.raw`/\attacker.example/path`)).toBe("/account");
+  });
+
+  test("rejects unsafe navigation configuration", () => {
+    expect(() => new AuthNavigation(appUrl, { defaultReturnTo: "https://attacker.example" })).toThrow(
+      "Default return target must resolve to the application origin",
+    );
+    expect(() => new AuthNavigation(appUrl, { callbackPath: "https://attacker.example/callback" })).toThrow(
+      "Callback URL must resolve to the application origin",
+    );
+  });
+
+  test("does not expose mutable URL state", () => {
+    const navigation = new AuthNavigation(appUrl);
+    const callback = navigation.callbackUrl;
+    callback.pathname = "/tampered";
+
+    expect(navigation.callbackUrl.pathname).toBe("/api/auth/callback");
+  });
+});
 
 describe("auth core", () => {
   test("keeps authorization details behind the client boundary", async () => {
@@ -55,21 +83,10 @@ describe("auth core", () => {
     });
   });
 
-  test("rejects external return targets", async () => {
-    const auth = authManager();
-
-    await expect(auth.beginSignIn("//attacker.example/path")).resolves.toMatchObject({
-      transaction: { returnTo: "/account" },
-    });
-    await expect(auth.beginSignIn(String.raw`/\attacker.example/path`)).resolves.toMatchObject({
-      transaction: { returnTo: "/account" },
-    });
-  });
-
   test("separates and validates encrypted cookie state", () => {
     const schema = z.object({ subject: z.string() });
-    const sessionCookie = createSealedCookie({ name: "session", purpose: "session", schema, secret, maxAge: 60 });
-    const transactionCookie = createSealedCookie({
+    const sessionCookie = new SealedCookie({ name: "session", purpose: "session", schema, secret, maxAge: 60 });
+    const transactionCookie = new SealedCookie({
       name: "transaction",
       purpose: "transaction",
       schema,

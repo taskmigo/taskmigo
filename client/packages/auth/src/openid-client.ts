@@ -1,68 +1,13 @@
 import "server-only";
 
 import * as client from "openid-client";
+import { z } from "zod";
 
 import type { AuthorizationClient, Session, User } from "./core";
 
-const STATE_VERSION = 1;
-
 type AuthorizationState = { version: 1; state: string; nonce: string; codeVerifier: string };
 type SessionState = { version: 1; accessToken: string; refreshToken: string; idToken: string };
-
 type Tokens = client.TokenEndpointResponse & client.TokenEndpointResponseHelpers;
-
-function encode(value: AuthorizationState | SessionState): string {
-  return Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function decodeAuthorizationState(value: string): AuthorizationState {
-  const parsed: unknown = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
-  if (
-    !isRecord(parsed) ||
-    parsed.version !== STATE_VERSION ||
-    typeof parsed.state !== "string" ||
-    typeof parsed.nonce !== "string" ||
-    typeof parsed.codeVerifier !== "string"
-  ) {
-    throw new Error("Invalid authorization state");
-  }
-  return parsed as unknown as AuthorizationState;
-}
-
-function decodeSessionState(value: string): SessionState {
-  const parsed: unknown = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
-  if (
-    !isRecord(parsed) ||
-    parsed.version !== STATE_VERSION ||
-    typeof parsed.accessToken !== "string" ||
-    typeof parsed.refreshToken !== "string" ||
-    typeof parsed.idToken !== "string"
-  ) {
-    throw new Error("Invalid authorization session state");
-  }
-  return parsed as unknown as SessionState;
-}
-
-function tokenExpiresAt(tokens: Tokens): number {
-  const expiresIn = tokens.expiresIn();
-  if (!expiresIn || expiresIn < 0) throw new Error("Authorization server returned an invalid token lifetime");
-  return Date.now() + expiresIn * 1000;
-}
-
-function localDevelopmentDiscoveryOptions(): client.DiscoveryRequestOptions {
-  // eslint-disable-next-line @typescript-eslint/no-deprecated -- loopback development only
-  return { execute: [client.allowInsecureRequests] };
-}
-
-function claimName(claims: unknown): string | undefined {
-  if (!isRecord(claims)) return;
-  const { name } = claims;
-  return typeof name === "string" && name.length > 0 ? name : undefined;
-}
 
 export interface OpenIdClientConfig {
   issuer: URL;
@@ -72,6 +17,22 @@ export interface OpenIdClientConfig {
 }
 
 export class OpenIdAuthorizationClient implements AuthorizationClient {
+  private static readonly STATE_VERSION = 1 as const;
+  private static readonly SCOPE = "openid profile taskmigo.api";
+  private static readonly PKCE_METHOD = "S256";
+  private static readonly AUTHORIZATION_STATE_SCHEMA: z.ZodType<AuthorizationState> = z.object({
+    version: z.literal(OpenIdAuthorizationClient.STATE_VERSION),
+    state: z.string(),
+    nonce: z.string(),
+    codeVerifier: z.string(),
+  });
+  private static readonly SESSION_STATE_SCHEMA: z.ZodType<SessionState> = z.object({
+    version: z.literal(OpenIdAuthorizationClient.STATE_VERSION),
+    accessToken: z.string(),
+    refreshToken: z.string(),
+    idToken: z.string(),
+  });
+
   private configurationPromise?: Promise<client.Configuration>;
 
   constructor(private readonly config: OpenIdClientConfig) {}
@@ -79,7 +40,7 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
   async begin(redirectUri: URL) {
     const codeVerifier = client.randomPKCECodeVerifier();
     const authorizationState: AuthorizationState = {
-      version: STATE_VERSION,
+      version: OpenIdAuthorizationClient.STATE_VERSION,
       state: client.randomState(),
       nonce: client.randomNonce(),
       codeVerifier,
@@ -88,18 +49,21 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
     return {
       redirectTo: client.buildAuthorizationUrl(await this.configuration(), {
         redirect_uri: redirectUri.href,
-        scope: "openid profile taskmigo.api",
+        scope: OpenIdAuthorizationClient.SCOPE,
         state: authorizationState.state,
         nonce: authorizationState.nonce,
         code_challenge: await client.calculatePKCECodeChallenge(codeVerifier),
-        code_challenge_method: "S256",
+        code_challenge_method: OpenIdAuthorizationClient.PKCE_METHOD,
       }),
-      state: encode(authorizationState),
+      state: OpenIdAuthorizationClient.encode(authorizationState),
     };
   }
 
   async complete(callbackUrl: URL, state: string): Promise<Session> {
-    const authorizationState = decodeAuthorizationState(state);
+    const authorizationState = OpenIdAuthorizationClient.decode(
+      state,
+      OpenIdAuthorizationClient.AUTHORIZATION_STATE_SCHEMA,
+    );
     const tokens = await client.authorizationCodeGrant(await this.configuration(), callbackUrl, {
       pkceCodeVerifier: authorizationState.codeVerifier,
       expectedState: authorizationState.state,
@@ -112,26 +76,35 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
       throw new Error("Authorization server returned a non-renewable session");
 
     return this.createSession(tokens, {
-      user: { id: claims.sub, name: claimName(claims) },
+      user: { id: claims.sub, name: OpenIdAuthorizationClient.claimName(claims) },
       refreshToken: tokens.refresh_token,
       idToken: tokens.id_token,
     });
   }
 
   async renew(session: Session): Promise<Session> {
-    const previous = decodeSessionState(session.authorizationState);
+    const previous = OpenIdAuthorizationClient.decode(
+      session.authorizationState,
+      OpenIdAuthorizationClient.SESSION_STATE_SCHEMA,
+    );
     const tokens = await client.refreshTokenGrant(await this.configuration(), previous.refreshToken);
     const claims = tokens.claims();
 
     return this.createSession(tokens, {
-      user: { id: claims?.sub ?? session.user.id, name: claimName(claims) ?? session.user.name },
+      user: {
+        id: claims?.sub ?? session.user.id,
+        name: OpenIdAuthorizationClient.claimName(claims) ?? session.user.name,
+      },
       refreshToken: tokens.refresh_token ?? previous.refreshToken,
       idToken: tokens.id_token ?? previous.idToken,
     });
   }
 
   async end(session: Session, postLogoutRedirectUri: URL): Promise<URL> {
-    const { idToken } = decodeSessionState(session.authorizationState);
+    const { idToken } = OpenIdAuthorizationClient.decode(
+      session.authorizationState,
+      OpenIdAuthorizationClient.SESSION_STATE_SCHEMA,
+    );
     return client.buildEndSessionUrl(await this.configuration(), {
       id_token_hint: idToken,
       post_logout_redirect_uri: postLogoutRedirectUri.href,
@@ -144,9 +117,9 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
   ): Session {
     return {
       user,
-      expiresAt: tokenExpiresAt(tokens),
-      authorizationState: encode({
-        version: STATE_VERSION,
+      expiresAt: OpenIdAuthorizationClient.tokenExpiresAt(tokens),
+      authorizationState: OpenIdAuthorizationClient.encode({
+        version: OpenIdAuthorizationClient.STATE_VERSION,
         accessToken: tokens.access_token,
         refreshToken,
         idToken,
@@ -165,11 +138,36 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
         this.config.clientId,
         { client_secret: this.config.clientSecret },
         client.ClientSecretBasic(this.config.clientSecret),
-        this.config.allowInsecureRequests ? localDevelopmentDiscoveryOptions() : undefined,
+        this.config.allowInsecureRequests ? OpenIdAuthorizationClient.developmentDiscoveryOptions() : undefined,
       );
     } catch (error) {
       this.configurationPromise = undefined;
       throw error;
     }
+  }
+
+  private static encode(value: AuthorizationState | SessionState): string {
+    return Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
+  }
+
+  private static decode<T>(value: string, schema: z.ZodType<T>): T {
+    return schema.parse(JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as unknown);
+  }
+
+  private static tokenExpiresAt(tokens: Tokens): number {
+    const expiresIn = tokens.expiresIn();
+    if (!expiresIn || expiresIn < 0) throw new Error("Authorization server returned an invalid token lifetime");
+    return Date.now() + expiresIn * 1000;
+  }
+
+  private static claimName(claims: unknown): string | undefined {
+    if (typeof claims !== "object" || claims === null || !("name" in claims)) return;
+    const name = claims.name;
+    return typeof name === "string" && name.length > 0 ? name : undefined;
+  }
+
+  private static developmentDiscoveryOptions(): client.DiscoveryRequestOptions {
+    // eslint-disable-next-line @typescript-eslint/no-deprecated -- loopback development only
+    return { execute: [client.allowInsecureRequests] };
   }
 }
