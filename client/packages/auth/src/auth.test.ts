@@ -1,32 +1,60 @@
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
 
-import { safeReturnTo } from "./return-to";
+import { createAuth, type AuthorizationClient, type Session } from "./core";
 import { createSealedCookie } from "./sealed-cookie";
 
 const secret = "01234567890123456789012345678901";
+const session: Session = {
+  user: { id: "developer", name: "Developer" },
+  expiresAt: Date.now() + 60_000,
+  authorizationState: "opaque",
+};
 
-describe("authentication primitives", () => {
-  test("rejects external return targets", () => {
-    expect(safeReturnTo("//attacker.example/path", "/account")).toBe("/account");
-    expect(safeReturnTo(String.raw`/\attacker.example/path`, "/account")).toBe("/account");
-    expect(safeReturnTo("https://attacker.example/path", "/account")).toBe("/account");
-    expect(safeReturnTo("/projects?mine=true", "/account")).toBe("/projects?mine=true");
+function authorizationClient(overrides: Partial<AuthorizationClient> = {}): AuthorizationClient {
+  return {
+    begin: async () => ({ redirectTo: new URL("https://auth.example/authorize"), state: "transaction" }),
+    complete: async () => session,
+    renew: async () => session,
+    end: async () => new URL("https://auth.example/logout"),
+    ...overrides,
+  };
+}
+
+describe("auth core", () => {
+  test("keeps authorization details behind the client boundary", async () => {
+    const auth = createAuth({ appUrl: new URL("https://app.example"), authorizationClient: authorizationClient() });
+    const signIn = await auth.beginSignIn("/projects?mine=true");
+
+    expect(signIn.redirectTo.href).toBe("https://auth.example/authorize");
+    expect(signIn.transaction).toEqual({ state: "transaction", returnTo: "/projects?mine=true" });
+    expect(auth.publicSession(session)).toEqual({ authenticated: true, user: session.user });
   });
 
-  test("separates and validates encrypted cookies", () => {
+  test("rejects external return targets", async () => {
+    const auth = createAuth({ appUrl: new URL("https://app.example"), authorizationClient: authorizationClient() });
+
+    await expect(auth.beginSignIn("//attacker.example/path")).resolves.toMatchObject({
+      transaction: { returnTo: "/account" },
+    });
+    await expect(auth.beginSignIn(String.raw`/\attacker.example/path`)).resolves.toMatchObject({
+      transaction: { returnTo: "/account" },
+    });
+  });
+
+  test("separates and validates encrypted cookie state", () => {
     const schema = z.object({ subject: z.string() });
-    const session = createSealedCookie({ name: "session", purpose: "session", schema, secret, maxAge: 60 });
-    const transaction = createSealedCookie({
+    const sessionCookie = createSealedCookie({ name: "session", purpose: "session", schema, secret, maxAge: 60 });
+    const transactionCookie = createSealedCookie({
       name: "transaction",
       purpose: "transaction",
       schema,
       secret,
       maxAge: 60,
     });
-    const value = session.encode({ subject: "developer" });
+    const value = sessionCookie.encode({ subject: "developer" });
 
-    expect(session.decode(value)).toEqual({ subject: "developer" });
-    expect(transaction.decode(value)).toBeUndefined();
+    expect(sessionCookie.decode(value)).toEqual({ subject: "developer" });
+    expect(transactionCookie.decode(value)).toBeUndefined();
   });
 });

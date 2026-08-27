@@ -4,4 +4,4 @@ import { getAuth } from "@/auth";
 
 export const runtime = "nodejs";
 
-export const GET = (request: NextRequest) => getAuth().session(request);
+export const GET = (request: NextRequest) => getAuth().handlers.session(request);

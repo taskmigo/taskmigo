@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./server": "./src/server.ts",
-    "./providers/openid-client": "./src/providers/openid-client.ts"
+    ".": "./src/core.ts",
+    "./next": "./src/next.ts",
+    "./openid-client": "./src/openid-client.ts"
   },
   "dependencies": {
     "next": "16.3.3",
