@@ -1,0 +1,13 @@
+{
+  "name": "@taskmigo/config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./server": "./src/server.ts"
+  },
+  "dependencies": {
+    "server-only": "0.0.1",
+    "zod": "4.4.3"
+  }
+}
