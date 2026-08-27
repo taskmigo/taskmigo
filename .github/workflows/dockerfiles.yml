@@ -3,12 +3,12 @@ name: Dockerfiles
 on:
   pull_request:
     paths:
-      - "server/**/Dockerfile"
+      - "**/Dockerfile"
       - ".github/workflows/dockerfiles.yml"
   push:
     branches: [next]
     paths:
-      - "server/**/Dockerfile"
+      - "**/Dockerfile"
       - ".github/workflows/dockerfiles.yml"
 
 concurrency:
