@@ -4,4 +4,4 @@ import { getAuth } from "@/auth";
 
 export const runtime = "nodejs";
 
-export const POST = (request: NextRequest) => getAuth().handlers.logout(request);
+export const POST = (request: NextRequest) => getAuth().logout(request);

@@ -21,8 +21,8 @@ class StubAuthorizationClient implements AuthorizationClient {
     );
   }
 
-  complete(input: { callbackUrl: URL; state: string }) {
-    return this.overrides.complete?.(input) ?? Promise.resolve(session);
+  complete(callbackUrl: URL, state: string) {
+    return this.overrides.complete?.(callbackUrl, state) ?? Promise.resolve(session);
   }
 
   renew(current: Session) {
@@ -47,7 +47,12 @@ describe("auth core", () => {
 
     expect(signIn.redirectTo.href).toBe("https://auth.example/authorize");
     expect(signIn.transaction).toEqual({ state: "transaction", returnTo: "/projects?mine=true" });
-    expect(auth.publicSession(session)).toEqual({ authenticated: true, user: session.user });
+    await expect(
+      auth.completeSignIn(new URL("https://app.example/api/auth/callback"), signIn.transaction),
+    ).resolves.toEqual({
+      redirectTo: new URL("https://app.example/projects?mine=true"),
+      session,
+    });
   });
 
   test("rejects external return targets", async () => {
