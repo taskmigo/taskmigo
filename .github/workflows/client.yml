@@ -38,6 +38,7 @@ jobs:
           version: 11.24.0
           run_install: false
 
+      # Keep these versions aligned with client/package.json and client/Dockerfile.
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
