@@ -5,6 +5,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import io.taskmigo.user.SystemUser;
 import io.taskmigo.user.UserService;
 import java.util.ArrayList;
 import java.util.Set;
@@ -26,8 +27,8 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 
 /// Configures the OAuth authorization-server primitives and the claims used to identify Taskmigo principals.
 ///
-/// Managed service principals receive their configured system permissions. Persisted interactive users are loaded from
-/// the user store; the bootstrap `system` user additionally receives every system-level permission in access tokens.
+/// Persisted interactive accounts share one user model. The reserved `system` username is temporarily granted complete
+/// system permissions here until ACL evaluation becomes the source of authorization decisions.
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties({
     IdentityProperties.class,
@@ -53,7 +54,7 @@ class AuthorizationServerConfiguration {
 
             return User.withUsername(user.username())
                 .password(passwordHash)
-                .roles(user.system() ? "SYSTEM" : "USER")
+                .roles(SystemUser.USERNAME.equals(user.username()) ? "SYSTEM" : "USER")
                 .disabled(!user.active())
                 .build();
         };
@@ -96,7 +97,7 @@ class AuthorizationServerConfiguration {
             userService.findForAuthentication(authorization.getPrincipalName()).ifPresent(user -> {
                 context.getClaims().claim("principal_type", "user");
                 context.getClaims().claim("user_id", user.id().toString());
-                if (user.system()) {
+                if (SystemUser.USERNAME.equals(user.username())) {
                     context.getClaims().claim("permissions", new ArrayList<>(ServicePrincipalPermissions.ALL));
                 }
             });

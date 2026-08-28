@@ -1,16 +1,14 @@
 package io.taskmigo.user;
 
-import java.util.UUID;
-
-/// Defines the immutable identity reserved for Taskmigo's platform bootstrap administrator.
+/// Defines the reserved bootstrap username and default profile used to create Taskmigo's platform administrator.
 ///
-/// The bootstrap user is global rather than organization-owned and receives complete system and project permission
-/// catalogs instead of depending on tenant role assignments.
+/// The bootstrap account is persisted with the same schema as every other user. Its elevated permissions are an
+/// authorization concern and are intentionally not represented by user-table flags or constraints.
 public final class SystemUser {
 
-    public static final UUID ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     public static final String USERNAME = "system";
-    public static final String DISPLAY_NAME = "System";
+    public static final String FIRST_NAME = "System";
+    public static final String LAST_NAME = "User";
 
     private SystemUser() {}
 }

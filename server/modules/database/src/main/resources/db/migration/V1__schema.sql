@@ -11,38 +11,23 @@ CREATE TABLE users (
     id UUID PRIMARY KEY,
     organization_id UUID REFERENCES organizations(id),
     username VARCHAR(100) NOT NULL,
-    normalized_email VARCHAR(320),
-    display_name VARCHAR(200) NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
     status VARCHAR(16) NOT NULL,
-    is_system BOOLEAN NOT NULL DEFAULT FALSE,
     password_hash VARCHAR(255),
     CONSTRAINT uk_users_username UNIQUE (username),
-    CONSTRAINT uk_users_normalized_email UNIQUE (normalized_email),
     CONSTRAINT ck_users_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DISABLED')),
-    CONSTRAINT ck_users_normalized_email CHECK (normalized_email = lower(btrim(normalized_email))),
-    CONSTRAINT ck_users_system_identity CHECK (
-        (
-            is_system
-            AND id = '00000000-0000-0000-0000-000000000001'::UUID
-            AND username = 'system'
-            AND display_name = 'System'
-            AND organization_id IS NULL
-            AND normalized_email IS NULL
-            AND status = 'ACTIVE'
-            AND password_hash IS NOT NULL
-            AND btrim(password_hash) <> ''
-        )
-        OR
-        (
-            NOT is_system
-            AND username <> 'system'
-            AND organization_id IS NOT NULL
-            AND normalized_email IS NOT NULL
-        )
-    )
+    CONSTRAINT ck_users_names CHECK (btrim(first_name) <> '' AND btrim(last_name) <> '')
 );
 CREATE INDEX ix_users_organization_id ON users(organization_id);
-CREATE UNIQUE INDEX uk_users_single_system ON users (is_system) WHERE is_system;
+
+CREATE TABLE user_emails (
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    normalized_email VARCHAR(320) NOT NULL,
+    PRIMARY KEY (user_id, normalized_email),
+    CONSTRAINT uk_user_emails_normalized_email UNIQUE (normalized_email),
+    CONSTRAINT ck_user_emails_normalized_email CHECK (normalized_email = lower(btrim(normalized_email)))
+);
 
 CREATE TABLE groups (
     id UUID PRIMARY KEY,

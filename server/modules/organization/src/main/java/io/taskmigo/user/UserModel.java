@@ -1,11 +1,16 @@
 package io.taskmigo.user;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
@@ -24,19 +29,21 @@ class UserEntity {
     @Column(nullable = false, length = 100)
     String username;
 
-    @Nullable
-    @Column(name = "normalized_email", length = 320)
-    String normalizedEmail;
+    @Column(name = "first_name", nullable = false, length = 100)
+    String firstName;
 
-    @Column(name = "display_name", nullable = false, length = 200)
-    String displayName;
+    @Column(name = "last_name", nullable = false, length = 100)
+    String lastName;
+
+    @ElementCollection
+    @CollectionTable(name = "user_emails", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "normalized_email", nullable = false, length = 320)
+    @SuppressWarnings("CanBeFinal")
+    Set<String> emails = new HashSet<>();
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     UserStatus status;
-
-    @Column(name = "is_system", nullable = false)
-    boolean system;
 
     @Nullable
     @Column(name = "password_hash")
@@ -44,28 +51,26 @@ class UserEntity {
 
     protected UserEntity() {}
 
-    UserEntity(UUID id, UUID organizationId, String username, String normalizedEmail, String displayName) {
+    UserEntity(
+        UUID id,
+        @Nullable UUID organizationId,
+        String username,
+        Set<String> emails,
+        String firstName,
+        String lastName
+    ) {
         this.id = id;
         this.organizationId = organizationId;
         this.username = username;
-        this.normalizedEmail = normalizedEmail;
-        this.displayName = displayName;
+        this.emails.addAll(emails);
+        this.firstName = firstName;
+        this.lastName = lastName;
         this.status = UserStatus.ACTIVE;
-        this.system = false;
         this.passwordHash = null;
     }
 
-    static UserEntity system(String passwordHash) {
-        var user = new UserEntity();
-        user.id = SystemUser.ID;
-        user.organizationId = null;
-        user.username = SystemUser.USERNAME;
-        user.normalizedEmail = null;
-        user.displayName = SystemUser.DISPLAY_NAME;
-        user.status = UserStatus.ACTIVE;
-        user.system = true;
-        user.passwordHash = passwordHash;
-        return user;
+    String displayName() {
+        return (this.firstName + " " + this.lastName).trim();
     }
 }
 

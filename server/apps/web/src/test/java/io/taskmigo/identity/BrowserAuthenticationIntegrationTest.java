@@ -79,16 +79,17 @@ class BrowserAuthenticationIntegrationTest {
     }
 
     @Test
-    void systemUserIsBootstrappedFromPersistentStorage() {
+    void systemUserIsBootstrappedAsARegularPersistentUser() {
         var persisted = this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow();
-        var info = this.users.require(SystemUser.ID);
+        var info = this.users.require(persisted.id());
         var principal = this.userDetails.loadUserByUsername(SystemUser.USERNAME);
         String persistedHash = Objects.requireNonNull(persisted.passwordHash());
 
-        assertThat(persisted.id()).isEqualTo(SystemUser.ID);
-        assertThat(persisted.system()).isTrue();
+        assertThat(info.username()).isEqualTo(SystemUser.USERNAME);
         assertThat(info.organizationId()).isNull();
-        assertThat(info.system()).isTrue();
+        assertThat(info.firstName()).isEqualTo(SystemUser.FIRST_NAME);
+        assertThat(info.lastName()).isEqualTo(SystemUser.LAST_NAME);
+        assertThat(info.emails()).isEmpty();
         assertThat(principal.getUsername()).isEqualTo(SystemUser.USERNAME);
         assertThat(principal.isEnabled()).isTrue();
         assertThat(principal.getAuthorities()).extracting(Object::toString).containsExactly("ROLE_SYSTEM");

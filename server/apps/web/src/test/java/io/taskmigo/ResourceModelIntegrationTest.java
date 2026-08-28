@@ -15,6 +15,7 @@ import io.taskmigo.project.ProjectService;
 import io.taskmigo.user.SystemUser;
 import io.taskmigo.user.UserService;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -89,6 +90,47 @@ class ResourceModelIntegrationTest {
                 Integer.class
             )
         ).isEqualTo(1);
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from information_schema.tables where table_name = 'user_emails'",
+                Integer.class
+            )
+        ).isEqualTo(1);
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from information_schema.columns where table_name = 'users' and column_name = 'is_system'",
+                Integer.class
+            )
+        ).isZero();
+    }
+
+    @Test
+    void usersCanBeOrganizationlessPasswordlessAndHaveZeroOrManyEmails() {
+        String noEmailUsername = "no-email-" + UUID.randomUUID();
+        UUID noEmail = this.users.create(null, noEmailUsername, Set.of(), "No", "Email");
+        var noEmailInfo = this.users.require(noEmail);
+
+        assertThat(noEmailInfo.organizationId()).isNull();
+        assertThat(noEmailInfo.firstName()).isEqualTo("No");
+        assertThat(noEmailInfo.lastName()).isEqualTo("Email");
+        assertThat(noEmailInfo.displayName()).isEqualTo("No Email");
+        assertThat(noEmailInfo.emails()).isEmpty();
+        assertThat(this.users.findForAuthentication(noEmailUsername).orElseThrow().passwordHash()).isNull();
+
+        String firstEmail = "First-" + UUID.randomUUID() + "@Example.COM";
+        String secondEmail = "Second-" + UUID.randomUUID() + "@Example.COM";
+        UUID manyEmails = this.users.create(
+            null,
+            "many-emails-" + UUID.randomUUID(),
+            Set.of(firstEmail, secondEmail),
+            "Many",
+            "Emails"
+        );
+
+        assertThat(this.users.require(manyEmails).emails()).containsExactlyInAnyOrder(
+            firstEmail.toLowerCase(Locale.ROOT),
+            secondEmail.toLowerCase(Locale.ROOT)
+        );
     }
 
     @Test
@@ -97,8 +139,9 @@ class ResourceModelIntegrationTest {
         UUID user = this.users.create(
             org,
             "history-user-" + UUID.randomUUID(),
-            UUID.randomUUID() + "@example.com",
-            "History User"
+            Set.of(UUID.randomUUID() + "@example.com"),
+            "History",
+            "User"
         );
         var admin = new ProjectChanged.Actor(ProjectChanged.ActorType.USER, UUID.randomUUID().toString(), "Admin User");
         var self = new ProjectChanged.Actor(ProjectChanged.ActorType.USER, user.toString(), "History User");
@@ -157,7 +200,8 @@ class ResourceModelIntegrationTest {
         UUID engineer = this.users.create(
             vendor,
             "engineer-" + UUID.randomUUID(),
-            UUID.randomUUID() + "@example.com",
+            Set.of(UUID.randomUUID() + "@example.com"),
+            "External",
             "Engineer"
         );
         UUID vendorGroup = this.groups.create(vendor, "Backend", null);
@@ -195,8 +239,9 @@ class ResourceModelIntegrationTest {
             "System Project",
             null
         );
+        UUID systemUser = this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().id();
 
-        assertThat(this.projects.effectivePermissions(project, SystemUser.ID)).containsExactlyInAnyOrderElementsOf(
+        assertThat(this.projects.effectivePermissions(project, systemUser)).containsExactlyInAnyOrderElementsOf(
             PermissionCatalog.ALL
         );
     }
@@ -208,8 +253,9 @@ class ResourceModelIntegrationTest {
         UUID userB = this.users.create(
             orgB,
             "user-b-" + UUID.randomUUID(),
-            UUID.randomUUID() + "@example.com",
-            "B User"
+            Set.of(UUID.randomUUID() + "@example.com"),
+            "B",
+            "User"
         );
         UUID projectA = this.projects.create(orgA, "p-" + UUID.randomUUID(), "Project", null);
         UUID member = this.projects.addMember(projectA, "USER", userB);
@@ -225,8 +271,9 @@ class ResourceModelIntegrationTest {
         UUID user = this.users.create(
             org,
             "archive-user-" + UUID.randomUUID(),
-            UUID.randomUUID() + "@example.com",
-            "Archive User"
+            Set.of(UUID.randomUUID() + "@example.com"),
+            "Archive",
+            "User"
         );
         UUID project = this.projects.create(org, "archive-project-" + UUID.randomUUID(), "Archive Project", null);
         this.projects.archive(project);
