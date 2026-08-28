@@ -73,10 +73,10 @@ class ResourceModelIntegrationTest {
     @Test
     void flywayBuildsTheSchemaAndHibernateOnlyValidatesIt() {
         var current = Objects.requireNonNull(this.flyway.info().current());
-        assertThat(current.getVersion().getVersion()).isEqualTo("4");
+        assertThat(current.getVersion().getVersion()).isEqualTo("1");
         assertThat(
             this.jdbc.queryForObject("select count(*) from flyway_schema_history where success", Integer.class)
-        ).isEqualTo(4);
+        ).isEqualTo(1);
         assertThat(
             this.jdbc.queryForObject(
                 "select count(*) from information_schema.tables where table_name = 'project_members'",

@@ -9,17 +9,40 @@ CREATE TABLE organizations (
 
 CREATE TABLE users (
     id UUID PRIMARY KEY,
-    organization_id UUID NOT NULL REFERENCES organizations(id),
+    organization_id UUID REFERENCES organizations(id),
     username VARCHAR(100) NOT NULL,
-    normalized_email VARCHAR(320) NOT NULL,
+    normalized_email VARCHAR(320),
     display_name VARCHAR(200) NOT NULL,
     status VARCHAR(16) NOT NULL,
+    is_system BOOLEAN NOT NULL DEFAULT FALSE,
+    password_hash VARCHAR(255),
     CONSTRAINT uk_users_username UNIQUE (username),
     CONSTRAINT uk_users_normalized_email UNIQUE (normalized_email),
     CONSTRAINT ck_users_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DISABLED')),
-    CONSTRAINT ck_users_normalized_email CHECK (normalized_email = lower(btrim(normalized_email)))
+    CONSTRAINT ck_users_normalized_email CHECK (normalized_email = lower(btrim(normalized_email))),
+    CONSTRAINT ck_users_system_identity CHECK (
+        (
+            is_system
+            AND id = '00000000-0000-0000-0000-000000000001'::UUID
+            AND username = 'system'
+            AND display_name = 'System'
+            AND organization_id IS NULL
+            AND normalized_email IS NULL
+            AND status = 'ACTIVE'
+            AND password_hash IS NOT NULL
+            AND btrim(password_hash) <> ''
+        )
+        OR
+        (
+            NOT is_system
+            AND username <> 'system'
+            AND organization_id IS NOT NULL
+            AND normalized_email IS NOT NULL
+        )
+    )
 );
 CREATE INDEX ix_users_organization_id ON users(organization_id);
+CREATE UNIQUE INDEX uk_users_single_system ON users (is_system) WHERE is_system;
 
 CREATE TABLE groups (
     id UUID PRIMARY KEY,
@@ -79,6 +102,27 @@ CREATE TABLE project_member_roles (
     PRIMARY KEY (project_member_id, role_id)
 );
 CREATE INDEX ix_project_member_roles_role_id ON project_member_roles(role_id);
+
+CREATE TABLE project_history (
+    id UUID PRIMARY KEY,
+    project_id UUID NOT NULL REFERENCES projects(id),
+    action VARCHAR(64) NOT NULL,
+    actor_type VARCHAR(16) NOT NULL,
+    actor_id VARCHAR(255) NOT NULL,
+    actor_display_name VARCHAR(255) NOT NULL,
+    target_type VARCHAR(16),
+    target_id VARCHAR(255),
+    target_display_name VARCHAR(255),
+    changes_json TEXT NOT NULL,
+    data_json TEXT NOT NULL,
+    occurred_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    CONSTRAINT ck_project_history_target CHECK (
+        (target_type IS NULL AND target_id IS NULL AND target_display_name IS NULL)
+        OR (target_type IS NOT NULL AND target_id IS NOT NULL AND target_display_name IS NOT NULL)
+    )
+);
+CREATE INDEX ix_project_history_project_cursor
+    ON project_history(project_id, occurred_at DESC, id DESC);
 
 CREATE FUNCTION taskmigo_enforce_group_member_organization() RETURNS TRIGGER LANGUAGE plpgsql AS $$
 DECLARE group_organization UUID; user_organization UUID;
@@ -144,3 +188,64 @@ BEGIN
 END; $$;
 CREATE TRIGGER trg_project_member_roles_active_project BEFORE INSERT OR UPDATE OR DELETE ON project_member_roles
 FOR EACH ROW EXECUTE FUNCTION taskmigo_enforce_active_project_role_mutation();
+
+CREATE TABLE oauth2_registered_client (
+    id varchar(100) NOT NULL,
+    client_id varchar(100) NOT NULL,
+    client_id_issued_at timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    client_secret varchar(200) DEFAULT NULL,
+    client_secret_expires_at timestamptz DEFAULT NULL,
+    client_name varchar(200) NOT NULL,
+    client_authentication_methods varchar(1000) NOT NULL,
+    authorization_grant_types varchar(1000) NOT NULL,
+    redirect_uris varchar(1000) DEFAULT NULL,
+    post_logout_redirect_uris varchar(1000) DEFAULT NULL,
+    scopes varchar(1000) NOT NULL,
+    client_settings varchar(2000) NOT NULL,
+    token_settings varchar(2000) NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE oauth2_authorization (
+    id varchar(100) NOT NULL,
+    registered_client_id varchar(100) NOT NULL,
+    principal_name varchar(200) NOT NULL,
+    authorization_grant_type varchar(100) NOT NULL,
+    authorized_scopes varchar(1000) DEFAULT NULL,
+    attributes text DEFAULT NULL,
+    state varchar(500) DEFAULT NULL,
+    authorization_code_value text DEFAULT NULL,
+    authorization_code_issued_at timestamptz DEFAULT NULL,
+    authorization_code_expires_at timestamptz DEFAULT NULL,
+    authorization_code_metadata text DEFAULT NULL,
+    access_token_value text DEFAULT NULL,
+    access_token_issued_at timestamptz DEFAULT NULL,
+    access_token_expires_at timestamptz DEFAULT NULL,
+    access_token_metadata text DEFAULT NULL,
+    access_token_type varchar(100) DEFAULT NULL,
+    access_token_scopes varchar(1000) DEFAULT NULL,
+    oidc_id_token_value text DEFAULT NULL,
+    oidc_id_token_issued_at timestamptz DEFAULT NULL,
+    oidc_id_token_expires_at timestamptz DEFAULT NULL,
+    oidc_id_token_metadata text DEFAULT NULL,
+    refresh_token_value text DEFAULT NULL,
+    refresh_token_issued_at timestamptz DEFAULT NULL,
+    refresh_token_expires_at timestamptz DEFAULT NULL,
+    refresh_token_metadata text DEFAULT NULL,
+    user_code_value text DEFAULT NULL,
+    user_code_issued_at timestamptz DEFAULT NULL,
+    user_code_expires_at timestamptz DEFAULT NULL,
+    user_code_metadata text DEFAULT NULL,
+    device_code_value text DEFAULT NULL,
+    device_code_issued_at timestamptz DEFAULT NULL,
+    device_code_expires_at timestamptz DEFAULT NULL,
+    device_code_metadata text DEFAULT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE oauth2_authorization_consent (
+    registered_client_id varchar(100) NOT NULL,
+    principal_name varchar(200) NOT NULL,
+    authorities varchar(1000) NOT NULL,
+    PRIMARY KEY (registered_client_id, principal_name)
+);
