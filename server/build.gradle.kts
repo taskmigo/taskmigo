@@ -70,7 +70,7 @@ subprojects {
     }
 }
 
-val verifyDatabaseLifecycleOwnership by tasks.registering {
+val verifyDatabaseLifecycleOwnership = tasks.register("verifyDatabaseLifecycleOwnership") {
     group = "verification"
     description = "Ensures database migrations and shared database configuration stay centralized"
 
