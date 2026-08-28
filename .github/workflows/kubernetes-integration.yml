@@ -6,6 +6,7 @@ on:
       - "helm/**"
       - "server/**"
       - "client/**"
+      - "e2e/**"
       - ".github/workflows/kubernetes-integration.yml"
   push:
     branches: [next]
@@ -13,6 +14,7 @@ on:
       - "helm/**"
       - "server/**"
       - "client/**"
+      - "e2e/**"
       - ".github/workflows/kubernetes-integration.yml"
 
 concurrency:
@@ -46,6 +48,18 @@ jobs:
             --set tests.oauthClient.enabled=true \
             --set bootstrap.testClient.enabled=true \
             >/dev/null
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "26.7.0"
+
+      - name: Install Playwright
+        working-directory: e2e
+        run: |
+          npm install --no-audit --no-fund --package-lock=false
+          npm run typecheck
+          npx playwright install --with-deps chromium
 
       - name: Start Minikube
         uses: medyagh/setup-minikube@v0.0.21
@@ -170,6 +184,38 @@ jobs:
       - name: Run Helm integration test
         run: helm test taskmigo --namespace "$NAMESPACE" --logs --timeout 5m
 
+      - name: Run Playwright Kubernetes E2E
+        env:
+          E2E_BASE_URL: http://taskmigo-client:3000
+          E2E_AUTH_ORIGIN: http://taskmigo-web:8080
+          E2E_USERNAME: system
+        run: |
+          set -euo pipefail
+
+          echo "127.0.0.1 taskmigo-client taskmigo-web" | sudo tee -a /etc/hosts >/dev/null
+          export NO_PROXY="${NO_PROXY:+$NO_PROXY,}taskmigo-client,taskmigo-web"
+          export no_proxy="${no_proxy:+$no_proxy,}taskmigo-client,taskmigo-web"
+
+          kubectl -n "$NAMESPACE" port-forward service/taskmigo-client 3000:3000 \
+            >"$RUNNER_TEMP/taskmigo-client-port-forward.log" 2>&1 &
+          client_port_forward_pid=$!
+          kubectl -n "$NAMESPACE" port-forward service/taskmigo-web 8080:8080 \
+            >"$RUNNER_TEMP/taskmigo-web-port-forward.log" 2>&1 &
+          web_port_forward_pid=$!
+
+          cleanup() {
+            kill "$client_port_forward_pid" "$web_port_forward_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          curl --fail --silent --show-error --retry 30 --retry-connrefused --retry-delay 1 "$E2E_BASE_URL/" >/dev/null
+          curl --fail --silent --show-error --retry 30 --retry-connrefused --retry-delay 1 \
+            "$E2E_AUTH_ORIGIN/.well-known/openid-configuration" >/dev/null
+
+          export E2E_PASSWORD="$(kubectl -n "$NAMESPACE" get secret taskmigo-secrets \
+            -o jsonpath='{.data.bootstrap-user-password}' | base64 --decode)"
+          npm --prefix e2e test
+
       - name: Kubernetes failure diagnostics
         if: ${{ failure() }}
         run: |
@@ -181,6 +227,14 @@ jobs:
           helm status taskmigo --namespace "$NAMESPACE" || true
           echo "::endgroup::"
 
+          for log in "$RUNNER_TEMP/taskmigo-client-port-forward.log" "$RUNNER_TEMP/taskmigo-web-port-forward.log"; do
+            if [ -f "$log" ]; then
+              echo "::group::$(basename "$log")"
+              tail -n 200 "$log" || true
+              echo "::endgroup::"
+            fi
+          done
+
           for pod in $(kubectl -n "$NAMESPACE" get pods -o name 2>/dev/null); do
             echo "::group::Logs $pod"
             kubectl -n "$NAMESPACE" logs "$pod" --all-containers --tail=200 || true
@@ -189,3 +243,14 @@ jobs:
             kubectl -n "$NAMESPACE" describe "$pod" || true
             echo "::endgroup::"
           done
+
+      - name: Upload Playwright failure report
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          if-no-files-found: ignore
+          retention-days: 7

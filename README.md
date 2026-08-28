@@ -1,7 +1,7 @@
 # Taskmigo
 
 Taskmigo is a modern Redmine alternative. The repository contains independently runnable server applications, shared
-server modules, the Next.js client, and the documentation site.
+server modules, the Next.js client, the Helm deployment, end-to-end tests, and the documentation site.
 
 ## Stack
 
@@ -16,6 +16,9 @@ server modules, the Next.js client, and the documentation site.
 - PostgreSQL
 - Flyway
 - Testcontainers
+- Kubernetes
+- Helm
+- Playwright
 - Next.js with Fumadocs
 
 Server dependency and plugin versions are defined in `server/gradle/libs.versions.toml`. Spring Boot and Spring Modulith
@@ -34,6 +37,8 @@ BOMs provide compatible versions for their dependency families.
 | `server/modules/project`      | Projects, memberships, authorization, and project history              | Library JAR         |
 | `server/modules/foundation`   | Cross-domain primitives used by server modules                         | Library JAR         |
 | `client`                      | Next.js application and client-side packages                           | Application         |
+| `helm/taskmigo`               | Kubernetes deployment and Helm smoke/integration tests                 | Helm chart          |
+| `e2e`                         | Browser-level tests against a deployed Taskmigo environment            | Playwright suite    |
 | `docs`                        | Documentation site and versioned product contract                      | Static site         |
 
 Applications compose shared modules; shared modules never depend on executable applications. Spring Modulith verifies the
@@ -162,6 +167,10 @@ Dockerfile changes are checked by Hadolint in a path-filtered workflow.
 The repository formatting gate scans supported files from the repository root with Prettier. The server gate enforces
 JSpecify nullness contracts with NullAway, validates Spring Modulith boundaries, verifies database lifecycle ownership,
 and runs integration tests against PostgreSQL containers.
+
+The Kubernetes integration workflow starts Minikube, deploys the Helm chart against disposable PostgreSQL, runs the Helm
+service/API tests, and then runs the `e2e` Playwright suite through the deployed browser login flow. See `e2e/README.md`
+for the browser-test contract and environment variables.
 
 ```bash
 npm ci
