@@ -31,7 +31,7 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 /// Persisted interactive accounts share one user model. The reserved `system` username is temporarily granted complete
 /// system permissions here until ACL evaluation becomes the source of authorization decisions.
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties({IdentityProperties.class, OAuth2AuthorizationServerProperties.class})
+@EnableConfigurationProperties({ IdentityProperties.class, OAuth2AuthorizationServerProperties.class })
 class AuthorizationServerConfiguration {
 
     @Bean

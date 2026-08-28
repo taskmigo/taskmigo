@@ -76,8 +76,9 @@ class BootstrapIntegrationTest {
         assertThat(migrations[0].getVersion().getVersion()).isEqualTo("1");
 
         var system = this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow();
-        assertThat(this.passwordEncoder.matches("integration-password", Objects.requireNonNull(system.passwordHash())))
-            .isTrue();
+        assertThat(
+            this.passwordEncoder.matches("integration-password", Objects.requireNonNull(system.passwordHash()))
+        ).isTrue();
 
         RegisteredClient internal = this.storedClient("integration-client");
         assertThat(InternalClientMetadata.isManaged(internal)).isTrue();
