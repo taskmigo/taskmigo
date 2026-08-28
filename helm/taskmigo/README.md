@@ -11,12 +11,12 @@ This chart deploys the Taskmigo bootstrap job, web server, worker, and browser c
 
 The default Secret name is `taskmigo-secrets` and the chart expects these keys:
 
-| Key | Used by |
-| --- | --- |
-| `database-password` | Bootstrap, web, worker |
-| `bootstrap-user-password` | Bootstrap system-user reconciliation |
-| `auth-client-secret` | Browser OAuth client reconciliation and client runtime |
-| `auth-session-secret` | Client session encryption; must be at least 32 characters |
+| Key                       | Used by                                                   |
+| ------------------------- | --------------------------------------------------------- |
+| `database-password`       | Bootstrap, web, worker                                    |
+| `bootstrap-user-password` | Bootstrap system-user reconciliation                      |
+| `auth-client-secret`      | Browser OAuth client reconciliation and client runtime    |
+| `auth-session-secret`     | Client session encryption; must be at least 32 characters |
 
 When the Helm integration test OAuth client is enabled, the Secret must additionally contain `integration-test-client-secret`.
 
