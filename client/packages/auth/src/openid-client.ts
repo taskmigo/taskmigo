@@ -29,7 +29,7 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
   readonly #allowInsecureRequests: boolean;
   readonly #authorizationStateSchema: z.ZodType<AuthorizationState>;
   readonly #sessionStateSchema: z.ZodType<SessionState>;
-  #configurationPromise?: Promise<client.Configuration>;
+  #configurationPromise: Promise<client.Configuration> | undefined;
 
   constructor(config: OpenIdClientConfig) {
     this.#issuer = new URL(config.issuer);
@@ -91,7 +91,7 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
     if (!subject) throw new Error("Authorization server returned no subject claim");
 
     return this.#createSession(tokens, {
-      user: { id: subject, name: OpenIdAuthorizationClient.#claimString(claims, "name") },
+      user: OpenIdAuthorizationClient.#user(subject, OpenIdAuthorizationClient.#claimString(claims, "name")),
       refreshToken: tokens.refresh_token,
       idToken: tokens.id_token,
     });
@@ -103,10 +103,10 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
     const claims = tokens.claims();
 
     return this.#createSession(tokens, {
-      user: {
-        id: OpenIdAuthorizationClient.#claimString(claims, "sub") ?? session.user.id,
-        name: OpenIdAuthorizationClient.#claimString(claims, "name") ?? session.user.name,
-      },
+      user: OpenIdAuthorizationClient.#user(
+        OpenIdAuthorizationClient.#claimString(claims, "sub") ?? session.user.id,
+        OpenIdAuthorizationClient.#claimString(claims, "name") ?? session.user.name,
+      ),
       refreshToken: tokens.refresh_token ?? previous.refreshToken,
       idToken: tokens.id_token ?? previous.idToken,
     });
@@ -173,6 +173,10 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
     if (typeof claims !== "object" || claims === null || !Object.hasOwn(claims, name)) return;
     const value = (claims as Record<string, unknown>)[name];
     return typeof value === "string" && value.length > 0 ? value : undefined;
+  }
+
+  static #user(id: string, name: string | undefined): User {
+    return name === undefined ? { id } : { id, name };
   }
 
   static #developmentDiscoveryOptions(): client.DiscoveryRequestOptions {

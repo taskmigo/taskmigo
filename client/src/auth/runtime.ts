@@ -6,6 +6,7 @@ import {
   type AuthManager,
   type AuthorizationTransaction,
   type Session,
+  type User,
 } from "@taskmigo/auth";
 import { OpenIdAuthorizationClient } from "@taskmigo/auth/openid-client";
 import { getConfig, type Config } from "@taskmigo/config/server";
@@ -18,8 +19,11 @@ import { z } from "zod";
 const AUTH_RUNTIME = Symbol.for("taskmigo.auth.runtime");
 
 const TRANSACTION_SCHEMA = z.object({ state: z.string().min(1), returnTo: z.string().min(1) });
+const USER_SCHEMA = z
+  .object({ id: z.string().min(1), name: z.string().min(1).optional() })
+  .transform(({ id, name }): User => (name === undefined ? { id } : { id, name }));
 const SESSION_SCHEMA = z.object({
-  user: z.object({ id: z.string().min(1), name: z.string().min(1).optional() }),
+  user: USER_SCHEMA,
   expiresAt: z.number(),
   authorizationState: z.string().min(1),
 });

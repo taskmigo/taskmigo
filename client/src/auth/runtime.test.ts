@@ -139,6 +139,17 @@ describe("auth runtime", () => {
     calls.headerCookies.mockResolvedValueOnce({ get: () => ({ value: encoded }) });
     await expect(runtimeModule.getSession()).resolves.toEqual(session);
 
+    const unnamedSession: Session = {
+      user: { id: "developer" },
+      expiresAt: 123_456,
+      authorizationState: "opaque",
+    };
+    auth.sessions.write(writer, unnamedSession);
+    calls.headerCookies.mockResolvedValueOnce({ get: () => ({ value: encoded }) });
+    const decoded = await runtimeModule.getSession();
+    expect(decoded).toEqual(unnamedSession);
+    expect(decoded && "name" in decoded.user).toBe(false);
+
     auth.sessions.write(writer, { ...session, user: { id: "" } } as Session);
     calls.headerCookies.mockResolvedValueOnce({ get: () => ({ value: encoded }) });
     await expect(runtimeModule.getSession()).resolves.toBeUndefined();

@@ -144,6 +144,14 @@ describe("OpenIdAuthorizationClient", () => {
     });
   });
 
+  test("preserves an absent optional user name as property absence", async () => {
+    const instance = await createClient();
+    const result = await createSession(instance, { claims: { sub: "developer" } });
+
+    expect(result.user).toEqual({ id: "developer" });
+    expect("name" in result.user).toBe(false);
+  });
+
   test("validates authorization state version and encoding", async () => {
     const instance = await createClient();
     const wrongVersion = Buffer.from(
