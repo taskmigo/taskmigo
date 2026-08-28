@@ -2,6 +2,7 @@ package io.taskmigo.user;
 
 import io.taskmigo.organization.OrganizationService;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -60,7 +61,25 @@ public class UserService {
         return new UserInfo(user.id, user.organizationId, user.displayName);
     }
 
+    /// Finds persisted identity and account state for an authentication adapter without exposing the user entity.
+    @Transactional(readOnly = true)
+    public Optional<AuthenticationInfo> findForAuthentication(String username) {
+        return this.users
+            .findByUsername(username)
+            .map(user ->
+                new AuthenticationInfo(
+                    user.id,
+                    user.username,
+                    user.displayName,
+                    UserStatus.ACTIVE.equals(user.status)
+                )
+            );
+    }
+
     public record UserInfo(UUID id, UUID organizationId, String displayName) {}
+
+    /// Stable persisted user identity required by authentication adapters.
+    public record AuthenticationInfo(UUID id, String username, String displayName, boolean active) {}
 
     private static String required(@Nullable String value, String field) {
         if (value == null || value.isBlank()) throw new UserException(

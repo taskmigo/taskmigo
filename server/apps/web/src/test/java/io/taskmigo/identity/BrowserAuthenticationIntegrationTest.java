@@ -1,8 +1,11 @@
 package io.taskmigo.identity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
+import io.taskmigo.organization.OrganizationService;
+import io.taskmigo.user.UserService;
 import java.util.Objects;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -10,6 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
@@ -37,20 +41,26 @@ import org.springframework.web.client.RestClient;
 class BrowserAuthenticationIntegrationTest {
 
     private final RegisteredClientRepository clients;
-    private final UserDetailsService users;
+    private final UserDetailsService userDetails;
     private final PasswordEncoder passwordEncoder;
+    private final OrganizationService organizations;
+    private final UserService users;
 
     @LocalServerPort
     private int port;
 
     BrowserAuthenticationIntegrationTest(
         RegisteredClientRepository clients,
-        UserDetailsService users,
-        PasswordEncoder passwordEncoder
+        UserDetailsService userDetails,
+        PasswordEncoder passwordEncoder,
+        OrganizationService organizations,
+        UserService users
     ) {
         this.clients = clients;
-        this.users = users;
+        this.userDetails = userDetails;
         this.passwordEncoder = passwordEncoder;
+        this.organizations = organizations;
+        this.users = users;
     }
 
     @Test
@@ -76,9 +86,22 @@ class BrowserAuthenticationIntegrationTest {
     }
 
     @Test
-    void developmentUserIsOnlyProvisionedThroughExplicitConfiguration() {
-        var user = this.users.loadUserByUsername("developer");
+    void developmentLoginUsesPersistedUserIdentity() {
+        assertThatThrownBy(() -> this.userDetails.loadUserByUsername("developer"))
+            .isInstanceOf(UsernameNotFoundException.class);
 
+        var organizationId = this.organizations.create("browser-auth-test", "Browser authentication test");
+        this.users.create(
+            organizationId,
+            "developer",
+            "developer@example.com",
+            "Development User"
+        );
+
+        var user = this.userDetails.loadUserByUsername("developer");
+
+        assertThat(user.getUsername()).isEqualTo("developer");
+        assertThat(user.isEnabled()).isTrue();
         assertThat(this.passwordEncoder.matches("integration-password", user.getPassword())).isTrue();
     }
 

@@ -5,6 +5,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import io.taskmigo.user.UserService;
 import java.util.ArrayList;
 import java.util.Set;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -13,6 +14,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
 import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -20,7 +23,6 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 
 /// Configures the OAuth authorization-server primitives and the claims used to identify Taskmigo service principals.
 ///
@@ -41,25 +43,38 @@ class AuthorizationServerConfiguration {
     }
 
     @Bean
-    InMemoryUserDetailsManager interactiveUsers(
+    UserDetailsService interactiveUsers(
         BrowserAuthenticationProperties properties,
-        PasswordEncoder passwordEncoder
+        PasswordEncoder passwordEncoder,
+        UserService userService
     ) {
-        var users = new InMemoryUserDetailsManager();
         var developmentUser = properties.developmentUser();
-        if (!developmentUser.enabled()) return users;
+        if (!developmentUser.enabled()) {
+            return username -> {
+                throw new UsernameNotFoundException("Interactive login is disabled");
+            };
+        }
         if (developmentUser.password().isBlank()) {
             throw new IllegalStateException(
                 "Development login password must not be blank when the development user is enabled"
             );
         }
-        users.createUser(
-            User.withUsername(developmentUser.username())
-                .password(passwordEncoder.encode(developmentUser.password()))
+
+        String encodedPassword = passwordEncoder.encode(developmentUser.password());
+        return username -> {
+            if (!developmentUser.username().equals(username)) {
+                throw new UsernameNotFoundException("User not found");
+            }
+
+            var user = userService
+                .findForAuthentication(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+            return User.withUsername(user.username())
+                .password(encodedPassword)
                 .roles("USER")
-                .build()
-        );
-        return users;
+                .disabled(!user.active())
+                .build();
+        };
     }
 
     @Bean
