@@ -12,6 +12,7 @@ import io.taskmigo.organization.OrganizationService;
 import io.taskmigo.project.ProjectChanged;
 import io.taskmigo.project.ProjectException;
 import io.taskmigo.project.ProjectService;
+import io.taskmigo.user.SystemUser;
 import io.taskmigo.user.UserService;
 import java.util.List;
 import java.util.Objects;
@@ -72,10 +73,10 @@ class ResourceModelIntegrationTest {
     @Test
     void flywayBuildsTheSchemaAndHibernateOnlyValidatesIt() {
         var current = Objects.requireNonNull(this.flyway.info().current());
-        assertThat(current.getVersion().getVersion()).isEqualTo("3");
+        assertThat(current.getVersion().getVersion()).isEqualTo("4");
         assertThat(
             this.jdbc.queryForObject("select count(*) from flyway_schema_history where success", Integer.class)
-        ).isEqualTo(3);
+        ).isEqualTo(4);
         assertThat(
             this.jdbc.queryForObject(
                 "select count(*) from information_schema.tables where table_name = 'project_members'",
@@ -182,6 +183,21 @@ class ResourceModelIntegrationTest {
         this.groups.removeMember(vendorGroup, engineer);
         assertThat(this.projects.effectivePermissions(project, engineer)).containsExactly(
             PermissionCatalog.PROJECT_READ
+        );
+    }
+
+    @Test
+    void systemUserAlwaysHasEveryProjectPermissionWithoutMembership() {
+        UUID organization = this.organizations.create("system-access-" + UUID.randomUUID(), "System Access");
+        UUID project = this.projects.create(
+            organization,
+            "system-project-" + UUID.randomUUID(),
+            "System Project",
+            null
+        );
+
+        assertThat(this.projects.effectivePermissions(project, SystemUser.ID)).containsExactlyInAnyOrderElementsOf(
+            PermissionCatalog.ALL
         );
     }
 

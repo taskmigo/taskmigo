@@ -1,10 +1,9 @@
 package io.taskmigo.identity;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
-import io.taskmigo.organization.OrganizationService;
+import io.taskmigo.user.SystemUser;
 import io.taskmigo.user.UserService;
 import java.util.Objects;
 import java.util.Set;
@@ -13,7 +12,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
@@ -29,9 +27,7 @@ import org.springframework.web.client.RestClient;
         "taskmigo.security.browser-authentication.enabled=true",
         "taskmigo.security.browser-authentication.client-secret=browser-integration-secret",
         "taskmigo.security.browser-authentication.client-url=http://localhost:3000",
-        "taskmigo.security.browser-authentication.development-user.enabled=true",
-        "taskmigo.security.browser-authentication.development-user.username=developer",
-        "taskmigo.security.browser-authentication.development-user.password=integration-password",
+        "taskmigo.security.bootstrap-user.password=integration-password",
         "taskmigo.security.signing-key-file=build/test-data/browser-auth-signing-key.pem",
         "taskmigo.security.signing-key-auto-create=true",
     }
@@ -43,7 +39,6 @@ class BrowserAuthenticationIntegrationTest {
     private final RegisteredClientRepository clients;
     private final UserDetailsService userDetails;
     private final PasswordEncoder passwordEncoder;
-    private final OrganizationService organizations;
     private final UserService users;
 
     @LocalServerPort
@@ -53,13 +48,11 @@ class BrowserAuthenticationIntegrationTest {
         RegisteredClientRepository clients,
         UserDetailsService userDetails,
         PasswordEncoder passwordEncoder,
-        OrganizationService organizations,
         UserService users
     ) {
         this.clients = clients;
         this.userDetails = userDetails;
         this.passwordEncoder = passwordEncoder;
-        this.organizations = organizations;
         this.users = users;
     }
 
@@ -86,19 +79,26 @@ class BrowserAuthenticationIntegrationTest {
     }
 
     @Test
-    void developmentLoginUsesPersistedUserIdentity() {
-        assertThatThrownBy(() -> this.userDetails.loadUserByUsername("developer")).isInstanceOf(
-            UsernameNotFoundException.class
+    void systemUserIsBootstrappedFromPersistentStorage() {
+        var persisted = this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow();
+        var info = this.users.require(SystemUser.ID);
+        var principal = this.userDetails.loadUserByUsername(SystemUser.USERNAME);
+        String persistedHash = Objects.requireNonNull(persisted.passwordHash());
+
+        assertThat(persisted.id()).isEqualTo(SystemUser.ID);
+        assertThat(persisted.system()).isTrue();
+        assertThat(info.organizationId()).isNull();
+        assertThat(info.system()).isTrue();
+        assertThat(principal.getUsername()).isEqualTo(SystemUser.USERNAME);
+        assertThat(principal.isEnabled()).isTrue();
+        assertThat(principal.getAuthorities()).extracting(Object::toString).containsExactly("ROLE_SYSTEM");
+        assertThat(this.passwordEncoder.matches("integration-password", persistedHash)).isTrue();
+        assertThat(this.passwordEncoder.matches("integration-password", principal.getPassword())).isTrue();
+
+        assertThat(this.users.reconcileSystemUser(this.passwordEncoder.encode("replacement-password"))).isTrue();
+        assertThat(this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()).isEqualTo(
+            persistedHash
         );
-
-        var organizationId = this.organizations.create("browser-auth-test", "Browser authentication test");
-        this.users.create(organizationId, "developer", "developer@example.com", "Development User");
-
-        var user = this.userDetails.loadUserByUsername("developer");
-
-        assertThat(user.getUsername()).isEqualTo("developer");
-        assertThat(user.isEnabled()).isTrue();
-        assertThat(this.passwordEncoder.matches("integration-password", user.getPassword())).isTrue();
     }
 
     @Test

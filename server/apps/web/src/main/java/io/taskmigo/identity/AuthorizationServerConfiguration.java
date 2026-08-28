@@ -24,15 +24,15 @@ import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 
-/// Configures the OAuth authorization-server primitives and the claims used to identify Taskmigo service principals.
+/// Configures the OAuth authorization-server primitives and the claims used to identify Taskmigo principals.
 ///
-/// Access tokens issued through `client_credentials` use the registered client id as their subject and include
-/// `principal_type=service` plus the permissions assigned to managed internal clients. Other token flows keep Spring
-/// Authorization Server's default claims.
+/// Managed service principals receive their configured system permissions. Persisted interactive users are loaded from
+/// the user store; the bootstrap `system` user additionally receives every system-level permission in access tokens.
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties({
     IdentityProperties.class,
     BrowserAuthenticationProperties.class,
+    BootstrapUserProperties.class,
     OAuth2AuthorizationServerProperties.class,
 })
 class AuthorizationServerConfiguration {
@@ -43,35 +43,17 @@ class AuthorizationServerConfiguration {
     }
 
     @Bean
-    UserDetailsService interactiveUsers(
-        BrowserAuthenticationProperties properties,
-        PasswordEncoder passwordEncoder,
-        UserService userService
-    ) {
-        var developmentUser = properties.developmentUser();
-        if (!developmentUser.enabled()) {
-            return username -> {
-                throw new UsernameNotFoundException("Interactive login is disabled");
-            };
-        }
-        if (developmentUser.password().isBlank()) {
-            throw new IllegalStateException(
-                "Development login password must not be blank when the development user is enabled"
-            );
-        }
-
-        String encodedPassword = passwordEncoder.encode(developmentUser.password());
+    UserDetailsService interactiveUsers(UserService userService) {
         return username -> {
-            if (!developmentUser.username().equals(username)) {
-                throw new UsernameNotFoundException("User not found");
-            }
-
             var user = userService
                 .findForAuthentication(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+            String passwordHash = user.passwordHash();
+            if (passwordHash == null) throw new UsernameNotFoundException("User has no interactive credential");
+
             return User.withUsername(user.username())
-                .password(encodedPassword)
-                .roles("USER")
+                .password(passwordHash)
+                .roles(user.system() ? "SYSTEM" : "USER")
                 .disabled(!user.active())
                 .build();
         };
@@ -97,15 +79,27 @@ class AuthorizationServerConfiguration {
     }
 
     @Bean
-    OAuth2TokenCustomizer<JwtEncodingContext> servicePrincipalClaims() {
+    OAuth2TokenCustomizer<JwtEncodingContext> principalClaims(UserService userService) {
         return context -> {
             if (!OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) return;
-            if (!AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) return;
 
-            Set<String> permissions = InternalClientMetadata.permissions(context.getRegisteredClient());
-            context.getClaims().subject(context.getRegisteredClient().getClientId());
-            context.getClaims().claim("principal_type", "service");
-            context.getClaims().claim("permissions", new ArrayList<>(permissions));
+            if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
+                Set<String> permissions = InternalClientMetadata.permissions(context.getRegisteredClient());
+                context.getClaims().subject(context.getRegisteredClient().getClientId());
+                context.getClaims().claim("principal_type", "service");
+                context.getClaims().claim("permissions", new ArrayList<>(permissions));
+                return;
+            }
+
+            var authorization = context.getAuthorization();
+            if (authorization == null) return;
+            userService.findForAuthentication(authorization.getPrincipalName()).ifPresent(user -> {
+                context.getClaims().claim("principal_type", "user");
+                context.getClaims().claim("user_id", user.id().toString());
+                if (user.system()) {
+                    context.getClaims().claim("permissions", new ArrayList<>(ServicePrincipalPermissions.ALL));
+                }
+            });
         };
     }
 }
