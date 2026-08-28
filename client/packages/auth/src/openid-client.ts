@@ -87,8 +87,11 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
     if (!tokens.refresh_token || !tokens.id_token)
       throw new Error("Authorization server returned a non-renewable session");
 
+    const subject = OpenIdAuthorizationClient.#claimString(claims, "sub");
+    if (!subject) throw new Error("Authorization server returned no subject claim");
+
     return this.#createSession(tokens, {
-      user: { id: claims.sub, name: OpenIdAuthorizationClient.#claimName(claims) },
+      user: { id: subject, name: OpenIdAuthorizationClient.#claimString(claims, "name") },
       refreshToken: tokens.refresh_token,
       idToken: tokens.id_token,
     });
@@ -101,8 +104,8 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
 
     return this.#createSession(tokens, {
       user: {
-        id: claims?.sub ?? session.user.id,
-        name: OpenIdAuthorizationClient.#claimName(claims) ?? session.user.name,
+        id: OpenIdAuthorizationClient.#claimString(claims, "sub") ?? session.user.id,
+        name: OpenIdAuthorizationClient.#claimString(claims, "name") ?? session.user.name,
       },
       refreshToken: tokens.refresh_token ?? previous.refreshToken,
       idToken: tokens.id_token ?? previous.idToken,
@@ -166,10 +169,10 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
     return Date.now() + expiresIn * 1000;
   }
 
-  static #claimName(claims: unknown): string | undefined {
-    if (typeof claims !== "object" || claims === null || !("name" in claims)) return;
-    const name = claims.name;
-    return typeof name === "string" && name.length > 0 ? name : undefined;
+  static #claimString(claims: unknown, name: "sub" | "name"): string | undefined {
+    if (typeof claims !== "object" || claims === null || !Object.hasOwn(claims, name)) return;
+    const value = (claims as Record<string, unknown>)[name];
+    return typeof value === "string" && value.length > 0 ? value : undefined;
   }
 
   static #developmentDiscoveryOptions(): client.DiscoveryRequestOptions {
