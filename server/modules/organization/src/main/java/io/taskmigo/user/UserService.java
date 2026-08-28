@@ -67,12 +67,7 @@ public class UserService {
         return this.users
             .findByUsername(username)
             .map(user ->
-                new AuthenticationInfo(
-                    user.id,
-                    user.username,
-                    user.displayName,
-                    UserStatus.ACTIVE.equals(user.status)
-                )
+                new AuthenticationInfo(user.id, user.username, user.displayName, UserStatus.ACTIVE.equals(user.status))
             );
     }
 

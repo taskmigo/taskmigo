@@ -87,16 +87,12 @@ class BrowserAuthenticationIntegrationTest {
 
     @Test
     void developmentLoginUsesPersistedUserIdentity() {
-        assertThatThrownBy(() -> this.userDetails.loadUserByUsername("developer"))
-            .isInstanceOf(UsernameNotFoundException.class);
+        assertThatThrownBy(() -> this.userDetails.loadUserByUsername("developer")).isInstanceOf(
+            UsernameNotFoundException.class
+        );
 
         var organizationId = this.organizations.create("browser-auth-test", "Browser authentication test");
-        this.users.create(
-            organizationId,
-            "developer",
-            "developer@example.com",
-            "Development User"
-        );
+        this.users.create(organizationId, "developer", "developer@example.com", "Development User");
 
         var user = this.userDetails.loadUserByUsername("developer");
 
