@@ -1,0 +1,79 @@
+{{- if .Values.bootstrap.enabled }}
+{{- $browserAuthenticationEnabled := and .Values.bootstrap.browserAuthentication.enabled .Values.client.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "taskmigo.fullname" . }}-bootstrap
+  labels:
+    {{- include "taskmigo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: bootstrap
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: {{ .Values.bootstrap.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.bootstrap.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        {{- include "taskmigo.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: bootstrap
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "taskmigo.serviceAccountName" . }}
+      restartPolicy: Never
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: bootstrap
+          image: "{{ .Values.bootstrap.image.repository }}:{{ default .Chart.AppVersion .Values.bootstrap.image.tag }}"
+          imagePullPolicy: {{ .Values.bootstrap.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          env:
+            {{- include "taskmigo.databaseEnv" . | nindent 12 }}
+            - name: TASKMIGO_BOOTSTRAP_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | quote }}
+                  key: {{ .Values.bootstrap.bootstrapUserPasswordKey | quote }}
+            - name: TASKMIGO_AUTH_BROWSER_ENABLED
+              value: {{ $browserAuthenticationEnabled | quote }}
+            - name: TASKMIGO_CLIENT_URL
+              value: {{ include "taskmigo.clientUrl" . | quote }}
+            {{- if $browserAuthenticationEnabled }}
+            - name: TASKMIGO_AUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | quote }}
+                  key: {{ .Values.bootstrap.browserAuthentication.clientSecretKey | quote }}
+            {{- end }}
+            {{- if .Values.bootstrap.testClient.enabled }}
+            - name: SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_HELMTEST_REGISTRATION_CLIENT_ID
+              value: {{ .Values.bootstrap.testClient.clientId | quote }}
+            - name: SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_HELMTEST_REGISTRATION_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | quote }}
+                  key: {{ .Values.bootstrap.testClient.clientSecretKey | quote }}
+            - name: SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_HELMTEST_REGISTRATION_CLIENT_AUTHENTICATION_METHODS
+              value: client_secret_basic
+            - name: SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_HELMTEST_REGISTRATION_AUTHORIZATION_GRANT_TYPES
+              value: client_credentials
+            - name: SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_HELMTEST_REGISTRATION_SCOPES
+              value: taskmigo.api
+            {{- end }}
+            {{- with .Values.bootstrap.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.bootstrap.resources | nindent 12 }}
+{{- end }}

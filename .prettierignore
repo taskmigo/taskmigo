@@ -7,3 +7,4 @@
 **/next-env.d.ts
 **/pnpm-lock.yaml
 .agents/skills/**
+helm/**/templates/**/*.yaml

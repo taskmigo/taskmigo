@@ -1,0 +1,7 @@
+apiVersion: v2
+name: taskmigo
+description: Helm chart for Taskmigo runtime applications and installation bootstrap
+type: application
+version: 0.1.0
+appVersion: "0.0.1"
+kubeVersion: ">=1.30.0-0"

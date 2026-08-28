@@ -1,0 +1,191 @@
+name: Kubernetes Integration
+
+on:
+  pull_request:
+    paths:
+      - "helm/**"
+      - "server/**"
+      - "client/**"
+      - ".github/workflows/kubernetes-integration.yml"
+  push:
+    branches: [next]
+    paths:
+      - "helm/**"
+      - "server/**"
+      - "client/**"
+      - ".github/workflows/kubernetes-integration.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  NAMESPACE: taskmigo-integration
+
+jobs:
+  integration:
+    name: Deploy and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5.0.1
+        with:
+          version: v4.2.4
+
+      - name: Validate chart
+        run: |
+          helm lint helm/taskmigo
+          helm template taskmigo helm/taskmigo \
+            --set tests.enabled=true \
+            --set tests.oauthClient.enabled=true \
+            --set bootstrap.testClient.enabled=true \
+            >/dev/null
+
+      - name: Start Minikube
+        uses: medyagh/setup-minikube@v0.0.21
+        with:
+          minikube-version: 1.38.1
+          driver: docker
+          container-runtime: docker
+          kubernetes-version: v1.35.0
+          cpus: 4
+          memory: 6000m
+
+      - name: Build Taskmigo images in Minikube
+        run: |
+          eval "$(minikube docker-env)"
+          docker build -t taskmigo-bootstrap:integration -f server/apps/bootstrap/Dockerfile server
+          docker build -t taskmigo-web:integration -f server/apps/web/Dockerfile server
+          docker build -t taskmigo-worker:integration -f server/apps/worker/Dockerfile server
+          docker build -t taskmigo-client:integration -f client/Dockerfile client
+
+      - name: Create integration database
+        run: |
+          kubectl create namespace "$NAMESPACE"
+
+          kubectl -n "$NAMESPACE" create secret generic taskmigo-secrets \
+            --from-literal=database-password="$(openssl rand -hex 16)" \
+            --from-literal=bootstrap-user-password="$(openssl rand -hex 16)" \
+            --from-literal=auth-client-secret="$(openssl rand -hex 32)" \
+            --from-literal=auth-session-secret="$(openssl rand -hex 32)" \
+            --from-literal=integration-test-client-secret="$(openssl rand -hex 32)"
+
+          kubectl -n "$NAMESPACE" apply -f - <<'EOF'
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: postgresql
+          spec:
+            selector:
+              app: postgresql
+            ports:
+              - name: postgresql
+                port: 5432
+                targetPort: postgresql
+          ---
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: postgresql
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: postgresql
+            template:
+              metadata:
+                labels:
+                  app: postgresql
+              spec:
+                containers:
+                  - name: postgresql
+                    image: postgres:18.4-alpine
+                    ports:
+                      - name: postgresql
+                        containerPort: 5432
+                    env:
+                      - name: POSTGRES_DB
+                        value: taskmigo
+                      - name: POSTGRES_USER
+                        value: taskmigo
+                      - name: POSTGRES_PASSWORD
+                        valueFrom:
+                          secretKeyRef:
+                            name: taskmigo-secrets
+                            key: database-password
+                    readinessProbe:
+                      exec:
+                        command:
+                          - pg_isready
+                          - -U
+                          - taskmigo
+                          - -d
+                          - taskmigo
+                      initialDelaySeconds: 2
+                      periodSeconds: 2
+          EOF
+
+          kubectl -n "$NAMESPACE" rollout status deployment/postgresql --timeout=120s
+
+      - name: Deploy Helm release
+        run: |
+          helm upgrade --install taskmigo helm/taskmigo \
+            --namespace "$NAMESPACE" \
+            --wait \
+            --timeout 10m \
+            --set bootstrap.image.repository=taskmigo-bootstrap \
+            --set bootstrap.image.tag=integration \
+            --set bootstrap.image.pullPolicy=Never \
+            --set bootstrap.testClient.enabled=true \
+            --set web.image.repository=taskmigo-web \
+            --set web.image.tag=integration \
+            --set web.image.pullPolicy=Never \
+            --set worker.image.repository=taskmigo-worker \
+            --set worker.image.tag=integration \
+            --set worker.image.pullPolicy=Never \
+            --set client.image.repository=taskmigo-client \
+            --set client.image.tag=integration \
+            --set client.image.pullPolicy=Never \
+            --set tests.enabled=true \
+            --set tests.oauthClient.enabled=true
+
+      - name: Verify Kubernetes workloads
+        run: |
+          kubectl -n "$NAMESPACE" wait --for=condition=complete job/taskmigo-bootstrap --timeout=120s
+          kubectl -n "$NAMESPACE" rollout status deployment/taskmigo-web --timeout=180s
+          kubectl -n "$NAMESPACE" rollout status deployment/taskmigo-worker --timeout=180s
+          kubectl -n "$NAMESPACE" rollout status deployment/taskmigo-client --timeout=180s
+
+          migration_versions="$(kubectl -n "$NAMESPACE" exec deployment/postgresql -- \
+            psql -U taskmigo -d taskmigo -Atc \
+            'SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank')"
+          test "$migration_versions" = "1"
+
+      - name: Run Helm integration test
+        run: helm test taskmigo --namespace "$NAMESPACE" --logs --timeout 5m
+
+      - name: Kubernetes failure diagnostics
+        if: ${{ failure() }}
+        run: |
+          echo "::group::Kubernetes resources"
+          kubectl -n "$NAMESPACE" get all,pvc -o wide || true
+          echo "::endgroup::"
+
+          echo "::group::Helm release"
+          helm status taskmigo --namespace "$NAMESPACE" || true
+          echo "::endgroup::"
+
+          for pod in $(kubectl -n "$NAMESPACE" get pods -o name 2>/dev/null); do
+            echo "::group::Logs $pod"
+            kubectl -n "$NAMESPACE" logs "$pod" --all-containers --tail=200 || true
+            echo "::endgroup::"
+            echo "::group::Describe $pod"
+            kubectl -n "$NAMESPACE" describe "$pod" || true
+            echo "::endgroup::"
+          done
