@@ -5,6 +5,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import io.taskmigo.identity.oauth.InternalClientMetadata;
 import io.taskmigo.user.SystemUser;
 import io.taskmigo.user.UserService;
 import java.util.ArrayList;
@@ -30,12 +31,7 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 /// Persisted interactive accounts share one user model. The reserved `system` username is temporarily granted complete
 /// system permissions here until ACL evaluation becomes the source of authorization decisions.
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties({
-    IdentityProperties.class,
-    BrowserAuthenticationProperties.class,
-    BootstrapUserProperties.class,
-    OAuth2AuthorizationServerProperties.class,
-})
+@EnableConfigurationProperties({IdentityProperties.class, OAuth2AuthorizationServerProperties.class})
 class AuthorizationServerConfiguration {
 
     @Bean
@@ -85,7 +81,9 @@ class AuthorizationServerConfiguration {
             if (!OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) return;
 
             if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
-                Set<String> permissions = InternalClientMetadata.permissions(context.getRegisteredClient());
+                Set<String> permissions = InternalClientMetadata.isManaged(context.getRegisteredClient())
+                    ? ServicePrincipalPermissions.ALL
+                    : Set.of();
                 context.getClaims().subject(context.getRegisteredClient().getClientId());
                 context.getClaims().claim("principal_type", "service");
                 context.getClaims().claim("permissions", new ArrayList<>(permissions));

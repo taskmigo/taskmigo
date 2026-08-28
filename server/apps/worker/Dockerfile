@@ -4,14 +4,18 @@ WORKDIR /workspace
 
 COPY gradle gradle
 COPY gradlew settings.gradle.kts build.gradle.kts ./
+COPY modules/foundation/build.gradle.kts modules/foundation/build.gradle.kts
 COPY modules/database/build.gradle.kts modules/database/build.gradle.kts
+COPY modules/identity/build.gradle.kts modules/identity/build.gradle.kts
 COPY modules/organization/build.gradle.kts modules/organization/build.gradle.kts
 COPY modules/project/build.gradle.kts modules/project/build.gradle.kts
+COPY apps/bootstrap/build.gradle.kts apps/bootstrap/build.gradle.kts
 COPY apps/web/build.gradle.kts apps/web/build.gradle.kts
 COPY apps/worker/build.gradle.kts apps/worker/build.gradle.kts
 
 RUN chmod +x gradlew && ./gradlew --no-daemon :apps:worker:dependencies
 
+COPY modules/foundation/src modules/foundation/src
 COPY modules/database/src modules/database/src
 COPY modules/organization/src modules/organization/src
 COPY modules/project/src modules/project/src

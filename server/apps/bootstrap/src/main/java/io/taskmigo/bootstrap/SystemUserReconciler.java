@@ -1,4 +1,4 @@
-package io.taskmigo.identity;
+package io.taskmigo.bootstrap;
 
 import io.taskmigo.user.UserService;
 import org.springframework.boot.ApplicationArguments;
@@ -8,10 +8,7 @@ import org.springframework.dao.TransientDataAccessException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-/// Ensures the persistent platform bootstrap user exists before the application becomes ready.
-///
-/// The configured password is encoded only as initialization material. Once the `system` user exists, its persisted
-/// password hash is retained so later restarts do not depend on the bootstrap secret remaining in the environment.
+/// Ensures the persistent platform bootstrap user exists after database migration.
 @Component
 final class SystemUserReconciler implements ApplicationRunner {
 

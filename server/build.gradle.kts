@@ -70,7 +70,35 @@ subprojects {
     }
 }
 
+val verifyDatabaseLifecycleOwnership by tasks.registering {
+    group = "verification"
+    description = "Ensures database migrations and shared database configuration stay centralized"
+
+    doLast {
+        val migrationPrefix = "modules/database/src/main/resources/db/migration/"
+        val misplacedMigrations = fileTree(rootDir) {
+            include("**/src/main/resources/db/migration/**")
+        }.files
+            .map { it.relativeTo(rootDir).invariantSeparatorsPath }
+            .filterNot { it.startsWith(migrationPrefix) }
+            .sorted()
+
+        check(misplacedMigrations.isEmpty()) {
+            "Flyway migrations must live under $migrationPrefix: ${misplacedMigrations.joinToString()}"
+        }
+
+        val databaseConfigs = fileTree(rootDir) {
+            include("**/src/main/resources/application-database.yaml")
+        }.files.map { it.relativeTo(rootDir).invariantSeparatorsPath }.sorted()
+
+        check(databaseConfigs == listOf("modules/database/src/main/resources/application-database.yaml")) {
+            "Shared database configuration must have exactly one owner: ${databaseConfigs.joinToString()}"
+        }
+    }
+}
+
 tasks.named("build") {
+    dependsOn(verifyDatabaseLifecycleOwnership)
     dependsOn(
         subprojects.flatMap { project ->
             project.subprojects.ifEmpty { setOf(project) }.mapNotNull { leaf ->

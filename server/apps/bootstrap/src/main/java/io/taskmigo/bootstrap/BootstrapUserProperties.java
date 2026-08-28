@@ -1,4 +1,4 @@
-package io.taskmigo.identity;
+package io.taskmigo.bootstrap;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.boot.context.properties.ConfigurationProperties;

@@ -1,5 +1,6 @@
-package io.taskmigo.identity;
+package io.taskmigo.bootstrap;
 
+import io.taskmigo.identity.oauth.InternalClientMetadata;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -17,10 +18,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
-/// Reconciles configured internal OAuth clients into the persistent client registry when the application starts.
-///
-/// Reconciliation runs in a serializable transaction, retries transient or concurrent persistence conflicts up to
-/// three times, and refuses to adopt an existing client that was not previously marked as Taskmigo-managed.
+/// Reconciles configured internal OAuth clients into the persistent client registry.
 @Component
 final class InternalClientReconciler implements ApplicationRunner {
 

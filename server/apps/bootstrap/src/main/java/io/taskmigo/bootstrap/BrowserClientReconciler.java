@@ -1,4 +1,4 @@
-package io.taskmigo.identity;
+package io.taskmigo.bootstrap;
 
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;

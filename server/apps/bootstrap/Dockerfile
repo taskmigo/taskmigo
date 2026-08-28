@@ -13,31 +13,26 @@ COPY apps/bootstrap/build.gradle.kts apps/bootstrap/build.gradle.kts
 COPY apps/web/build.gradle.kts apps/web/build.gradle.kts
 COPY apps/worker/build.gradle.kts apps/worker/build.gradle.kts
 
-RUN chmod +x gradlew && ./gradlew --no-daemon :apps:web:dependencies
+RUN chmod +x gradlew && ./gradlew --no-daemon :apps:bootstrap:dependencies
 
 COPY modules/foundation/src modules/foundation/src
 COPY modules/database/src modules/database/src
 COPY modules/identity/src modules/identity/src
 COPY modules/organization/src modules/organization/src
-COPY modules/project/src modules/project/src
-COPY apps/web/src apps/web/src
+COPY apps/bootstrap/src apps/bootstrap/src
 
-RUN ./gradlew --no-daemon :apps:web:bootJar \
-    && cp apps/web/build/libs/*.jar /workspace/app.jar
+RUN ./gradlew --no-daemon :apps:bootstrap:bootJar \
+    && cp apps/bootstrap/build/libs/*.jar /workspace/app.jar
 
 FROM eclipse-temurin:26.0.2_10-jre-noble@sha256:22e4987440fe837f31150df046a5bcb88c118566d1168de7b0307497e196154a
 
 RUN groupadd --system --gid 10001 taskmigo \
-    && useradd --system --uid 10001 --gid taskmigo --home-dir /app --shell /usr/sbin/nologin taskmigo \
-    && install --directory --owner taskmigo --group taskmigo /var/lib/taskmigo
+    && useradd --system --uid 10001 --gid taskmigo --home-dir /app --shell /usr/sbin/nologin taskmigo
 
 WORKDIR /app
 
 COPY --from=build --chown=taskmigo:taskmigo /workspace/app.jar app.jar
 
-ENV TASKMIGO_OAUTH_SIGNING_KEY_FILE=/var/lib/taskmigo/oauth-signing-key.pem
-
 USER 10001:10001
-EXPOSE 8080
 
 CMD ["java", "-jar", "/app/app.jar"]

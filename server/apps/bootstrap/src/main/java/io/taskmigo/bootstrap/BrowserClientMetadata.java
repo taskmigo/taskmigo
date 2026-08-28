@@ -1,5 +1,6 @@
-package io.taskmigo.identity;
+package io.taskmigo.bootstrap;
 
+import io.taskmigo.identity.oauth.InternalClientMetadata;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;

@@ -1,4 +1,4 @@
-package io.taskmigo.identity;
+package io.taskmigo.bootstrap;
 
 import java.time.Duration;
 import java.util.Set;
