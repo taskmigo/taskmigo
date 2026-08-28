@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 
-import { getAuth } from "@/auth";
+import { getSession } from "@/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function AccountPage() {
-  const session = await getAuth().getSession();
+  const session = await getSession();
   if (!session) redirect("/api/auth/login?returnTo=/account");
 
   return (

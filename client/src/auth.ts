@@ -1,5 +1,3 @@
 import "server-only";
 
-import { AuthRuntime } from "./auth/runtime";
-
-export const getAuth = () => AuthRuntime.get().auth;
+export { getAuth, getSession } from "./auth/runtime";

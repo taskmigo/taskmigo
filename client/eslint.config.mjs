@@ -58,10 +58,6 @@ export default defineConfig([
               message: "Application code must use the @/auth facade.",
             },
             {
-              name: "@taskmigo/auth/next",
-              message: "Application code must use the @/auth facade.",
-            },
-            {
               name: "@taskmigo/auth/openid-client",
               message: "Application code must use the @/auth facade.",
             },

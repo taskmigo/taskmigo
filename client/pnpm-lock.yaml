@@ -14,6 +14,9 @@ importers:
       '@taskmigo/config':
         specifier: workspace:*
         version: link:packages/config
+      '@taskmigo/foundation':
+        specifier: workspace:*
+        version: link:packages/foundation
       next:
         specifier: 16.3.3
         version: 16.3.3(@babel/core@7.29.7(supports-color@7.2.0))(@types/node@24.3.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -26,6 +29,9 @@ importers:
       server-only:
         specifier: 0.0.1
         version: 0.0.1
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
     devDependencies:
       '@testing-library/dom':
         specifier: 10.4.1
@@ -69,9 +75,9 @@ importers:
 
   packages/auth:
     dependencies:
-      next:
-        specifier: 16.3.3
-        version: 16.3.3(@babel/core@7.29.7(supports-color@7.2.0))(@types/node@24.3.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      '@taskmigo/foundation':
+        specifier: workspace:*
+        version: link:../foundation
       openid-client:
         specifier: 6.8.7
         version: 6.8.7
@@ -90,6 +96,8 @@ importers:
       zod:
         specifier: 4.4.3
         version: 4.4.3
+
+  packages/foundation: {}
 
 packages:
 

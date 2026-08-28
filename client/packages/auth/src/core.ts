@@ -1,3 +1,5 @@
+import { systemClock, type Clock } from "@taskmigo/foundation/runtime";
+
 import { AuthNavigation } from "./navigation";
 
 export { AuthNavigation, type AuthNavigationOptions } from "./navigation";
@@ -37,17 +39,20 @@ export interface AuthManager {
 
 export interface AuthManagerOptions {
   refreshSkewMilliseconds: number;
+  clock?: Clock;
 }
 
 export class DefaultAuthManager implements AuthManager {
   readonly #client: AuthorizationClient;
   readonly #navigation: AuthNavigation;
   readonly #refreshSkewMilliseconds: number;
+  readonly #clock: Clock;
 
   constructor(client: AuthorizationClient, navigation: AuthNavigation, options: AuthManagerOptions) {
     this.#client = client;
     this.#navigation = navigation;
     this.#refreshSkewMilliseconds = options.refreshSkewMilliseconds;
+    this.#clock = options.clock ?? systemClock;
   }
 
   async beginSignIn(returnTo?: string | null) {
@@ -66,7 +71,7 @@ export class DefaultAuthManager implements AuthManager {
   }
 
   async renew(session: Session): Promise<Session> {
-    if (session.expiresAt > Date.now() + this.#refreshSkewMilliseconds) return session;
+    if (session.expiresAt > this.#clock() + this.#refreshSkewMilliseconds) return session;
 
     const renewed = await this.#client.renew(session);
     if (renewed.user.id !== session.user.id) throw new Error("Authorization subject changed during renewal");

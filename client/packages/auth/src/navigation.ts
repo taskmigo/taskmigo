@@ -1,3 +1,5 @@
+import { OriginScope } from "@taskmigo/foundation/url";
+
 export interface AuthNavigationOptions {
   appUrl: URL;
   callbackUrl: URL;
@@ -6,16 +8,13 @@ export interface AuthNavigationOptions {
 }
 
 export class AuthNavigation {
-  readonly #appHref: string;
-  readonly #appOrigin: string;
+  readonly #scope: OriginScope;
   readonly #callbackHref: string;
   readonly #postLogoutRedirectHref: string;
   readonly #defaultReturnTo: string;
 
   constructor({ appUrl, callbackUrl, postLogoutRedirectUrl, defaultReturnTo }: AuthNavigationOptions) {
-    const app = new URL(appUrl);
-    this.#appHref = app.href;
-    this.#appOrigin = app.origin;
+    this.#scope = new OriginScope(appUrl);
     this.#callbackHref = this.#requireSameOriginUrl(callbackUrl, "Callback URL").href;
     this.#postLogoutRedirectHref = this.#requireSameOriginUrl(postLogoutRedirectUrl, "Post-logout redirect URL").href;
     this.#defaultReturnTo = this.#requireLocalTarget(defaultReturnTo, "Default return target");
@@ -30,34 +29,22 @@ export class AuthNavigation {
   }
 
   resolveReturnTo(candidate?: string | null): string {
-    return (candidate && this.#localTarget(candidate)) || this.#defaultReturnTo;
+    return (candidate && this.#scope.path(candidate)) || this.#defaultReturnTo;
   }
 
   returnToUrl(candidate: string): URL {
-    return new URL(this.resolveReturnTo(candidate), this.#appHref);
-  }
-
-  #localTarget(candidate: string): string | undefined {
-    if (!candidate.startsWith("/")) return;
-
-    try {
-      const resolved = new URL(candidate, this.#appHref);
-      if (resolved.origin !== this.#appOrigin) return;
-      return `${resolved.pathname}${resolved.search}${resolved.hash}`;
-    } catch {
-      return;
-    }
+    return new URL(this.resolveReturnTo(candidate), this.#scope.baseUrl);
   }
 
   #requireLocalTarget(candidate: string, name: string): string {
-    const target = this.#localTarget(candidate);
+    const target = this.#scope.path(candidate);
     if (!target) throw new Error(`${name} must resolve to the application origin`);
     return target;
   }
 
   #requireSameOriginUrl(candidate: URL, name: string): URL {
-    const resolved = new URL(candidate);
-    if (resolved.origin !== this.#appOrigin) throw new Error(`${name} must resolve to the application origin`);
+    const resolved = this.#scope.resolve(candidate);
+    if (!resolved) throw new Error(`${name} must resolve to the application origin`);
     return resolved;
   }
 }
