@@ -72,23 +72,55 @@ jobs:
           npm run typecheck
           npx playwright install --with-deps chromium
 
-      - name: Start Minikube
+      - name: Set up Minikube CLI
         uses: medyagh/setup-minikube@v0.0.21
         with:
+          start: false
           minikube-version: 1.38.1
-          driver: docker
-          container-runtime: docker
-          kubernetes-version: v1.35.0
-          cpus: 4
-          memory: 6000m
 
-      - name: Build Taskmigo images in Minikube
+      - name: Build Taskmigo images while Minikube starts
         run: |
-          eval "$(minikube docker-env)"
+          set -euo pipefail
+
+          minikube_log="$RUNNER_TEMP/minikube-start.log"
+          minikube start \
+            --driver=docker \
+            --container-runtime=docker \
+            --kubernetes-version=v1.35.0 \
+            --cpus=4 \
+            --memory=6000m \
+            --wait=all \
+            >"$minikube_log" 2>&1 &
+          minikube_pid=$!
+
+          cleanup() {
+            if kill -0 "$minikube_pid" 2>/dev/null; then
+              kill "$minikube_pid" 2>/dev/null || true
+            fi
+          }
+          trap cleanup EXIT
+
+          # Build against the runner's Docker daemon while Minikube bootstraps.
+          # The images are loaded into Minikube only after the cluster is ready.
           docker build -t taskmigo-bootstrap:integration -f server/apps/bootstrap/Dockerfile server
           docker build -t taskmigo-web:integration -f server/apps/web/Dockerfile server
           docker build -t taskmigo-worker:integration -f server/apps/worker/Dockerfile server
           docker build -t taskmigo-client:integration -f client/Dockerfile client
+
+          if ! wait "$minikube_pid"; then
+            cat "$minikube_log"
+            exit 1
+          fi
+          trap - EXIT
+
+          cat "$minikube_log"
+          for image in \
+            taskmigo-bootstrap:integration \
+            taskmigo-web:integration \
+            taskmigo-worker:integration \
+            taskmigo-client:integration; do
+            minikube image load --daemon "$image"
+          done
 
       - name: Create integration database
         run: |
@@ -238,7 +270,7 @@ jobs:
           helm status taskmigo --namespace "$NAMESPACE" || true
           echo "::endgroup::"
 
-          for log in "$RUNNER_TEMP/playwright.log" "$RUNNER_TEMP/taskmigo-client-port-forward.log" "$RUNNER_TEMP/taskmigo-web-port-forward.log"; do
+          for log in "$RUNNER_TEMP/minikube-start.log" "$RUNNER_TEMP/playwright.log" "$RUNNER_TEMP/taskmigo-client-port-forward.log" "$RUNNER_TEMP/taskmigo-web-port-forward.log"; do
             if [ -f "$log" ]; then
               echo "::group::$(basename "$log")"
               tail -n 200 "$log" || true
@@ -261,6 +293,7 @@ jobs:
         with:
           name: playwright-report
           path: |
+            ${{ runner.temp }}/minikube-start.log
             ${{ runner.temp }}/playwright.log
             ${{ runner.temp }}/taskmigo-client-port-forward.log
             ${{ runner.temp }}/taskmigo-web-port-forward.log
