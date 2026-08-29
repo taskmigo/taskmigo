@@ -14,6 +14,8 @@ import org.springframework.security.oauth2.server.authorization.settings.Authori
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 
 @Configuration(proxyBeanMethods = false)
 @EnableWebSecurity
@@ -27,9 +29,12 @@ class ApiSecurityConfiguration {
         VersionedApiSecurityErrorHandler securityErrors,
         AuthorizationServerSettings authorizationServerSettings
     ) {
+        RequestMatcher authorizationEndpoint = request ->
+            authorizationServerSettings.getAuthorizationEndpoint().equals(request.getServletPath());
+
         http.authorizeHttpRequests(authorize ->
             authorize
-                .requestMatchers(authorizationServerSettings.getAuthorizationEndpoint())
+                .requestMatchers(authorizationEndpoint)
                 .authenticated()
                 .requestMatchers(VERSIONED_API_PATTERN)
                 .hasAllAuthorities(
@@ -40,6 +45,12 @@ class ApiSecurityConfiguration {
                 .permitAll()
         )
             .csrf(csrf -> csrf.ignoringRequestMatchers(VERSIONED_API_PATTERN))
+            .exceptionHandling(exceptions ->
+                exceptions.defaultAuthenticationEntryPointFor(
+                    new LoginUrlAuthenticationEntryPoint("/login"),
+                    authorizationEndpoint
+                )
+            )
             .formLogin(Customizer.withDefaults())
             .oauth2AuthorizationServer(authorizationServer -> authorizationServer.oidc(Customizer.withDefaults()))
             .oauth2ResourceServer(resourceServer ->
