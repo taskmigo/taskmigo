@@ -1,0 +1,338 @@
+---
+title: Local Kubernetes
+description: Build and run the complete Taskmigo stack in Minikube for local development.
+---
+
+Use this setup when you need the deployed system rather than one application process. It mirrors the repository Kubernetes
+integration workflow: Minikube, PostgreSQL, Envoy Gateway, the bootstrap Job, web, worker, and browser client all run in
+Kubernetes.
+
+For faster work on one JVM or Node.js process, use [Local development](/docs/v0/developer/local-development) instead.
+
+## What this starts
+
+The local stack contains:
+
+- Minikube `1.38.1` with Kubernetes `1.35.0`;
+- PostgreSQL `18.4-alpine` inside the Taskmigo namespace;
+- Envoy Gateway `1.9.1` as the Gateway API controller;
+- the Taskmigo bootstrap Job, which owns Flyway migrations and installation-state reconciliation;
+- the Taskmigo web and worker deployments;
+- the Taskmigo browser client;
+- one Gateway plus separate `HTTPRoute` resources for the client and web server.
+
+The versions above intentionally match `.github/workflows/kubernetes-integration.yml`. Update this page when that workflow
+changes its local-cluster toolchain.
+
+## Prerequisites
+
+Install these tools on the host:
+
+- Docker Desktop or Docker Engine with Linux containers and Docker Buildx;
+- Minikube `1.38.1`;
+- `kubectl` compatible with Kubernetes `1.35`;
+- Helm `4.2.4`;
+- `curl` for the final connectivity checks.
+
+Allocate at least 4 CPUs and 6 GiB of memory to the Minikube environment. Java and Node.js are not required merely to build
+the Kubernetes images because their Dockerfiles perform the application builds inside containers.
+
+Verify the required commands before starting:
+
+```bash
+docker version
+docker buildx version
+minikube version
+kubectl version --client
+helm version
+curl --version
+```
+
+## Start Minikube
+
+Run the commands from the repository root:
+
+```bash
+export PROFILE=taskmigo-local
+export NAMESPACE=taskmigo-local
+
+minikube start \
+  -p "$PROFILE" \
+  --driver=docker \
+  --container-runtime=docker \
+  --kubernetes-version=v1.35.0 \
+  --cpus=4 \
+  --memory=6000m
+
+kubectl config use-context "$PROFILE"
+kubectl wait --for=condition=Ready node --all --timeout=120s
+```
+
+Using a dedicated Minikube profile keeps the Taskmigo cluster isolated from any other local Minikube cluster.
+
+## Build and load Taskmigo images
+
+Build the same four images used by the Kubernetes integration workflow:
+
+```bash
+docker buildx bake \
+  --file .github/docker-bake.integration.hcl \
+  --load \
+  --progress=plain \
+  integration
+
+minikube -p "$PROFILE" image load --daemon taskmigo-bootstrap:integration
+minikube -p "$PROFILE" image load --daemon taskmigo-web:integration
+minikube -p "$PROFILE" image load --daemon taskmigo-worker:integration
+minikube -p "$PROFILE" image load --daemon taskmigo-client:integration
+```
+
+The Helm release below uses `imagePullPolicy=Never`, so Kubernetes always uses the images loaded into Minikube instead of
+trying to pull them from a registry.
+
+## Create local credentials and PostgreSQL
+
+These credentials are deliberately simple local-development values. Do not reuse them outside a disposable local cluster.
+
+```bash
+kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl -n "$NAMESPACE" create secret generic taskmigo-secrets \
+  --from-literal=database-password='taskmigo' \
+  --from-literal=bootstrap-user-password='taskmigo' \
+  --from-literal=auth-client-secret='taskmigo-local-browser-secret' \
+  --from-literal=auth-session-secret='taskmigo-local-session-secret-0123456789abcdef' \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+kubectl -n "$NAMESPACE" apply -f - <<'EOF'
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql
+spec:
+  selector:
+    app: postgresql
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: postgresql
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgresql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgresql
+  template:
+    metadata:
+      labels:
+        app: postgresql
+    spec:
+      containers:
+        - name: postgresql
+          image: postgres:18.4-alpine
+          ports:
+            - name: postgresql
+              containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: taskmigo
+            - name: POSTGRES_USER
+              value: taskmigo
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: taskmigo-secrets
+                  key: database-password
+          readinessProbe:
+            exec:
+              command: [pg_isready, -U, taskmigo, -d, taskmigo]
+            initialDelaySeconds: 2
+            periodSeconds: 2
+EOF
+
+kubectl -n "$NAMESPACE" rollout status deployment/postgresql --timeout=120s
+```
+
+PostgreSQL is intentionally separate from the Taskmigo Helm chart. The chart expects the database to be ready before its
+bootstrap hook starts.
+
+## Install Envoy Gateway
+
+Install the same Gateway API controller used by CI:
+
+```bash
+helm upgrade --install envoy-gateway oci://docker.io/envoyproxy/gateway-helm \
+  --version v1.9.1 \
+  --namespace envoy-gateway-system \
+  --create-namespace \
+  --wait \
+  --timeout 5m
+
+kubectl -n envoy-gateway-system wait \
+  --for=condition=Available deployment/envoy-gateway \
+  --timeout=120s
+```
+
+## Create the local Gateway
+
+The CI-parity path uses the Minikube node IP and `sslip.io`, so the same public hostnames are reachable from the browser and
+from the client pod during OIDC discovery and token exchange.
+
+```bash
+export MINIKUBE_IP="$(minikube -p "$PROFILE" ip)"
+export CLIENT_HOST="taskmigo.${MINIKUBE_IP}.sslip.io"
+export WEB_HOST="api.taskmigo.${MINIKUBE_IP}.sslip.io"
+
+cat <<EOF | kubectl apply -f -
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: taskmigo-local
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: taskmigo-local
+  namespace: $NAMESPACE
+spec:
+  gatewayClassName: taskmigo-local
+  addresses:
+    - type: IPAddress
+      value: $MINIKUBE_IP
+  listeners:
+    - name: client
+      hostname: $CLIENT_HOST
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Same
+    - name: web
+      hostname: $WEB_HOST
+      port: 80
+      protocol: HTTP
+      allowedRoutes:
+        namespaces:
+          from: Same
+EOF
+
+kubectl wait \
+  --for=condition=Accepted gatewayclass/taskmigo-local \
+  --timeout=120s
+kubectl -n "$NAMESPACE" wait \
+  --for=condition=Programmed gateway/taskmigo-local \
+  --timeout=180s
+```
+
+## Install Taskmigo
+
+Install the local images and attach Taskmigo's routes to the Gateway created above:
+
+```bash
+helm upgrade --install taskmigo ./helm/taskmigo \
+  --namespace "$NAMESPACE" \
+  --wait \
+  --timeout 10m \
+  --set bootstrap.image.repository=taskmigo-bootstrap \
+  --set bootstrap.image.tag=integration \
+  --set bootstrap.image.pullPolicy=Never \
+  --set web.image.repository=taskmigo-web \
+  --set web.image.tag=integration \
+  --set web.image.pullPolicy=Never \
+  --set-string web.publicUrl="http://$WEB_HOST" \
+  --set worker.image.repository=taskmigo-worker \
+  --set worker.image.tag=integration \
+  --set worker.image.pullPolicy=Never \
+  --set client.image.repository=taskmigo-client \
+  --set client.image.tag=integration \
+  --set client.image.pullPolicy=Never \
+  --set-string client.publicUrl="http://$CLIENT_HOST" \
+  --set-string client.auth.issuer="http://$WEB_HOST" \
+  --set gateway.enabled=true \
+  --set gateway.create=false \
+  --set-string gateway.name=taskmigo-local \
+  --set-string gateway.clientHost="$CLIENT_HOST" \
+  --set-string gateway.webHost="$WEB_HOST"
+```
+
+Helm first runs `job/taskmigo-bootstrap` as a `pre-install` or `pre-upgrade` hook. The web, worker, and client workloads are
+created or updated only after the bootstrap Job succeeds.
+
+Verify the deployed stack:
+
+```bash
+kubectl -n "$NAMESPACE" wait --for=condition=complete job/taskmigo-bootstrap --timeout=120s
+kubectl -n "$NAMESPACE" rollout status deployment/taskmigo-web --timeout=180s
+kubectl -n "$NAMESPACE" rollout status deployment/taskmigo-worker --timeout=180s
+kubectl -n "$NAMESPACE" rollout status deployment/taskmigo-client --timeout=180s
+kubectl -n "$NAMESPACE" get pods,svc,gateway,httproute
+
+curl --fail --show-error "http://$CLIENT_HOST/" >/dev/null
+curl --fail --show-error "http://$WEB_HOST/.well-known/openid-configuration" >/dev/null
+```
+
+## Open Taskmigo
+
+The local endpoints are:
+
+```text
+Client:   http://$CLIENT_HOST
+API/OIDC: http://$WEB_HOST
+API docs: http://$WEB_HOST/api/docs
+```
+
+Use the bootstrap account for browser login:
+
+```text
+Username: system
+Password: taskmigo
+```
+
+The password comes from the `bootstrap-user-password` key created above. The username is the reserved Taskmigo bootstrap
+user reconciled by `apps/bootstrap`.
+
+## Rebuild after source changes
+
+Rebuild and reload the affected images with the commands from [Build and load Taskmigo images](#build-and-load-taskmigo-images).
+Because the local images reuse the `integration` tag, restart the runtime deployments after loading a new image:
+
+```bash
+kubectl -n "$NAMESPACE" rollout restart \
+  deployment/taskmigo-web \
+  deployment/taskmigo-worker \
+  deployment/taskmigo-client
+```
+
+If migrations, bootstrap reconciliation, or bootstrap configuration changed, rerun the Helm command from
+[Install Taskmigo](#install-taskmigo). A Helm upgrade executes the bootstrap pre-upgrade hook before rolling out runtime
+workloads.
+
+## Stop or reset the cluster
+
+Delete the whole local cluster when you want a clean database, signing key, and Kubernetes state:
+
+```bash
+minikube delete -p "$PROFILE"
+```
+
+A new `minikube start` plus the steps above recreates the environment from scratch.
+
+## Docker driver networking on macOS, Windows, and WSL2
+
+The quickstart above intentionally matches CI and assumes the Minikube node IP is reachable from the environment running
+the browser. Minikube documents that the Docker driver node IP is not directly reachable from the host on macOS, Windows,
+and WSL2. In those environments, use a network setup that exposes the Gateway's `LoadBalancer` address to both the host
+and cluster workloads, such as `minikube tunnel`.
+
+Do not change `client.auth.issuer` to a host-only `localhost` port-forward. Taskmigo's browser client performs OIDC work on
+the server side, so the issuer must be reachable from both the browser and the client pod.
+
+See the Minikube [accessing applications](https://minikube.sigs.k8s.io/docs/handbook/accessing/) and
+[Docker driver](https://minikube.sigs.k8s.io/docs/drivers/docker/) documentation for the host-network behavior of your
+platform.
