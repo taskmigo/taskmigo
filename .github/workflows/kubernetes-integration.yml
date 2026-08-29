@@ -7,6 +7,7 @@ on:
       - "server/**"
       - "client/**"
       - "e2e/**"
+      - ".github/docker-bake.integration.hcl"
       - ".github/workflows/kubernetes-integration.yml"
   push:
     branches: [next]
@@ -15,6 +16,7 @@ on:
       - "server/**"
       - "client/**"
       - "e2e/**"
+      - ".github/docker-bake.integration.hcl"
       - ".github/workflows/kubernetes-integration.yml"
 
 concurrency:
@@ -99,12 +101,8 @@ jobs:
             --wait=none \
             >"$RUNNER_TEMP/minikube-start.log" 2>&1 </dev/null &
 
-      - name: Build Taskmigo images
-        run: |
-          docker build -t taskmigo-bootstrap:integration -f server/apps/bootstrap/Dockerfile server
-          docker build -t taskmigo-web:integration -f server/apps/web/Dockerfile server
-          docker build -t taskmigo-worker:integration -f server/apps/worker/Dockerfile server
-          docker build -t taskmigo-client:integration -f client/Dockerfile client
+      - name: Build Taskmigo images in parallel
+        run: docker buildx bake --file .github/docker-bake.integration.hcl --load --progress=plain integration
 
       - name: Wait for Minikube
         run: |
