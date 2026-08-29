@@ -29,12 +29,12 @@ class ApiSecurityConfiguration {
         VersionedApiSecurityErrorHandler securityErrors,
         AuthorizationServerSettings authorizationServerSettings
     ) {
-        RequestMatcher authorizationEndpoint = request ->
+        RequestMatcher authEndpointMatcher = request ->
             authorizationServerSettings.getAuthorizationEndpoint().equals(request.getServletPath());
 
         http.authorizeHttpRequests(authorize ->
             authorize
-                .requestMatchers(authorizationEndpoint)
+                .requestMatchers(authEndpointMatcher)
                 .authenticated()
                 .requestMatchers(VERSIONED_API_PATTERN)
                 .hasAllAuthorities(
@@ -48,7 +48,7 @@ class ApiSecurityConfiguration {
             .exceptionHandling(exceptions ->
                 exceptions.defaultAuthenticationEntryPointFor(
                     new LoginUrlAuthenticationEntryPoint("/login"),
-                    authorizationEndpoint
+                    authEndpointMatcher
                 )
             )
             .formLogin(Customizer.withDefaults())
