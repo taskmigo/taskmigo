@@ -48,6 +48,17 @@ jobs:
             --set tests.oauthClient.enabled=true \
             --set bootstrap.testClient.enabled=true \
             >/dev/null
+          helm template taskmigo helm/taskmigo \
+            --set gateway.enabled=true \
+            --set gateway.create=true \
+            --set gateway.className=test-gateway-class \
+            >/dev/null
+          helm template taskmigo helm/taskmigo \
+            --set gateway.enabled=true \
+            --set gateway.create=false \
+            --set gateway.name=shared-gateway \
+            --set gateway.namespace=gateway-system \
+            >/dev/null
 
       - name: Set up Node.js
         uses: actions/setup-node@v7.0.0
@@ -214,7 +225,7 @@ jobs:
 
           export E2E_PASSWORD="$(kubectl -n "$NAMESPACE" get secret taskmigo-secrets \
             -o jsonpath='{.data.bootstrap-user-password}' | base64 --decode)"
-          npm --prefix e2e test
+          npm --prefix e2e test 2>&1 | tee "$RUNNER_TEMP/playwright.log"
 
       - name: Kubernetes failure diagnostics
         if: ${{ failure() }}
@@ -227,7 +238,7 @@ jobs:
           helm status taskmigo --namespace "$NAMESPACE" || true
           echo "::endgroup::"
 
-          for log in "$RUNNER_TEMP/taskmigo-client-port-forward.log" "$RUNNER_TEMP/taskmigo-web-port-forward.log"; do
+          for log in "$RUNNER_TEMP/playwright.log" "$RUNNER_TEMP/taskmigo-client-port-forward.log" "$RUNNER_TEMP/taskmigo-web-port-forward.log"; do
             if [ -f "$log" ]; then
               echo "::group::$(basename "$log")"
               tail -n 200 "$log" || true
@@ -250,7 +261,10 @@ jobs:
         with:
           name: playwright-report
           path: |
+            ${{ runner.temp }}/playwright.log
+            ${{ runner.temp }}/taskmigo-client-port-forward.log
+            ${{ runner.temp }}/taskmigo-web-port-forward.log
             e2e/playwright-report
             e2e/test-results
-          if-no-files-found: ignore
+          if-no-files-found: warn
           retention-days: 7
