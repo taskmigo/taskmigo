@@ -121,15 +121,14 @@ jobs:
           kubectl wait --for=condition=Ready node --all --timeout=120s
           cat "$RUNNER_TEMP/minikube-start.log"
 
-      - name: Load Taskmigo images into Minikube
+      - name: Load Taskmigo images into Minikube in parallel
         run: |
-          for image in \
+          printf '%s\n' \
             taskmigo-bootstrap:integration \
             taskmigo-web:integration \
             taskmigo-worker:integration \
-            taskmigo-client:integration; do
-            minikube image load --daemon "$image"
-          done
+            taskmigo-client:integration \
+            | xargs --max-procs=4 --max-args=1 minikube image load --daemon
 
       - name: Create integration database
         run: |
