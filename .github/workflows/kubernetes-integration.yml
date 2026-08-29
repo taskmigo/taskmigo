@@ -88,42 +88,43 @@ jobs:
           cache: false
           minikube-version: 1.38.1
 
-      - name: Build Taskmigo images while Minikube starts
+      - name: Start Minikube in background
         run: |
-          set -euo pipefail
-
-          minikube_log="$RUNNER_TEMP/minikube-start.log"
-          minikube start \
+          nohup minikube start \
             --driver=docker \
             --container-runtime=docker \
             --kubernetes-version=v1.35.0 \
             --cpus=4 \
             --memory=6000m \
             --wait=none \
-            >"$minikube_log" 2>&1 &
+            >"$RUNNER_TEMP/minikube-start.log" 2>&1 </dev/null &
 
-          # Build against the runner's Docker daemon while Minikube bootstraps in the background.
+      - name: Build Taskmigo images
+        run: |
           docker build -t taskmigo-bootstrap:integration -f server/apps/bootstrap/Dockerfile server
           docker build -t taskmigo-web:integration -f server/apps/web/Dockerfile server
           docker build -t taskmigo-worker:integration -f server/apps/worker/Dockerfile server
           docker build -t taskmigo-client:integration -f client/Dockerfile client
 
-          # Do not wait on the background shell process. Ask Minikube itself to wait for
-          # and verify the cluster only when the next operation actually needs it.
-          if ! minikube start \
-            --driver=docker \
-            --container-runtime=docker \
-            --kubernetes-version=v1.35.0 \
-            --cpus=4 \
-            --memory=6000m \
-            --wait=all \
-            --wait-timeout=6m \
-            >>"$minikube_log" 2>&1; then
-            cat "$minikube_log"
-            exit 1
-          fi
+      - name: Wait for Minikube
+        run: |
+          set -euo pipefail
 
-          cat "$minikube_log"
+          deadline=$((SECONDS + 360))
+          until minikube status >/dev/null 2>&1; do
+            if ((SECONDS >= deadline)); then
+              cat "$RUNNER_TEMP/minikube-start.log" || true
+              exit 1
+            fi
+            sleep 2
+          done
+
+          minikube status
+          kubectl wait --for=condition=Ready node --all --timeout=120s
+          cat "$RUNNER_TEMP/minikube-start.log"
+
+      - name: Load Taskmigo images into Minikube
+        run: |
           for image in \
             taskmigo-bootstrap:integration \
             taskmigo-web:integration \
