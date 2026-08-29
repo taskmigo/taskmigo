@@ -72,10 +72,20 @@ jobs:
           npm run typecheck
           npx playwright install --with-deps chromium
 
+      - name: Cache Minikube assets
+        uses: actions/cache@v5.0.5
+        with:
+          path: |
+            ~/.minikube/cache/iso
+            ~/.minikube/cache/kic
+            ~/.minikube/cache/preloaded-tarball
+          key: minikube-1.38.1-v1.35.0-docker-${{ runner.arch }}
+
       - name: Set up Minikube CLI
         uses: medyagh/setup-minikube@v0.0.21
         with:
           start: false
+          cache: false
           minikube-version: 1.38.1
 
       - name: Build Taskmigo images while Minikube starts
@@ -101,7 +111,7 @@ jobs:
           trap cleanup EXIT
 
           # Build against the runner's Docker daemon while Minikube bootstraps.
-          # The images are loaded into Minikube only after the cluster is ready.
+          # The images are loaded into Minikube only when the next operation needs the cluster.
           docker build -t taskmigo-bootstrap:integration -f server/apps/bootstrap/Dockerfile server
           docker build -t taskmigo-web:integration -f server/apps/web/Dockerfile server
           docker build -t taskmigo-worker:integration -f server/apps/worker/Dockerfile server
