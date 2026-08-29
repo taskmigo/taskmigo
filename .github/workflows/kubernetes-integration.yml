@@ -316,10 +316,12 @@ jobs:
           kubectl -n "$NAMESPACE" rollout status deployment/taskmigo-worker --timeout=180s
           kubectl -n "$NAMESPACE" rollout status deployment/taskmigo-client --timeout=180s
           kubectl -n "$NAMESPACE" wait \
-            --for=condition=Accepted httproute/taskmigo-client \
+            --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' \
+            httproute/taskmigo-client \
             --timeout=120s
           kubectl -n "$NAMESPACE" wait \
-            --for=condition=Accepted httproute/taskmigo-web \
+            --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' \
+            httproute/taskmigo-web \
             --timeout=120s
 
           migration_versions="$(kubectl -n "$NAMESPACE" exec deployment/postgresql -- \
