@@ -117,13 +117,26 @@ client:
   resources: {}
   extraEnv: []
 
-ingress:
+gateway:
   enabled: false
+  create: true
+  name: ""
+  namespace: ""
   className: ""
   annotations: {}
   clientHost: taskmigo.local
   webHost: api.taskmigo.local
-  tls: []
+  listeners:
+    client:
+      name: client
+      port: 80
+      protocol: HTTP
+      tls: {}
+    web:
+      name: web
+      port: 80
+      protocol: HTTP
+      tls: {}
 
 tests:
   enabled: false

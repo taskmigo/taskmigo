@@ -8,6 +8,7 @@ This chart deploys the Taskmigo bootstrap job, web server, worker, and browser c
 - Helm 4 or a compatible Helm 3 release.
 - A reachable PostgreSQL database.
 - A Kubernetes Secret containing Taskmigo runtime credentials.
+- When Gateway API routing is enabled, Gateway API CRDs and a conformant Gateway controller installed in the cluster.
 
 The default Secret name is `taskmigo-secrets` and the chart expects these keys:
 
@@ -56,19 +57,58 @@ The lifecycle is:
 
 A failed bootstrap hook fails the Helm release before runtime workloads are changed.
 
-## Ingress
+## Gateway API
 
-Ingress is disabled by default. Enable it and provide separate hosts for the browser client and authorization/API server:
+Gateway API routing is disabled by default. The chart can either create a `Gateway` for Taskmigo or attach its `HTTPRoute` resources to an existing shared Gateway.
+
+To create a dedicated Gateway:
 
 ```yaml
-ingress:
+gateway:
   enabled: true
-  className: nginx
+  create: true
+  className: your-gateway-class
   clientHost: taskmigo.example
   webHost: api.taskmigo.example
+  listeners:
+    client:
+      name: client
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: taskmigo-client-tls
+    web:
+      name: web
+      port: 443
+      protocol: HTTPS
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: taskmigo-web-tls
 ```
 
-Keep `client.publicUrl`, `web.publicUrl`, and `client.auth.issuer` aligned with those external URLs.
+To use an existing Gateway, disable Gateway creation and identify the Gateway and listener section names:
+
+```yaml
+gateway:
+  enabled: true
+  create: false
+  name: shared-gateway
+  namespace: gateway-system
+  clientHost: taskmigo.example
+  webHost: api.taskmigo.example
+  listeners:
+    client:
+      name: taskmigo-client
+    web:
+      name: taskmigo-web
+```
+
+For a cross-namespace shared Gateway, its listeners must allow routes from the Taskmigo release namespace. Keep `client.publicUrl`, `web.publicUrl`, and `client.auth.issuer` aligned with the public Gateway URLs.
 
 ## Test
 

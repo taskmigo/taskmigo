@@ -1,0 +1,83 @@
+{{- if and .Values.gateway.enabled .Values.gateway.create }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ include "taskmigo.gatewayName" . }}
+  labels:
+    {{- include "taskmigo.labels" . | nindent 4 }}
+  {{- with .Values.gateway.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  gatewayClassName: {{ required "gateway.className is required when gateway.enabled=true and gateway.create=true" .Values.gateway.className | quote }}
+  listeners:
+    {{- if .Values.client.enabled }}
+    - name: {{ .Values.gateway.listeners.client.name | quote }}
+      hostname: {{ .Values.gateway.clientHost | quote }}
+      port: {{ .Values.gateway.listeners.client.port }}
+      protocol: {{ .Values.gateway.listeners.client.protocol | quote }}
+      allowedRoutes:
+        namespaces:
+          from: Same
+      {{- with .Values.gateway.listeners.client.tls }}
+      tls:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- end }}
+    - name: {{ .Values.gateway.listeners.web.name | quote }}
+      hostname: {{ .Values.gateway.webHost | quote }}
+      port: {{ .Values.gateway.listeners.web.port }}
+      protocol: {{ .Values.gateway.listeners.web.protocol | quote }}
+      allowedRoutes:
+        namespaces:
+          from: Same
+      {{- with .Values.gateway.listeners.web.tls }}
+      tls:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
+{{- if and .Values.gateway.enabled .Values.client.enabled }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "taskmigo.fullname" . }}-client
+  labels:
+    {{- include "taskmigo.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ include "taskmigo.gatewayName" . }}
+      {{- if and (not .Values.gateway.create) .Values.gateway.namespace }}
+      namespace: {{ .Values.gateway.namespace | quote }}
+      {{- end }}
+      sectionName: {{ .Values.gateway.listeners.client.name | quote }}
+  hostnames:
+    - {{ .Values.gateway.clientHost | quote }}
+  rules:
+    - backendRefs:
+        - name: {{ include "taskmigo.fullname" . }}-client
+          port: {{ .Values.client.service.port }}
+{{- end }}
+{{- if .Values.gateway.enabled }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "taskmigo.fullname" . }}-web
+  labels:
+    {{- include "taskmigo.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ include "taskmigo.gatewayName" . }}
+      {{- if and (not .Values.gateway.create) .Values.gateway.namespace }}
+      namespace: {{ .Values.gateway.namespace | quote }}
+      {{- end }}
+      sectionName: {{ .Values.gateway.listeners.web.name | quote }}
+  hostnames:
+    - {{ .Values.gateway.webHost | quote }}
+  rules:
+    - backendRefs:
+        - name: {{ include "taskmigo.fullname" . }}-web
+          port: {{ .Values.web.service.port }}
+{{- end }}

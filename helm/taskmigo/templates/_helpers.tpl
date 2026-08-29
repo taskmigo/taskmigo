@@ -48,6 +48,14 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- default (include "taskmigo.webUrl" .) .Values.client.auth.issuer }}
 {{- end }}
 
+{{- define "taskmigo.gatewayName" -}}
+{{- if .Values.gateway.create -}}
+{{- default (include "taskmigo.fullname" .) .Values.gateway.name | trunc 63 | trimSuffix "-" }}
+{{- else -}}
+{{- required "gateway.name is required when gateway.enabled=true and gateway.create=false" .Values.gateway.name | trunc 63 | trimSuffix "-" }}
+{{- end -}}
+{{- end }}
+
 {{- define "taskmigo.databaseEnv" -}}
 - name: TASKMIGO_DATABASE_URL
   value: {{ .Values.database.url | quote }}
