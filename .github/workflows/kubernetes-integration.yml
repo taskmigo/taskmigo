@@ -99,29 +99,29 @@ jobs:
             --kubernetes-version=v1.35.0 \
             --cpus=4 \
             --memory=6000m \
-            --wait=all \
+            --wait=none \
             >"$minikube_log" 2>&1 &
-          minikube_pid=$!
 
-          cleanup() {
-            if kill -0 "$minikube_pid" 2>/dev/null; then
-              kill "$minikube_pid" 2>/dev/null || true
-            fi
-          }
-          trap cleanup EXIT
-
-          # Build against the runner's Docker daemon while Minikube bootstraps.
-          # The images are loaded into Minikube only when the next operation needs the cluster.
+          # Build against the runner's Docker daemon while Minikube bootstraps in the background.
           docker build -t taskmigo-bootstrap:integration -f server/apps/bootstrap/Dockerfile server
           docker build -t taskmigo-web:integration -f server/apps/web/Dockerfile server
           docker build -t taskmigo-worker:integration -f server/apps/worker/Dockerfile server
           docker build -t taskmigo-client:integration -f client/Dockerfile client
 
-          if ! wait "$minikube_pid"; then
+          # Do not wait on the background shell process. Ask Minikube itself to wait for
+          # and verify the cluster only when the next operation actually needs it.
+          if ! minikube start \
+            --driver=docker \
+            --container-runtime=docker \
+            --kubernetes-version=v1.35.0 \
+            --cpus=4 \
+            --memory=6000m \
+            --wait=all \
+            --wait-timeout=6m \
+            >>"$minikube_log" 2>&1; then
             cat "$minikube_log"
             exit 1
           fi
-          trap - EXIT
 
           cat "$minikube_log"
           for image in \
