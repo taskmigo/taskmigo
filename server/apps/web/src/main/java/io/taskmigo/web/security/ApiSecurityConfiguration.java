@@ -10,6 +10,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
@@ -21,9 +22,15 @@ class ApiSecurityConfiguration {
     private static final String VERSIONED_API_PATTERN = "/api/v*/**";
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, VersionedApiSecurityErrorHandler securityErrors) {
+    SecurityFilterChain securityFilterChain(
+        HttpSecurity http,
+        VersionedApiSecurityErrorHandler securityErrors,
+        AuthorizationServerSettings authorizationServerSettings
+    ) {
         http.authorizeHttpRequests(authorize ->
             authorize
+                .requestMatchers(authorizationServerSettings.getAuthorizationEndpoint())
+                .authenticated()
                 .requestMatchers(VERSIONED_API_PATTERN)
                 .hasAllAuthorities(
                     "SCOPE_taskmigo.api",
