@@ -20,8 +20,9 @@ The local stack contains:
 - the Taskmigo browser client;
 - one `Gateway` plus separate `HTTPRoute` resources for the client and web server.
 
-The same Taskfile pipeline runs in GitHub Actions. Toolchain versions and deployment behavior therefore have one source of
-truth in `Taskfile.yml` instead of separate local and CI command sequences.
+The same Kubernetes deployment tasks run in GitHub Actions, so cluster setup and deployment behavior have one source of
+truth in `Taskfile.yml`. Browser E2E is intentionally separate: the `e2e/` package owns Playwright setup and execution, and
+CI invokes it directly after the Taskfile-managed deployment is ready.
 
 ## Prerequisites
 
@@ -109,14 +110,17 @@ To verify an existing deployment without rebuilding it:
 task kubernetes:verify
 ```
 
-The Helm and real browser OAuth tests additionally require Node.js 26:
+Run the Helm integration test through Taskfile:
 
 ```bash
-task e2e:install
 task kubernetes:test
 ```
 
-When a deployment or test fails, print bounded resource descriptions and the last 200 log lines per pod:
+Browser E2E is not a Taskfile task. It requires Node.js 26 and runs independently against any already reachable Taskmigo
+environment. From `e2e/`, install and type-check the suite, install Chromium, provide the four `E2E_*` environment variables,
+and run `npm test`. See the root `e2e/README.md` for the exact contract and commands.
+
+When a deployment or Helm test fails, print bounded resource descriptions and the last 200 log lines per pod:
 
 ```bash
 task kubernetes:diagnostics

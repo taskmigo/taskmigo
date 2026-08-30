@@ -1,6 +1,6 @@
 # Taskmigo E2E
 
-This folder contains black-box Playwright tests for a deployed Taskmigo environment. The tests do not start application processes themselves; the Kubernetes integration workflow deploys Taskmigo first and then exposes the in-cluster web and client Services to Playwright.
+This folder owns the black-box Playwright suite for a deployed Taskmigo environment. The suite does not create the environment and does not depend on the repository Taskfile; it only requires reachable public endpoints and test credentials through environment variables.
 
 The current suite verifies the browser authentication path end to end:
 
@@ -19,17 +19,18 @@ The suite requires:
 - `E2E_USERNAME`: interactive username.
 - `E2E_PASSWORD`: interactive password.
 
-GitHub Actions maps the Kubernetes Service hostnames `taskmigo-client` and `taskmigo-web` to local port-forwards so browser redirects use the same hostnames configured inside the Helm release.
+GitHub Actions deploys the Kubernetes environment first, resolves the Minikube Gateway hostnames and bootstrap credential, and then invokes this suite directly from `e2e/`. That workflow integration is glue only; Playwright setup and execution are not Taskfile responsibilities.
 
 ## Run
 
-Against an already deployed and reachable environment:
+Against any already deployed and reachable environment:
 
 ```bash
-npm install
+npm install --no-audit --no-fund --package-lock=false
+npm run typecheck
 npx playwright install chromium
-E2E_BASE_URL=http://taskmigo-client:3000 \
-E2E_AUTH_ORIGIN=http://taskmigo-web:8080 \
+E2E_BASE_URL=http://taskmigo.example.test \
+E2E_AUTH_ORIGIN=http://api.taskmigo.example.test \
 E2E_USERNAME=system \
 E2E_PASSWORD='replace-me' \
 npm test

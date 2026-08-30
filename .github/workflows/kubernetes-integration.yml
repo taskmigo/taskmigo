@@ -32,6 +32,7 @@ permissions:
 
 env:
   CI: true
+  PROFILE: minikube
   NAMESPACE: taskmigo-integration
   GATEWAY_NAME: taskmigo-integration
   MINIKUBE_CONTAINER_RUNTIME: docker
@@ -82,14 +83,39 @@ jobs:
       - name: Validate chart
         run: task kubernetes:validate
 
-      - name: Install Playwright
-        run: task e2e:install
+      - name: Install E2E dependencies
+        working-directory: e2e
+        run: |
+          npm install --no-audit --no-fund --package-lock=false
+          npm run typecheck
+          npx playwright install --with-deps chromium
 
       - name: Deploy to Minikube
         run: task kubernetes:deploy
 
-      - name: Run Kubernetes integration tests
+      - name: Run Helm integration tests
         run: task kubernetes:test
+
+      - name: Run browser E2E tests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          minikube_ip="$(minikube -p "$PROFILE" ip)"
+          client_host="taskmigo.${minikube_ip}.sslip.io"
+          web_host="api.taskmigo.${minikube_ip}.sslip.io"
+          e2e_password="$(minikube -p "$PROFILE" kubectl -- -n "$NAMESPACE" get secret taskmigo-secrets \
+            -o go-template='{{index .data "bootstrap-user-password" | base64decode}}')"
+          proxy_hosts="${client_host},${web_host}"
+
+          export E2E_BASE_URL="http://${client_host}"
+          export E2E_AUTH_ORIGIN="http://${web_host}"
+          export E2E_USERNAME=system
+          export E2E_PASSWORD="$e2e_password"
+          export NO_PROXY="${NO_PROXY:+${NO_PROXY},}${proxy_hosts}"
+          export no_proxy="${no_proxy:+${no_proxy},}${proxy_hosts}"
+
+          npm --prefix e2e test 2>&1 | tee "${RUNNER_TEMP}/taskmigo-playwright.log"
 
       - name: Kubernetes failure diagnostics
         if: ${{ failure() }}

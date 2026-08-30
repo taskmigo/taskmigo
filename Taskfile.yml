@@ -297,44 +297,10 @@ tasks:
       - task: kubernetes:verify
       - task: kubernetes:info
 
-  e2e:install:
-    desc: Install and type-check the Playwright Kubernetes test suite
-    dir: e2e
-    cmds:
-      - npm install --no-audit --no-fund --package-lock=false
-      - npm run typecheck
-      - npx playwright install --with-deps chromium
-
   kubernetes:test:
-    desc: Run Helm and browser integration tests against the deployment
-    vars:
-      MINIKUBE_IP:
-        sh: minikube -p "{{.PROFILE}}" ip
-      CLIENT_HOST: "taskmigo.{{.MINIKUBE_IP}}.sslip.io"
-      WEB_HOST: "api.taskmigo.{{.MINIKUBE_IP}}.sslip.io"
+    desc: Run Helm integration tests against the deployment
     cmds:
       - '{{.HELM}} test "{{.RELEASE}}" --kube-context "{{.KUBE_CONTEXT}}" --namespace "{{.NAMESPACE}}" --logs --timeout 5m'
-      - |
-        set -euo pipefail
-
-        export E2E_BASE_URL="http://{{.CLIENT_HOST}}"
-        export E2E_AUTH_ORIGIN="http://{{.WEB_HOST}}"
-        export E2E_USERNAME=system
-        export E2E_PASSWORD="$({{.KUBECTL}} -n "{{.NAMESPACE}}" get secret taskmigo-secrets \
-          -o go-template='{{`{{index .data "bootstrap-user-password" | base64decode}}`}}')"
-        proxy_hosts="{{.CLIENT_HOST}},{{.WEB_HOST}}"
-        if [ -n "${NO_PROXY:-}" ]; then
-          export NO_PROXY="${NO_PROXY},${proxy_hosts}"
-        else
-          export NO_PROXY="${proxy_hosts}"
-        fi
-        if [ -n "${no_proxy:-}" ]; then
-          export no_proxy="${no_proxy},${proxy_hosts}"
-        else
-          export no_proxy="${proxy_hosts}"
-        fi
-
-        npm --prefix e2e test 2>&1 | tee "${RUNNER_TEMP:-/tmp}/taskmigo-playwright.log"
 
   kubernetes:diagnostics:
     desc: Print bounded Kubernetes diagnostics for a failed deployment
@@ -360,13 +326,6 @@ tasks:
         echo "::group::Helm release"
         {{.HELM}} status "{{.RELEASE}}" --kube-context "{{.KUBE_CONTEXT}}" --namespace "{{.NAMESPACE}}" || true
         echo "::endgroup::"
-
-        log="${RUNNER_TEMP:-/tmp}/taskmigo-playwright.log"
-        if [ -f "$log" ]; then
-          echo "::group::$(basename "$log")"
-          tail -n 200 "$log" || true
-          echo "::endgroup::"
-        fi
 
         for pod in $({{.KUBECTL}} -n "{{.NAMESPACE}}" get pods -o name 2>/dev/null); do
           echo "::group::Logs $pod"
