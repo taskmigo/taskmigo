@@ -64,8 +64,12 @@ export class DefaultAuthManager implements AuthManager {
   }
 
   async completeSignIn(callbackUrl: URL, transaction: AuthorizationTransaction) {
+    // Reverse proxies may expose an internal request origin here; the token exchange must reuse the registered URI.
+    const canonicalCallbackUrl = this.#navigation.callbackUrl;
+    canonicalCallbackUrl.search = callbackUrl.search;
+
     return {
-      session: await this.#client.complete(callbackUrl, transaction.state),
+      session: await this.#client.complete(canonicalCallbackUrl, transaction.state),
       redirectTo: this.#navigation.returnToUrl(transaction.returnTo),
     };
   }

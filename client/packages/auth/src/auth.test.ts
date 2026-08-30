@@ -107,15 +107,18 @@ describe("DefaultAuthManager", () => {
     expect(client.begin).toHaveBeenCalledWith(new URL("https://app.example/oauth/callback"));
   });
 
-  test("completes sign-in without exposing authorization implementation details", async () => {
+  test("completes sign-in with the configured callback origin behind a reverse proxy", async () => {
     const { client, manager: auth } = manager();
-    const callback = new URL("https://app.example/oauth/callback?code=code&state=state");
+    const callback = new URL("http://internal-client:3000/oauth/callback?code=code&state=state");
 
     await expect(auth.completeSignIn(callback, { state: "opaque", returnTo: "/projects" })).resolves.toEqual({
       session: activeSession,
       redirectTo: new URL("https://app.example/projects"),
     });
-    expect(client.complete).toHaveBeenCalledWith(callback, "opaque");
+    expect(client.complete).toHaveBeenCalledWith(
+      new URL("https://app.example/oauth/callback?code=code&state=state"),
+      "opaque",
+    );
   });
 
   test("does not renew a session outside the refresh window", async () => {
