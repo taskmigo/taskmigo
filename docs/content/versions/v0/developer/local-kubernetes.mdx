@@ -48,7 +48,7 @@ task kubernetes:deploy
 
 `kubernetes:deploy` is an end-to-end, idempotent pipeline. It:
 
-1. Starts the existing Minikube `default` profile, or creates it when absent.
+1. Starts the standard Minikube `minikube` profile, or creates it when absent.
 2. Builds the bootstrap, web, worker, and client images in parallel with Docker Buildx.
 3. Loads the images into Minikube.
 4. Creates the namespace, stable local credentials, and PostgreSQL when absent.
@@ -79,7 +79,7 @@ task kubernetes:deploy
 The default values preserve a user's ordinary Minikube profile:
 
 ```text
-PROFILE=default
+PROFILE=minikube
 NAMESPACE=taskmigo-local
 RELEASE=taskmigo
 GATEWAY_NAME=taskmigo-local

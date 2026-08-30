@@ -1,12 +1,12 @@
 version: "3"
 
 vars:
-  PROFILE: '{{default "default" .PROFILE}}'
+  PROFILE: '{{default "minikube" .PROFILE}}'
   NAMESPACE: '{{default "taskmigo-local" .NAMESPACE}}'
   RELEASE: '{{default "taskmigo" .RELEASE}}'
   GATEWAY_NAME: '{{default "taskmigo-local" .GATEWAY_NAME}}'
   IMAGE_TAG: integration
-  KUBE_CONTEXT: '{{if eq .PROFILE "default"}}minikube{{else}}{{.PROFILE}}{{end}}'
+  KUBE_CONTEXT: "{{.PROFILE}}"
   ENVOY_GATEWAY_VERSION: v1.9.1
   HELM: helm
   KUBECTL: 'minikube -p "{{.PROFILE}}" kubectl --'
