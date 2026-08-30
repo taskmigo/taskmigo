@@ -123,6 +123,7 @@ gateway:
   name: ""
   namespace: ""
   className: ""
+  addresses: []
   annotations: {}
   clientHost: taskmigo.local
   webHost: api.taskmigo.local

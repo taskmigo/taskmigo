@@ -11,6 +11,10 @@ metadata:
   {{- end }}
 spec:
   gatewayClassName: {{ required "gateway.className is required when gateway.enabled=true and gateway.create=true" .Values.gateway.className | quote }}
+  {{- with .Values.gateway.addresses }}
+  addresses:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   listeners:
     {{- if .Values.client.enabled }}
     - name: {{ .Values.gateway.listeners.client.name | quote }}

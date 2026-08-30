@@ -20,7 +20,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     sessions.write(response.cookies, session);
     transactions.clear(response.cookies);
     return response;
-  } catch {
+  } catch (error) {
+    console.error("OAuth callback validation failed", error);
     const response = NextResponse.json({ error: "Login callback could not be validated" }, { status: 400 });
     transactions.clear(response.cookies);
     return response;

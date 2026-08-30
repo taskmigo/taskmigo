@@ -1,0 +1,385 @@
+version: "3"
+
+vars:
+  PROFILE: '{{default "default" .PROFILE}}'
+  NAMESPACE: '{{default "taskmigo-local" .NAMESPACE}}'
+  RELEASE: '{{default "taskmigo" .RELEASE}}'
+  GATEWAY_NAME: '{{default "taskmigo-local" .GATEWAY_NAME}}'
+  IMAGE_TAG: integration
+  KUBE_CONTEXT: '{{if eq .PROFILE "default"}}minikube{{else}}{{.PROFILE}}{{end}}'
+  ENVOY_GATEWAY_VERSION: v1.9.1
+  HELM: helm
+  KUBECTL: 'minikube -p "{{.PROFILE}}" kubectl --'
+
+tasks:
+  default:
+    desc: Deploy Taskmigo to the default Minikube profile
+    cmds:
+      - task: kubernetes:deploy
+
+  kubernetes:validate:
+    desc: Lint and render every supported Taskmigo chart configuration
+    preconditions:
+      - sh: command -v helm >/dev/null
+        msg: Helm is required. Install it before running this task.
+    cmds:
+      - |
+        set -euo pipefail
+        {{.HELM}} lint helm/taskmigo
+        {{.HELM}} template taskmigo helm/taskmigo \
+          --set tests.enabled=true \
+          --set tests.oauthClient.enabled=true \
+          --set bootstrap.testClient.enabled=true \
+          >/dev/null
+        {{.HELM}} template taskmigo helm/taskmigo \
+          --set gateway.enabled=true \
+          --set gateway.create=true \
+          --set gateway.className=test-gateway-class \
+          --set-string 'gateway.addresses[0].type=IPAddress' \
+          --set-string 'gateway.addresses[0].value=192.0.2.1' \
+          >/dev/null
+        {{.HELM}} template taskmigo helm/taskmigo \
+          --set gateway.enabled=true \
+          --set gateway.create=false \
+          --set gateway.name=shared-gateway \
+          --set gateway.namespace=gateway-system \
+          >/dev/null
+
+  kubernetes:cluster:
+    desc: Start and verify the selected Minikube profile
+    internal: true
+    preconditions:
+      - sh: command -v docker >/dev/null
+        msg: Docker is required to build and run the local images.
+      - sh: command -v minikube >/dev/null
+        msg: Minikube is required. Install it before running this task.
+    cmds:
+      - |
+        set -euo pipefail
+
+        arguments=(
+          start
+          -p "{{.PROFILE}}"
+          --cpus="${MINIKUBE_CPUS:-4}"
+          --memory="${MINIKUBE_MEMORY:-6000m}"
+        )
+        if [ -n "${MINIKUBE_DRIVER:-}" ]; then
+          arguments+=(--driver="$MINIKUBE_DRIVER")
+        fi
+        if [ -n "${MINIKUBE_CONTAINER_RUNTIME:-}" ]; then
+          arguments+=(--container-runtime="$MINIKUBE_CONTAINER_RUNTIME")
+        fi
+        if [ -n "${MINIKUBE_KUBERNETES_VERSION:-}" ]; then
+          arguments+=(--kubernetes-version="$MINIKUBE_KUBERNETES_VERSION")
+        fi
+
+        minikube "${arguments[@]}"
+        {{.KUBECTL}} wait --for=condition=Ready node --all --timeout=120s
+        minikube -p "{{.PROFILE}}" status
+
+  kubernetes:images:build:
+    desc: Build all Taskmigo Kubernetes images
+    internal: true
+    preconditions:
+      - sh: docker buildx version >/dev/null
+        msg: Docker Buildx is required to build the Taskmigo images.
+    cmds:
+      - docker buildx bake --file .github/docker-bake.integration.hcl --load --progress=plain integration
+
+  kubernetes:prepare:
+    internal: true
+    deps:
+      - kubernetes:validate
+      - kubernetes:cluster
+      - kubernetes:images:build
+
+  kubernetes:images:load:
+    desc: Load all Taskmigo images into Minikube
+    internal: true
+    cmds:
+      - |
+        set -euo pipefail
+        printf '%s\n' \
+          taskmigo-bootstrap:{{.IMAGE_TAG}} \
+          taskmigo-web:{{.IMAGE_TAG}} \
+          taskmigo-worker:{{.IMAGE_TAG}} \
+          taskmigo-client:{{.IMAGE_TAG}} \
+          | xargs -P 4 -n 1 minikube -p "{{.PROFILE}}" image load --daemon
+
+  kubernetes:database:
+    desc: Create local credentials and PostgreSQL
+    internal: true
+    cmds:
+      - |
+        set -euo pipefail
+
+        {{.KUBECTL}} create namespace "{{.NAMESPACE}}" \
+          --dry-run=client -o yaml \
+          | {{.KUBECTL}} apply -f -
+
+        if ! {{.KUBECTL}} -n "{{.NAMESPACE}}" get secret taskmigo-secrets >/dev/null 2>&1; then
+          if [ "${CI:-false}" = true ]; then
+            command -v openssl >/dev/null || {
+              echo "openssl is required to generate CI credentials." >&2
+              exit 1
+            }
+            database_password="${DATABASE_PASSWORD:-$(openssl rand -hex 16)}"
+            bootstrap_password="${BOOTSTRAP_USER_PASSWORD:-$(openssl rand -hex 16)}"
+            auth_client_secret="${AUTH_CLIENT_SECRET:-$(openssl rand -hex 32)}"
+            auth_session_secret="${AUTH_SESSION_SECRET:-$(openssl rand -hex 32)}"
+            test_client_secret="${INTEGRATION_TEST_CLIENT_SECRET:-$(openssl rand -hex 32)}"
+          else
+            database_password="${DATABASE_PASSWORD:-taskmigo}"
+            bootstrap_password="${BOOTSTRAP_USER_PASSWORD:-taskmigo}"
+            auth_client_secret="${AUTH_CLIENT_SECRET:-taskmigo-local-browser-secret}"
+            auth_session_secret="${AUTH_SESSION_SECRET:-taskmigo-local-session-secret-0123456789abcdef}"
+            test_client_secret="${INTEGRATION_TEST_CLIENT_SECRET:-taskmigo-local-test-client-secret}"
+          fi
+
+          {{.KUBECTL}} -n "{{.NAMESPACE}}" create secret generic taskmigo-secrets \
+            --from-literal=database-password="$database_password" \
+            --from-literal=bootstrap-user-password="$bootstrap_password" \
+            --from-literal=auth-client-secret="$auth_client_secret" \
+            --from-literal=auth-session-secret="$auth_session_secret" \
+            --from-literal=integration-test-client-secret="$test_client_secret"
+        fi
+
+        {{.KUBECTL}} -n "{{.NAMESPACE}}" apply -f deploy/minikube/postgresql.yaml
+        {{.KUBECTL}} -n "{{.NAMESPACE}}" rollout status deployment/postgresql --timeout=120s
+
+  kubernetes:gateway-controller:
+    desc: Install Envoy Gateway and the local GatewayClass
+    internal: true
+    cmds:
+      - |
+        set -euo pipefail
+
+        {{.HELM}} upgrade --install envoy-gateway oci://docker.io/envoyproxy/gateway-helm \
+          --kube-context "{{.KUBE_CONTEXT}}" \
+          --version {{.ENVOY_GATEWAY_VERSION}} \
+          --namespace envoy-gateway-system \
+          --create-namespace \
+          --wait \
+          --timeout 5m
+        {{.KUBECTL}} -n envoy-gateway-system wait \
+          --for=condition=Available deployment/envoy-gateway \
+          --timeout=120s
+
+        {{.KUBECTL}} apply -f - <<EOF
+        apiVersion: gateway.networking.k8s.io/v1
+        kind: GatewayClass
+        metadata:
+          name: {{.GATEWAY_NAME}}
+        spec:
+          controllerName: gateway.envoyproxy.io/gatewayclass-controller
+        EOF
+        {{.KUBECTL}} wait \
+          --for=condition=Accepted gatewayclass/{{.GATEWAY_NAME}} \
+          --timeout=120s
+
+  kubernetes:runtime-prerequisites:
+    internal: true
+    deps:
+      - kubernetes:images:load
+      - kubernetes:database
+      - kubernetes:gateway-controller
+
+  kubernetes:release:
+    desc: Install or upgrade the Taskmigo Helm release
+    internal: true
+    vars:
+      MINIKUBE_IP:
+        sh: minikube -p "{{.PROFILE}}" ip
+      CLIENT_HOST: "taskmigo.{{.MINIKUBE_IP}}.sslip.io"
+      WEB_HOST: "api.taskmigo.{{.MINIKUBE_IP}}.sslip.io"
+    cmds:
+      - |
+        set -euo pipefail
+
+        {{.HELM}} upgrade --install "{{.RELEASE}}" helm/taskmigo \
+          --kube-context "{{.KUBE_CONTEXT}}" \
+          --namespace "{{.NAMESPACE}}" \
+          --wait \
+          --timeout 10m \
+          --set-string fullnameOverride={{.RELEASE}} \
+          --set bootstrap.image.repository=taskmigo-bootstrap \
+          --set bootstrap.image.tag={{.IMAGE_TAG}} \
+          --set bootstrap.image.pullPolicy=Never \
+          --set bootstrap.testClient.enabled=true \
+          --set web.image.repository=taskmigo-web \
+          --set web.image.tag={{.IMAGE_TAG}} \
+          --set web.image.pullPolicy=Never \
+          --set-string web.publicUrl="http://{{.WEB_HOST}}" \
+          --set worker.image.repository=taskmigo-worker \
+          --set worker.image.tag={{.IMAGE_TAG}} \
+          --set worker.image.pullPolicy=Never \
+          --set client.image.repository=taskmigo-client \
+          --set client.image.tag={{.IMAGE_TAG}} \
+          --set client.image.pullPolicy=Never \
+          --set-string client.publicUrl="http://{{.CLIENT_HOST}}" \
+          --set-string client.auth.issuer="http://{{.WEB_HOST}}" \
+          --set gateway.enabled=true \
+          --set gateway.create=true \
+          --set-string gateway.name={{.GATEWAY_NAME}} \
+          --set-string gateway.className={{.GATEWAY_NAME}} \
+          --set-string 'gateway.addresses[0].type=IPAddress' \
+          --set-string 'gateway.addresses[0].value={{.MINIKUBE_IP}}' \
+          --set-string gateway.clientHost={{.CLIENT_HOST}} \
+          --set-string gateway.webHost={{.WEB_HOST}} \
+          --set tests.enabled=true \
+          --set tests.oauthClient.enabled=true
+
+  kubernetes:verify:
+    desc: Verify workloads, routes, migrations, and public endpoints
+    vars:
+      MINIKUBE_IP:
+        sh: minikube -p "{{.PROFILE}}" ip
+      CLIENT_HOST: "taskmigo.{{.MINIKUBE_IP}}.sslip.io"
+      WEB_HOST: "api.taskmigo.{{.MINIKUBE_IP}}.sslip.io"
+    cmds:
+      - |
+        set -euo pipefail
+
+        {{.KUBECTL}} -n "{{.NAMESPACE}}" wait \
+          --for=condition=complete job/{{.RELEASE}}-bootstrap \
+          --timeout=120s
+        {{.KUBECTL}} -n "{{.NAMESPACE}}" rollout status \
+          deployment/{{.RELEASE}}-web --timeout=180s
+        {{.KUBECTL}} -n "{{.NAMESPACE}}" rollout status \
+          deployment/{{.RELEASE}}-worker --timeout=180s
+        {{.KUBECTL}} -n "{{.NAMESPACE}}" rollout status \
+          deployment/{{.RELEASE}}-client --timeout=180s
+        {{.KUBECTL}} -n "{{.NAMESPACE}}" wait \
+          --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' \
+          httproute/{{.RELEASE}}-client \
+          --timeout=120s
+        {{.KUBECTL}} -n "{{.NAMESPACE}}" wait \
+          --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' \
+          httproute/{{.RELEASE}}-web \
+          --timeout=120s
+
+        migration_versions="$({{.KUBECTL}} -n "{{.NAMESPACE}}" exec deployment/postgresql -- \
+          psql -U taskmigo -d taskmigo -Atc \
+          'SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank')"
+        test "$migration_versions" = "1"
+
+        curl --noproxy '*' --fail --silent --show-error \
+          --retry 30 --retry-all-errors --retry-delay 1 \
+          "http://{{.CLIENT_HOST}}/" >/dev/null
+        curl --noproxy '*' --fail --silent --show-error \
+          --retry 30 --retry-all-errors --retry-delay 1 \
+          "http://{{.WEB_HOST}}/.well-known/openid-configuration" >/dev/null
+
+  kubernetes:info:
+    desc: Print local endpoints and bootstrap credentials
+    vars:
+      MINIKUBE_IP:
+        sh: minikube -p "{{.PROFILE}}" ip
+      CLIENT_HOST: "taskmigo.{{.MINIKUBE_IP}}.sslip.io"
+      WEB_HOST: "api.taskmigo.{{.MINIKUBE_IP}}.sslip.io"
+    cmds:
+      - |
+        if [ "${CI:-false}" = true ]; then
+          printf 'Taskmigo is ready.\n\nClient:   http://{{.CLIENT_HOST}}\nAPI/OIDC: http://{{.WEB_HOST}}\nAPI docs: http://{{.WEB_HOST}}/api/docs\nCredentials: stored in secret/taskmigo-secrets\n'
+        else
+          password="$({{.KUBECTL}} -n "{{.NAMESPACE}}" get secret taskmigo-secrets \
+            -o go-template='{{`{{index .data "bootstrap-user-password" | base64decode}}`}}')"
+          printf 'Taskmigo is ready.\n\nClient:   http://{{.CLIENT_HOST}}\nAPI/OIDC: http://{{.WEB_HOST}}\nAPI docs: http://{{.WEB_HOST}}/api/docs\nUsername: system\nPassword: %s\n' "$password"
+        fi
+
+  kubernetes:deploy:
+    desc: Build and deploy Taskmigo from end to end on Minikube
+    aliases: [deploy]
+    cmds:
+      - task: kubernetes:prepare
+      - task: kubernetes:runtime-prerequisites
+      - task: kubernetes:release
+      - task: kubernetes:verify
+      - task: kubernetes:info
+
+  e2e:install:
+    desc: Install and type-check the Playwright Kubernetes test suite
+    dir: e2e
+    cmds:
+      - npm install --no-audit --no-fund --package-lock=false
+      - npm run typecheck
+      - npx playwright install --with-deps chromium
+
+  kubernetes:test:
+    desc: Run Helm and browser integration tests against the deployment
+    vars:
+      MINIKUBE_IP:
+        sh: minikube -p "{{.PROFILE}}" ip
+      CLIENT_HOST: "taskmigo.{{.MINIKUBE_IP}}.sslip.io"
+      WEB_HOST: "api.taskmigo.{{.MINIKUBE_IP}}.sslip.io"
+    cmds:
+      - '{{.HELM}} test "{{.RELEASE}}" --kube-context "{{.KUBE_CONTEXT}}" --namespace "{{.NAMESPACE}}" --logs --timeout 5m'
+      - |
+        set -euo pipefail
+
+        export E2E_BASE_URL="http://{{.CLIENT_HOST}}"
+        export E2E_AUTH_ORIGIN="http://{{.WEB_HOST}}"
+        export E2E_USERNAME=system
+        export E2E_PASSWORD="$({{.KUBECTL}} -n "{{.NAMESPACE}}" get secret taskmigo-secrets \
+          -o go-template='{{`{{index .data "bootstrap-user-password" | base64decode}}`}}')"
+        export NO_PROXY="${NO_PROXY:+$NO_PROXY,}{{.CLIENT_HOST}},{{.WEB_HOST}}"
+        export no_proxy="${no_proxy:+$no_proxy,}{{.CLIENT_HOST}},{{.WEB_HOST}}"
+
+        npm --prefix e2e test 2>&1 | tee "${RUNNER_TEMP:-/tmp}/taskmigo-playwright.log"
+
+  kubernetes:diagnostics:
+    desc: Print bounded Kubernetes diagnostics for a failed deployment
+    cmds:
+      - |
+        echo "::group::Kubernetes resources"
+        {{.KUBECTL}} -n "{{.NAMESPACE}}" get all,pvc -o wide || true
+        echo "::endgroup::"
+
+        echo "::group::Gateway API resources"
+        {{.KUBECTL}} get gatewayclasses,gateway,httproutes --all-namespaces -o wide || true
+        {{.KUBECTL}} describe gatewayclass "{{.GATEWAY_NAME}}" || true
+        {{.KUBECTL}} -n "{{.NAMESPACE}}" describe gateway "{{.GATEWAY_NAME}}" || true
+        {{.KUBECTL}} -n "{{.NAMESPACE}}" describe httproute "{{.RELEASE}}-client" || true
+        {{.KUBECTL}} -n "{{.NAMESPACE}}" describe httproute "{{.RELEASE}}-web" || true
+        echo "::endgroup::"
+
+        echo "::group::Envoy Gateway resources"
+        {{.KUBECTL}} -n envoy-gateway-system get all -o wide || true
+        {{.KUBECTL}} -n envoy-gateway-system logs deployment/envoy-gateway --tail=200 || true
+        echo "::endgroup::"
+
+        echo "::group::Helm release"
+        {{.HELM}} status "{{.RELEASE}}" --kube-context "{{.KUBE_CONTEXT}}" --namespace "{{.NAMESPACE}}" || true
+        echo "::endgroup::"
+
+        log="${RUNNER_TEMP:-/tmp}/taskmigo-playwright.log"
+        if [ -f "$log" ]; then
+          echo "::group::$(basename "$log")"
+          tail -n 200 "$log" || true
+          echo "::endgroup::"
+        fi
+
+        for pod in $({{.KUBECTL}} -n "{{.NAMESPACE}}" get pods -o name 2>/dev/null); do
+          echo "::group::Logs $pod"
+          {{.KUBECTL}} -n "{{.NAMESPACE}}" logs "$pod" --all-containers --tail=200 || true
+          echo "::endgroup::"
+          echo "::group::Describe $pod"
+          {{.KUBECTL}} -n "{{.NAMESPACE}}" describe "$pod" || true
+          echo "::endgroup::"
+        done
+
+        for pod in $({{.KUBECTL}} -n envoy-gateway-system get pods -o name 2>/dev/null); do
+          echo "::group::Envoy logs $pod"
+          {{.KUBECTL}} -n envoy-gateway-system logs "$pod" --all-containers --tail=200 || true
+          echo "::endgroup::"
+        done
+
+  kubernetes:reset:
+    desc: Remove Taskmigo local resources without deleting the Minikube profile
+    preconditions:
+      - sh: command -v helm >/dev/null
+        msg: Helm is required. Install it before running this task.
+    cmds:
+      - '{{.HELM}} uninstall "{{.RELEASE}}" --kube-context "{{.KUBE_CONTEXT}}" --namespace "{{.NAMESPACE}}" --ignore-not-found'
+      - '{{.KUBECTL}} delete namespace "{{.NAMESPACE}}" --ignore-not-found'
+      - '{{.KUBECTL}} delete gatewayclass "{{.GATEWAY_NAME}}" --ignore-not-found'

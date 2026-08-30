@@ -2,6 +2,10 @@
 
 This chart deploys the Taskmigo bootstrap job, web server, worker, and browser client. PostgreSQL is intentionally external to the chart so schema migration can run as a Helm `pre-install` / `pre-upgrade` hook before runtime workloads are created.
 
+For a complete local Minikube deployment, run `task kubernetes:deploy` from the repository root. The Taskfile builds and
+loads the local images, provisions PostgreSQL and credentials, installs Envoy Gateway, installs this chart, and verifies
+the deployed stack.
+
 ## Prerequisites
 
 - Kubernetes 1.30 or newer.
@@ -68,6 +72,9 @@ gateway:
   enabled: true
   create: true
   className: your-gateway-class
+  addresses:
+    - type: IPAddress
+      value: 192.0.2.1
   clientHost: taskmigo.example
   webHost: api.taskmigo.example
   listeners:

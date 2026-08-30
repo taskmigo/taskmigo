@@ -3,6 +3,8 @@ name: Kubernetes Integration
 on:
   pull_request:
     paths:
+      - "Taskfile.yml"
+      - "deploy/minikube/**"
       - "helm/**"
       - "server/**"
       - "client/**"
@@ -12,6 +14,8 @@ on:
   push:
     branches: [next]
     paths:
+      - "Taskfile.yml"
+      - "deploy/minikube/**"
       - "helm/**"
       - "server/**"
       - "client/**"
@@ -27,7 +31,14 @@ permissions:
   contents: read
 
 env:
+  CI: true
   NAMESPACE: taskmigo-integration
+  GATEWAY_NAME: taskmigo-integration
+  MINIKUBE_CONTAINER_RUNTIME: docker
+  MINIKUBE_CPUS: "4"
+  MINIKUBE_DRIVER: docker
+  MINIKUBE_MEMORY: 6000m
+  MINIKUBE_KUBERNETES_VERSION: v1.35.0
 
 jobs:
   integration:
@@ -42,37 +53,10 @@ jobs:
         with:
           version: v4.2.4
 
-      - name: Validate chart
-        run: |
-          helm lint helm/taskmigo
-          helm template taskmigo helm/taskmigo \
-            --set tests.enabled=true \
-            --set tests.oauthClient.enabled=true \
-            --set bootstrap.testClient.enabled=true \
-            >/dev/null
-          helm template taskmigo helm/taskmigo \
-            --set gateway.enabled=true \
-            --set gateway.create=true \
-            --set gateway.className=test-gateway-class \
-            >/dev/null
-          helm template taskmigo helm/taskmigo \
-            --set gateway.enabled=true \
-            --set gateway.create=false \
-            --set gateway.name=shared-gateway \
-            --set gateway.namespace=gateway-system \
-            >/dev/null
-
       - name: Set up Node.js
         uses: actions/setup-node@v7.0.0
         with:
           node-version: "26.7.0"
-
-      - name: Install Playwright
-        working-directory: e2e
-        run: |
-          npm install --no-audit --no-fund --package-lock=false
-          npm run typecheck
-          npx playwright install --with-deps chromium
 
       - name: Cache Minikube assets
         uses: actions/cache@v5.0.5
@@ -90,314 +74,26 @@ jobs:
           cache: false
           minikube-version: 1.38.1
 
-      - name: Start Minikube in background
-        run: |
-          nohup minikube start \
-            --driver=docker \
-            --container-runtime=docker \
-            --kubernetes-version=v1.35.0 \
-            --cpus=4 \
-            --memory=6000m \
-            --wait=none \
-            >"$RUNNER_TEMP/minikube-start.log" 2>&1 </dev/null &
+      - name: Set up Task
+        uses: go-task/setup-task@v2.2.0
+        with:
+          version: 3.53.1
 
-      - name: Build Taskmigo images in parallel
-        run: docker buildx bake --file .github/docker-bake.integration.hcl --load --progress=plain integration
+      - name: Validate chart
+        run: task kubernetes:validate
 
-      - name: Wait for Minikube
-        run: |
-          set -euo pipefail
+      - name: Install Playwright
+        run: task e2e:install
 
-          deadline=$((SECONDS + 360))
-          until minikube status >/dev/null 2>&1; do
-            if ((SECONDS >= deadline)); then
-              cat "$RUNNER_TEMP/minikube-start.log" || true
-              exit 1
-            fi
-            sleep 2
-          done
+      - name: Deploy to Minikube
+        run: task kubernetes:deploy
 
-          minikube status
-          kubectl wait --for=condition=Ready node --all --timeout=120s
-          cat "$RUNNER_TEMP/minikube-start.log"
-
-      - name: Load Taskmigo images into Minikube in parallel
-        run: |
-          printf '%s\n' \
-            taskmigo-bootstrap:integration \
-            taskmigo-web:integration \
-            taskmigo-worker:integration \
-            taskmigo-client:integration \
-            | xargs --max-procs=4 --max-args=1 minikube image load --daemon
-
-      - name: Create integration database
-        run: |
-          kubectl create namespace "$NAMESPACE"
-
-          kubectl -n "$NAMESPACE" create secret generic taskmigo-secrets \
-            --from-literal=database-password="$(openssl rand -hex 16)" \
-            --from-literal=bootstrap-user-password="$(openssl rand -hex 16)" \
-            --from-literal=auth-client-secret="$(openssl rand -hex 32)" \
-            --from-literal=auth-session-secret="$(openssl rand -hex 32)" \
-            --from-literal=integration-test-client-secret="$(openssl rand -hex 32)"
-
-          kubectl -n "$NAMESPACE" apply -f - <<'EOF'
-          apiVersion: v1
-          kind: Service
-          metadata:
-            name: postgresql
-          spec:
-            selector:
-              app: postgresql
-            ports:
-              - name: postgresql
-                port: 5432
-                targetPort: postgresql
-          ---
-          apiVersion: apps/v1
-          kind: Deployment
-          metadata:
-            name: postgresql
-          spec:
-            replicas: 1
-            selector:
-              matchLabels:
-                app: postgresql
-            template:
-              metadata:
-                labels:
-                  app: postgresql
-              spec:
-                containers:
-                  - name: postgresql
-                    image: postgres:18.4-alpine
-                    ports:
-                      - name: postgresql
-                        containerPort: 5432
-                    env:
-                      - name: POSTGRES_DB
-                        value: taskmigo
-                      - name: POSTGRES_USER
-                        value: taskmigo
-                      - name: POSTGRES_PASSWORD
-                        valueFrom:
-                          secretKeyRef:
-                            name: taskmigo-secrets
-                            key: database-password
-                    readinessProbe:
-                      exec:
-                        command:
-                          - pg_isready
-                          - -U
-                          - taskmigo
-                          - -d
-                          - taskmigo
-                      initialDelaySeconds: 2
-                      periodSeconds: 2
-          EOF
-
-          kubectl -n "$NAMESPACE" rollout status deployment/postgresql --timeout=120s
-
-      - name: Install Envoy Gateway
-        run: |
-          helm upgrade --install envoy-gateway oci://docker.io/envoyproxy/gateway-helm \
-            --version v1.9.1 \
-            --namespace envoy-gateway-system \
-            --create-namespace \
-            --wait \
-            --timeout 5m
-          kubectl -n envoy-gateway-system wait \
-            --for=condition=Available deployment/envoy-gateway \
-            --timeout=120s
-
-      - name: Configure integration Gateway
-        run: |
-          set -euo pipefail
-
-          minikube_ip="$(minikube ip)"
-          client_host="taskmigo.${minikube_ip}.sslip.io"
-          web_host="api.taskmigo.${minikube_ip}.sslip.io"
-
-          {
-            echo "MINIKUBE_IP=$minikube_ip"
-            echo "CLIENT_HOST=$client_host"
-            echo "WEB_HOST=$web_host"
-            echo "E2E_BASE_URL=http://$client_host"
-            echo "E2E_AUTH_ORIGIN=http://$web_host"
-          } >>"$GITHUB_ENV"
-
-          cat <<EOF | kubectl apply -f -
-          apiVersion: gateway.networking.k8s.io/v1
-          kind: GatewayClass
-          metadata:
-            name: taskmigo-integration
-          spec:
-            controllerName: gateway.envoyproxy.io/gatewayclass-controller
-          ---
-          apiVersion: gateway.networking.k8s.io/v1
-          kind: Gateway
-          metadata:
-            name: taskmigo-integration
-            namespace: $NAMESPACE
-          spec:
-            gatewayClassName: taskmigo-integration
-            addresses:
-              - type: IPAddress
-                value: $minikube_ip
-            listeners:
-              - name: client
-                hostname: $client_host
-                port: 80
-                protocol: HTTP
-                allowedRoutes:
-                  namespaces:
-                    from: Same
-              - name: web
-                hostname: $web_host
-                port: 80
-                protocol: HTTP
-                allowedRoutes:
-                  namespaces:
-                    from: Same
-          EOF
-
-          kubectl wait \
-            --for=condition=Accepted gatewayclass/taskmigo-integration \
-            --timeout=120s
-          kubectl -n "$NAMESPACE" wait \
-            --for=condition=Programmed gateway/taskmigo-integration \
-            --timeout=180s
-
-          gateway_address="$(kubectl -n "$NAMESPACE" get gateway taskmigo-integration \
-            -o jsonpath='{.status.addresses[0].value}')"
-          test "$gateway_address" = "$minikube_ip"
-
-          getent hosts "$client_host"
-          getent hosts "$web_host"
-          kubectl -n "$NAMESPACE" get gateway taskmigo-integration -o wide
-          kubectl get services --all-namespaces \
-            --selector=gateway.envoyproxy.io/owning-gateway-name=taskmigo-integration \
-            -o wide
-
-      - name: Deploy Helm release
-        run: |
-          helm upgrade --install taskmigo helm/taskmigo \
-            --namespace "$NAMESPACE" \
-            --wait \
-            --timeout 10m \
-            --set bootstrap.image.repository=taskmigo-bootstrap \
-            --set bootstrap.image.tag=integration \
-            --set bootstrap.image.pullPolicy=Never \
-            --set bootstrap.testClient.enabled=true \
-            --set web.image.repository=taskmigo-web \
-            --set web.image.tag=integration \
-            --set web.image.pullPolicy=Never \
-            --set-string web.publicUrl="$E2E_AUTH_ORIGIN" \
-            --set worker.image.repository=taskmigo-worker \
-            --set worker.image.tag=integration \
-            --set worker.image.pullPolicy=Never \
-            --set client.image.repository=taskmigo-client \
-            --set client.image.tag=integration \
-            --set client.image.pullPolicy=Never \
-            --set-string client.publicUrl="$E2E_BASE_URL" \
-            --set-string client.auth.issuer="$E2E_AUTH_ORIGIN" \
-            --set gateway.enabled=true \
-            --set gateway.create=false \
-            --set-string gateway.name=taskmigo-integration \
-            --set-string gateway.clientHost="$CLIENT_HOST" \
-            --set-string gateway.webHost="$WEB_HOST" \
-            --set tests.enabled=true \
-            --set tests.oauthClient.enabled=true
-
-      - name: Verify Kubernetes workloads
-        run: |
-          kubectl -n "$NAMESPACE" wait --for=condition=complete job/taskmigo-bootstrap --timeout=120s
-          kubectl -n "$NAMESPACE" rollout status deployment/taskmigo-web --timeout=180s
-          kubectl -n "$NAMESPACE" rollout status deployment/taskmigo-worker --timeout=180s
-          kubectl -n "$NAMESPACE" rollout status deployment/taskmigo-client --timeout=180s
-          kubectl -n "$NAMESPACE" wait \
-            --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' \
-            httproute/taskmigo-client \
-            --timeout=120s
-          kubectl -n "$NAMESPACE" wait \
-            --for='jsonpath={.status.parents[0].conditions[?(@.type=="Accepted")].status}=True' \
-            httproute/taskmigo-web \
-            --timeout=120s
-
-          migration_versions="$(kubectl -n "$NAMESPACE" exec deployment/postgresql -- \
-            psql -U taskmigo -d taskmigo -Atc \
-            'SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank')"
-          test "$migration_versions" = "1"
-
-      - name: Run Helm integration test
-        run: helm test taskmigo --namespace "$NAMESPACE" --logs --timeout 5m
-
-      - name: Run Playwright Kubernetes E2E through Gateway
-        env:
-          E2E_USERNAME: system
-        run: |
-          set -euo pipefail
-
-          export NO_PROXY="${NO_PROXY:+$NO_PROXY,}$CLIENT_HOST,$WEB_HOST"
-          export no_proxy="${no_proxy:+$no_proxy,}$CLIENT_HOST,$WEB_HOST"
-
-          curl --noproxy '*' --fail --silent --show-error \
-            --retry 30 --retry-all-errors --retry-delay 1 \
-            "$E2E_BASE_URL/" >/dev/null
-          curl --noproxy '*' --fail --silent --show-error \
-            --retry 30 --retry-all-errors --retry-delay 1 \
-            "$E2E_AUTH_ORIGIN/.well-known/openid-configuration" >/dev/null
-
-          export E2E_PASSWORD="$(kubectl -n "$NAMESPACE" get secret taskmigo-secrets \
-            -o jsonpath='{.data.bootstrap-user-password}' | base64 --decode)"
-          npm --prefix e2e test 2>&1 | tee "$RUNNER_TEMP/playwright.log"
+      - name: Run Kubernetes integration tests
+        run: task kubernetes:test
 
       - name: Kubernetes failure diagnostics
         if: ${{ failure() }}
-        run: |
-          echo "::group::Kubernetes resources"
-          kubectl -n "$NAMESPACE" get all,pvc -o wide || true
-          echo "::endgroup::"
-
-          echo "::group::Gateway API resources"
-          kubectl get gatewayclasses,gateway,httproutes --all-namespaces -o wide || true
-          kubectl describe gatewayclass taskmigo-integration || true
-          kubectl -n "$NAMESPACE" describe gateway taskmigo-integration || true
-          kubectl -n "$NAMESPACE" describe httproute taskmigo-client || true
-          kubectl -n "$NAMESPACE" describe httproute taskmigo-web || true
-          echo "::endgroup::"
-
-          echo "::group::Envoy Gateway resources"
-          kubectl -n envoy-gateway-system get all -o wide || true
-          kubectl -n envoy-gateway-system logs deployment/envoy-gateway --tail=200 || true
-          echo "::endgroup::"
-
-          echo "::group::Helm release"
-          helm status taskmigo --namespace "$NAMESPACE" || true
-          echo "::endgroup::"
-
-          for log in "$RUNNER_TEMP/minikube-start.log" "$RUNNER_TEMP/playwright.log"; do
-            if [ -f "$log" ]; then
-              echo "::group::$(basename "$log")"
-              tail -n 200 "$log" || true
-              echo "::endgroup::"
-            fi
-          done
-
-          for pod in $(kubectl -n "$NAMESPACE" get pods -o name 2>/dev/null); do
-            echo "::group::Logs $pod"
-            kubectl -n "$NAMESPACE" logs "$pod" --all-containers --tail=200 || true
-            echo "::endgroup::"
-            echo "::group::Describe $pod"
-            kubectl -n "$NAMESPACE" describe "$pod" || true
-            echo "::endgroup::"
-          done
-
-          for pod in $(kubectl -n envoy-gateway-system get pods -o name 2>/dev/null); do
-            echo "::group::Envoy logs $pod"
-            kubectl -n envoy-gateway-system logs "$pod" --all-containers --tail=200 || true
-            echo "::endgroup::"
-          done
+        run: task kubernetes:diagnostics
 
       - name: Upload Playwright failure report
         if: ${{ failure() }}
@@ -405,8 +101,7 @@ jobs:
         with:
           name: playwright-report
           path: |
-            ${{ runner.temp }}/minikube-start.log
-            ${{ runner.temp }}/playwright.log
+            ${{ runner.temp }}/taskmigo-playwright.log
             e2e/playwright-report
             e2e/test-results
           if-no-files-found: warn
