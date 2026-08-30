@@ -322,8 +322,17 @@ tasks:
         export E2E_USERNAME=system
         export E2E_PASSWORD="$({{.KUBECTL}} -n "{{.NAMESPACE}}" get secret taskmigo-secrets \
           -o go-template='{{`{{index .data "bootstrap-user-password" | base64decode}}`}}')"
-        export NO_PROXY="${NO_PROXY:+$NO_PROXY,}{{.CLIENT_HOST}},{{.WEB_HOST}}"
-        export no_proxy="${no_proxy:+$no_proxy,}{{.CLIENT_HOST}},{{.WEB_HOST}}"
+        proxy_hosts="{{.CLIENT_HOST}},{{.WEB_HOST}}"
+        if [ -n "${NO_PROXY:-}" ]; then
+          export NO_PROXY="${NO_PROXY},${proxy_hosts}"
+        else
+          export NO_PROXY="${proxy_hosts}"
+        fi
+        if [ -n "${no_proxy:-}" ]; then
+          export no_proxy="${no_proxy},${proxy_hosts}"
+        else
+          export no_proxy="${proxy_hosts}"
+        fi
 
         npm --prefix e2e test 2>&1 | tee "${RUNNER_TEMP:-/tmp}/taskmigo-playwright.log"
 
