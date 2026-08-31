@@ -1,4 +1,4 @@
 {
   "title": "Developer",
-  "pages": ["index", "local-development", "resource-model", "oauth-clients", "api-reference"]
+  "pages": ["index", "local-development", "local-kubernetes", "resource-model", "oauth-clients", "api-reference"]
 }

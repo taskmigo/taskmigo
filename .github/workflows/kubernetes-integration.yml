@@ -1,0 +1,223 @@
+name: Kubernetes Integration
+
+on:
+  pull_request:
+    paths:
+      - "Taskfile.yml"
+      - "deploy/minikube/**"
+      - "helm/**"
+      - "server/**"
+      - "client/**"
+      - "e2e/**"
+      - ".github/docker-bake.integration.hcl"
+      - ".github/workflows/kubernetes-integration.yml"
+  push:
+    branches: [next]
+    paths:
+      - "Taskfile.yml"
+      - "deploy/minikube/**"
+      - "helm/**"
+      - "server/**"
+      - "client/**"
+      - "e2e/**"
+      - ".github/docker-bake.integration.hcl"
+      - ".github/workflows/kubernetes-integration.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  CI: true
+  PROFILE: minikube
+  NAMESPACE: taskmigo-integration
+  GATEWAY_NAME: taskmigo-integration
+  MINIKUBE_CONTAINER_RUNTIME: docker
+  MINIKUBE_CPUS: "4"
+  MINIKUBE_DRIVER: docker
+  MINIKUBE_MEMORY: 6000m
+  MINIKUBE_KUBERNETES_VERSION: v1.35.0
+
+jobs:
+  integration:
+    name: Deploy and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5.0.1
+        with:
+          version: v4.2.4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: "26.7.0"
+
+      - name: Cache Minikube assets
+        uses: actions/cache@v5.0.5
+        with:
+          path: |
+            ~/.minikube/cache/iso
+            ~/.minikube/cache/kic
+            ~/.minikube/cache/preloaded-tarball
+          key: minikube-1.38.1-v1.35.0-docker-${{ runner.arch }}
+
+      - name: Set up and start Minikube
+        uses: medyagh/setup-minikube@v0.0.21
+        with:
+          start: true
+          wait: false
+          cache: false
+          minikube-version: 1.38.1
+          driver: ${{ env.MINIKUBE_DRIVER }}
+          container-runtime: ${{ env.MINIKUBE_CONTAINER_RUNTIME }}
+          kubernetes-version: ${{ env.MINIKUBE_KUBERNETES_VERSION }}
+          cpus: ${{ env.MINIKUBE_CPUS }}
+          memory: ${{ env.MINIKUBE_MEMORY }}
+
+      - name: Install and validate E2E
+        working-directory: e2e
+        run: |
+          npm install --no-audit --no-fund --package-lock=false
+          npm run typecheck
+          npx playwright install --with-deps chromium
+
+      - name: Set up Task
+        uses: go-task/setup-task@v2.2.0
+        with:
+          version: 3.53.1
+
+      - name: Deploy to Minikube
+        run: task kubernetes:deploy
+
+      - name: Report integration image sizes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          report="${RUNNER_TEMP}/taskmigo-image-sizes.md"
+          {
+            echo "### Integration image sizes"
+            echo
+            echo "| Image | Size (MiB) | Limit (MiB) | Size (bytes) |"
+            echo "| --- | ---: | ---: | ---: |"
+            for image in \
+              taskmigo-bootstrap:integration \
+              taskmigo-web:integration \
+              taskmigo-worker:integration \
+              taskmigo-client:integration; do
+              size_bytes="$(docker image inspect "$image" --format '{{.Size}}')"
+              if [[ "$image" == taskmigo-client:* ]]; then
+                limit_mib=200
+              else
+                limit_mib=300
+              fi
+              limit_bytes="$((limit_mib * 1024 * 1024))"
+              size_mib="$(awk -v bytes="$size_bytes" 'BEGIN { printf "%.1f", bytes / 1048576 }')"
+              printf '| `%s` | %s | %s | %s |\n' \
+                "$image" "$size_mib" "$limit_mib" "$size_bytes"
+              if ((size_bytes > limit_bytes)); then
+                echo
+                echo "Image $image exceeds its ${limit_mib} MiB size limit." >&2
+                exit 1
+              fi
+            done
+          } | tee "$report"
+          cat "$report" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Run Helm integration tests
+        run: task kubernetes:test
+
+      - name: Run browser E2E tests
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          minikube_ip="$(minikube -p "$PROFILE" ip)"
+          public_host=taskmigo.internal.com
+          printf '%s %s\n' "$minikube_ip" "$public_host" | sudo tee -a /etc/hosts >/dev/null
+          e2e_password="$(minikube -p "$PROFILE" kubectl -- -n "$NAMESPACE" get secret taskmigo-secrets \
+            -o go-template='{{index .data "bootstrap-user-password" | base64decode}}')"
+
+          export E2E_BASE_URL="http://${public_host}"
+          export E2E_AUTH_ORIGIN="http://${public_host}"
+          export E2E_USERNAME=system
+          export E2E_PASSWORD="$e2e_password"
+          export NO_PROXY="${NO_PROXY:+${NO_PROXY},}${public_host}"
+          export no_proxy="${no_proxy:+${no_proxy},}${public_host}"
+
+          npm --prefix e2e test 2>&1 | tee "${RUNNER_TEMP}/taskmigo-playwright.log"
+
+      - name: Kubernetes failure diagnostics
+        if: ${{ failure() }}
+        run: task kubernetes:diagnostics
+
+      - name: Upload Playwright report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: playwright-report
+          path: |
+            ${{ runner.temp }}/taskmigo-playwright.log
+            e2e/playwright-report
+            e2e/test-results
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Comment E2E report on pull request
+        if: ${{ always() && github.event_name == 'pull_request' }}
+        uses: actions/github-script@v9.0.0
+        env:
+          E2E_RESULT: ${{ job.status }}
+        with:
+          script: |
+            const marker = "<!-- taskmigo-e2e-report -->";
+            const passed = process.env.E2E_RESULT === "success";
+            const result = passed ? "✅ Passed" : "❌ Failed";
+            const runUrl =
+              "https://github.com/" + context.repo.owner + "/" + context.repo.repo + "/actions/runs/" + context.runId;
+            const body =
+              marker +
+              "\n## E2E report\n\n" +
+              result +
+              "\n\n[Open the workflow run and download the `playwright-report` artifact](" +
+              runUrl +
+              ").";
+
+            try {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                per_page: 100,
+              });
+              const previous = comments.find(
+                (comment) =>
+                  comment.user?.type === "Bot" && comment.body?.includes(marker),
+              );
+
+              if (previous) {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: previous.id,
+                  body,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body,
+                });
+              }
+            } catch (error) {
+              core.warning("Could not publish the E2E pull request comment: " + error.message);
+            }

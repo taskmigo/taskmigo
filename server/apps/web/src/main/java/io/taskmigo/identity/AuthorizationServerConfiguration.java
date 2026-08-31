@@ -5,6 +5,9 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import io.taskmigo.identity.oauth.InternalClientMetadata;
+import io.taskmigo.user.SystemUser;
+import io.taskmigo.user.UserService;
 import java.util.ArrayList;
 import java.util.Set;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -12,6 +15,9 @@ import org.springframework.boot.security.oauth2.server.authorization.autoconfigu
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -20,11 +26,10 @@ import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 
-/// Configures the OAuth authorization-server primitives and the claims used to identify Taskmigo service principals.
+/// Configures the OAuth authorization-server primitives and the claims used to identify Taskmigo principals.
 ///
-/// Access tokens issued through `client_credentials` use the registered client id as their subject and include
-/// `principal_type=service` plus the permissions assigned to managed internal clients. Other token flows keep Spring
-/// Authorization Server's default claims.
+/// Persisted interactive accounts share one user model. The reserved `system` username is temporarily granted complete
+/// system permissions here until ACL evaluation becomes the source of authorization decisions.
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties({ IdentityProperties.class, OAuth2AuthorizationServerProperties.class })
 class AuthorizationServerConfiguration {
@@ -32,6 +37,23 @@ class AuthorizationServerConfiguration {
     @Bean
     PasswordEncoder passwordEncoder() {
         return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    }
+
+    @Bean
+    UserDetailsService interactiveUsers(UserService userService) {
+        return username -> {
+            var user = userService
+                .findForAuthentication(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+            String passwordHash = user.passwordHash();
+            if (passwordHash == null) throw new UsernameNotFoundException("User has no interactive credential");
+
+            return User.withUsername(user.username())
+                .password(passwordHash)
+                .roles(SystemUser.USERNAME.equals(user.username()) ? "SYSTEM" : "USER")
+                .disabled(!user.active())
+                .build();
+        };
     }
 
     @Bean
@@ -54,15 +76,29 @@ class AuthorizationServerConfiguration {
     }
 
     @Bean
-    OAuth2TokenCustomizer<JwtEncodingContext> servicePrincipalClaims() {
+    OAuth2TokenCustomizer<JwtEncodingContext> principalClaims(UserService userService) {
         return context -> {
             if (!OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) return;
-            if (!AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) return;
 
-            Set<String> permissions = InternalClientMetadata.permissions(context.getRegisteredClient());
-            context.getClaims().subject(context.getRegisteredClient().getClientId());
-            context.getClaims().claim("principal_type", "service");
-            context.getClaims().claim("permissions", new ArrayList<>(permissions));
+            if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
+                Set<String> permissions = InternalClientMetadata.isManaged(context.getRegisteredClient())
+                    ? ServicePrincipalPermissions.ALL
+                    : Set.of();
+                context.getClaims().subject(context.getRegisteredClient().getClientId());
+                context.getClaims().claim("principal_type", "service");
+                context.getClaims().claim("permissions", new ArrayList<>(permissions));
+                return;
+            }
+
+            var authorization = context.getAuthorization();
+            if (authorization == null) return;
+            userService.findForAuthentication(authorization.getPrincipalName()).ifPresent(user -> {
+                context.getClaims().claim("principal_type", "user");
+                context.getClaims().claim("user_id", user.id().toString());
+                if (SystemUser.USERNAME.equals(user.username())) {
+                    context.getClaims().claim("permissions", new ArrayList<>(ServicePrincipalPermissions.ALL));
+                }
+            });
         };
     }
 }

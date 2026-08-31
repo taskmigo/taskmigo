@@ -8,5 +8,4 @@ spring:
       ddl-auto: validate
     open-in-view: false
   flyway:
-    enabled: true
     validate-migration-naming: true

@@ -12,8 +12,10 @@ import io.taskmigo.organization.OrganizationService;
 import io.taskmigo.project.ProjectChanged;
 import io.taskmigo.project.ProjectException;
 import io.taskmigo.project.ProjectService;
+import io.taskmigo.user.SystemUser;
 import io.taskmigo.user.UserService;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -72,10 +74,10 @@ class ResourceModelIntegrationTest {
     @Test
     void flywayBuildsTheSchemaAndHibernateOnlyValidatesIt() {
         var current = Objects.requireNonNull(this.flyway.info().current());
-        assertThat(current.getVersion().getVersion()).isEqualTo("3");
+        assertThat(current.getVersion().getVersion()).isEqualTo("1");
         assertThat(
             this.jdbc.queryForObject("select count(*) from flyway_schema_history where success", Integer.class)
-        ).isEqualTo(3);
+        ).isEqualTo(1);
         assertThat(
             this.jdbc.queryForObject(
                 "select count(*) from information_schema.tables where table_name = 'project_members'",
@@ -88,6 +90,47 @@ class ResourceModelIntegrationTest {
                 Integer.class
             )
         ).isEqualTo(1);
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from information_schema.tables where table_name = 'user_emails'",
+                Integer.class
+            )
+        ).isEqualTo(1);
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from information_schema.columns where table_name = 'users' and column_name = 'is_system'",
+                Integer.class
+            )
+        ).isZero();
+    }
+
+    @Test
+    void usersCanBeOrganizationlessPasswordlessAndHaveZeroOrManyEmails() {
+        String noEmailUsername = "no-email-" + UUID.randomUUID();
+        UUID noEmail = this.users.create(null, noEmailUsername, Set.of(), "No", "Email");
+        var noEmailInfo = this.users.require(noEmail);
+
+        assertThat(noEmailInfo.organizationId()).isNull();
+        assertThat(noEmailInfo.firstName()).isEqualTo("No");
+        assertThat(noEmailInfo.lastName()).isEqualTo("Email");
+        assertThat(noEmailInfo.displayName()).isEqualTo("No Email");
+        assertThat(noEmailInfo.emails()).isEmpty();
+        assertThat(this.users.findForAuthentication(noEmailUsername).orElseThrow().passwordHash()).isNull();
+
+        String firstEmail = "First-" + UUID.randomUUID() + "@Example.COM";
+        String secondEmail = "Second-" + UUID.randomUUID() + "@Example.COM";
+        UUID manyEmails = this.users.create(
+            null,
+            "many-emails-" + UUID.randomUUID(),
+            Set.of(firstEmail, secondEmail),
+            "Many",
+            "Emails"
+        );
+
+        assertThat(this.users.require(manyEmails).emails()).containsExactlyInAnyOrder(
+            firstEmail.toLowerCase(Locale.ROOT),
+            secondEmail.toLowerCase(Locale.ROOT)
+        );
     }
 
     @Test
@@ -96,8 +139,9 @@ class ResourceModelIntegrationTest {
         UUID user = this.users.create(
             org,
             "history-user-" + UUID.randomUUID(),
-            UUID.randomUUID() + "@example.com",
-            "History User"
+            Set.of(UUID.randomUUID() + "@example.com"),
+            "History",
+            "User"
         );
         var admin = new ProjectChanged.Actor(ProjectChanged.ActorType.USER, UUID.randomUUID().toString(), "Admin User");
         var self = new ProjectChanged.Actor(ProjectChanged.ActorType.USER, user.toString(), "History User");
@@ -156,7 +200,8 @@ class ResourceModelIntegrationTest {
         UUID engineer = this.users.create(
             vendor,
             "engineer-" + UUID.randomUUID(),
-            UUID.randomUUID() + "@example.com",
+            Set.of(UUID.randomUUID() + "@example.com"),
+            "External",
             "Engineer"
         );
         UUID vendorGroup = this.groups.create(vendor, "Backend", null);
@@ -186,14 +231,31 @@ class ResourceModelIntegrationTest {
     }
 
     @Test
+    void systemUserAlwaysHasEveryProjectPermissionWithoutMembership() {
+        UUID organization = this.organizations.create("system-access-" + UUID.randomUUID(), "System Access");
+        UUID project = this.projects.create(
+            organization,
+            "system-project-" + UUID.randomUUID(),
+            "System Project",
+            null
+        );
+        UUID systemUser = this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().id();
+
+        assertThat(this.projects.effectivePermissions(project, systemUser)).containsExactlyInAnyOrderElementsOf(
+            PermissionCatalog.ALL
+        );
+    }
+
+    @Test
     void projectRoleOrganizationInvariantIsRejected() {
         UUID orgA = this.organizations.create("org-a-" + UUID.randomUUID(), "A");
         UUID orgB = this.organizations.create("org-b-" + UUID.randomUUID(), "B");
         UUID userB = this.users.create(
             orgB,
             "user-b-" + UUID.randomUUID(),
-            UUID.randomUUID() + "@example.com",
-            "B User"
+            Set.of(UUID.randomUUID() + "@example.com"),
+            "B",
+            "User"
         );
         UUID projectA = this.projects.create(orgA, "p-" + UUID.randomUUID(), "Project", null);
         UUID member = this.projects.addMember(projectA, "USER", userB);
@@ -209,8 +271,9 @@ class ResourceModelIntegrationTest {
         UUID user = this.users.create(
             org,
             "archive-user-" + UUID.randomUUID(),
-            UUID.randomUUID() + "@example.com",
-            "Archive User"
+            Set.of(UUID.randomUUID() + "@example.com"),
+            "Archive",
+            "User"
         );
         UUID project = this.projects.create(org, "archive-project-" + UUID.randomUUID(), "Archive Project", null);
         this.projects.archive(project);

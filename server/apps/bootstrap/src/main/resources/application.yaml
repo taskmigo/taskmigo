@@ -1,0 +1,16 @@
+spring:
+  config:
+    import: classpath:application-database.yaml
+  main:
+    web-application-type: none
+  flyway:
+    enabled: true
+
+taskmigo:
+  security:
+    bootstrap-user:
+      password: ${TASKMIGO_BOOTSTRAP_USER_PASSWORD:}
+    browser-authentication:
+      enabled: ${TASKMIGO_AUTH_BROWSER_ENABLED:false}
+      client-secret: ${TASKMIGO_AUTH_CLIENT_SECRET:}
+      client-url: ${TASKMIGO_CLIENT_URL:http://localhost:3000}

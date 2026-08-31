@@ -1,7 +1,7 @@
 # Taskmigo
 
-Taskmigo is a modern Redmine alternative. The repository is one shared codebase with independently runnable web and
-worker applications plus the product documentation site.
+Taskmigo is a modern Redmine alternative. The repository contains independently runnable server applications, shared
+server modules, the Next.js client, the Helm deployment, end-to-end tests, and the documentation site.
 
 ## Stack
 
@@ -16,6 +16,9 @@ worker applications plus the product documentation site.
 - PostgreSQL
 - Flyway
 - Testcontainers
+- Kubernetes
+- Helm
+- Playwright
 - Next.js with Fumadocs
 
 Server dependency and plugin versions are defined in `server/gradle/libs.versions.toml`. Spring Boot and Spring Modulith
@@ -23,34 +26,55 @@ BOMs provide compatible versions for their dependency families.
 
 ## Project structure
 
-| Project                  | Responsibility                                            | Output              |
-| ------------------------ | --------------------------------------------------------- | ------------------- |
-| `server/taskmigo-core`   | Shared domain modules, persistence, and Flyway migrations | Library JAR         |
-| `server/taskmigo-web`    | HTTP API, OAuth authorization server, and resource server | Executable Boot JAR |
-| `server/taskmigo-worker` | Background processing without an embedded web server      | Executable Boot JAR |
-| `docs`                   | Documentation site and versioned product contract         | Static site         |
+| Project                       | Responsibility                                                         | Output              |
+| ----------------------------- | ---------------------------------------------------------------------- | ------------------- |
+| `server/apps/bootstrap`       | Database migration and installation-state reconciliation               | Executable Boot JAR |
+| `server/apps/web`             | HTTP API, OAuth authorization server, and resource server              | Executable Boot JAR |
+| `server/apps/worker`          | Background processing without an embedded web server                   | Executable Boot JAR |
+| `server/modules/database`     | Shared datasource configuration and canonical Flyway migration history | Library JAR         |
+| `server/modules/identity`     | OAuth identity contracts shared by independently runnable applications | Library JAR         |
+| `server/modules/organization` | Users, organizations, groups, roles, and permissions                   | Library JAR         |
+| `server/modules/project`      | Projects, memberships, authorization, and project history              | Library JAR         |
+| `server/modules/foundation`   | Cross-domain primitives used by server modules                         | Library JAR         |
+| `client`                      | Next.js application and client-side packages                           | Application         |
+| `helm/taskmigo`               | Kubernetes deployment and Helm smoke/integration tests                 | Helm chart          |
+| `e2e`                         | Browser-level tests against a deployed Taskmigo environment            | Playwright suite    |
+| `docs`                        | Documentation site and versioned product contract                      | Static site         |
 
-Both applications depend on `taskmigo-core`; core never depends on either executable.
-Spring Modulith treats each direct package below `io.taskmigo` as an application module. `identity` owns OAuth clients,
-service principals, token state, and signing keys; `web` only owns HTTP authorization. Architecture tests reject module
-cycles, access to internal packages, and dependencies not explicitly allowed by each module.
+Applications compose shared modules; shared modules never depend on executable applications. Spring Modulith verifies the
+runtime application-module boundaries used by `web` and `worker`.
 
 ## Database lifecycle
 
-Flyway is the only schema owner. `server/taskmigo-core/src/main/resources/db/migration` contains the database definition
-and invariants.
-Hibernate is configured with `spring.jpa.hibernate.ddl-auto=validate`; it never creates or updates tables.
+Database lifecycle has one execution owner: `server/apps/bootstrap`.
 
-The initial migration enforces database uniqueness plus cross-table invariants such as same-Organization Group members,
-valid polymorphic Project principals, Project-owned Role assignments, and archived Project immutability.
+The deployment order is:
+
+1. Run `apps/bootstrap` to completion.
+2. Bootstrap runs Flyway migrations from `modules/database/src/main/resources/db/migration`.
+3. Bootstrap reconciles installation-specific persistent state such as the reserved `system` user and Taskmigo-managed
+   OAuth clients.
+4. Start `apps/web` and `apps/worker` only after bootstrap succeeds.
+
+`web` and `worker` explicitly disable Flyway and never reconcile installation state. Hibernate uses
+`spring.jpa.hibernate.ddl-auto=validate`; runtime applications therefore fail fast when started against an incompatible
+schema instead of mutating it.
+
+Flyway is the only schema owner. Feature modules must not contain migration directories or duplicate the shared database
+configuration. The server build verifies this ownership rule.
+
+Schema migrations and runtime bootstrap are intentionally separate concerns:
+
+- **Flyway migration** changes versioned physical schema and version-coupled reference data.
+- **Bootstrap reconciliation** applies installation-specific desired state sourced from configuration or secrets.
+- **Development/demo seed data** is not part of production bootstrap and must remain opt-in.
 
 ## Authentication and authorization
 
-Only `taskmigo-web` exposes OAuth and HTTP endpoints. The persistent system-managed CLI client uses `client_credentials`.
-Domain Users remain separate from authentication identities. Client ownership, persistence, service-principal authorization,
-and signing-key lifecycle are documented under **Developer → OAuth clients**.
+Only `apps/web` exposes OAuth and HTTP endpoints. OAuth client registrations are persisted in PostgreSQL and must be
+reconciled by `apps/bootstrap` before `web` starts. Domain users remain separate from authentication methods.
 
-Declare internal clients with Spring Boot's Authorization Server properties. Taskmigo does not define a second client
+Declare internal clients with Spring Boot Authorization Server properties. The bootstrap application consumes the same
 configuration namespace:
 
 ```bash
@@ -59,13 +83,54 @@ export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENT
 export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTAUTHENTICATIONMETHODS=client_secret_basic
 export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_AUTHORIZATIONGRANTTYPES=client_credentials
 export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_SCOPES=taskmigo.api
+export TASKMIGO_BOOTSTRAP_USER_PASSWORD='replace-me'
+```
+
+For browser login bootstrap also configure:
+
+```bash
+export TASKMIGO_AUTH_BROWSER_ENABLED=true
+export TASKMIGO_AUTH_CLIENT_SECRET='replace-me'
+export TASKMIGO_CLIENT_URL=http://localhost:3000
+```
+
+The web application separately needs its signing key:
+
+```bash
 export TASKMIGO_OAUTH_SIGNING_KEY_FILE=/run/secrets/oauth-signing-key.pem
 ```
 
-Production instances must receive the same externally provisioned signing key. The application does not generate one by
-default. For a single-instance local environment only, set `TASKMIGO_OAUTH_SIGNING_KEY_AUTO_CREATE=true`.
+Production instances must receive the same externally provisioned signing key. The web application does not generate one
+by default. For a single-instance local environment only, set `TASKMIGO_OAUTH_SIGNING_KEY_AUTO_CREATE=true`.
 
-Get a local token:
+## Run
+
+Start PostgreSQL and export the bootstrap configuration:
+
+```bash
+cd server
+docker compose up -d
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTID=cli
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTSECRET='local-secret'
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTAUTHENTICATIONMETHODS=client_secret_basic
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_AUTHORIZATIONGRANTTYPES=client_credentials
+export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_SCOPES=taskmigo.api
+export TASKMIGO_BOOTSTRAP_USER_PASSWORD='local-password'
+./gradlew :apps:bootstrap:bootRun
+```
+
+After bootstrap exits successfully, start the runtime applications:
+
+```bash
+export TASKMIGO_OAUTH_SIGNING_KEY_AUTO_CREATE=true
+./gradlew :apps:web:bootRun
+```
+
+```bash
+./gradlew :apps:worker:bootRun
+```
+
+Get a local machine token:
 
 ```bash
 curl -u "${SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTID}:${SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTSECRET}" \
@@ -76,27 +141,6 @@ curl -u "${SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CL
 
 Use the returned bearer token for `/api/v0/**`.
 
-## Run
-
-Start PostgreSQL, then run either application independently:
-
-```bash
-cd server
-docker compose up -d
-export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTID=cli
-export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTSECRET='local-secret'
-export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTAUTHENTICATIONMETHODS=client_secret_basic
-export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_AUTHORIZATIONGRANTTYPES=client_credentials
-export SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_SCOPES=taskmigo.api
-export TASKMIGO_OAUTH_SIGNING_KEY_AUTO_CREATE=true
-./gradlew :taskmigo-web:bootRun
-```
-
-```bash
-cd server
-./gradlew :taskmigo-worker:bootRun
-```
-
 Run the documentation site independently:
 
 ```bash
@@ -105,32 +149,39 @@ npm ci
 npm run dev
 ```
 
-Build the independently deployable container images from the repository root:
+Build the independently deployable server images from the repository root:
 
 ```bash
-docker build --file server/taskmigo-web/Dockerfile --tag taskmigo-web server
-docker build --file server/taskmigo-worker/Dockerfile --tag taskmigo-worker server
+docker build --file server/Dockerfile --target bootstrap --tag taskmigo-bootstrap server
+docker build --file server/Dockerfile --target web --tag taskmigo-web server
+docker build --file server/Dockerfile --target worker --tag taskmigo-worker server
 ```
 
-Both images use Temurin images pinned by manifest digest, contain only the selected executable Boot JAR plus its runtime,
-and run as the non-root `taskmigo` user. The web image exposes port `8080`; the worker image has no listening port.
+The shared server builder resolves the Gradle graph once and produces all three executable JARs in one build stage; each
+target then copies only its application JAR into a separate runtime image. Run the bootstrap image as a one-shot
+deployment job before rolling out the web and worker images. All images use Temurin images pinned by manifest digest and
+run as the non-root `taskmigo` user.
 
-Dockerfile changes are checked by Hadolint in a path-filtered workflow; the job is not created for unrelated changes.
+Dockerfile changes are checked by Hadolint in a path-filtered workflow.
 
 ## Verify
 
-The repository formatting gate scans every supported file from the repository root with Prettier. The server gate
-enforces JSpecify nullness contracts with NullAway, validates the Spring Modulith boundaries, and runs the web integration
-tests against a real PostgreSQL container.
+The repository formatting gate scans supported files from the repository root with Prettier. The server gate enforces
+JSpecify nullness contracts with NullAway, validates Spring Modulith boundaries, verifies database lifecycle ownership,
+and runs integration tests against PostgreSQL containers.
+
+The Kubernetes integration workflow starts Minikube, deploys the Helm chart against disposable PostgreSQL, runs the Helm
+service/API tests, and then runs the `e2e` Playwright suite through the deployed browser login flow. See `e2e/README.md`
+for the browser-test contract and environment variables.
 
 ```bash
 npm ci
 npm run format:check
 cd server
-./gradlew build
+./gradlew --no-daemon build
 ```
 
-Format or check the entire repository. Unsupported file types are scanned and skipped:
+Format or check the entire repository:
 
 ```bash
 npm run format:fix

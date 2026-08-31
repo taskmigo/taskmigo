@@ -1,8 +1,10 @@
 package io.taskmigo.project;
 
 import io.taskmigo.access.AccessService;
+import io.taskmigo.access.PermissionCatalog;
 import io.taskmigo.group.GroupService;
 import io.taskmigo.organization.OrganizationService;
+import io.taskmigo.user.SystemUser;
 import io.taskmigo.user.UserService;
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -201,7 +203,9 @@ public class ProjectService {
     @Transactional(readOnly = true)
     public Set<String> effectivePermissions(UUID projectId, UUID userId) {
         this.project(projectId);
-        this.users.require(userId);
+        UserService.UserInfo user = this.users.require(userId);
+        if (SystemUser.USERNAME.equals(user.username())) return PermissionCatalog.ALL;
+
         Set<String> permissions = new LinkedHashSet<>();
         this.members
             .findByProjectIdAndPrincipalTypeAndPrincipalId(projectId, PrincipalType.USER, userId)

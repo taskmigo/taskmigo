@@ -1,0 +1,152 @@
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets: []
+serviceAccountName: default
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+database:
+  url: jdbc:postgresql://postgresql:5432/taskmigo
+  username: taskmigo
+  existingSecret: taskmigo-secrets
+  passwordKey: database-password
+
+bootstrap:
+  enabled: true
+  image:
+    repository: ghcr.io/taskmigo/taskmigo-bootstrap
+    tag: ""
+    pullPolicy: IfNotPresent
+  backoffLimit: 3
+  activeDeadlineSeconds: 600
+  bootstrapUserPasswordKey: bootstrap-user-password
+  browserAuthentication:
+    enabled: true
+    clientSecretKey: auth-client-secret
+  testClient:
+    enabled: false
+    clientId: taskmigo-helm-test
+    clientSecretKey: integration-test-client-secret
+  resources: {}
+  extraEnv: []
+
+web:
+  replicas: 1
+  image:
+    repository: ghcr.io/taskmigo/taskmigo-web
+    tag: ""
+    pullPolicy: IfNotPresent
+  publicUrl: ""
+  hostAliases: []
+  service:
+    type: ClusterIP
+    port: 8080
+  signingKey:
+    id: primary
+    autoCreate: true
+    path: /var/lib/taskmigo/oauth-signing-key.pem
+  persistence:
+    enabled: true
+    accessModes:
+      - ReadWriteOnce
+    size: 1Gi
+    storageClass: ""
+  resources: {}
+  extraEnv: []
+
+worker:
+  replicas: 1
+  image:
+    repository: ghcr.io/taskmigo/taskmigo-worker
+    tag: ""
+    pullPolicy: IfNotPresent
+  resources: {}
+  extraEnv: []
+
+client:
+  enabled: true
+  replicas: 1
+  image:
+    repository: ghcr.io/taskmigo/taskmigo-client
+    tag: ""
+    pullPolicy: IfNotPresent
+  publicUrl: ""
+  service:
+    type: ClusterIP
+    port: 3000
+  auth:
+    issuer: ""
+    clientId: taskmigo-client
+    clientSecretKey: auth-client-secret
+    sessionSecretKey: auth-session-secret
+    allowInsecureRequests: true
+    scope: openid profile taskmigo.api
+    oidcStateVersion: v1
+    callbackPath: /api/auth/callback
+    postLogoutRedirectPath: /
+    defaultReturnTo: /account
+    returnToParameter: returnTo
+    refreshSkewMilliseconds: 30000
+    cookie:
+      version: v1
+      httpOnly: true
+      sameSite: lax
+      secure: false
+      path: /
+      sessionName: taskmigo_session
+      sessionAad: taskmigo-client:session:v1
+      sessionMaxAgeSeconds: 28800
+      transactionName: taskmigo_auth_transaction
+      transactionAad: taskmigo-client:transaction:v1
+      transactionMaxAgeSeconds: 600
+  resources: {}
+  extraEnv: []
+
+gateway:
+  enabled: false
+  create: true
+  name: ""
+  namespace: ""
+  className: ""
+  addresses: []
+  annotations: {}
+  clientHost: taskmigo.internal.com
+  webHost: taskmigo.internal.com
+  listeners:
+    client:
+      name: client
+      port: 80
+      protocol: HTTP
+      tls: {}
+    web:
+      name: web
+      port: 80
+      protocol: HTTP
+      tls: {}
+
+tests:
+  enabled: false
+  image:
+    repository: curlimages/curl
+    tag: 8.21.0
+    pullPolicy: IfNotPresent
+  oauthClient:
+    enabled: false
+    clientId: taskmigo-helm-test
+    clientSecretKey: integration-test-client-secret

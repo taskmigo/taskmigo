@@ -3,3 +3,5 @@ spring:
     import: classpath:application-database.yaml
   main:
     web-application-type: none
+  flyway:
+    enabled: false

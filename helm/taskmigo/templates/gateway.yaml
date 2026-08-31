@@ -1,0 +1,131 @@
+{{- $sharedHost := and .Values.client.enabled (eq .Values.gateway.clientHost .Values.gateway.webHost) -}}
+{{- if and .Values.gateway.enabled .Values.gateway.create }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ include "taskmigo.gatewayName" . }}
+  labels:
+    {{- include "taskmigo.labels" . | nindent 4 }}
+  {{- with .Values.gateway.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  gatewayClassName: {{ required "gateway.className is required when gateway.enabled=true and gateway.create=true" .Values.gateway.className | quote }}
+  {{- with .Values.gateway.addresses }}
+  addresses:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  listeners:
+    {{- if .Values.client.enabled }}
+    - name: {{ .Values.gateway.listeners.client.name | quote }}
+      hostname: {{ .Values.gateway.clientHost | quote }}
+      port: {{ .Values.gateway.listeners.client.port }}
+      protocol: {{ .Values.gateway.listeners.client.protocol | quote }}
+      allowedRoutes:
+        namespaces:
+          from: Same
+      {{- with .Values.gateway.listeners.client.tls }}
+      tls:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- end }}
+    {{- if or (not .Values.client.enabled) (not $sharedHost) }}
+    - name: {{ .Values.gateway.listeners.web.name | quote }}
+      hostname: {{ .Values.gateway.webHost | quote }}
+      port: {{ .Values.gateway.listeners.web.port }}
+      protocol: {{ .Values.gateway.listeners.web.protocol | quote }}
+      allowedRoutes:
+        namespaces:
+          from: Same
+      {{- with .Values.gateway.listeners.web.tls }}
+      tls:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- end }}
+{{- end }}
+{{- if and .Values.gateway.enabled .Values.client.enabled }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "taskmigo.fullname" . }}-client
+  labels:
+    {{- include "taskmigo.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ include "taskmigo.gatewayName" . }}
+      {{- if and (not .Values.gateway.create) .Values.gateway.namespace }}
+      namespace: {{ .Values.gateway.namespace | quote }}
+      {{- end }}
+      sectionName: {{ .Values.gateway.listeners.client.name | quote }}
+  hostnames:
+    - {{ .Values.gateway.clientHost | quote }}
+  rules:
+    {{- if $sharedHost }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api/auth
+      backendRefs:
+        - name: {{ include "taskmigo.fullname" . }}-client
+          port: {{ .Values.client.service.port }}
+    {{- end }}
+    - backendRefs:
+        - name: {{ include "taskmigo.fullname" . }}-client
+          port: {{ .Values.client.service.port }}
+{{- end }}
+{{- if .Values.gateway.enabled }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "taskmigo.fullname" . }}-web
+  labels:
+    {{- include "taskmigo.labels" . | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ include "taskmigo.gatewayName" . }}
+      {{- if and (not .Values.gateway.create) .Values.gateway.namespace }}
+      namespace: {{ .Values.gateway.namespace | quote }}
+      {{- end }}
+      {{- if $sharedHost }}
+      sectionName: {{ .Values.gateway.listeners.client.name | quote }}
+      {{- else }}
+      sectionName: {{ .Values.gateway.listeners.web.name | quote }}
+      {{- end }}
+  hostnames:
+    - {{ .Values.gateway.webHost | quote }}
+  rules:
+    {{- if $sharedHost }}
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+        - path:
+            type: PathPrefix
+            value: /.well-known
+        - path:
+            type: PathPrefix
+            value: /oauth2
+        - path:
+            type: PathPrefix
+            value: /login
+        - path:
+            type: PathPrefix
+            value: /connect
+        - path:
+            type: PathPrefix
+            value: /logout
+        - path:
+            type: PathPrefix
+            value: /error
+      backendRefs:
+        - name: {{ include "taskmigo.fullname" . }}-web
+          port: {{ .Values.web.service.port }}
+    {{- else }}
+    - backendRefs:
+        - name: {{ include "taskmigo.fullname" . }}-web
+          port: {{ .Values.web.service.port }}
+    {{- end }}
+{{- end }}

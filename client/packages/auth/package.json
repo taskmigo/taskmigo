@@ -1,0 +1,16 @@
+{
+  "name": "@taskmigo/auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/core.ts",
+    "./openid-client": "./src/openid-client.ts"
+  },
+  "dependencies": {
+    "@taskmigo/foundation": "workspace:*",
+    "openid-client": "6.8.7",
+    "server-only": "0.0.1",
+    "zod": "4.4.3"
+  }
+}

@@ -9,6 +9,7 @@ dependencies {
     implementation(libs.jspecify)
     implementation(project(":modules:foundation"))
     implementation(project(":modules:database"))
+    implementation(project(":modules:identity"))
     implementation(project(":modules:organization"))
     implementation(project(":modules:project"))
     implementation(libs.spring.boot.starter.jdbc)
