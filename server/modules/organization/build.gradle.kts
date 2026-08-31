@@ -2,7 +2,7 @@ plugins {
     `java-library`
 }
 
-description = "Organization, users, groups, roles, and permissions"
+description = "Organizations, users, and groups"
 
 dependencies {
     api(libs.jspecify)

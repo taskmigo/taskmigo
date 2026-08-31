@@ -4,7 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
+import io.taskmigo.access.AccessService;
+import io.taskmigo.acl.AclPolicyRegistry;
+import io.taskmigo.acl.ApiAclEngine;
 import io.taskmigo.identity.oauth.InternalClientMetadata;
+import io.taskmigo.organization.OrganizationService;
 import io.taskmigo.user.SystemUser;
 import io.taskmigo.user.UserService;
 import java.util.LinkedHashSet;
@@ -48,8 +52,14 @@ class BootstrapIntegrationTest {
     private final InternalClientReconciler internalClients;
     private final BrowserClientReconciler browserClient;
     private final SystemUserReconciler systemUser;
+    private final SystemAclPolicyReconciler systemAcl;
+    private final SystemAccessReconciler systemAccess;
+    private final AclPolicyRegistry policies;
+    private final AccessService access;
+    private final ApiAclEngine engine;
     private final PasswordEncoder passwordEncoder;
     private final UserService users;
+    private final OrganizationService organizations;
 
     BootstrapIntegrationTest(
         Flyway flyway,
@@ -57,16 +67,28 @@ class BootstrapIntegrationTest {
         InternalClientReconciler internalClients,
         BrowserClientReconciler browserClient,
         SystemUserReconciler systemUser,
+        SystemAclPolicyReconciler systemAcl,
+        SystemAccessReconciler systemAccess,
+        AclPolicyRegistry policies,
+        AccessService access,
+        ApiAclEngine engine,
         PasswordEncoder passwordEncoder,
-        UserService users
+        UserService users,
+        OrganizationService organizations
     ) {
         this.flyway = flyway;
         this.clients = clients;
         this.internalClients = internalClients;
         this.browserClient = browserClient;
         this.systemUser = systemUser;
+        this.systemAcl = systemAcl;
+        this.systemAccess = systemAccess;
+        this.policies = policies;
+        this.access = access;
+        this.engine = engine;
         this.passwordEncoder = passwordEncoder;
         this.users = users;
+        this.organizations = organizations;
     }
 
     @Test
@@ -79,6 +101,98 @@ class BootstrapIntegrationTest {
         assertThat(
             this.passwordEncoder.matches("integration-password", Objects.requireNonNull(system.passwordHash()))
         ).isTrue();
+
+        var policySnapshot = this.policies.snapshot(null);
+        assertThat(policySnapshot.requestPolicies())
+            .extracting(policy -> policy.name())
+            .containsExactly("system/api-authenticated");
+        assertThat(policySnapshot.responsePolicies())
+            .extracting(policy -> policy.name())
+            .containsExactly("system/project-organization-boundary");
+
+        UUID organizationId = this.organizations.create("access-" + UUID.randomUUID(), "Access Org");
+        var projectCreate = this.access
+            .statements(organizationId)
+            .stream()
+            .filter(statement -> AccessService.PROJECT_CREATE_STATEMENT.equals(statement.key()))
+            .findFirst()
+            .orElseThrow();
+        var projectManager = this.access
+            .roles(organizationId)
+            .stream()
+            .filter(role -> AccessService.PROJECT_MANAGER_ROLE.equals(role.key()))
+            .findFirst()
+            .orElseThrow();
+        assertThat(projectManager.origin()).isEqualTo("SYSTEM");
+        assertThat(projectManager.statementIds()).containsExactly(projectCreate.id());
+
+        UUID customRole = this.access.createRole(
+            organizationId,
+            "delivery-lead",
+            "Delivery Lead",
+            "Custom Role reusing the built-in create Project Statement",
+            Set.of(projectCreate.id())
+        );
+        UUID userId = this.users.create(
+            organizationId,
+            "statement-user-" + UUID.randomUUID(),
+            Set.of(),
+            "Statement",
+            "User"
+        );
+        this.access.setUserRoles(userId, Set.of(customRole));
+        Set<String> effectiveStatements = this.access.effectiveStatementKeys(userId);
+        assertThat(effectiveStatements).containsExactly(AccessService.PROJECT_CREATE_STATEMENT);
+
+        String createProjectPath = "/api/v0/organizations/" + organizationId + "/projects";
+        Map<String, Object> requestContext = Map.of(
+            "principal.id",
+            userId,
+            "principal.organizationId",
+            organizationId,
+            "request.organizationId",
+            organizationId
+        );
+        assertThat(
+            this.engine.isRequestAllowed(
+                policySnapshot.requestPolicies(),
+                this.access.statementCatalog(organizationId),
+                effectiveStatements,
+                false,
+                "POST",
+                createProjectPath,
+                requestContext
+            )
+        ).isTrue();
+        assertThat(
+            this.engine.isRequestAllowed(
+                policySnapshot.requestPolicies(),
+                this.access.statementCatalog(organizationId),
+                Set.of(),
+                false,
+                "POST",
+                createProjectPath,
+                requestContext
+            )
+        ).isFalse();
+        assertThat(
+            this.engine.isRequestAllowed(
+                policySnapshot.requestPolicies(),
+                this.access.statementCatalog(organizationId),
+                effectiveStatements,
+                false,
+                "POST",
+                createProjectPath,
+                Map.of(
+                    "principal.id",
+                    userId,
+                    "principal.organizationId",
+                    UUID.randomUUID(),
+                    "request.organizationId",
+                    organizationId
+                )
+            )
+        ).isFalse();
 
         RegisteredClient internal = this.storedClient("integration-client");
         assertThat(InternalClientMetadata.isManaged(internal)).isTrue();
@@ -106,22 +220,28 @@ class BootstrapIntegrationTest {
     }
 
     @Test
-    void reconciliationIsIdempotent() {
+    void reconciliationIsIdempotent() throws Exception {
         String internalId = this.storedClient("integration-client").getId();
         String browserId = this.storedClient(BrowserClientMetadata.CLIENT_ID).getId();
         String passwordHash = Objects.requireNonNull(
             this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()
         );
+        UUID projectManagerRoleId = this.access.systemRoleId(AccessService.PROJECT_MANAGER_ROLE);
 
         this.internalClients.reconcile(Map.of("cli", client("integration-client", "integration-secret")));
         this.browserClient.reconcile();
         this.systemUser.reconcile();
+        this.systemAcl.reconcile();
+        this.systemAccess.reconcile();
 
         assertThat(this.storedClient("integration-client").getId()).isEqualTo(internalId);
         assertThat(this.storedClient(BrowserClientMetadata.CLIENT_ID).getId()).isEqualTo(browserId);
         assertThat(this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()).isEqualTo(
             passwordHash
         );
+        assertThat(this.access.systemRoleId(AccessService.PROJECT_MANAGER_ROLE)).isEqualTo(projectManagerRoleId);
+        assertThat(this.policies.snapshot(null).requestPolicies()).hasSize(1);
+        assertThat(this.policies.snapshot(null).responsePolicies()).hasSize(1);
     }
 
     @Test

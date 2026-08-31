@@ -7,9 +7,11 @@ description = "Taskmigo database migration and installation bootstrap applicatio
 
 dependencies {
     implementation(libs.jspecify)
+    implementation(project(":modules:authorization"))
     implementation(project(":modules:database"))
     implementation(project(":modules:identity"))
     implementation(project(":modules:organization"))
+    implementation(libs.jackson.dataformat.yaml)
     implementation(libs.spring.boot.core.starter)
     implementation(libs.spring.boot.starter.jdbc)
     implementation(libs.spring.boot.starter.validation)

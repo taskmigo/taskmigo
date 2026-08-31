@@ -158,7 +158,7 @@ class ProjectController {
             Objects.requireNonNull(request.roleIds()),
             actor(authentication)
         );
-        return this.responses.ok("resource.project.member_roles_updated", "Project member roles updated");
+        return this.responses.ok("resource.project.member_roles_updated", "Project member Roles updated");
     }
 
     @GetMapping("/projects/{projectId}/history")
@@ -177,15 +177,15 @@ class ProjectController {
         );
     }
 
-    @GetMapping("/projects/{projectId}/users/{userId}/effective-permissions")
-    ResponseEntity<ApiResponse<Set<String>, ApiResponse.BasicMeta>> effectivePermissions(
+    @GetMapping("/projects/{projectId}/users/{userId}/effective-statements")
+    ResponseEntity<ApiResponse<Set<String>, ApiResponse.BasicMeta>> effectiveStatements(
         @PathVariable UUID projectId,
         @PathVariable UUID userId
     ) {
         return this.responses.ok(
-            this.projects.effectivePermissions(projectId, userId),
-            "resource.project.effective_permissions_retrieved",
-            "Effective permissions retrieved"
+            this.projects.effectiveStatements(projectId, userId),
+            "resource.project.effective_statements_retrieved",
+            "Effective Statements retrieved"
         );
     }
 
@@ -261,8 +261,8 @@ class ProjectController {
         }
 
         @JsonAnySetter
-        void unsupported(String field, Object ignored) {
-            this.unsupportedFields.add(field);
+        void unsupported(String name, Object ignored) {
+            this.unsupportedFields.add(name);
         }
 
         ProjectService.Patch toPatch() {

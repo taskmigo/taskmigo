@@ -1,0 +1,12 @@
+kind: acl/request
+metadata:
+  name: system/api-authenticated
+spec:
+  target:
+    methods: [GET, POST, PUT, PATCH, DELETE]
+    path: /api/v0/**
+  rules:
+    authenticated-principal:
+      effect: allow
+      when:
+        exists: principal.id

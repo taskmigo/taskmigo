@@ -1,0 +1,13 @@
+kind: acl/statement
+metadata:
+  key: project.create
+  name: Create projects
+  description: Allows creating a Project inside the principal Organization.
+spec:
+  mode: request
+  target:
+    methods: [POST]
+    path: /api/v0/organizations/*/projects
+  effect: allow
+  when:
+    eq: [request.organizationId, principal.organizationId]

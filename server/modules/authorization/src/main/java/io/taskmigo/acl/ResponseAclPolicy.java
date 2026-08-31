@@ -1,5 +1,6 @@
 package io.taskmigo.acl;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -40,9 +41,16 @@ public record ResponseAclPolicy(String name, Origin origin, ApiTarget target, Li
         public FieldSelection intersect(FieldSelection other) {
             if (this.all) return other;
             if (other.all) return this;
-            var intersection = new java.util.LinkedHashSet<>(this.fields);
+            var intersection = new LinkedHashSet<>(this.fields);
             intersection.retainAll(other.fields);
             return only(intersection);
+        }
+
+        public FieldSelection union(FieldSelection other) {
+            if (this.all || other.all) return allFields();
+            var union = new LinkedHashSet<>(this.fields);
+            union.addAll(other.fields);
+            return only(union);
         }
     }
 }

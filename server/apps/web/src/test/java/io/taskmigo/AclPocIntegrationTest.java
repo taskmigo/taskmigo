@@ -96,6 +96,7 @@ class AclPocIntegrationTest {
     @Test
     void customRequestDenyIsLoadedFromDatabaseAlongsideImmutableSystemRules() {
         UUID organization = this.organizations.create("acl-request-" + UUID.randomUUID(), "ACL Request Org");
+        this.policies.reconcileSystem(Map.of("system/api-authenticated", authenticatedPolicy()));
         this.policies.upsertCustom(organization, "block-archive", requestPolicy());
         Map<String, Object> context = Map.of("principal.id", UUID.randomUUID(), "principal.type", "user");
         var snapshot = this.policies.snapshot(organization);
@@ -105,6 +106,20 @@ class AclPocIntegrationTest {
         ).isFalse();
         assertThat(this.policies.customPolicyNames(organization)).containsExactly("block-archive");
         assertThat(snapshot.requestPolicies()).anyMatch(policy -> policy.name().equals("system/api-authenticated"));
+    }
+
+    private static Map<String, Object> authenticatedPolicy() {
+        return Map.of(
+            "kind",
+            "acl/request",
+            "spec",
+            Map.of(
+                "target",
+                Map.of("methods", List.of("GET", "POST", "PUT", "PATCH", "DELETE"), "path", "/api/v0/**"),
+                "rules",
+                Map.of("authenticated-principal", Map.of("effect", "allow", "when", Map.of("exists", "principal.id")))
+            )
+        );
     }
 
     private static Map<String, Object> responsePolicy() {

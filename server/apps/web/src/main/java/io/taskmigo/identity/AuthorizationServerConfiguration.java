@@ -26,10 +26,8 @@ import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 
-/// Configures the OAuth authorization-server primitives and the claims used to identify Taskmigo principals.
-///
-/// Persisted interactive accounts share one user model. The reserved `system` username is temporarily granted complete
-/// system permissions here until ACL evaluation becomes the source of authorization decisions.
+/// Configures OAuth authorization-server primitives and identity claims. Role grants remain database-backed and are
+/// resolved by the ACL layer instead of being copied into user tokens.
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties({ IdentityProperties.class, OAuth2AuthorizationServerProperties.class })
 class AuthorizationServerConfiguration {

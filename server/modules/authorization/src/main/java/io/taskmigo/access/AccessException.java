@@ -12,6 +12,7 @@ public final class AccessException extends DomainException {
 
     public enum Type {
         BAD_REQUEST,
+        CONFLICT,
     }
 
     AccessException(Type type, String message) {

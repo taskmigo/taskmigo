@@ -6,9 +6,11 @@ import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 interface AclPolicyRepository extends JpaRepository<AclPolicyEntity, UUID> {
-    List<AclPolicyEntity> findAllByOrganizationIdOrderByName(UUID organizationId);
+    List<AclPolicyEntity> findAllByOriginOrderByName(String origin);
 
-    Optional<AclPolicyEntity> findByOrganizationIdAndName(UUID organizationId, String name);
+    List<AclPolicyEntity> findAllByOriginAndOrganizationIdOrderByName(String origin, UUID organizationId);
 
-    void deleteByOrganizationIdAndName(UUID organizationId, String name);
+    Optional<AclPolicyEntity> findByOriginAndOrganizationIdAndName(String origin, UUID organizationId, String name);
+
+    void deleteByOriginAndOrganizationIdAndName(String origin, UUID organizationId, String name);
 }

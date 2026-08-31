@@ -44,30 +44,81 @@ CREATE TABLE group_members (
 );
 CREATE INDEX ix_group_members_user_id ON group_members(user_id);
 
+CREATE TABLE acl_statements (
+    id UUID PRIMARY KEY,
+    origin VARCHAR(16) NOT NULL,
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    statement_key VARCHAR(100) NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    description VARCHAR(1000),
+    definition JSONB NOT NULL,
+    CONSTRAINT ck_acl_statements_origin CHECK (origin IN ('SYSTEM', 'CUSTOM')),
+    CONSTRAINT ck_acl_statements_scope CHECK (
+        (origin = 'SYSTEM' AND organization_id IS NULL)
+        OR (origin = 'CUSTOM' AND organization_id IS NOT NULL)
+    ),
+    CONSTRAINT ck_acl_statements_key_not_blank CHECK (btrim(statement_key) <> ''),
+    CONSTRAINT ck_acl_statements_name_not_blank CHECK (btrim(name) <> '')
+);
+CREATE UNIQUE INDEX uk_acl_system_statement_key
+    ON acl_statements(statement_key) WHERE origin = 'SYSTEM';
+CREATE UNIQUE INDEX uk_acl_custom_statement_key
+    ON acl_statements(organization_id, statement_key) WHERE origin = 'CUSTOM';
+CREATE INDEX ix_acl_statements_organization_id ON acl_statements(organization_id);
+
 CREATE TABLE roles (
     id UUID PRIMARY KEY,
-    organization_id UUID NOT NULL REFERENCES organizations(id),
+    origin VARCHAR(16) NOT NULL,
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    role_key VARCHAR(100) NOT NULL,
     name VARCHAR(200) NOT NULL,
-    description VARCHAR(1000)
+    description VARCHAR(1000),
+    CONSTRAINT ck_roles_origin CHECK (origin IN ('SYSTEM', 'CUSTOM')),
+    CONSTRAINT ck_roles_scope CHECK (
+        (origin = 'SYSTEM' AND organization_id IS NULL)
+        OR (origin = 'CUSTOM' AND organization_id IS NOT NULL)
+    ),
+    CONSTRAINT ck_roles_key_not_blank CHECK (btrim(role_key) <> ''),
+    CONSTRAINT ck_roles_name_not_blank CHECK (btrim(name) <> '')
 );
+CREATE UNIQUE INDEX uk_system_role_key ON roles(role_key) WHERE origin = 'SYSTEM';
+CREATE UNIQUE INDEX uk_custom_role_key ON roles(organization_id, role_key) WHERE origin = 'CUSTOM';
 CREATE INDEX ix_roles_organization_id ON roles(organization_id);
 
-CREATE TABLE role_permissions (
+CREATE TABLE role_statements (
     role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    permission_key VARCHAR(100) NOT NULL,
-    PRIMARY KEY (role_id, permission_key)
+    statement_id UUID NOT NULL REFERENCES acl_statements(id),
+    PRIMARY KEY (role_id, statement_id)
 );
+CREATE INDEX ix_role_statements_statement_id ON role_statements(statement_id);
+
+CREATE TABLE user_roles (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    CONSTRAINT uk_user_roles_assignment UNIQUE (user_id, role_id)
+);
+CREATE INDEX ix_user_roles_user_id ON user_roles(user_id);
+CREATE INDEX ix_user_roles_role_id ON user_roles(role_id);
 
 CREATE TABLE acl_policies (
     id UUID PRIMARY KEY,
-    organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    origin VARCHAR(16) NOT NULL,
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
     name VARCHAR(200) NOT NULL,
     kind VARCHAR(16) NOT NULL,
     definition JSONB NOT NULL,
-    CONSTRAINT uk_acl_policies_organization_name UNIQUE (organization_id, name),
+    CONSTRAINT ck_acl_policies_origin CHECK (origin IN ('SYSTEM', 'CUSTOM')),
+    CONSTRAINT ck_acl_policies_scope CHECK (
+        (origin = 'SYSTEM' AND organization_id IS NULL)
+        OR (origin = 'CUSTOM' AND organization_id IS NOT NULL)
+    ),
     CONSTRAINT ck_acl_policies_kind CHECK (kind IN ('acl/request', 'acl/response')),
     CONSTRAINT ck_acl_policies_name_not_blank CHECK (btrim(name) <> '')
 );
+CREATE UNIQUE INDEX uk_acl_system_policy_name ON acl_policies(name) WHERE origin = 'SYSTEM';
+CREATE UNIQUE INDEX uk_acl_custom_policy_name
+    ON acl_policies(organization_id, name) WHERE origin = 'CUSTOM';
 CREATE INDEX ix_acl_policies_organization_id ON acl_policies(organization_id);
 
 CREATE TABLE projects (
@@ -140,6 +191,34 @@ END; $$;
 CREATE TRIGGER trg_group_members_same_organization BEFORE INSERT OR UPDATE ON group_members
 FOR EACH ROW EXECUTE FUNCTION taskmigo_enforce_group_member_organization();
 
+CREATE FUNCTION taskmigo_enforce_role_statement_scope() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE role_origin VARCHAR(16); role_organization UUID; statement_origin VARCHAR(16); statement_organization UUID;
+BEGIN
+    SELECT origin, organization_id INTO role_origin, role_organization FROM roles WHERE id = NEW.role_id;
+    SELECT origin, organization_id INTO statement_origin, statement_organization FROM acl_statements WHERE id = NEW.statement_id;
+    IF role_origin = 'SYSTEM' AND statement_origin <> 'SYSTEM' THEN
+        RAISE EXCEPTION 'System Roles can reference only system Statements' USING ERRCODE = '23514';
+    ELSIF role_origin = 'CUSTOM' AND statement_origin = 'CUSTOM' AND role_organization IS DISTINCT FROM statement_organization THEN
+        RAISE EXCEPTION 'Custom Roles can reference only Statements from the same Organization' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_role_statements_scope BEFORE INSERT OR UPDATE ON role_statements
+FOR EACH ROW EXECUTE FUNCTION taskmigo_enforce_role_statement_scope();
+
+CREATE FUNCTION taskmigo_enforce_user_role_scope() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE user_organization UUID; role_origin VARCHAR(16); role_organization UUID;
+BEGIN
+    SELECT organization_id INTO user_organization FROM users WHERE id = NEW.user_id;
+    SELECT origin, organization_id INTO role_origin, role_organization FROM roles WHERE id = NEW.role_id;
+    IF role_origin = 'CUSTOM' AND user_organization IS DISTINCT FROM role_organization THEN
+        RAISE EXCEPTION 'Users can receive only custom Roles from their Organization' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_user_roles_scope BEFORE INSERT OR UPDATE ON user_roles
+FOR EACH ROW EXECUTE FUNCTION taskmigo_enforce_user_role_scope();
+
 CREATE FUNCTION taskmigo_enforce_archived_project_read_only() RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN
     IF OLD.status = 'ARCHIVED' THEN
@@ -163,13 +242,13 @@ CREATE TRIGGER trg_project_members_principal_exists BEFORE INSERT OR UPDATE OF p
 FOR EACH ROW EXECUTE FUNCTION taskmigo_enforce_project_member_principal();
 
 CREATE FUNCTION taskmigo_enforce_project_member_role_organization() RETURNS TRIGGER LANGUAGE plpgsql AS $$
-DECLARE project_organization UUID; role_organization UUID;
+DECLARE project_organization UUID; role_origin VARCHAR(16); role_organization UUID;
 BEGIN
     SELECT p.organization_id INTO project_organization FROM project_members pm JOIN projects p ON p.id = pm.project_id
      WHERE pm.id = NEW.project_member_id;
-    SELECT organization_id INTO role_organization FROM roles WHERE id = NEW.role_id;
-    IF project_organization IS DISTINCT FROM role_organization THEN
-        RAISE EXCEPTION 'Project Member Roles must belong to the Project organization' USING ERRCODE = '23514';
+    SELECT origin, organization_id INTO role_origin, role_organization FROM roles WHERE id = NEW.role_id;
+    IF role_origin = 'CUSTOM' AND project_organization IS DISTINCT FROM role_organization THEN
+        RAISE EXCEPTION 'Project Member custom Roles must belong to the Project Organization' USING ERRCODE = '23514';
     END IF;
     RETURN NEW;
 END; $$;

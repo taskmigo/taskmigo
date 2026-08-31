@@ -1,7 +1,6 @@
 package io.taskmigo.project;
 
 import io.taskmigo.access.AccessService;
-import io.taskmigo.access.PermissionCatalog;
 import io.taskmigo.group.GroupService;
 import io.taskmigo.organization.OrganizationService;
 import io.taskmigo.user.SystemUser;
@@ -22,7 +21,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/// Manages project lifecycle, membership, role assignment, and effective project permissions.
+/// Manages project lifecycle, membership, Role assignment, and effective project Statements.
 @Service
 public class ProjectService {
 
@@ -129,10 +128,6 @@ public class ProjectService {
     }
 
     /// Applies only fields explicitly present in a Project patch and records persisted changes in Project history.
-    ///
-    /// @param projectId the Project to patch
-    /// @param patch the explicitly supplied mutable fields
-    /// @param actor the actor recorded in Project history
     @Transactional
     public void patch(UUID projectId, Patch patch, ProjectChanged.Actor actor) {
         if (!patch.unsupportedFields().isEmpty()) {
@@ -199,10 +194,6 @@ public class ProjectService {
         );
     }
 
-    /// Permanently removes archived Projects whose retention window has expired.
-    ///
-    /// @param cutoff delete only Projects archived before this instant
-    /// @return number of Projects deleted
     @Transactional
     public int deleteArchivedBefore(Instant cutoff) {
         return this.projects.deleteArchivedBefore(ProjectStatus.ARCHIVED, cutoff);
@@ -277,8 +268,8 @@ public class ProjectService {
         Set<UUID> requestedIds = roleIds == null ? Set.of() : Set.copyOf(roleIds);
         List<AccessService.RoleInfo> requestedRoles = this.access.requireRoles(requestedIds);
         for (var role : requestedRoles) {
-            if (!role.organizationId().equals(project.organizationId)) {
-                throw badRequest("A Project Member can receive only Roles owned by the Project Organization");
+            if ("CUSTOM".equals(role.origin()) && !project.organizationId.equals(role.organizationId())) {
+                throw badRequest("A Project Member can receive only system Roles or custom Roles from the Project Organization");
             }
         }
         List<Map<String, Object>> before = roleSnapshots(this.access.requireRoles(member.roleIds));
@@ -298,16 +289,17 @@ public class ProjectService {
         }
     }
 
+    /// Resolves reusable Statement keys from direct and group Project Role assignments.
     @Transactional(readOnly = true)
-    public Set<String> effectivePermissions(UUID projectId, UUID userId) {
+    public Set<String> effectiveStatements(UUID projectId, UUID userId) {
         this.project(projectId);
         UserService.UserInfo user = this.users.require(userId);
-        if (SystemUser.USERNAME.equals(user.username())) return PermissionCatalog.ALL;
+        if (SystemUser.USERNAME.equals(user.username())) return this.access.systemStatementKeys();
 
-        Set<String> permissions = new LinkedHashSet<>();
+        Set<String> statements = new LinkedHashSet<>();
         this.members
             .findByProjectIdAndPrincipalTypeAndPrincipalId(projectId, PrincipalType.USER, userId)
-            .ifPresent(member -> this.collectPermissions(member, permissions));
+            .ifPresent(member -> statements.addAll(this.access.statementKeysForRoles(member.roleIds)));
         List<UUID> groupIds = this.groups.groupsForUser(userId);
         if (!groupIds.isEmpty()) {
             for (ProjectMemberEntity member : this.members.findAllByProjectIdAndPrincipalTypeAndPrincipalIdIn(
@@ -315,14 +307,10 @@ public class ProjectService {
                 PrincipalType.GROUP,
                 groupIds
             )) {
-                this.collectPermissions(member, permissions);
+                statements.addAll(this.access.statementKeysForRoles(member.roleIds));
             }
         }
-        return Set.copyOf(permissions);
-    }
-
-    private void collectPermissions(ProjectMemberEntity member, Set<String> permissions) {
-        for (var role : this.access.requireRoles(member.roleIds)) permissions.addAll(role.permissions());
+        return Set.copyOf(statements);
     }
 
     private ProjectChanged.Target principalTarget(PrincipalType type, UUID id) {

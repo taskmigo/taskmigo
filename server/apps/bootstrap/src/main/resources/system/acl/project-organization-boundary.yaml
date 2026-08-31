@@ -1,0 +1,12 @@
+kind: acl/response
+metadata:
+  name: system/project-organization-boundary
+spec:
+  target:
+    methods: [GET]
+    path: /api/v0/projects
+  rules:
+    same-organization:
+      effect: allow
+      when:
+        eq: [object.organizationId, principal.organizationId]

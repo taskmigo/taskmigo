@@ -17,7 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
-/// Compiles the JSON object accepted by the ACL management API into the restricted ACL AST.
+/// Compiles persisted ACL definitions into the restricted ACL AST.
 public final class AclPolicyDefinitionCompiler {
 
     public String kind(Map<String, Object> definition) {
@@ -44,6 +44,30 @@ public final class AclPolicyDefinitionCompiler {
         requireKind(definition, "acl/response");
         Map<String, Object> spec = map(required(definition, "spec"), "spec");
         return new ResponseAclPolicy(name, origin, target(spec), responseRules(spec));
+    }
+
+    /// Compiles one reusable Role statement. Statements intentionally contain one effect and condition rather than a
+    /// nested rule map, so Roles compose small capabilities instead of whole policies.
+    public AclStatement compileStatement(String key, Map<String, Object> definition) {
+        requireKind(definition, "acl/statement");
+        Map<String, Object> spec = map(required(definition, "spec"), "spec");
+        AclStatement.Mode mode = AclStatement.Mode.valueOf(
+            string(required(spec, "mode"), "spec.mode").toUpperCase(Locale.ROOT)
+        );
+        AclExpression when = expression(map(required(spec, "when"), "spec.when"));
+        if (mode == AclStatement.Mode.REQUEST) validateRequestExpression(when);
+        return new AclStatement(
+            key,
+            mode,
+            target(spec),
+            AclStatement.Effect.valueOf(
+                string(required(spec, "effect"), "spec.effect").toUpperCase(Locale.ROOT)
+            ),
+            when,
+            mode == AclStatement.Mode.RESPONSE
+                ? fields(spec.get("fields"))
+                : ResponseAclPolicy.FieldSelection.allFields()
+        );
     }
 
     private static ApiTarget target(Map<String, Object> spec) {
@@ -157,22 +181,20 @@ public final class AclPolicyDefinitionCompiler {
             case Any(var expressions) -> expressions.forEach(AclPolicyDefinitionCompiler::validateRequestExpression);
             case Not(var nested) -> validateRequestExpression(nested);
             case Relation ignored -> throw new IllegalArgumentException(
-                "relation is only valid in acl/response policies"
+                "relation is only valid in acl/response policies or statements"
             );
         }
     }
 
     private static void validateRequestValue(Value value) {
         if (value instanceof Ref(var path) && path.startsWith("object.")) {
-            throw new IllegalArgumentException("object.* references are only valid in acl/response policies");
+            throw new IllegalArgumentException("object.* references are only valid in response ACL");
         }
     }
 
     private static void requireKind(Map<String, Object> definition, String expected) {
         String actual = string(required(definition, "kind"), "kind");
-        if (!expected.equals(actual)) throw new IllegalArgumentException(
-            "Expected kind " + expected + ", got " + actual
-        );
+        if (!expected.equals(actual)) throw new IllegalArgumentException("Expected kind " + expected + ", got " + actual);
     }
 
     private static Object required(Map<String, Object> source, String key) {

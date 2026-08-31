@@ -1,4 +1,4 @@
-package io.taskmigo.acl;
+package io.taskmigo.access;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -11,9 +11,9 @@ import org.hibernate.type.SqlTypes;
 import org.jspecify.annotations.Nullable;
 
 @Entity
-@Table(name = "acl_policies")
+@Table(name = "acl_statements")
 @SuppressWarnings({ "CanBeFinal", "NotNullFieldNotInitialized" })
-class AclPolicyEntity {
+class StatementEntity {
 
     @Id
     UUID id;
@@ -25,36 +25,43 @@ class AclPolicyEntity {
     @Column(name = "organization_id")
     UUID organizationId;
 
+    @Column(name = "statement_key", nullable = false, length = 100)
+    String key;
+
     @Column(nullable = false, length = 200)
     String name;
 
-    @Column(nullable = false, length = 16)
-    String kind;
+    @Nullable
+    @Column(length = 1000)
+    String description;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, columnDefinition = "jsonb")
     Map<String, Object> definition;
 
-    protected AclPolicyEntity() {}
+    protected StatementEntity() {}
 
-    AclPolicyEntity(
+    StatementEntity(
         UUID id,
         String origin,
         @Nullable UUID organizationId,
+        String key,
         String name,
-        String kind,
+        @Nullable String description,
         Map<String, Object> definition
     ) {
         this.id = id;
         this.origin = origin;
         this.organizationId = organizationId;
+        this.key = key;
         this.name = name;
-        this.kind = kind;
+        this.description = description;
         this.definition = Map.copyOf(definition);
     }
 
-    void replace(String kind, Map<String, Object> definition) {
-        this.kind = kind;
+    void replace(String name, @Nullable String description, Map<String, Object> definition) {
+        this.name = name;
+        this.description = description;
         this.definition = Map.copyOf(definition);
     }
 }

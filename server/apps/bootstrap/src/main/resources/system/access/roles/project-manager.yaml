@@ -1,0 +1,8 @@
+kind: acl/role
+metadata:
+  key: project-manager
+  name: Project Manager
+  description: Built-in Role for principals that manage Projects.
+spec:
+  statements:
+    - project.create
