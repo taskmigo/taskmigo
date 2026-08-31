@@ -50,7 +50,9 @@ public final class ApiAclEngine {
             matching
                 .stream()
                 .filter(statement -> effectiveStatementKeys.contains(statement.key()))
-                .anyMatch(statement -> statement.effect() == AclStatement.Effect.DENY && evaluate(statement.when(), context))
+                .anyMatch(
+                    statement -> statement.effect() == AclStatement.Effect.DENY && evaluate(statement.when(), context)
+                )
         ) {
             return false;
         }
@@ -63,7 +65,9 @@ public final class ApiAclEngine {
             matching
                 .stream()
                 .filter(statement -> effectiveStatementKeys.contains(statement.key()))
-                .anyMatch(statement -> statement.effect() == AclStatement.Effect.ALLOW && evaluate(statement.when(), context))
+                .anyMatch(
+                    statement -> statement.effect() == AclStatement.Effect.ALLOW && evaluate(statement.when(), context)
+                )
         );
     }
 
@@ -252,8 +256,18 @@ public final class ApiAclEngine {
         return switch (expression) {
             case Eq(var left, var right) -> new Eq(specialize(left, context), specialize(right, context));
             case Exists(var value) -> new Exists(specialize(value, context));
-            case All(var expressions) -> new All(expressions.stream().map(item -> specialize(item, context)).toList());
-            case Any(var expressions) -> new Any(expressions.stream().map(item -> specialize(item, context)).toList());
+            case All(var expressions) -> new All(
+                expressions
+                    .stream()
+                    .map(item -> specialize(item, context))
+                    .toList()
+            );
+            case Any(var expressions) -> new Any(
+                expressions
+                    .stream()
+                    .map(item -> specialize(item, context))
+                    .toList()
+            );
             case Not(var item) -> new Not(specialize(item, context));
             case Relation(var name, var principal, var object) -> new Relation(
                 name,

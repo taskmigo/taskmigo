@@ -269,7 +269,9 @@ public class ProjectService {
         List<AccessService.RoleInfo> requestedRoles = this.access.requireRoles(requestedIds);
         for (var role : requestedRoles) {
             if ("CUSTOM".equals(role.origin()) && !project.organizationId.equals(role.organizationId())) {
-                throw badRequest("A Project Member can receive only system Roles or custom Roles from the Project Organization");
+                throw badRequest(
+                    "A Project Member can receive only system Roles or custom Roles from the Project Organization"
+                );
             }
         }
         List<Map<String, Object>> before = roleSnapshots(this.access.requireRoles(member.roleIds));

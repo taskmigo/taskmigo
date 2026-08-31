@@ -26,7 +26,8 @@ import org.springframework.web.context.request.RequestContextHolder;
 @Component
 public final class ApiAclSupport {
 
-    private static final String AUTHORIZATION_SNAPSHOT_ATTRIBUTE = ApiAclSupport.class.getName() + ".authorizationSnapshot";
+    private static final String AUTHORIZATION_SNAPSHOT_ATTRIBUTE =
+        ApiAclSupport.class.getName() + ".authorizationSnapshot";
     private static final String SYSTEM_RESOURCES_MANAGE_AUTHORITY =
         "PERMISSION_" + ServicePrincipalPermissions.SYSTEM_RESOURCES_MANAGE;
 
@@ -46,34 +47,36 @@ public final class ApiAclSupport {
         Context context = this.context(authentication, method, path);
         AuthorizationSnapshot snapshot = this.authorizationSnapshot(context);
         return this.engine.isRequestAllowed(
-                snapshot.policies().requestPolicies(),
-                snapshot.statements(),
-                snapshot.effectiveStatementKeys(),
-                context.bypassStatements(),
-                method,
-                path,
-                context.values()
-            );
+            snapshot.policies().requestPolicies(),
+            snapshot.statements(),
+            snapshot.effectiveStatementKeys(),
+            context.bypassStatements(),
+            method,
+            path,
+            context.values()
+        );
     }
 
     public ResponsePlan responsePlan(Authentication authentication, String method, String path) {
         Context context = this.context(authentication, method, path);
         AuthorizationSnapshot snapshot = this.authorizationSnapshot(context);
         return this.engine.planResponse(
-                snapshot.policies().responsePolicies(),
-                snapshot.statements(),
-                snapshot.effectiveStatementKeys(),
-                context.bypassStatements(),
-                method,
-                path,
-                context.values()
-            );
+            snapshot.policies().responsePolicies(),
+            snapshot.statements(),
+            snapshot.effectiveStatementKeys(),
+            context.bypassStatements(),
+            method,
+            path,
+            context.values()
+        );
     }
 
     public void requireOrganization(Authentication authentication, UUID organizationId) {
         Context context = this.context(authentication, "ACL_MANAGEMENT", "/api/v0/acl-management");
         if (!hasSystemResourceManagement(authentication) && !organizationId.equals(context.organizationId())) {
-            throw new AccessDeniedException("Authorization resources can only be managed for the principal Organization");
+            throw new AccessDeniedException(
+                "Authorization resources can only be managed for the principal Organization"
+            );
         }
     }
 
@@ -84,9 +87,8 @@ public final class ApiAclSupport {
 
         PolicySnapshot policySnapshot = this.policies.snapshot(context.organizationId());
         List<AclStatement> statements = this.access.statementCatalog(context.organizationId());
-        Set<String> effective = context.userId() == null
-            ? Set.of()
-            : this.access.effectiveStatementKeys(context.userId());
+        Set<String> effective =
+            context.userId() == null ? Set.of() : this.access.effectiveStatementKeys(context.userId());
         AuthorizationSnapshot snapshot = new AuthorizationSnapshot(policySnapshot, statements, effective);
         attributes.setAttribute(AUTHORIZATION_SNAPSHOT_ATTRIBUTE, snapshot, RequestAttributes.SCOPE_REQUEST);
         return snapshot;

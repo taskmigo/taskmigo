@@ -60,9 +60,7 @@ public final class AclPolicyDefinitionCompiler {
             key,
             mode,
             target(spec),
-            AclStatement.Effect.valueOf(
-                string(required(spec, "effect"), "spec.effect").toUpperCase(Locale.ROOT)
-            ),
+            AclStatement.Effect.valueOf(string(required(spec, "effect"), "spec.effect").toUpperCase(Locale.ROOT)),
             when,
             mode == AclStatement.Mode.RESPONSE
                 ? fields(spec.get("fields"))
@@ -194,7 +192,9 @@ public final class AclPolicyDefinitionCompiler {
 
     private static void requireKind(Map<String, Object> definition, String expected) {
         String actual = string(required(definition, "kind"), "kind");
-        if (!expected.equals(actual)) throw new IllegalArgumentException("Expected kind " + expected + ", got " + actual);
+        if (!expected.equals(actual)) throw new IllegalArgumentException(
+            "Expected kind " + expected + ", got " + actual
+        );
     }
 
     private static Object required(Map<String, Object> source, String key) {

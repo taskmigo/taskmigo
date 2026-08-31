@@ -63,23 +63,25 @@ public class AccessService {
         List<StatementEntity> requested = this.requireStatementEntities(requestedIds);
         for (StatementEntity statement : requested) {
             if (!SYSTEM.equals(statement.origin) && !organizationId.equals(statement.organizationId)) {
-                throw badRequest("A custom Role can reference only system Statements or Statements from its Organization");
+                throw badRequest(
+                    "A custom Role can reference only system Statements or Statements from its Organization"
+                );
             }
         }
 
         UUID id = UUID.randomUUID();
         try {
             this.roles.saveAndFlush(
-                    new RoleEntity(
-                        id,
-                        CUSTOM,
-                        organizationId,
-                        requiredKey(key),
-                        required(name, "name"),
-                        description,
-                        requestedIds
-                    )
-                );
+                new RoleEntity(
+                    id,
+                    CUSTOM,
+                    organizationId,
+                    requiredKey(key),
+                    required(name, "name"),
+                    description,
+                    requestedIds
+                )
+            );
             return id;
         } catch (DataIntegrityViolationException exception) {
             throw new AccessException(AccessException.Type.CONFLICT, "Role key already exists in the Organization");
@@ -102,11 +104,11 @@ public class AccessService {
         this.userRoles.deleteAll(existing);
         this.userRoles.flush();
         this.userRoles.saveAll(
-                requestedIds
-                    .stream()
-                    .map(roleId -> new UserRoleAssignmentEntity(UUID.randomUUID(), userId, roleId))
-                    .toList()
-            );
+            requestedIds
+                .stream()
+                .map(roleId -> new UserRoleAssignmentEntity(UUID.randomUUID(), userId, roleId))
+                .toList()
+        );
     }
 
     @Transactional(readOnly = true)
@@ -178,7 +180,10 @@ public class AccessService {
         if (organizationId != null) {
             catalog.addAll(this.statements.findAllByOriginAndOrganizationIdOrderByKey(CUSTOM, organizationId));
         }
-        return catalog.stream().map(statement -> this.compiler.compileStatement(statement.key, statement.definition)).toList();
+        return catalog
+            .stream()
+            .map(statement -> this.compiler.compileStatement(statement.key, statement.definition))
+            .toList();
     }
 
     @Transactional(readOnly = true)
@@ -231,7 +236,8 @@ public class AccessService {
         List<RoleEntity> desiredRoles = new ArrayList<>();
         for (var entry : roleDefinitions.entrySet()) {
             SystemRoleDefinition definition = entry.getValue();
-            Set<UUID> statementIds = definition.statementKeys()
+            Set<UUID> statementIds = definition
+                .statementKeys()
                 .stream()
                 .map(key -> {
                     StatementEntity statement = desiredStatements.get(key);
@@ -333,11 +339,7 @@ public class AccessService {
         Set<UUID> statementIds
     ) {}
 
-    public record SystemStatementDefinition(
-        String name,
-        @Nullable String description,
-        Map<String, Object> definition
-    ) {
+    public record SystemStatementDefinition(String name, @Nullable String description, Map<String, Object> definition) {
         public SystemStatementDefinition {
             definition = Map.copyOf(definition);
         }

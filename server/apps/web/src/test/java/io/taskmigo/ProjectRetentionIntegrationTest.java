@@ -64,13 +64,7 @@ class ProjectRetentionIntegrationTest {
             "Retention",
             "User"
         );
-        UUID role = this.access.createRole(
-            organization,
-            "retention-observer",
-            "Retention Observer",
-            null,
-            Set.of()
-        );
+        UUID role = this.access.createRole(organization, "retention-observer", "Retention Observer", null, Set.of());
         UUID project = this.projects.create(
             organization,
             "retention-project-" + UUID.randomUUID(),

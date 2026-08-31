@@ -83,9 +83,7 @@ class OAuthInfrastructureIntegrationTest {
                 .body(String.class)
         );
 
-        assertThat(response)
-            .contains("\"code\":\"resource.statements.retrieved\"")
-            .contains("\"data\":[]");
+        assertThat(response).contains("\"code\":\"resource.statements.retrieved\"").contains("\"data\":[]");
         assertThat(this.authorizations.findByToken(token, OAuth2TokenType.ACCESS_TOKEN)).isNotNull();
     }
 

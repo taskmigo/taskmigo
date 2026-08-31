@@ -103,7 +103,9 @@ final class SystemAccessReconciler implements ApplicationRunner {
         if (!(value instanceof Map<?, ?> raw)) throw new IllegalArgumentException(field + " must be an object");
         Map<String, Object> result = new LinkedHashMap<>();
         for (var entry : raw.entrySet()) {
-            if (!(entry.getKey() instanceof String key)) throw new IllegalArgumentException(field + " keys must be strings");
+            if (!(entry.getKey() instanceof String key)) throw new IllegalArgumentException(
+                field + " keys must be strings"
+            );
             result.put(key, entry.getValue());
         }
         return result;
@@ -123,7 +125,9 @@ final class SystemAccessReconciler implements ApplicationRunner {
 
     private static @Nullable String nullableString(@Nullable Object value, String field, String source) {
         if (value == null) return null;
-        if (!(value instanceof String string)) throw new IllegalArgumentException(field + " must be a string: " + source);
+        if (!(value instanceof String string)) throw new IllegalArgumentException(
+            field + " must be a string: " + source
+        );
         return string.isBlank() ? null : string.trim();
     }
 
