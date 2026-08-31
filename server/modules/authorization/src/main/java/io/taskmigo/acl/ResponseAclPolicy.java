@@ -34,6 +34,10 @@ public record ResponseAclPolicy(String name, Origin origin, ApiTarget target, Li
             return new FieldSelection(false, fields);
         }
 
+        public boolean allows(String field) {
+            return all || fields.contains(field);
+        }
+
         public FieldSelection intersect(FieldSelection other) {
             if (all) return other;
             if (other.all) return this;
