@@ -5,3 +5,8 @@ spring:
     web-application-type: none
   flyway:
     enabled: false
+
+taskmigo:
+  project:
+    retention-days: ${TASKMIGO_PROJECT_RETENTION_DAYS:30}
+    retention-cleanup-interval: ${TASKMIGO_PROJECT_RETENTION_CLEANUP_INTERVAL:PT1H}

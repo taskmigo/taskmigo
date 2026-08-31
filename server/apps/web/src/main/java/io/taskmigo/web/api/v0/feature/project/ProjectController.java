@@ -1,5 +1,7 @@
 package io.taskmigo.web.api.v0.feature.project;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonSetter;
 import io.taskmigo.foundation.CursorPage;
 import io.taskmigo.history.ProjectHistory;
 import io.taskmigo.project.ProjectChanged;
@@ -12,6 +14,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.net.URI;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -26,7 +29,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -65,6 +67,16 @@ class ProjectController {
             "resource.project.created",
             "Project created"
         );
+    }
+
+    @PatchMapping("/projects/{projectId}")
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> update(
+        @PathVariable UUID projectId,
+        @RequestBody ProjectPatchRequest request,
+        Authentication authentication
+    ) {
+        this.projects.patch(projectId, request.toPatch(), actor(authentication));
+        return this.responses.ok("resource.project.updated", "Project updated");
     }
 
     @PatchMapping("/projects/{projectId}/archive")
@@ -106,14 +118,19 @@ class ProjectController {
         return this.responses.ok("resource.project.member_removed", "Project member removed");
     }
 
-    @PutMapping("/projects/{projectId}/members/{projectMemberId}/roles")
+    @PatchMapping("/projects/{projectId}/members/{projectMemberId}/roles")
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setMemberRoles(
         @PathVariable UUID projectId,
         @PathVariable UUID projectMemberId,
         @Valid @RequestBody RoleAssignmentRequest request,
         Authentication authentication
     ) {
-        this.projects.setMemberRoles(projectId, projectMemberId, request.roleIds(), actor(authentication));
+        this.projects.setMemberRoles(
+            projectId,
+            projectMemberId,
+            Objects.requireNonNull(request.roleIds()),
+            actor(authentication)
+        );
         return this.responses.ok("resource.project.member_roles_updated", "Project member roles updated");
     }
 
@@ -167,7 +184,59 @@ class ProjectController {
         @Nullable String description
     ) {}
 
+    static final class ProjectPatchRequest {
+
+        private final Set<String> unsupportedFields = new LinkedHashSet<>();
+        private boolean keyPresent;
+        private boolean namePresent;
+        private boolean descriptionPresent;
+
+        @Nullable
+        private String key;
+
+        @Nullable
+        private String name;
+
+        @Nullable
+        private String description;
+
+        @JsonSetter("key")
+        void setKey(@Nullable String key) {
+            this.keyPresent = true;
+            this.key = key;
+        }
+
+        @JsonSetter("name")
+        void setName(@Nullable String name) {
+            this.namePresent = true;
+            this.name = name;
+        }
+
+        @JsonSetter("description")
+        void setDescription(@Nullable String description) {
+            this.descriptionPresent = true;
+            this.description = description;
+        }
+
+        @JsonAnySetter
+        void unsupported(String field, Object ignored) {
+            this.unsupportedFields.add(field);
+        }
+
+        ProjectService.Patch toPatch() {
+            return new ProjectService.Patch(
+                this.keyPresent,
+                this.key,
+                this.namePresent,
+                this.name,
+                this.descriptionPresent,
+                this.description,
+                this.unsupportedFields
+            );
+        }
+    }
+
     record MemberRequest(@NotBlank @Nullable String principalType, @NotNull @Nullable UUID principalId) {}
 
-    record RoleAssignmentRequest(@Nullable Set<UUID> roleIds) {}
+    record RoleAssignmentRequest(@NotNull @Nullable Set<UUID> roleIds) {}
 }
