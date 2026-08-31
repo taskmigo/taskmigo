@@ -152,13 +152,15 @@ npm run dev
 Build the independently deployable server images from the repository root:
 
 ```bash
-docker build --file server/apps/bootstrap/Dockerfile --tag taskmigo-bootstrap server
-docker build --file server/apps/web/Dockerfile --tag taskmigo-web server
-docker build --file server/apps/worker/Dockerfile --tag taskmigo-worker server
+docker build --file server/Dockerfile --target bootstrap --tag taskmigo-bootstrap server
+docker build --file server/Dockerfile --target web --tag taskmigo-web server
+docker build --file server/Dockerfile --target worker --tag taskmigo-worker server
 ```
 
-Run the bootstrap image as a one-shot deployment job before rolling out the web and worker images. All images use Temurin
-images pinned by manifest digest and run as the non-root `taskmigo` user.
+The shared server builder resolves the Gradle graph once and produces all three executable JARs in one build stage; each
+target then copies only its application JAR into a separate runtime image. Run the bootstrap image as a one-shot
+deployment job before rolling out the web and worker images. All images use Temurin images pinned by manifest digest and
+run as the non-root `taskmigo` user.
 
 Dockerfile changes are checked by Hadolint in a path-filtered workflow.
 

@@ -2,22 +2,27 @@ group "integration" {
   targets = ["bootstrap", "web", "worker", "client"]
 }
 
-target "bootstrap" {
+target "_server" {
   context    = "server"
-  dockerfile = "apps/bootstrap/Dockerfile"
-  tags       = ["taskmigo-bootstrap:integration"]
+  dockerfile = "Dockerfile"
+}
+
+target "bootstrap" {
+  inherits = ["_server"]
+  target   = "bootstrap"
+  tags     = ["taskmigo-bootstrap:integration"]
 }
 
 target "web" {
-  context    = "server"
-  dockerfile = "apps/web/Dockerfile"
-  tags       = ["taskmigo-web:integration"]
+  inherits = ["_server"]
+  target   = "web"
+  tags     = ["taskmigo-web:integration"]
 }
 
 target "worker" {
-  context    = "server"
-  dockerfile = "apps/worker/Dockerfile"
-  tags       = ["taskmigo-worker:integration"]
+  inherits = ["_server"]
+  target   = "worker"
+  tags     = ["taskmigo-worker:integration"]
 }
 
 target "client" {
