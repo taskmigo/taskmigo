@@ -11,6 +11,7 @@ import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "acl_policies")
+@SuppressWarnings({ "CanBeFinal", "NotNullFieldNotInitialized" })
 final class AclPolicyEntity {
 
     @Id
