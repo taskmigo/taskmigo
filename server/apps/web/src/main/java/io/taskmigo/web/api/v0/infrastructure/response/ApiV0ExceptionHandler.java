@@ -5,6 +5,7 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -49,6 +50,17 @@ final class ApiV0ExceptionHandler {
             "request.malformed",
             message,
             new ApiResponse.Error("MALFORMED_REQUEST", message, null)
+        );
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleAccessDenied(AccessDeniedException exception) {
+        String message = "Access is denied";
+        return this.responses.failure(
+            HttpStatus.FORBIDDEN,
+            "security.forbidden",
+            message,
+            new ApiResponse.Error("FORBIDDEN", message, null)
         );
     }
 

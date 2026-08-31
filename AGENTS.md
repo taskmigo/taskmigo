@@ -26,6 +26,13 @@ Instructions for AI agents and automated contributors working in this repository
 - Group related file changes into a logical chunk instead of creating one commit per file.
 - Prefer one commit per completed chunk. Squash temporary or mechanical commits before updating the working branch.
 
+## Database schema lifecycle
+
+- Keep exactly one Flyway SQL schema file for each application major version. The migration version follows the application major version; while the application remains on major version `1`, all schema changes belong in `V1__schema.sql`.
+- Do not create an additional Flyway migration file for feature work within the same application major version. Amend the current major-version schema file instead.
+- Start a new Flyway schema file only when the application itself moves to a new major version.
+- Tests and build tooling that verify database ownership must preserve this one-schema-file-per-major invariant.
+
 ## Pull requests
 
 - Before creating or updating a pull request, read the applicable contribution guidance and `.github/pull_request_template.md` from the target branch.

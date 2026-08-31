@@ -11,6 +11,7 @@ dependencies {
     implementation(project(":modules:database"))
     implementation(project(":modules:identity"))
     implementation(project(":modules:organization"))
+    implementation(project(":modules:authorization"))
     implementation(project(":modules:project"))
     implementation(libs.spring.boot.starter.jdbc)
     implementation(libs.spring.boot.starter.webmvc)
