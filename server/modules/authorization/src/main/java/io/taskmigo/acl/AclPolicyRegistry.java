@@ -76,7 +76,11 @@ public final class AclPolicyRegistry {
 
     @Transactional(readOnly = true)
     public List<String> customPolicyNames(UUID organizationId) {
-        return this.repository.findAllByOrganizationIdOrderByName(organizationId).stream().map(policy -> policy.name).toList();
+        return this.repository
+            .findAllByOrganizationIdOrderByName(organizationId)
+            .stream()
+            .map(policy -> policy.name)
+            .toList();
     }
 
     @Transactional(readOnly = true)
