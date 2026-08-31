@@ -106,16 +106,28 @@ jobs:
           {
             echo "### Integration image sizes"
             echo
-            echo "| Image | Size (MiB) | Size (bytes) |"
-            echo "| --- | ---: | ---: |"
+            echo "| Image | Size (MiB) | Limit (MiB) | Size (bytes) |"
+            echo "| --- | ---: | ---: | ---: |"
             for image in \
               taskmigo-bootstrap:integration \
               taskmigo-web:integration \
               taskmigo-worker:integration \
               taskmigo-client:integration; do
               size_bytes="$(docker image inspect "$image" --format '{{.Size}}')"
+              if [[ "$image" == taskmigo-client:* ]]; then
+                limit_mib=200
+              else
+                limit_mib=300
+              fi
+              limit_bytes="$((limit_mib * 1024 * 1024))"
               size_mib="$(awk -v bytes="$size_bytes" 'BEGIN { printf "%.1f", bytes / 1048576 }')"
-              printf '| `%s` | %s | %s |\n' "$image" "$size_mib" "$size_bytes"
+              printf '| `%s` | %s | %s | %s |\n' \
+                "$image" "$size_mib" "$limit_mib" "$size_bytes"
+              if ((size_bytes > limit_bytes)); then
+                echo
+                echo "Image $image exceeds its ${limit_mib} MiB size limit." >&2
+                exit 1
+              fi
             done
           } | tee "$report"
           cat "$report" >> "$GITHUB_STEP_SUMMARY"
