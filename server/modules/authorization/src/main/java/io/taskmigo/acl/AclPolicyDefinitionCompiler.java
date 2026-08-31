@@ -15,8 +15,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import org.jspecify.annotations.Nullable;
 
-/// Compiles the JSON object accepted by the ACL management API into the restricted, database-translatable ACL AST.
+/// Compiles the JSON object accepted by the ACL management API into the restricted ACL AST.
 public final class AclPolicyDefinitionCompiler {
 
     public String kind(Map<String, Object> definition) {
@@ -26,7 +27,9 @@ public final class AclPolicyDefinitionCompiler {
     public RequestAclPolicy compileRequest(String name, RequestAclPolicy.Origin origin, Map<String, Object> definition) {
         requireKind(definition, "acl/request");
         Map<String, Object> spec = map(required(definition, "spec"), "spec");
-        return new RequestAclPolicy(name, origin, target(spec), requestRules(spec));
+        List<RequestAclPolicy.Rule> rules = requestRules(spec);
+        for (RequestAclPolicy.Rule rule : rules) validateRequestExpression(rule.when());
+        return new RequestAclPolicy(name, origin, target(spec), rules);
     }
 
     public ResponseAclPolicy compileResponse(
@@ -85,7 +88,7 @@ public final class AclPolicyDefinitionCompiler {
         return List.copyOf(compiled);
     }
 
-    private static ResponseAclPolicy.FieldSelection fields(Object raw) {
+    private static ResponseAclPolicy.FieldSelection fields(@Nullable Object raw) {
         if (raw == null) return ResponseAclPolicy.FieldSelection.allFields();
         Map<String, Object> fields = map(raw, "fields");
         Object allow = fields.get("allow");
@@ -99,7 +102,7 @@ public final class AclPolicyDefinitionCompiler {
 
     private static AclExpression expression(Map<String, Object> node) {
         if (node.size() != 1) throw new IllegalArgumentException("ACL expression must contain exactly one operator");
-        var entry = node.entrySet().getFirst();
+        var entry = node.entrySet().iterator().next();
         return switch (entry.getKey()) {
             case "eq" -> {
                 List<Object> operands = list(entry.getValue(), "eq");
@@ -133,6 +136,25 @@ public final class AclPolicyDefinitionCompiler {
             return new Ref(string);
         }
         return new Literal(raw);
+    }
+
+    private static void validateRequestExpression(AclExpression expression) {
+        switch (expression) {
+            case Eq(var left, var right) -> {
+                validateRequestValue(left);
+                validateRequestValue(right);
+            }
+            case Exists(var value) -> validateRequestValue(value);
+            case All(var expressions), Any(var expressions) -> expressions.forEach(AclPolicyDefinitionCompiler::validateRequestExpression);
+            case Not(var nested) -> validateRequestExpression(nested);
+            case Relation ignored -> throw new IllegalArgumentException("relation is only valid in acl/response policies");
+        }
+    }
+
+    private static void validateRequestValue(Value value) {
+        if (value instanceof Ref(var path) && path.startsWith("object.")) {
+            throw new IllegalArgumentException("object.* references are only valid in acl/response policies");
+        }
     }
 
     private static void requireKind(Map<String, Object> definition, String expected) {
