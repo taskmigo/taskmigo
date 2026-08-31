@@ -52,12 +52,7 @@ export const expectCursorSuccess = async <DataSchema extends z.ZodType>(
   return { data: body.data, pagination: body.meta.pagination };
 };
 
-export const expectFailure = async (
-  response: APIResponse,
-  status: number,
-  messageCode: string,
-  errorCode: string,
-) => {
+export const expectFailure = async (response: APIResponse, status: number, messageCode: string, errorCode: string) => {
   expect(response.status()).toBe(status);
   const body = failureEnvelopeSchema(status, messageCode, errorCode).parse(await response.json());
   return body.error;
@@ -199,12 +194,7 @@ export class TaskmigoApi {
 
   async history(projectId: string, query = "") {
     const response = await this.get(`/api/v0/projects/${projectId}/history${query}`);
-    return expectCursorSuccess(
-      response,
-      200,
-      "resource.project.history_retrieved",
-      z.array(projectHistoryEntrySchema),
-    );
+    return expectCursorSuccess(response, 200, "resource.project.history_retrieved", z.array(projectHistoryEntrySchema));
   }
 
   private async accessToken(): Promise<string> {
