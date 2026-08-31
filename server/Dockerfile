@@ -39,10 +39,10 @@ RUN ./gradlew --no-daemon --parallel \
     && cp apps/web/build/libs/*.jar /workspace/images/web.jar \
     && cp apps/worker/build/libs/*.jar /workspace/images/worker.jar
 
-FROM eclipse-temurin:26.0.2_10-jre-noble@sha256:22e4987440fe837f31150df046a5bcb88c118566d1168de7b0307497e196154a AS runtime
+FROM eclipse-temurin:26.0.2_10-jre-alpine-3.24@sha256:c4a22bec4f4368636abb9b6fe2b2350fd7fae1ec0d3bf43fcaae1be720c3bbd1 AS runtime
 
-RUN groupadd --system --gid 10001 taskmigo \
-    && useradd --system --uid 10001 --gid taskmigo --home-dir /app --shell /usr/sbin/nologin taskmigo
+RUN addgroup -S -g 10001 taskmigo \
+    && adduser -S -D -H -u 10001 -G taskmigo taskmigo
 
 WORKDIR /app
 
@@ -56,7 +56,8 @@ CMD ["java", "-jar", "/app/app.jar"]
 
 FROM runtime AS web
 
-RUN install --directory --owner taskmigo --group taskmigo /var/lib/taskmigo
+RUN mkdir -p /var/lib/taskmigo \
+    && chown taskmigo:taskmigo /var/lib/taskmigo
 
 COPY --from=build --chown=taskmigo:taskmigo /workspace/images/web.jar app.jar
 

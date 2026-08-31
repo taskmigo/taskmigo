@@ -1,4 +1,4 @@
-FROM node:26.7.0-bookworm-slim@sha256:cd565714d4da3e84bfd341e31448f81d47c6362198f152345297c9c1154e6341 AS build
+FROM node:26.7.0-alpine3.24@sha256:aadf416b2cdce311a8811ba3f0608a61b77dbf997500e2eafe781b51f6a0b019 AS build
 
 WORKDIR /app
 
@@ -13,15 +13,15 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
 
-FROM node:26.7.0-bookworm-slim@sha256:cd565714d4da3e84bfd341e31448f81d47c6362198f152345297c9c1154e6341
+FROM node:26.7.0-alpine3.24@sha256:aadf416b2cdce311a8811ba3f0608a61b77dbf997500e2eafe781b51f6a0b019
 
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1
 
 WORKDIR /app
 
-RUN groupadd --system --gid 10001 taskmigo \
-    && useradd --system --uid 10001 --gid taskmigo --home-dir /app --shell /usr/sbin/nologin taskmigo
+RUN addgroup -S -g 10001 taskmigo \
+    && adduser -S -D -H -u 10001 -G taskmigo taskmigo
 
 COPY --from=build --chown=taskmigo:taskmigo /app/.next/standalone ./
 COPY --from=build --chown=taskmigo:taskmigo /app/.next/static ./.next/static

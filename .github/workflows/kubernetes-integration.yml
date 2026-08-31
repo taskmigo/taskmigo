@@ -97,6 +97,29 @@ jobs:
       - name: Deploy to Minikube
         run: task kubernetes:deploy
 
+      - name: Report integration image sizes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          report="${RUNNER_TEMP}/taskmigo-image-sizes.md"
+          {
+            echo "### Integration image sizes"
+            echo
+            echo "| Image | Size (MiB) | Size (bytes) |"
+            echo "| --- | ---: | ---: |"
+            for image in \
+              taskmigo-bootstrap:integration \
+              taskmigo-web:integration \
+              taskmigo-worker:integration \
+              taskmigo-client:integration; do
+              size_bytes="$(docker image inspect "$image" --format '{{.Size}}')"
+              size_mib="$(awk -v bytes="$size_bytes" 'BEGIN { printf "%.1f", bytes / 1048576 }')"
+              printf '| `%s` | %s | %s |\n' "$image" "$size_mib" "$size_bytes"
+            done
+          } | tee "$report"
+          cat "$report" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Run Helm integration tests
         run: task kubernetes:test
 
