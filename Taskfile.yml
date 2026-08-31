@@ -45,37 +45,17 @@ tasks:
           --set gateway.namespace=gateway-system \
           >/dev/null
 
-  kubernetes:cluster:
-    desc: Start and verify the selected Minikube profile
+  kubernetes:cluster:verify:
+    desc: Verify the selected Minikube profile is ready
     internal: true
     preconditions:
-      - sh: command -v docker >/dev/null
-        msg: Docker is required to build and run the local images.
       - sh: command -v minikube >/dev/null
         msg: Minikube is required. Install it before running this task.
+      - sh: minikube -p "{{.PROFILE}}" status >/dev/null 2>&1
+        msg: Start the "{{.PROFILE}}" Minikube profile before deploying.
     cmds:
-      - |
-        set -euo pipefail
-
-        arguments=(
-          start
-          -p "{{.PROFILE}}"
-          --cpus="${MINIKUBE_CPUS:-4}"
-          --memory="${MINIKUBE_MEMORY:-6000m}"
-        )
-        if [ -n "${MINIKUBE_DRIVER:-}" ]; then
-          arguments+=(--driver="$MINIKUBE_DRIVER")
-        fi
-        if [ -n "${MINIKUBE_CONTAINER_RUNTIME:-}" ]; then
-          arguments+=(--container-runtime="$MINIKUBE_CONTAINER_RUNTIME")
-        fi
-        if [ -n "${MINIKUBE_KUBERNETES_VERSION:-}" ]; then
-          arguments+=(--kubernetes-version="$MINIKUBE_KUBERNETES_VERSION")
-        fi
-
-        minikube "${arguments[@]}"
-        {{.KUBECTL}} wait --for=condition=Ready node --all --timeout=120s
-        minikube -p "{{.PROFILE}}" status
+      - '{{.KUBECTL}} wait --for=condition=Ready node --all --timeout=120s'
+      - 'minikube -p "{{.PROFILE}}" status'
 
   kubernetes:images:build:
     desc: Build all Taskmigo Kubernetes images
@@ -90,7 +70,7 @@ tasks:
     internal: true
     deps:
       - kubernetes:validate
-      - kubernetes:cluster
+      - kubernetes:cluster:verify
       - kubernetes:images:build
 
   kubernetes:images:load:

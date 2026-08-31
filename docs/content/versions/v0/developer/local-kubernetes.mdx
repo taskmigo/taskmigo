@@ -3,9 +3,9 @@ title: Local Kubernetes
 description: Build and run the complete Taskmigo stack in Minikube for local development.
 ---
 
-Use this setup when you need the deployed system rather than one application process. One Taskfile pipeline starts the
-selected Minikube profile, builds and loads every image, creates local credentials and PostgreSQL, installs Envoy Gateway,
-deploys the Helm release, and verifies the complete stack.
+Use this setup when you need the deployed system rather than one application process. Start a Minikube profile first,
+then use one Taskfile pipeline to build and load every image, create local credentials and PostgreSQL, install Envoy
+Gateway, deploy the Helm release, and verify the complete stack.
 
 For faster work on one JVM or Node.js process, use [Local development](/docs/v0/developer/local-development) instead.
 
@@ -20,9 +20,9 @@ The local stack contains:
 - the Taskmigo browser client;
 - one `Gateway` plus separate `HTTPRoute` resources for the client and web server.
 
-The same Kubernetes deployment tasks run in GitHub Actions, so cluster setup and deployment behavior have one source of
-truth in `Taskfile.yml`. Browser E2E is intentionally separate: the `e2e/` package owns Playwright setup and execution, and
-CI invokes it directly after the Taskfile-managed deployment is ready.
+GitHub Actions starts its cluster in the `setup-minikube` step, then runs the same Taskfile deployment tasks used locally.
+Browser E2E is intentionally separate: the `e2e/` package owns Playwright setup and execution, and CI invokes it directly
+after the Taskfile-managed deployment is ready.
 
 ## Prerequisites
 
@@ -37,11 +37,15 @@ Install these host tools:
 The pipeline uses Minikube's built-in `kubectl`, so a host `kubectl` installation is not required. Java and Node.js are not
 required for deployment because the Dockerfiles build the applications inside containers.
 
-Allocate at least 4 CPUs and 6 GiB of memory to Docker. The Taskfile requests those resources when it starts Minikube.
+Allocate at least 4 CPUs and 6 GiB of memory to Docker. Start the standard profile before deploying:
+
+```bash
+minikube start -p minikube --cpus=4 --memory=6000m
+```
 
 ## Deploy from a default Minikube profile
 
-Run this command from the repository root:
+With the profile running, run this command from the repository root:
 
 ```bash
 task kubernetes:deploy
@@ -49,7 +53,7 @@ task kubernetes:deploy
 
 `kubernetes:deploy` is an end-to-end, idempotent pipeline. It:
 
-1. Starts the standard Minikube `minikube` profile, or creates it when absent.
+1. Verifies that the selected Minikube profile and its node are ready.
 2. Builds the bootstrap, web, worker, and client images in parallel with Docker Buildx.
 3. Loads the images into Minikube.
 4. Creates the namespace, stable local credentials, and PostgreSQL when absent.
@@ -86,9 +90,10 @@ RELEASE=taskmigo
 GATEWAY_NAME=taskmigo-local
 ```
 
-Override them with environment variables for an isolated installation:
+Start the profile, then override the deployment variables for an isolated installation:
 
 ```bash
+minikube start -p taskmigo-dev --cpus=4 --memory=6000m
 PROFILE=taskmigo-dev \
 NAMESPACE=taskmigo-dev \
 GATEWAY_NAME=taskmigo-dev \

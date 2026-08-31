@@ -6,7 +6,13 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
   workers: 1,
-  reporter: process.env.CI ? [["line"], ["html", { open: "never" }]] : "list",
+  reporter: process.env.CI
+    ? [
+        ["line"],
+        ["json", { outputFile: "test-results/results.json" }],
+        ["html", { open: "never", outputFolder: "playwright-report" }],
+      ]
+    : "list",
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "http://taskmigo-client:3000",
     trace: "retain-on-failure",
