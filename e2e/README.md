@@ -2,7 +2,7 @@
 
 This folder owns the black-box Playwright suite for a deployed Taskmigo environment. The suite does not create the environment and does not depend on the repository Taskfile; it only requires reachable public endpoints and test credentials through environment variables.
 
-Tests are organized by product feature under `tests/<feature>/`. Every feature group has a Playwright tag so it can be selected independently. Browser authentication uses `@auth`, with the narrower `@login`, `@session`, and `@smoke` tags. API coverage uses `@api`, with `@security`, `@resources`, and `@projects` groups.
+Tests are organized by product feature under `tests/<feature>/`. API tests use the Playwright annotation `api`, while browser tests use the `ui` annotation. Annotations are reporting metadata; subset commands select the corresponding test directories instead of relying on title tags.
 
 The browser suite verifies the interactive OAuth Authorization Code + PKCE flow. The API suite obtains a real OAuth `client_credentials` token and exercises the deployed `/api/v0` HTTP surface, including happy paths, validation failures, malformed requests, authorization failures, missing resources, conflicts, organization-boundary checks, archived-project behavior, effective permissions, project history, and cursor pagination. API and OAuth response bodies are runtime-validated with Zod schemas before behavioral assertions run.
 
@@ -41,10 +41,9 @@ E2E_API_CLIENT_SECRET='replace-me' \
 npm test
 ```
 
-Run a tagged subset with the provided scripts:
+Run a subset with the provided scripts:
 
 ```bash
 npm run test:api
-npm run test:auth
-npm run test:smoke
+npm run test:ui
 ```

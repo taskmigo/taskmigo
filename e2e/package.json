@@ -8,9 +8,8 @@
   },
   "scripts": {
     "test": "playwright test",
-    "test:api": "playwright test --grep @api",
-    "test:auth": "playwright test --grep @auth",
-    "test:smoke": "playwright test --grep @smoke",
+    "test:api": "playwright test tests/api",
+    "test:ui": "playwright test tests/auth",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

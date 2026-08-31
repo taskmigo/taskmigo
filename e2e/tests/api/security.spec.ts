@@ -1,7 +1,7 @@
 import { expectFailure, expectOAuthError } from "./client.js";
 import { expect, test } from "./fixtures.js";
 
-test.describe("API security @api @security", () => {
+test.describe("API security", { annotation: { type: "api" } }, () => {
   test("rejects an unauthenticated API request", async ({ api }) => {
     const response = await api.raw.get("/api/v0/permissions");
     await expectFailure(response, 401, "security.unauthorized", "UNAUTHORIZED");

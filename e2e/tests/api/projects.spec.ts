@@ -1,7 +1,7 @@
 import { expectFailure, uniqueName } from "./client.js";
 import { expect, test } from "./fixtures.js";
 
-test.describe("Project API @api @projects", () => {
+test.describe("Project API", { annotation: { type: "api" } }, () => {
   test("creates project members, assigns roles, and calculates effective permissions", async ({ api }) => {
     const organization = await api.createOrganization();
     const user = await api.createUser(organization.id);

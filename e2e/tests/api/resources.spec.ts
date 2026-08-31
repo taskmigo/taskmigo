@@ -1,7 +1,7 @@
 import { expectFailure, uniqueName } from "./client.js";
 import { expect, test } from "./fixtures.js";
 
-test.describe("API resources @api @resources", () => {
+test.describe("API resources", { annotation: { type: "api" } }, () => {
   test("lists the complete permission catalog", async ({ api }) => {
     expect(new Set(await api.permissions())).toEqual(
       new Set(["project.read", "project.update", "project.members.read", "project.members.manage"]),

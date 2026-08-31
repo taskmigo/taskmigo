@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { signIn } from "./sign-in.js";
 
-test.describe("Browser session", { tag: ["@auth", "@session"] }, () => {
+test.describe("Browser session", { annotation: { type: "ui" } }, () => {
   test("authenticated session survives a page reload", async ({ page }) => {
     const username = await signIn(page);
 
