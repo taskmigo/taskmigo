@@ -70,6 +70,10 @@ spec:
               value: {{ .Values.web.signingKey.id | quote }}
             - name: TASKMIGO_OAUTH_SIGNING_KEY_AUTO_CREATE
               value: {{ .Values.web.signingKey.autoCreate | quote }}
+            {{- if .Values.tests.enabled }}
+            - name: TASKMIGO_TESTING_CLEANUP_ENABLED
+              value: "true"
+            {{- end }}
             {{- with .Values.web.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

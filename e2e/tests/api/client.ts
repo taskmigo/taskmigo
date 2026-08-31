@@ -2,6 +2,7 @@ import { expect, type APIRequestContext, type APIResponse } from "@playwright/te
 import { z } from "zod";
 
 import { e2eApiEnvironment } from "../support/environment.js";
+import { TestDataScope } from "./cleanup.js";
 import {
   basicSuccessEnvelopeSchema,
   createdResourceSchema,
@@ -67,7 +68,10 @@ export const expectOAuthError = async (response: APIResponse, status: number, er
 export class TaskmigoApi {
   private accessTokenPromise?: Promise<string>;
 
-  constructor(readonly raw: APIRequestContext) {}
+  constructor(
+    readonly raw: APIRequestContext,
+    readonly cleanup = new TestDataScope(),
+  ) {}
 
   async requestToken(options: { clientSecret?: string; scope?: string } = {}): Promise<APIResponse> {
     const environment = e2eApiEnvironment();
@@ -110,6 +114,7 @@ export class TaskmigoApi {
     });
     const data = await expectSuccess(response, 201, "resource.organization.created", createdResourceSchema);
     expect(response.headers().location).toBe(`/api/v0/organizations/${data.id}`);
+    this.cleanup.track("organizations", data.id);
     return { id: data.id, key };
   }
 
@@ -124,6 +129,7 @@ export class TaskmigoApi {
       },
     });
     const data = await expectSuccess(response, 201, "resource.user.created", createdResourceSchema);
+    this.cleanup.track("users", data.id);
     return { id: data.id, username };
   }
 
@@ -132,6 +138,7 @@ export class TaskmigoApi {
       data: { name: uniqueName("role"), description: "E2E role", permissions },
     });
     const data = await expectSuccess(response, 201, "resource.role.created", createdResourceSchema);
+    this.cleanup.track("roles", data.id);
     return data.id;
   }
 
@@ -140,12 +147,16 @@ export class TaskmigoApi {
       data: { name: uniqueName("group"), description: "E2E group" },
     });
     const data = await expectSuccess(response, 201, "resource.group.created", createdResourceSchema);
+    this.cleanup.track("groups", data.id);
     return data.id;
   }
 
   async addGroupMember(groupId: string, userId: string): Promise<void> {
     const response = await this.put(`/api/v0/groups/${groupId}/members/${userId}`);
     await expectSuccess(response, 200, "resource.group.member_added", z.null());
+    if (!this.cleanup.owns("groups", groupId) || !this.cleanup.owns("users", userId)) {
+      this.cleanup.defer(() => this.removeGroupMember(groupId, userId));
+    }
   }
 
   async removeGroupMember(groupId: string, userId: string): Promise<void> {
@@ -158,6 +169,7 @@ export class TaskmigoApi {
       data: { key, name: `Project ${key}`, description: "E2E project" },
     });
     const data = await expectSuccess(response, 201, "resource.project.created", createdResourceSchema);
+    this.cleanup.track("projects", data.id);
     return data.id;
   }
 
@@ -166,6 +178,9 @@ export class TaskmigoApi {
       data: { principalType, principalId },
     });
     const data = await expectSuccess(response, 201, "resource.project.member_added", createdResourceSchema);
+    if (!this.cleanup.owns("projects", projectId)) {
+      this.cleanup.defer(() => this.removeProjectMember(projectId, data.id));
+    }
     return data.id;
   }
 
@@ -194,6 +209,20 @@ export class TaskmigoApi {
   async history(projectId: string, query = "") {
     const response = await this.get(`/api/v0/projects/${projectId}/history${query}`);
     return expectCursorSuccess(response, 200, "resource.project.history_retrieved", z.array(projectHistoryEntrySchema));
+  }
+
+  async cleanupOwnedData(): Promise<void> {
+    const failures = await this.cleanup.runDeferred();
+    if (this.cleanup.hasResources()) {
+      try {
+        const response = await this.post("/api/v0/testing/cleanup", { data: this.cleanup.snapshot() });
+        await expectSuccess(response, 200, "testing.data.cleaned", z.null());
+        this.cleanup.clearResources();
+      } catch (error) {
+        failures.push(error);
+      }
+    }
+    if (failures.length > 0) throw new AggregateError(failures, "Failed to clean up E2E test data");
   }
 
   private async accessToken(): Promise<string> {
