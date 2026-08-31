@@ -20,10 +20,12 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 
-RUN apk add --no-cache ca-certificates libstdc++ \
-    && addgroup -S -g 10001 taskmigo \
+RUN addgroup -S -g 10001 taskmigo \
     && adduser -S -D -H -u 10001 -G taskmigo taskmigo
 
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=build /usr/lib/libgcc_s.so.1 /usr/lib/libgcc_s.so.1
+COPY --from=build /usr/lib/libstdc++.so.6* /usr/lib/
 COPY --from=build /usr/local/bin/node /usr/local/bin/node
 COPY --from=build --chown=taskmigo:taskmigo /app/.next/standalone ./
 COPY --from=build --chown=taskmigo:taskmigo /app/.next/static ./.next/static
