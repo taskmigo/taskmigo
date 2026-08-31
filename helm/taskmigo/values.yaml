@@ -53,6 +53,7 @@ web:
     tag: ""
     pullPolicy: IfNotPresent
   publicUrl: ""
+  hostAliases: []
   service:
     type: ClusterIP
     port: 8080
@@ -125,8 +126,8 @@ gateway:
   className: ""
   addresses: []
   annotations: {}
-  clientHost: taskmigo.local
-  webHost: api.taskmigo.local
+  clientHost: taskmigo.internal.com
+  webHost: taskmigo.internal.com
   listeners:
     client:
       name: client

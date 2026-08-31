@@ -45,9 +45,9 @@ helm upgrade --install taskmigo ./helm/taskmigo \
   --namespace taskmigo \
   --set database.url='jdbc:postgresql://postgresql.example.internal:5432/taskmigo' \
   --set database.username='taskmigo' \
-  --set web.publicUrl='https://api.taskmigo.example' \
+  --set web.publicUrl='https://taskmigo.example' \
   --set client.publicUrl='https://taskmigo.example' \
-  --set client.auth.issuer='https://api.taskmigo.example' \
+  --set client.auth.issuer='https://taskmigo.example' \
   --set client.auth.allowInsecureRequests=false \
   --set client.auth.cookie.secure=true
 ```
@@ -76,7 +76,7 @@ gateway:
     - type: IPAddress
       value: 192.0.2.1
   clientHost: taskmigo.example
-  webHost: api.taskmigo.example
+  webHost: taskmigo.example
   listeners:
     client:
       name: client
@@ -97,6 +97,11 @@ gateway:
           - kind: Secret
             name: taskmigo-web-tls
 ```
+
+When `clientHost` and `webHost` are identical, the chart creates one public listener. `/api/auth` remains on the client
+BFF; `/api`, `/.well-known`, `/oauth2`, `/login`, `/connect`, `/logout`, and `/error` route to the web backend; and every
+other path routes to the browser client. The longest `PathPrefix` match keeps `/api/auth` on the client ahead of `/api`.
+The client listener settings provide TLS for this shared-host mode. Distinct host values retain the two-listener behavior.
 
 To use an existing Gateway, disable Gateway creation and identify the Gateway and listener section names:
 

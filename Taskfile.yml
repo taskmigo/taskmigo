@@ -5,6 +5,7 @@ vars:
   NAMESPACE: '{{default "taskmigo-local" .NAMESPACE}}'
   RELEASE: '{{default "taskmigo" .RELEASE}}'
   GATEWAY_NAME: '{{default "taskmigo-local" .GATEWAY_NAME}}'
+  PUBLIC_HOST: '{{default "taskmigo.internal.com" .PUBLIC_HOST}}'
   IMAGE_TAG: integration
   KUBE_CONTEXT: "{{.PROFILE}}"
   ENVOY_GATEWAY_VERSION: v1.9.1
@@ -43,6 +44,13 @@ tasks:
           --set gateway.create=false \
           --set gateway.name=shared-gateway \
           --set gateway.namespace=gateway-system \
+          >/dev/null
+        {{.HELM}} template taskmigo helm/taskmigo \
+          --set gateway.enabled=true \
+          --set gateway.create=true \
+          --set gateway.className=test-gateway-class \
+          --set-string gateway.clientHost=taskmigo.internal.com \
+          --set-string gateway.webHost=taskmigo.internal.com \
           >/dev/null
 
   kubernetes:cluster:ready:
@@ -195,8 +203,6 @@ tasks:
     vars:
       MINIKUBE_IP:
         sh: minikube -p "{{.PROFILE}}" ip
-      CLIENT_HOST: "taskmigo.{{.MINIKUBE_IP}}.sslip.io"
-      WEB_HOST: "api.taskmigo.{{.MINIKUBE_IP}}.sslip.io"
     cmds:
       - |
         set -euo pipefail
@@ -213,23 +219,25 @@ tasks:
           --set web.image.repository=taskmigo-web \
           --set web.image.tag={{.IMAGE_TAG}} \
           --set web.image.pullPolicy=Never \
-          --set-string web.publicUrl="http://{{.WEB_HOST}}" \
+          --set-string web.publicUrl="http://{{.PUBLIC_HOST}}" \
           --set worker.image.repository=taskmigo-worker \
           --set worker.image.tag={{.IMAGE_TAG}} \
           --set worker.image.pullPolicy=Never \
           --set client.image.repository=taskmigo-client \
           --set client.image.tag={{.IMAGE_TAG}} \
           --set client.image.pullPolicy=Never \
-          --set-string client.publicUrl="http://{{.CLIENT_HOST}}" \
-          --set-string client.auth.issuer="http://{{.WEB_HOST}}" \
+          --set-string client.publicUrl="http://{{.PUBLIC_HOST}}" \
+          --set-string client.auth.issuer="http://{{.PUBLIC_HOST}}" \
+          --set-string 'client.hostAliases[0].ip={{.MINIKUBE_IP}}' \
+          --set-string 'client.hostAliases[0].hostnames[0]={{.PUBLIC_HOST}}' \
           --set gateway.enabled=true \
           --set gateway.create=true \
           --set-string gateway.name={{.GATEWAY_NAME}} \
           --set-string gateway.className={{.GATEWAY_NAME}} \
           --set-string 'gateway.addresses[0].type=IPAddress' \
           --set-string 'gateway.addresses[0].value={{.MINIKUBE_IP}}' \
-          --set-string gateway.clientHost={{.CLIENT_HOST}} \
-          --set-string gateway.webHost={{.WEB_HOST}} \
+          --set-string gateway.clientHost={{.PUBLIC_HOST}} \
+          --set-string gateway.webHost={{.PUBLIC_HOST}} \
           --set tests.enabled=true \
           --set tests.oauthClient.enabled=true
 
@@ -255,8 +263,6 @@ tasks:
     vars:
       MINIKUBE_IP:
         sh: minikube -p "{{.PROFILE}}" ip
-      CLIENT_HOST: "taskmigo.{{.MINIKUBE_IP}}.sslip.io"
-      WEB_HOST: "api.taskmigo.{{.MINIKUBE_IP}}.sslip.io"
     deps:
       - kubernetes:gateway-controller:ready
       - kubernetes:workloads:ready
@@ -278,28 +284,31 @@ tasks:
           'SELECT version FROM flyway_schema_history WHERE success = true ORDER BY installed_rank')"
         test "$migration_versions" = "1"
 
-        curl --noproxy '*' --fail --silent --show-error \
+        resolve="{{.PUBLIC_HOST}}:80:{{.MINIKUBE_IP}}"
+        curl --noproxy '*' --resolve "$resolve" --fail --silent --show-error \
           --retry 30 --retry-all-errors --retry-delay 1 \
-          "http://{{.CLIENT_HOST}}/" >/dev/null
-        curl --noproxy '*' --fail --silent --show-error \
+          "http://{{.PUBLIC_HOST}}/" >/dev/null
+        curl --noproxy '*' --resolve "$resolve" --fail --silent --show-error \
           --retry 30 --retry-all-errors --retry-delay 1 \
-          "http://{{.WEB_HOST}}/.well-known/openid-configuration" >/dev/null
+          "http://{{.PUBLIC_HOST}}/.well-known/openid-configuration" >/dev/null
+        api_status="$(curl --noproxy '*' --resolve "$resolve" --silent --show-error \
+          --output /dev/null --write-out '%{http_code}' \
+          "http://{{.PUBLIC_HOST}}/api/v0/permissions")"
+        test "$api_status" = 401
 
   kubernetes:info:
     desc: Print local endpoints and bootstrap credentials
     vars:
       MINIKUBE_IP:
         sh: minikube -p "{{.PROFILE}}" ip
-      CLIENT_HOST: "taskmigo.{{.MINIKUBE_IP}}.sslip.io"
-      WEB_HOST: "api.taskmigo.{{.MINIKUBE_IP}}.sslip.io"
     cmds:
       - |
         if [ "${CI:-false}" = true ]; then
-          printf 'Taskmigo is ready.\n\nClient:   http://{{.CLIENT_HOST}}\nAPI/OIDC: http://{{.WEB_HOST}}\nAPI docs: http://{{.WEB_HOST}}/api/docs\nCredentials: stored in secret/taskmigo-secrets\n'
+          printf 'Taskmigo is ready.\n\nURL:      http://{{.PUBLIC_HOST}}\nAPI:      http://{{.PUBLIC_HOST}}/api\nOIDC:     http://{{.PUBLIC_HOST}}/.well-known/openid-configuration\nAPI docs: http://{{.PUBLIC_HOST}}/api/docs\nHost entry: {{.MINIKUBE_IP}} {{.PUBLIC_HOST}}\nCredentials: stored in secret/taskmigo-secrets\n'
         else
           password="$({{.KUBECTL}} -n "{{.NAMESPACE}}" get secret taskmigo-secrets \
             -o go-template='{{`{{index .data "bootstrap-user-password" | base64decode}}`}}')"
-          printf 'Taskmigo is ready.\n\nClient:   http://{{.CLIENT_HOST}}\nAPI/OIDC: http://{{.WEB_HOST}}\nAPI docs: http://{{.WEB_HOST}}/api/docs\nUsername: system\nPassword: %s\n' "$password"
+          printf 'Taskmigo is ready.\n\nURL:      http://{{.PUBLIC_HOST}}\nAPI:      http://{{.PUBLIC_HOST}}/api\nOIDC:     http://{{.PUBLIC_HOST}}/.well-known/openid-configuration\nAPI docs: http://{{.PUBLIC_HOST}}/api/docs\nHost entry: {{.MINIKUBE_IP}} {{.PUBLIC_HOST}}\nUsername: system\nPassword: %s\n' "$password"
         fi
 
   kubernetes:deploy:

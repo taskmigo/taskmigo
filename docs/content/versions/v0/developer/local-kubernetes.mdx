@@ -62,7 +62,18 @@ task kubernetes:deploy
 
 The default task is an alias for the same pipeline, so `task` also works.
 
-The final output prints the client, API, and API documentation URLs plus the bootstrap login. The default local credentials
+The Gateway publishes one origin, `http://taskmigo.internal.com`: `/api/auth` is owned by the client BFF; API and OAuth
+paths are routed to the backend; and all other paths are routed to the browser client.
+
+Taskfile injects this hostname into the client pod and uses explicit address resolution for deployment verification. Add
+the same mapping on the development host before opening a browser:
+
+```bash
+minikube_ip="$(minikube -p minikube ip)"
+printf '%s taskmigo.internal.com\n' "$minikube_ip" | sudo tee -a /etc/hosts
+```
+
+The final output prints the public URL, API and OIDC paths, required host entry, and bootstrap login. The default local credentials
 are deliberately simple and must never be reused outside a disposable development cluster:
 
 ```text
@@ -142,8 +153,9 @@ Envoy Gateway remains installed because it is a cluster-level controller that an
 
 ## Docker driver networking on macOS, Windows, and WSL2
 
-The pipeline uses the Minikube node IP and `sslip.io`, so the public hostname is identical for the browser and the client
-pod during OIDC discovery and token exchange.
+The pipeline uses `taskmigo.internal.com` as one public hostname for the browser, API, and OAuth flow. The hostname must
+resolve to the Minikube node IP on the development host; Taskfile supplies the equivalent pod-level mapping to the browser
+client for server-side OIDC discovery and token exchange.
 
 With the Docker driver, the node IP is not directly reachable from the host on macOS, Windows, and WSL2. In those
 environments, use a network setup that exposes the Gateway address to both the host and cluster workloads, such as
