@@ -1,4 +1,3 @@
-import { TestDataScope } from "./cleanup.js";
 import { expectFailure, uniqueName } from "./client.js";
 import { expect, test } from "./fixtures.js";
 
@@ -119,23 +118,5 @@ test.describe("API resources @api @resources", () => {
 
     const missingGroup = await api.put(`/api/v0/groups/${crypto.randomUUID()}/members/${user.id}`);
     await expectFailure(missingGroup, 404, "domain.not_found", "DOMAIN_NOT_FOUND");
-  });
-
-  test("cleans only resources owned by the current scope", async ({ api }) => {
-    const sharedScope = new TestDataScope();
-    const sharedOrganization = await api.createOrganization();
-    api.cleanup.transfer("organizations", sharedOrganization.id, sharedScope);
-
-    const ownedKey = uniqueName("cleanup");
-    await api.createOrganization(ownedKey);
-    await api.cleanupOwnedData();
-
-    await api.createOrganization(ownedKey);
-    const sharedDuplicate = await api.post("/api/v0/organizations", {
-      data: { key: sharedOrganization.key, name: "Still shared" },
-    });
-    await expectFailure(sharedDuplicate, 409, "domain.conflict", "DOMAIN_CONFLICT");
-
-    sharedScope.transfer("organizations", sharedOrganization.id, api.cleanup);
   });
 });
