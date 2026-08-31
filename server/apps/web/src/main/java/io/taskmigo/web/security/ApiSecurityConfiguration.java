@@ -1,5 +1,6 @@
 package io.taskmigo.web.security;
 
+import io.taskmigo.identity.ServicePrincipalPermissions;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -38,7 +39,10 @@ class ApiSecurityConfiguration {
                 .requestMatchers(authEndpointMatcher)
                 .authenticated()
                 .requestMatchers(VERSIONED_API_PATTERN)
-                .hasAuthority("SCOPE_taskmigo.api")
+                .hasAllAuthorities(
+                    "SCOPE_taskmigo.api",
+                    "PERMISSION_" + ServicePrincipalPermissions.SYSTEM_RESOURCES_MANAGE
+                )
                 .anyRequest()
                 .permitAll()
         )
