@@ -6,7 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.taskmigo.PostgresTestConfiguration;
 import io.taskmigo.access.PermissionCatalog;
 import io.taskmigo.identity.oauth.InternalClientMetadata;
+import io.taskmigo.organization.OrganizationService;
 import java.net.http.HttpClient;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -44,6 +46,7 @@ class OAuthInfrastructureIntegrationTest {
     private final RegisteredClientRepository clients;
     private final PasswordEncoder passwordEncoder;
     private final OAuth2AuthorizationService authorizations;
+    private final OrganizationService organizations;
 
     @LocalServerPort
     private int port;
@@ -51,11 +54,13 @@ class OAuthInfrastructureIntegrationTest {
     OAuthInfrastructureIntegrationTest(
         RegisteredClientRepository clients,
         PasswordEncoder passwordEncoder,
-        OAuth2AuthorizationService authorizations
+        OAuth2AuthorizationService authorizations,
+        OrganizationService organizations
     ) {
         this.clients = clients;
         this.passwordEncoder = passwordEncoder;
         this.authorizations = authorizations;
+        this.organizations = organizations;
     }
 
     @Test
@@ -79,6 +84,27 @@ class OAuthInfrastructureIntegrationTest {
 
         assertThat(response).contains(PermissionCatalog.PROJECT_READ);
         assertThat(this.authorizations.findByToken(token, OAuth2TokenType.ACCESS_TOKEN)).isNotNull();
+    }
+
+    @Test
+    void managedClientCredentialsCanManageOrganizationAcl() {
+        String clientId = "managed-acl-" + UUID.randomUUID();
+        String clientSecret = "managed-acl-secret";
+        this.clients.save(this.managedClient(clientId, clientSecret));
+        String token = this.accessToken(clientId, clientSecret);
+        UUID organizationId = this.organizations.create("acl-managed-" + UUID.randomUUID(), "Managed ACL Org");
+        String policyName = "deny-project-list-" + UUID.randomUUID();
+
+        var response = this.http()
+            .put()
+            .uri("/api/v0/organizations/{organizationId}/acl-policies/{policyName}", organizationId, policyName)
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(requestAclPolicy())
+            .retrieve()
+            .toBodilessEntity();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
@@ -188,6 +214,23 @@ class OAuthInfrastructureIntegrationTest {
             .baseUrl("http://localhost:" + this.port)
             .requestFactory(new JdkClientHttpRequestFactory(client))
             .build();
+    }
+
+    private static Map<String, Object> requestAclPolicy() {
+        return Map.of(
+            "kind",
+            "acl/request",
+            "spec",
+            Map.of(
+                "target",
+                Map.of("methods", java.util.List.of("GET"), "path", "/api/v0/projects"),
+                "rules",
+                Map.of(
+                    "deny-authenticated",
+                    Map.of("effect", "deny", "when", Map.of("exists", "principal.id"))
+                )
+            )
+        );
     }
 
     private record TokenResponse(String access_token) {}
