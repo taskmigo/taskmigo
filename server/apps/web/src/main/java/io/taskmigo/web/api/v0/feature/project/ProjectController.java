@@ -65,7 +65,11 @@ class ProjectController {
     @GetMapping("/projects")
     ResponseEntity<ApiResponse<List<Map<String, Object>>, ApiResponse.BasicMeta>> list(Authentication authentication) {
         ResponsePlan plan = this.acl.responsePlan(authentication, "GET", PROJECT_LIST_PATH);
-        List<Map<String, Object>> visible = this.aclProjects.list(plan).stream().map(project -> mask(project, plan)).toList();
+        List<Map<String, Object>> visible = this.aclProjects
+            .list(plan)
+            .stream()
+            .map(project -> mask(project, plan))
+            .toList();
         return this.responses.ok(visible, "resource.project.listed", "Projects listed");
     }
 

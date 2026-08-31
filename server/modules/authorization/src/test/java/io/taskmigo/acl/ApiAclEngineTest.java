@@ -23,29 +23,35 @@ class ApiAclEngineTest {
             "same-organization",
             RequestAclPolicy.Origin.SYSTEM,
             target,
-            List.of(new RequestAclPolicy.Rule(
-                "same-organization",
-                RequestAclPolicy.Effect.ALLOW,
-                new Eq(new Ref("principal.organizationId"), new Ref("request.organizationId"))
-            ))
+            List.of(
+                new RequestAclPolicy.Rule(
+                    "same-organization",
+                    RequestAclPolicy.Effect.ALLOW,
+                    new Eq(new Ref("principal.organizationId"), new Ref("request.organizationId"))
+                )
+            )
         );
         var custom = new RequestAclPolicy(
             "allow-everything",
             RequestAclPolicy.Origin.CUSTOM,
             target,
-            List.of(new RequestAclPolicy.Rule(
-                "allow",
-                RequestAclPolicy.Effect.ALLOW,
-                new Eq(new Literal(true), new Literal(true))
-            ))
+            List.of(
+                new RequestAclPolicy.Rule(
+                    "allow",
+                    RequestAclPolicy.Effect.ALLOW,
+                    new Eq(new Literal(true), new Literal(true))
+                )
+            )
         );
 
-        assertThat(engine.isRequestAllowed(
-            List.of(system, custom),
-            "GET",
-            "/api/v0/projects/123",
-            Map.of("principal.organizationId", "org-a", "request.organizationId", "org-b")
-        )).isFalse();
+        assertThat(
+            engine.isRequestAllowed(
+                List.of(system, custom),
+                "GET",
+                "/api/v0/projects/123",
+                Map.of("principal.organizationId", "org-a", "request.organizationId", "org-b")
+            )
+        ).isFalse();
     }
 
     @Test
@@ -55,20 +61,17 @@ class ApiAclEngineTest {
             "project-members",
             ResponseAclPolicy.Origin.CUSTOM,
             new ApiTarget(Set.of("GET"), "/api/v0/projects/**"),
-            List.of(new ResponseAclPolicy.Rule(
-                "member",
-                ResponseAclPolicy.Effect.ALLOW,
-                new Relation("projectMember", new Ref("principal.id"), new Ref("object.id")),
-                ResponseAclPolicy.FieldSelection.only(Set.of("id", "name"))
-            ))
+            List.of(
+                new ResponseAclPolicy.Rule(
+                    "member",
+                    ResponseAclPolicy.Effect.ALLOW,
+                    new Relation("projectMember", new Ref("principal.id"), new Ref("object.id")),
+                    ResponseAclPolicy.FieldSelection.only(Set.of("id", "name"))
+                )
+            )
         );
 
-        var plan = engine.planResponse(
-            List.of(policy),
-            "GET",
-            "/api/v0/projects/123",
-            Map.of("principal.id", userId)
-        );
+        var plan = engine.planResponse(List.of(policy), "GET", "/api/v0/projects/123", Map.of("principal.id", userId));
 
         assertThat(plan.objectPredicate().toString()).contains(userId.toString()).contains("object.id");
         assertThat(plan.fields().fields()).containsExactlyInAnyOrder("id", "name");
@@ -76,7 +79,8 @@ class ApiAclEngineTest {
 
     @Test
     void aclCannotTargetNonApiPaths() {
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> new ApiTarget(Set.of("GET"), "/internal/projects/**"))
-            .isInstanceOf(IllegalArgumentException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+            new ApiTarget(Set.of("GET"), "/internal/projects/**")
+        ).isInstanceOf(IllegalArgumentException.class);
     }
 }

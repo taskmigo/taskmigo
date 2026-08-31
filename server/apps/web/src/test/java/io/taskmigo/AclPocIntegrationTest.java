@@ -111,8 +111,9 @@ class AclPocIntegrationTest {
             )
         ).isFalse();
         assertThat(this.policies.customPolicyNames(organization)).containsExactly("block-archive");
-        assertThat(this.policies.requestPolicies(organization))
-            .anyMatch(policy -> policy.name().equals("system/api-authenticated"));
+        assertThat(this.policies.requestPolicies(organization)).anyMatch(policy ->
+            policy.name().equals("system/api-authenticated")
+        );
     }
 
     private static Map<String, Object> responsePolicy() {
@@ -153,12 +154,7 @@ class AclPocIntegrationTest {
                 "rules",
                 Map.of(
                     "deny-all",
-                    Map.of(
-                        "effect",
-                        "deny",
-                        "when",
-                        Map.of("eq", List.of("principal.id", "principal.id"))
-                    )
+                    Map.of("effect", "deny", "when", Map.of("eq", List.of("principal.id", "principal.id")))
                 )
             )
         );
