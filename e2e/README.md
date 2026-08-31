@@ -23,7 +23,7 @@ The suite requires:
 
 GitHub Actions deploys the Kubernetes environment first, resolves the Minikube Gateway hostnames and bootstrap credential, and then invokes this suite directly from `e2e/`. That workflow integration is glue only; Playwright setup and execution are not Taskfile responsibilities.
 
-On CI, Playwright writes line, HTML, and JSON reports. The HTML report, traces, screenshots, and videos are uploaded for investigation. The JSON report is reduced to stable test identities, tags, and final statuses, compared with the latest successful target-branch report, written to the workflow summary, and published as one continuously updated pull request comment. Timing and timestamps are deliberately excluded from the baseline diff.
+On CI, Playwright's built-in GitHub reporter adds failure annotations and its built-in HTML reporter captures the detailed results, traces, screenshots, and videos. The workflow uploads that report and updates one pull-request comment with the overall result and workflow link. Re-running the workflow updates the same bot comment instead of creating another one.
 
 ## Run
 

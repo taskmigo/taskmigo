@@ -8,8 +8,7 @@ export default defineConfig({
   workers: 1,
   reporter: process.env.CI
     ? [
-        ["line"],
-        ["json", { outputFile: "test-results/results.json" }],
+        ["github"],
         ["html", { open: "never", outputFolder: "playwright-report" }],
       ]
     : "list",

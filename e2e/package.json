@@ -10,8 +10,7 @@
     "test": "playwright test",
     "test:auth": "playwright test --grep @auth",
     "test:smoke": "playwright test --grep @smoke",
-    "typecheck": "tsc --noEmit",
-    "report:test": "node --test scripts/report.test.mjs"
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",
