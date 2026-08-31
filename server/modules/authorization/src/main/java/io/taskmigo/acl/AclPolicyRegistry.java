@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 /// for both request and response authorization. This keeps multi-instance behavior correct without Redis or another
 /// coordination service.
 @Service
-public final class AclPolicyRegistry {
+public class AclPolicyRegistry {
 
     private static final Set<String> API_METHODS = Set.of("GET", "POST", "PUT", "PATCH", "DELETE");
 
