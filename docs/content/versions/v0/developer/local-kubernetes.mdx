@@ -3,9 +3,9 @@ title: Local Kubernetes
 description: Build and run the complete Taskmigo stack in Minikube for local development.
 ---
 
-Use this setup when you need the deployed system rather than one application process. Start a Minikube profile first,
-then use one Taskfile pipeline to build and load every image, create local credentials and PostgreSQL, install Envoy
-Gateway, deploy the Helm release, and verify the complete stack.
+Use this setup when you need the deployed system rather than one application process. Taskfile builds the application
+images directly in Minikube's containerd runtime, deploys the Helm release, and verifies the complete stack. There is no
+host-side Docker build and no `minikube image load` step.
 
 For faster work on one JVM or Node.js process, use [Local development](/docs/v0/developer/local-development) instead.
 
@@ -20,47 +20,90 @@ The local stack contains:
 - the Taskmigo browser client;
 - one `Gateway` plus separate `HTTPRoute` resources for the client and web server.
 
-GitHub Actions starts Minikube with `wait: false`, prepares browser E2E while the cluster starts, then lets Taskfile wait at
-the first cluster-dependent operation. Browser E2E is intentionally separate: the `e2e/` package owns Playwright setup and
-execution, and CI invokes it directly after the Taskfile-managed deployment is ready.
-
 ## Prerequisites
 
 Install these host tools:
 
-- Docker Desktop or Docker Engine with Linux containers and Docker Buildx;
+- Docker Desktop or Docker Engine for the Minikube Docker driver;
 - Minikube;
 - Helm 4 or a compatible Helm 3 release;
 - [Task](https://taskfile.dev/docs/installation/);
 - `curl` for the public endpoint checks.
 
-The pipeline uses Minikube's built-in `kubectl`, so a host `kubectl` installation is not required. Java and Node.js are not
-required for deployment because the Dockerfiles build the applications inside containers.
+The pipeline uses Minikube's built-in `kubectl`. Java and Node.js are not required for deployment because the application
+builds run inside Minikube.
 
-Allocate at least 4 CPUs and 6 GiB of memory to Docker. Start the standard profile before deploying:
+Taskmigo local Kubernetes requires containerd. Start the default profile with:
 
 ```bash
-minikube start -p minikube --cpus=4 --memory=6000m
+minikube start -p minikube --container-runtime=containerd --cpus=4 --memory=6000m
 ```
 
-## Deploy from a default Minikube profile
+Taskfile checks the active node runtime before building and fails if the selected profile does not use containerd.
 
-With the profile running, run this command from the repository root:
+## Deploy
+
+Run from the repository root:
 
 ```bash
 task kubernetes:deploy
 ```
 
-`kubernetes:deploy` is an end-to-end, idempotent pipeline. It:
+The deployment pipeline:
 
-1. Starts image builds while waiting for the selected Minikube profile and node to become ready.
-2. Starts PostgreSQL and Envoy Gateway as soon as the cluster is usable, while the images continue building and loading.
-3. Waits for PostgreSQL only when the bootstrap Job needs it.
-4. Installs or upgrades Taskmigo, waits for the bootstrap hook, and starts the runtime workloads without waiting for their rollouts.
-5. Waits for Envoy Gateway and the Taskmigo workloads in parallel.
-6. Verifies accepted routes, Flyway state, and both public endpoints.
+1. Waits for Minikube to become ready.
+2. Uses `minikube image build` to build the bootstrap, web, worker, and client images directly into containerd.
+3. Starts PostgreSQL and Envoy Gateway.
+4. Installs or upgrades the Taskmigo Helm release.
+5. Restarts the runtime deployments so a rebuild is picked up even when the application version has not changed.
+6. Verifies workloads, routes, Flyway state, and public endpoints.
 
-The default task is an alias for the same pipeline, so `task` also works.
+The default `task` command runs the same deployment pipeline.
+
+### Image versions
+
+Local images use the application version rather than a special integration tag:
+
+- `taskmigo-bootstrap:<server project version>`;
+- `taskmigo-web:<server project version>`;
+- `taskmigo-worker:<server project version>`;
+- `taskmigo-client:<client package version>`.
+
+The three Gradle applications currently inherit their project version from `server/build.gradle.kts`. The client version comes
+from `client/package.json`. Taskfile reads these values when it builds and deploys the images.
+
+### Image pull policy
+
+The reusable Helm chart keeps `IfNotPresent` as its default. The local Taskfile overrides all four Taskmigo workloads to
+`imagePullPolicy: Never`.
+
+This is intentional: the images already exist in Minikube's containerd image store, and a missing image should fail instead
+of pulling an image with the same name from a registry.
+
+## Terminal workflow
+
+No Docker environment variables are required. In particular, do not run `eval "$(minikube docker-env)"`: that workflow is
+for Minikube's Docker runtime, while Taskmigo requires containerd.
+
+Every terminal can run Taskfile commands independently because each `minikube image build` command targets the selected
+Minikube profile explicitly. Opening or closing another terminal does not change the image build environment.
+
+A normal development session is therefore:
+
+```bash
+minikube start -p minikube --container-runtime=containerd --cpus=4 --memory=6000m
+task kubernetes:deploy
+```
+
+If Minikube is already running, only the second command is required.
+
+To inspect the images stored in Minikube:
+
+```bash
+minikube -p minikube image ls
+```
+
+## Access the local deployment
 
 The Gateway publishes one origin, `http://taskmigo.internal.com`: `/api/auth` is owned by the client BFF; API and OAuth
 paths are routed to the backend; and all other paths are routed to the browser client.
@@ -73,8 +116,8 @@ minikube_ip="$(minikube -p minikube ip)"
 printf '%s taskmigo.internal.com\n' "$minikube_ip" | sudo tee -a /etc/hosts
 ```
 
-The final output prints the public URL, API and OIDC paths, required host entry, and bootstrap login. The default local credentials
-are deliberately simple and must never be reused outside a disposable development cluster:
+The final output prints the public URL, API and OIDC paths, required host entry, and bootstrap login. The default local
+credentials are deliberately simple and must never be reused outside a disposable development cluster:
 
 ```text
 Username: system
@@ -91,7 +134,7 @@ task kubernetes:deploy
 
 ## Use another Minikube profile or namespace
 
-The default values preserve a user's ordinary Minikube profile:
+The defaults are:
 
 ```text
 PROFILE=minikube
@@ -100,10 +143,10 @@ RELEASE=taskmigo
 GATEWAY_NAME=taskmigo-local
 ```
 
-Start the profile, then override the deployment variables for an isolated installation:
+For an isolated profile:
 
 ```bash
-minikube start -p taskmigo-dev --cpus=4 --memory=6000m
+minikube start -p taskmigo-dev --container-runtime=containerd --cpus=4 --memory=6000m
 PROFILE=taskmigo-dev \
 NAMESPACE=taskmigo-dev \
 GATEWAY_NAME=taskmigo-dev \
@@ -112,12 +155,14 @@ task kubernetes:deploy
 
 ## Rebuild and verify
 
-Run the deployment task again after changing source code. It rebuilds and reloads the fixed local image tags, then performs
-a Helm upgrade so the bootstrap hook and runtime rollouts consume the new images:
+After changing application source, run the deployment task again:
 
 ```bash
 task kubernetes:deploy
 ```
+
+`minikube image build` reuses the in-cluster build cache. The server images are built in sequence so the web and worker
+builds can reuse the common multi-stage Gradle build produced by the first server target.
 
 To verify an existing deployment without rebuilding it:
 
@@ -132,8 +177,7 @@ task kubernetes:test
 ```
 
 Browser E2E is not a Taskfile task. It requires Node.js 26 and runs independently against any already reachable Taskmigo
-environment. From `e2e/`, install and type-check the suite, install Chromium, provide the four `E2E_*` environment variables,
-and run `npm test`. See the root `e2e/README.md` for the exact contract and commands.
+environment. See the root `e2e/README.md` for its environment variables and commands.
 
 When a deployment or Helm test fails, print bounded resource descriptions and the last 200 log lines per pod:
 
@@ -143,7 +187,7 @@ task kubernetes:diagnostics
 
 ## Reset Taskmigo
 
-Remove Taskmigo, its database, local credentials, and its `GatewayClass` without deleting the user's Minikube profile:
+Remove Taskmigo, its database, local credentials, and its `GatewayClass` without deleting the Minikube profile:
 
 ```bash
 task kubernetes:reset

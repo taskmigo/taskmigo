@@ -9,7 +9,6 @@ on:
       - "server/**"
       - "client/**"
       - "e2e/**"
-      - ".github/docker-bake.integration.hcl"
       - ".github/workflows/kubernetes-integration.yml"
   push:
     branches: [next]
@@ -20,7 +19,6 @@ on:
       - "server/**"
       - "client/**"
       - "e2e/**"
-      - ".github/docker-bake.integration.hcl"
       - ".github/workflows/kubernetes-integration.yml"
 
 concurrency:
@@ -36,7 +34,7 @@ env:
   PROFILE: minikube
   NAMESPACE: taskmigo-integration
   GATEWAY_NAME: taskmigo-integration
-  MINIKUBE_CONTAINER_RUNTIME: docker
+  MINIKUBE_CONTAINER_RUNTIME: containerd
   MINIKUBE_CPUS: "4"
   MINIKUBE_DRIVER: docker
   MINIKUBE_MEMORY: 6000m
@@ -67,7 +65,7 @@ jobs:
             ~/.minikube/cache/iso
             ~/.minikube/cache/kic
             ~/.minikube/cache/preloaded-tarball
-          key: minikube-1.38.1-v1.35.0-docker-${{ runner.arch }}
+          key: minikube-1.38.1-v1.35.0-containerd-${{ runner.arch }}
 
       - name: Set up and start Minikube
         uses: medyagh/setup-minikube@v0.0.21
@@ -102,18 +100,29 @@ jobs:
         run: |
           set -euo pipefail
 
+          server_version="$(awk -F'"' '/^[[:space:]]*version = "/ { print $2; exit }' server/build.gradle.kts)"
+          client_version="$(awk -F'"' '/^[[:space:]]*"version":/ { print $4; exit }' client/package.json)"
+          images_json="$(minikube -p "$PROFILE" image ls --format=json)"
           report="${RUNNER_TEMP}/taskmigo-image-sizes.md"
+
           {
             echo "### Integration image sizes"
             echo
             echo "| Image | Size (MiB) | Limit (MiB) | Size (bytes) |"
             echo "| --- | ---: | ---: | ---: |"
             for image in \
-              taskmigo-bootstrap:integration \
-              taskmigo-web:integration \
-              taskmigo-worker:integration \
-              taskmigo-client:integration; do
-              size_bytes="$(docker image inspect "$image" --format '{{.Size}}')"
+              "taskmigo-bootstrap:${server_version}" \
+              "taskmigo-web:${server_version}" \
+              "taskmigo-worker:${server_version}" \
+              "taskmigo-client:${client_version}"; do
+              size_bytes="$(jq -r --arg image "$image" '
+                [.[] | select(any(.repoTags[]?; . == $image or endswith("/" + $image))) | .size][0] // empty
+              ' <<<"$images_json")"
+              test -n "$size_bytes" || {
+                echo "Image $image was not found in Minikube." >&2
+                exit 1
+              }
+
               if [[ "$image" == taskmigo-client:* ]]; then
                 limit_mib=200
               else
