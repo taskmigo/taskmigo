@@ -6,7 +6,12 @@ vars:
   RELEASE: '{{default "taskmigo" .RELEASE}}'
   GATEWAY_NAME: '{{default "taskmigo-local" .GATEWAY_NAME}}'
   PUBLIC_HOST: '{{default "taskmigo.internal.com" .PUBLIC_HOST}}'
-  IMAGE_TAG: integration
+  SERVER_VERSION:
+    sh: |
+      awk -F'"' '/^[[:space:]]*version = "/ { print $2; exit }' server/build.gradle.kts
+  CLIENT_VERSION:
+    sh: |
+      awk -F'"' '/^[[:space:]]*"version":/ { print $4; exit }' client/package.json
   KUBE_CONTEXT: "{{.PROFILE}}"
   ENVOY_GATEWAY_VERSION: v1.9.1
   HELM: helm
@@ -79,37 +84,32 @@ tasks:
         minikube -p "{{.PROFILE}}" status
 
   kubernetes:images:build:
-    desc: Build all Taskmigo Kubernetes images
+    desc: Build all Taskmigo images directly in Minikube containerd
     internal: true
-    preconditions:
-      - sh: docker buildx version >/dev/null
-        msg: Docker Buildx is required to build the Taskmigo images.
+    deps:
+      - kubernetes:cluster:ready
     cmds:
-      - docker buildx bake --file .github/docker-bake.integration.hcl --load --progress=plain integration
+      - |
+        runtime="$({{.KUBECTL}} get nodes -o jsonpath='{.items[0].status.nodeInfo.containerRuntimeVersion}')"
+        case "$runtime" in
+          containerd://*) ;;
+          *)
+            echo "Minikube profile '{{.PROFILE}}' must use containerd; found ${runtime:-unknown}." >&2
+            exit 1
+            ;;
+        esac
+      - minikube -p "{{.PROFILE}}" image build --build-opt=opt=target=bootstrap -t "taskmigo-bootstrap:{{.SERVER_VERSION}}" server
+      - minikube -p "{{.PROFILE}}" image build --build-opt=opt=target=web -t "taskmigo-web:{{.SERVER_VERSION}}" server
+      - minikube -p "{{.PROFILE}}" image build --build-opt=opt=target=worker -t "taskmigo-worker:{{.SERVER_VERSION}}" server
+      - minikube -p "{{.PROFILE}}" image build -t "taskmigo-client:{{.CLIENT_VERSION}}" client
 
   kubernetes:prepare:
     internal: true
     deps:
       - kubernetes:validate
-      - kubernetes:images:load
+      - kubernetes:images:build
       - kubernetes:database:start
       - kubernetes:gateway-controller:start
-
-  kubernetes:images:load:
-    desc: Load all Taskmigo images into Minikube
-    internal: true
-    deps:
-      - kubernetes:cluster:ready
-      - kubernetes:images:build
-    cmds:
-      - |
-        set -euo pipefail
-        printf '%s\n' \
-          taskmigo-bootstrap:{{.IMAGE_TAG}} \
-          taskmigo-web:{{.IMAGE_TAG}} \
-          taskmigo-worker:{{.IMAGE_TAG}} \
-          taskmigo-client:{{.IMAGE_TAG}} \
-          | xargs -P 4 -n 1 minikube -p "{{.PROFILE}}" image load --daemon
 
   kubernetes:database:start:
     desc: Create local credentials and start PostgreSQL
@@ -213,18 +213,18 @@ tasks:
           --timeout 10m \
           --set-string fullnameOverride={{.RELEASE}} \
           --set bootstrap.image.repository=taskmigo-bootstrap \
-          --set bootstrap.image.tag={{.IMAGE_TAG}} \
+          --set bootstrap.image.tag={{.SERVER_VERSION}} \
           --set bootstrap.image.pullPolicy=Never \
           --set bootstrap.testClient.enabled=true \
           --set web.image.repository=taskmigo-web \
-          --set web.image.tag={{.IMAGE_TAG}} \
+          --set web.image.tag={{.SERVER_VERSION}} \
           --set web.image.pullPolicy=Never \
           --set-string web.publicUrl="http://{{.PUBLIC_HOST}}" \
           --set worker.image.repository=taskmigo-worker \
-          --set worker.image.tag={{.IMAGE_TAG}} \
+          --set worker.image.tag={{.SERVER_VERSION}} \
           --set worker.image.pullPolicy=Never \
           --set client.image.repository=taskmigo-client \
-          --set client.image.tag={{.IMAGE_TAG}} \
+          --set client.image.tag={{.CLIENT_VERSION}} \
           --set client.image.pullPolicy=Never \
           --set-string client.publicUrl="http://{{.PUBLIC_HOST}}" \
           --set-string client.auth.issuer="http://{{.PUBLIC_HOST}}" \
@@ -240,6 +240,10 @@ tasks:
           --set-string gateway.webHost={{.PUBLIC_HOST}} \
           --set tests.enabled=true \
           --set tests.oauthClient.enabled=true
+
+        {{.KUBECTL}} -n "{{.NAMESPACE}}" rollout restart deployment/{{.RELEASE}}-web
+        {{.KUBECTL}} -n "{{.NAMESPACE}}" rollout restart deployment/{{.RELEASE}}-worker
+        {{.KUBECTL}} -n "{{.NAMESPACE}}" rollout restart deployment/{{.RELEASE}}-client
 
   kubernetes:workloads:ready:
     desc: Wait until Taskmigo workloads are ready
