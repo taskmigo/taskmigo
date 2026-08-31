@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.taskmigo.PostgresTestConfiguration;
 import io.taskmigo.access.AccessService;
 import io.taskmigo.acl.AclPolicyRegistry;
+import io.taskmigo.acl.AclStatement;
 import io.taskmigo.acl.ApiAclEngine;
 import io.taskmigo.identity.oauth.InternalClientMetadata;
 import io.taskmigo.organization.OrganizationService;
@@ -111,27 +112,35 @@ class BootstrapIntegrationTest {
             .containsExactly("system/project-organization-boundary");
 
         UUID organizationId = this.organizations.create("access-" + UUID.randomUUID(), "Access Org");
-        var projectCreate = this.access
+        String createProjectPath = "/api/v0/organizations/" + organizationId + "/projects";
+        AclStatement createProject = this.access
+            .statementCatalog(organizationId)
+            .stream()
+            .filter(statement -> statement.mode() == AclStatement.Mode.REQUEST)
+            .filter(statement -> statement.target().matches("POST", createProjectPath))
+            .findFirst()
+            .orElseThrow();
+        var createProjectInfo = this.access
             .statements(organizationId)
             .stream()
-            .filter(statement -> AccessService.PROJECT_CREATE_STATEMENT.equals(statement.key()))
+            .filter(statement -> createProject.key().equals(statement.key()))
             .findFirst()
             .orElseThrow();
         var projectManager = this.access
             .roles(organizationId)
             .stream()
-            .filter(role -> AccessService.PROJECT_MANAGER_ROLE.equals(role.key()))
+            .filter(role -> "SYSTEM".equals(role.origin()))
+            .filter(role -> role.statementIds().contains(createProjectInfo.id()))
             .findFirst()
             .orElseThrow();
-        assertThat(projectManager.origin()).isEqualTo("SYSTEM");
-        assertThat(projectManager.statementIds()).containsExactly(projectCreate.id());
+        assertThat(projectManager.statementIds()).contains(createProjectInfo.id());
 
         UUID customRole = this.access.createRole(
             organizationId,
             "delivery-lead",
             "Delivery Lead",
-            "Custom Role reusing the built-in create Project Statement",
-            Set.of(projectCreate.id())
+            "Custom Role reusing a built-in Statement",
+            Set.of(createProjectInfo.id())
         );
         UUID userId = this.users.create(
             organizationId,
@@ -142,9 +151,8 @@ class BootstrapIntegrationTest {
         );
         this.access.setUserRoles(userId, Set.of(customRole));
         Set<String> effectiveStatements = this.access.effectiveStatementKeys(userId);
-        assertThat(effectiveStatements).containsExactly(AccessService.PROJECT_CREATE_STATEMENT);
+        assertThat(effectiveStatements).containsExactly(createProject.key());
 
-        String createProjectPath = "/api/v0/organizations/" + organizationId + "/projects";
         Map<String, Object> requestContext = Map.of(
             "principal.id",
             userId,
@@ -226,7 +234,19 @@ class BootstrapIntegrationTest {
         String passwordHash = Objects.requireNonNull(
             this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()
         );
-        UUID projectManagerRoleId = this.access.systemRoleId(AccessService.PROJECT_MANAGER_ROLE);
+        UUID organizationId = this.organizations.create("reconcile-" + UUID.randomUUID(), "Reconcile");
+        Map<String, UUID> statementIds = this.access
+            .statements(organizationId)
+            .stream()
+            .filter(statement -> "SYSTEM".equals(statement.origin()))
+            .collect(
+                java.util.stream.Collectors.toMap(AccessService.StatementInfo::key, AccessService.StatementInfo::id)
+            );
+        Map<String, UUID> roleIds = this.access
+            .roles(organizationId)
+            .stream()
+            .filter(role -> "SYSTEM".equals(role.origin()))
+            .collect(java.util.stream.Collectors.toMap(AccessService.RoleInfo::key, AccessService.RoleInfo::id));
 
         this.internalClients.reconcile(Map.of("cli", client("integration-client", "integration-secret")));
         this.browserClient.reconcile();
@@ -239,7 +259,22 @@ class BootstrapIntegrationTest {
         assertThat(this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()).isEqualTo(
             passwordHash
         );
-        assertThat(this.access.systemRoleId(AccessService.PROJECT_MANAGER_ROLE)).isEqualTo(projectManagerRoleId);
+        assertThat(
+            this.access
+                .statements(organizationId)
+                .stream()
+                .filter(statement -> "SYSTEM".equals(statement.origin()))
+                .collect(
+                    java.util.stream.Collectors.toMap(AccessService.StatementInfo::key, AccessService.StatementInfo::id)
+                )
+        ).isEqualTo(statementIds);
+        assertThat(
+            this.access
+                .roles(organizationId)
+                .stream()
+                .filter(role -> "SYSTEM".equals(role.origin()))
+                .collect(java.util.stream.Collectors.toMap(AccessService.RoleInfo::key, AccessService.RoleInfo::id))
+        ).isEqualTo(roleIds);
         assertThat(this.policies.snapshot(null).requestPolicies()).hasSize(1);
         assertThat(this.policies.snapshot(null).responsePolicies()).hasSize(1);
     }

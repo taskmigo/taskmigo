@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
@@ -19,7 +20,7 @@ import org.springframework.stereotype.Component;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.dataformat.yaml.YAMLMapper;
 
-/// Reconciles bootstrap-owned reusable Statements and built-in Roles from YAML into PostgreSQL.
+/// Reconciles compact bootstrap-owned Statement and Role YAML into PostgreSQL.
 @Component
 final class SystemAccessReconciler implements ApplicationRunner {
 
@@ -40,57 +41,113 @@ final class SystemAccessReconciler implements ApplicationRunner {
 
     void reconcile() throws IOException {
         Map<String, SystemStatementDefinition> statements = new LinkedHashMap<>();
-        for (var entry : this.load(STATEMENT_PATTERN, "acl/statement").entrySet()) {
-            Metadata metadata = metadata(entry.getValue(), entry.getKey());
-            statements.put(
-                metadata.key(),
-                new SystemStatementDefinition(metadata.name(), metadata.description(), entry.getValue())
-            );
+        for (Resource resource : resources(STATEMENT_PATTERN)) {
+            LoadedStatement statement = statement(this.read(resource), resource.getDescription());
+            if (
+                statements.putIfAbsent(
+                    statement.key(),
+                    new SystemStatementDefinition(statement.name(), statement.description(), statement.definition())
+                ) != null
+            ) {
+                throw new IllegalArgumentException("Duplicate system Statement key: " + statement.key());
+            }
         }
 
         Map<String, SystemRoleDefinition> roles = new LinkedHashMap<>();
-        for (var entry : this.load(ROLE_PATTERN, "acl/role").entrySet()) {
-            Metadata metadata = metadata(entry.getValue(), entry.getKey());
-            Map<String, Object> spec = map(required(entry.getValue(), "spec"), "spec");
-            Set<String> statementKeys = list(required(spec, "statements"), "spec.statements")
-                .stream()
-                .map(value -> string(value, "spec.statements[]"))
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-            roles.put(metadata.key(), new SystemRoleDefinition(metadata.name(), metadata.description(), statementKeys));
+        for (Resource resource : resources(ROLE_PATTERN)) {
+            LoadedRole role = role(this.read(resource), resource.getDescription());
+            if (
+                roles.putIfAbsent(
+                    role.key(),
+                    new SystemRoleDefinition(role.name(), role.description(), role.statementKeys())
+                ) != null
+            ) {
+                throw new IllegalArgumentException("Duplicate system Role key: " + role.key());
+            }
         }
         this.access.reconcileSystem(statements, roles);
     }
 
-    private Map<String, Map<String, Object>> load(String pattern, String expectedKind) throws IOException {
+    private Map<String, Object> read(Resource resource) throws IOException {
+        return this.yaml.readValue(resource.getInputStream(), new TypeReference<Map<String, Object>>() {});
+    }
+
+    private static Resource[] resources(String pattern) throws IOException {
         Resource[] resources = new PathMatchingResourcePatternResolver().getResources(pattern);
         if (resources.length == 0) throw new IllegalStateException("No system access definitions found at " + pattern);
         Arrays.sort(resources, java.util.Comparator.comparing(Resource::getDescription));
-
-        Map<String, Map<String, Object>> definitions = new LinkedHashMap<>();
-        for (Resource resource : resources) {
-            Map<String, Object> definition = this.yaml.readValue(
-                resource.getInputStream(),
-                new TypeReference<Map<String, Object>>() {}
-            );
-            String kind = string(required(definition, "kind"), "kind");
-            if (!expectedKind.equals(kind)) throw new IllegalArgumentException(
-                "Expected " + expectedKind + " in " + resource.getDescription() + ", got " + kind
-            );
-            Metadata metadata = metadata(definition, resource.getDescription());
-            if (definitions.putIfAbsent(metadata.key(), definition) != null) {
-                throw new IllegalArgumentException("Duplicate system access key: " + metadata.key());
-            }
-        }
-        return definitions;
+        return resources;
     }
 
-    private static Metadata metadata(Map<String, Object> definition, String source) {
-        Map<String, Object> metadata = map(required(definition, "metadata"), "metadata");
-        return new Metadata(
-            string(required(metadata, "key"), "metadata.key"),
-            string(required(metadata, "name"), "metadata.name"),
-            nullableString(metadata.get("description"), "metadata.description", source)
+    private static LoadedStatement statement(Map<String, Object> source, String description) {
+        String key = string(required(source, "key"), "key");
+        String name = displayName(source, key);
+        String mode = mode(source, description);
+        Map<String, Object> rule = map(required(source, mode), mode);
+
+        Map<String, Object> target = new LinkedHashMap<>();
+        target.put(
+            "methods",
+            strings(required(rule, "methods"), mode + ".methods")
+                .stream()
+                .map(method -> method.toUpperCase(Locale.ROOT))
+                .toList()
         );
+        target.put("path", string(required(rule, "path"), mode + ".path"));
+
+        Map<String, Object> spec = new LinkedHashMap<>();
+        spec.put("mode", mode);
+        spec.put("target", target);
+        spec.put("effect", effect(rule.get("effect"), mode + ".effect"));
+        spec.put("when", map(required(rule, "when"), mode + ".when"));
+        if ("response".equals(mode) && rule.get("fields") != null) {
+            spec.put("fields", Map.of("allow", strings(rule.get("fields"), "response.fields")));
+        }
+        if ("request".equals(mode) && rule.get("fields") != null) {
+            throw new IllegalArgumentException("request.fields is not supported: " + description);
+        }
+
+        return new LoadedStatement(
+            key,
+            name,
+            nullableString(source.get("description"), "description", description),
+            Map.of("kind", "acl/statement", "spec", spec)
+        );
+    }
+
+    private static LoadedRole role(Map<String, Object> source, String description) {
+        String key = string(required(source, "key"), "key");
+        Set<String> statementKeys = new LinkedHashSet<>(strings(required(source, "statements"), "statements"));
+        return new LoadedRole(
+            key,
+            displayName(source, key),
+            nullableString(source.get("description"), "description", description),
+            Set.copyOf(statementKeys)
+        );
+    }
+
+    private static String mode(Map<String, Object> source, String description) {
+        boolean request = source.get("request") != null;
+        boolean response = source.get("response") != null;
+        if (request == response) {
+            throw new IllegalArgumentException(
+                "Statement must define exactly one of request or response: " + description
+            );
+        }
+        return request ? "request" : "response";
+    }
+
+    private static String displayName(Map<String, Object> source, String key) {
+        Object value = source.get("name");
+        return value == null ? key : string(value, "name");
+    }
+
+    private static String effect(@Nullable Object value, String field) {
+        String effect = value == null ? "allow" : string(value, field).toLowerCase(Locale.ROOT);
+        if (!Set.of("allow", "deny").contains(effect)) {
+            throw new IllegalArgumentException(field + " must be allow or deny");
+        }
+        return effect;
     }
 
     private static Object required(Map<String, Object> source, String key) {
@@ -111,9 +168,13 @@ final class SystemAccessReconciler implements ApplicationRunner {
         return result;
     }
 
-    private static List<Object> list(Object value, String field) {
-        if (!(value instanceof List<?> raw)) throw new IllegalArgumentException(field + " must be an array");
-        return List.copyOf(raw);
+    private static List<String> strings(Object value, String field) {
+        if (value instanceof String string) return List.of(string(string, field));
+        if (!(value instanceof List<?> raw)) throw new IllegalArgumentException(field + " must be a string or array");
+        return raw
+            .stream()
+            .map(item -> string(item, field + "[]"))
+            .toList();
     }
 
     private static String string(Object value, String field) {
@@ -131,5 +192,12 @@ final class SystemAccessReconciler implements ApplicationRunner {
         return string.isBlank() ? null : string.trim();
     }
 
-    private record Metadata(String key, String name, @Nullable String description) {}
+    private record LoadedStatement(
+        String key,
+        String name,
+        @Nullable String description,
+        Map<String, Object> definition
+    ) {}
+
+    private record LoadedRole(String key, String name, @Nullable String description, Set<String> statementKeys) {}
 }

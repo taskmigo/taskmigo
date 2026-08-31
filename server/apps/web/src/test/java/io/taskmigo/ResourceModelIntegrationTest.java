@@ -225,7 +225,7 @@ class ResourceModelIntegrationTest {
 
     @Test
     void externalGroupStatementsAreDerivedLive() {
-        this.installProjectCreateStatement();
+        String statementKey = this.installDynamicStatement();
         UUID customer = this.organizations.create("customer-" + UUID.randomUUID(), "Customer");
         UUID vendor = this.organizations.create("vendor-" + UUID.randomUUID(), "Vendor");
         UUID engineer = this.users.create(
@@ -237,15 +237,9 @@ class ResourceModelIntegrationTest {
         );
         UUID vendorGroup = this.groups.create(vendor, "Backend", null);
         UUID project = this.projects.create(customer, "alpha-" + UUID.randomUUID(), "Alpha", null);
-        UUID projectCreateStatement = this.statementId(customer, AccessService.PROJECT_CREATE_STATEMENT);
+        UUID statementId = this.statementId(customer, statementKey);
         UUID directRole = this.access.createRole(customer, "observer", "Observer", null, Set.of());
-        UUID groupRole = this.access.createRole(
-            customer,
-            "delivery-lead",
-            "Delivery Lead",
-            null,
-            Set.of(projectCreateStatement)
-        );
+        UUID groupRole = this.access.createRole(customer, "delivery-lead", "Delivery Lead", null, Set.of(statementId));
 
         this.groups.addMember(vendorGroup, engineer);
         UUID directMembership = this.projects.addMember(project, "USER", engineer);
@@ -253,9 +247,7 @@ class ResourceModelIntegrationTest {
         UUID groupMembership = this.projects.addMember(project, "GROUP", vendorGroup);
         this.projects.setMemberRoles(project, groupMembership, Set.of(groupRole));
 
-        assertThat(this.projects.effectiveStatements(project, engineer)).containsExactly(
-            AccessService.PROJECT_CREATE_STATEMENT
-        );
+        assertThat(this.projects.effectiveStatements(project, engineer)).containsExactly(statementKey);
         this.groups.removeMember(vendorGroup, engineer);
         assertThat(this.projects.effectiveStatements(project, engineer)).isEmpty();
     }
@@ -312,12 +304,13 @@ class ResourceModelIntegrationTest {
             .hasMessageContaining("read-only");
     }
 
-    private void installProjectCreateStatement() {
+    private String installDynamicStatement() {
+        String key = "test.statement." + UUID.randomUUID();
         this.access.reconcileSystem(
             Map.of(
-                AccessService.PROJECT_CREATE_STATEMENT,
+                key,
                 new AccessService.SystemStatementDefinition(
-                    "Create Project",
+                    "Test Statement",
                     null,
                     Map.of(
                         "kind",
@@ -338,6 +331,7 @@ class ResourceModelIntegrationTest {
             ),
             Map.of()
         );
+        return key;
     }
 
     private UUID statementId(UUID organizationId, String key) {

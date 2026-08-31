@@ -1,12 +1,17 @@
 # API ACL POC
 
-This module proves API-only ACL with two independent policy kinds: `acl/request` and `acl/response`.
+Taskmigo authorization has two independent layers:
 
-System policies are immutable guardrails persisted in PostgreSQL with `origin=SYSTEM`. Their desired state is declared as YAML under the bootstrap application's `system/acl` resources and reconciled during installation bootstrap. Users cannot update, delete, disable, or override them through the policy management API.
+1. **ACL policies** are mandatory API guardrails.
+2. **Statements and Roles** describe reusable business capabilities assigned to principals.
 
-Custom policies are organization-scoped and persisted with `origin=CUSTOM` as validated source DSL in `acl_policies`. There is intentionally no ACL cache in this POC: every authenticated API request loads a fresh organization policy snapshot from the database. The request ACL and response ACL reuse that same request-scoped snapshot. This keeps multiple application instances consistent without Redis, Kafka, or process-local invalidation.
+System resources are reconciled by the bootstrap application and persisted in PostgreSQL. Runtime applications read PostgreSQL as the source of truth.
 
-## Request policy
+## ACL policies
+
+System policies are immutable guardrails with `origin=SYSTEM`. Custom policies are organization-scoped with `origin=CUSTOM`. Roles do not override system policies.
+
+Custom policies keep the canonical ACL DSL used by the management API:
 
 ```json
 {
@@ -28,77 +33,94 @@ Custom policies are organization-scoped and persisted with `origin=CUSTOM` as va
 }
 ```
 
-Request ACL executes after authentication and before the controller.
+System policy YAML under `system/acl` uses the same canonical policy DSL plus `metadata.name` as its stable identity. Bootstrap validates the complete desired set before reconciliation.
 
-## System policy bootstrap
+## Statements
 
-System policy files use the same restricted DSL plus `metadata.name` for stable identity. For example:
+Statement keys are **data**, not Java constants. Runtime code does not know built-in Statement names. Adding, renaming, or removing a built-in Statement is a YAML/bootstrap concern as long as Roles reference valid keys.
+
+Built-in Statements use a compact bootstrap-only authoring DSL under `system/access/statements`:
 
 ```yaml
-kind: acl/request
-metadata:
-  name: Chỉ có project manager mới có thể tạo project
-spec:
-  target:
-    methods: [POST]
-    path: /api/v0/organizations/*/projects
-  rules:
-    project-manager:
-      effect: allow
-      when:
-        eq: [principal.role, project-manager]
+key: project.create
+name: Create projects
+description: Allows creating a Project inside the principal Organization.
+request:
+  methods: POST
+  path: /api/v0/organizations/*/projects
+  when:
+    eq: [request.organizationId, principal.organizationId]
 ```
 
-Bootstrap validates the complete YAML set before reconciling it. New definitions are inserted, changed definitions are updated, and stale system policies are deleted. An invalid system policy fails bootstrap instead of starting the installation with incomplete security guardrails.
+The compact fields are:
 
-## Response policy
+- `key`: stable Statement key.
+- `name`: optional display name; defaults to `key`.
+- `description`: optional display description.
+- exactly one of `request` or `response`.
+- `methods`: one method or a list of methods.
+- `path`: API target glob.
+- `when`: restricted ACL expression.
+- `effect`: optional `allow` or `deny`; defaults to `allow`.
+- `fields`: response-only field allow-list; accepts one field or a list.
 
-```json
-{
-  "kind": "acl/response",
-  "spec": {
-    "target": {
-      "methods": ["GET"],
-      "path": "/api/v0/projects"
-    },
-    "rules": {
-      "member": {
-        "effect": "allow",
-        "when": {
-          "relation": {
-            "name": "projectMember",
-            "principal": "principal.id",
-            "object": "object.id"
-          }
-        },
-        "fields": {
-          "allow": ["id", "name"]
-        }
-      }
-    }
-  }
-}
+For example, a response Statement can be written as:
+
+```yaml
+key: project.summary.read
+response:
+  methods: GET
+  path: /api/v0/projects
+  when:
+    relation:
+      name: projectMember
+      principal: principal.id
+      object: object.id
+  fields: [id, name]
 ```
 
-The response rule is partially evaluated before repository access. `projectMember` is translated by the project module to a JPA Criteria `EXISTS` predicate, so rows are filtered by the database. The field allow-list is applied only after authorized rows are returned.
+Bootstrap normalizes this compact representation into the canonical `acl/statement` AST before validation and persistence. The ACL compiler therefore has one runtime representation while YAML authors avoid `kind -> metadata -> spec -> target` nesting.
 
-## Persistence and multi-instance behavior
+## Roles
 
-`acl_policies` stores both global system policies and organization-scoped custom policies. System rows have no organization id; custom rows must have one. Runtime reads both origins from PostgreSQL, so the database is the single runtime source of truth.
+A Role is only a named collection of Statement keys. Built-in Roles use compact YAML under `system/access/roles`:
 
-The runtime flow is:
+```yaml
+key: project-manager
+name: Project Manager
+statements: [project.create]
+```
+
+`name` and `description` are display metadata. `statements` is the only authorization content. The bootstrap reconciler resolves every referenced key to a persisted Statement ID and fails bootstrap if any reference is unknown.
+
+Custom Roles use the same persisted Role/Statement model and may reference system Statements or Statements owned by the same Organization.
+
+## Evaluation
+
+Request evaluation order is:
 
 ```text
-Bootstrap YAML -> validate -> reconcile SYSTEM policies -> PostgreSQL
-                                                        |
-HTTP request -> resolve organization and principal -----+
-  -> SELECT system ACL plus organization custom ACL policies
-  -> validate/compile definitions into a request-scoped policy snapshot
-  -> evaluate request ACL
-  -> reuse the same snapshot for response planning
-  -> translate object predicates to JPA Criteria
-  -> PostgreSQL filters business rows
-  -> apply response field selection
+authentication
+  -> mandatory system/custom ACL policy evaluation
+  -> resolve principal Role assignments
+  -> resolve effective Statement keys
+  -> evaluate matching request Statements
+  -> controller
 ```
 
-Because PostgreSQL is the runtime source of truth and no policy cache exists, a policy committed by bootstrap or one application instance is visible to subsequent requests handled by every instance without distributed cache invalidation.
+Response Statements are converted to the existing ACL response plan. Object predicates remain DB-translatable; for example, project membership uses a JPA Criteria `EXISTS` predicate rather than loading rows and filtering them in memory. Field selection is applied only after authorized rows are returned.
+
+The runtime request keeps one authorization snapshot containing the policy snapshot, visible Statement catalog, and effective Statement keys. There is intentionally no process-local ACL cache in this POC, so committed changes are visible across application instances without distributed cache invalidation.
+
+## Persistence and bootstrap
+
+The relevant tables are:
+
+- `acl_policies`: system and organization custom ACL policies.
+- `acl_statements`: system and organization Statements.
+- `roles`: system and organization Roles.
+- `role_statements`: Role-to-Statement references.
+- `user_roles`: organization-level user Role assignments.
+- `project_member_roles`: Project membership Role assignments.
+
+Bootstrap reconciliation preserves database IDs for unchanged system resources, updates changed resources, and removes stale bootstrap-owned resources. Invalid YAML or a Role referencing an unknown Statement fails bootstrap instead of starting with an incomplete authorization model.

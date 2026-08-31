@@ -22,9 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AccessService {
 
-    public static final String PROJECT_MANAGER_ROLE = "project-manager";
-    public static final String PROJECT_CREATE_STATEMENT = "project.create";
-
     private static final String SYSTEM = "SYSTEM";
     private static final String CUSTOM = "CUSTOM";
 
