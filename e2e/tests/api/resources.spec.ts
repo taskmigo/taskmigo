@@ -1,4 +1,4 @@
-import { expectFailure, expectSuccess, uniqueName } from "./client.js";
+import { expectFailure, uniqueName } from "./client.js";
 import { expect, test } from "./fixtures.js";
 
 test.describe("API resources @api @resources", () => {
@@ -18,8 +18,8 @@ test.describe("API resources @api @resources", () => {
 
   test("validates organization requests and malformed JSON", async ({ api }) => {
     const validation = await api.post("/api/v0/organizations", { data: { key: " ", name: "" } });
-    const body = await expectFailure(validation, 422, "validation.failed", "VALIDATION_ERROR");
-    expect(body.error?.form_errors).toMatchObject({ key: expect.any(String), name: expect.any(String) });
+    const error = await expectFailure(validation, 422, "validation.failed", "VALIDATION_ERROR");
+    expect(error.form_errors).toMatchObject({ key: expect.any(String), name: expect.any(String) });
 
     const malformed = await api.post("/api/v0/organizations", {
       headers: { "Content-Type": "application/json" },

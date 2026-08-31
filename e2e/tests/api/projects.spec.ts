@@ -1,12 +1,6 @@
 import { expectFailure, uniqueName } from "./client.js";
 import { expect, test } from "./fixtures.js";
 
-interface HistoryEntry {
-  id: string;
-  action: string;
-  actor: { type: string; id: string; displayName: string };
-}
-
 test.describe("Project API @api @projects", () => {
   test("creates projects and rejects duplicate keys or missing organizations", async ({ api }) => {
     const organization = await api.createOrganization();
@@ -139,26 +133,26 @@ test.describe("Project API @api @projects", () => {
     await api.setProjectMemberRoles(projectId, memberId, [roleId]);
     await api.archiveProject(projectId);
 
-    const firstPage = await api.history<HistoryEntry[]>(projectId, "?limit=2");
-    expect(firstPage.meta.pagination).toMatchObject({
+    const firstPage = await api.history(projectId, "?limit=2");
+    expect(firstPage.pagination).toMatchObject({
       type: "cursor",
       cursor: { next_cursor: expect.any(String), prev_cursor: null, has_more: true },
     });
-    expect(firstPage.data?.map(({ action }) => action)).toEqual(["PROJECT_ARCHIVED", "MEMBER_ROLES_CHANGED"]);
-    for (const entry of firstPage.data ?? []) {
+    expect(firstPage.data.map(({ action }) => action)).toEqual(["PROJECT_ARCHIVED", "MEMBER_ROLES_CHANGED"]);
+    for (const entry of firstPage.data) {
       expect(entry.actor).toMatchObject({ id: "taskmigo-helm-test", type: "SERVICE" });
     }
 
-    const cursor = firstPage.meta.pagination?.cursor?.next_cursor;
+    const cursor = firstPage.pagination.cursor.next_cursor;
     expect(cursor).toEqual(expect.any(String));
-    const secondPage = await api.history<HistoryEntry[]>(projectId, `?limit=2&cursor=${encodeURIComponent(cursor!)}`);
-    expect(secondPage.data?.map(({ action }) => action)).toEqual(["MEMBER_ADDED", "PROJECT_CREATED"]);
+    const secondPage = await api.history(projectId, `?limit=2&cursor=${encodeURIComponent(cursor!)}`);
+    expect(secondPage.data.map(({ action }) => action)).toEqual(["MEMBER_ADDED", "PROJECT_CREATED"]);
 
-    const firstIds = new Set(firstPage.data?.map(({ id }) => id));
-    expect(secondPage.data?.every(({ id }) => !firstIds.has(id))).toBe(true);
+    const firstIds = new Set(firstPage.data.map(({ id }) => id));
+    expect(secondPage.data.every(({ id }) => !firstIds.has(id))).toBe(true);
 
-    const blankCursorPage = await api.history<HistoryEntry[]>(projectId, "?limit=2&cursor=");
-    expect(blankCursorPage.data?.map(({ id }) => id)).toEqual(firstPage.data?.map(({ id }) => id));
+    const blankCursorPage = await api.history(projectId, "?limit=2&cursor=");
+    expect(blankCursorPage.data.map(({ id }) => id)).toEqual(firstPage.data.map(({ id }) => id));
   });
 
   test("makes archived projects read-only for member changes", async ({ api }) => {

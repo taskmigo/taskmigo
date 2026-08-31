@@ -1,4 +1,4 @@
-import { expectFailure } from "./client.js";
+import { expectFailure, expectOAuthError } from "./client.js";
 import { expect, test } from "./fixtures.js";
 
 test.describe("API security @api @security", () => {
@@ -20,13 +20,11 @@ test.describe("API security @api @security", () => {
 
   test("rejects invalid OAuth client credentials", async ({ api }) => {
     const response = await api.requestToken({ clientSecret: "incorrect-e2e-secret" });
-    expect(response.status()).toBe(401);
-    await expect(response.json()).resolves.toMatchObject({ error: "invalid_client" });
+    await expectOAuthError(response, 401, "invalid_client");
   });
 
   test("rejects an unsupported OAuth scope", async ({ api }) => {
     const response = await api.requestToken({ scope: "taskmigo.invalid" });
-    expect(response.status()).toBe(400);
-    await expect(response.json()).resolves.toMatchObject({ error: "invalid_scope" });
+    await expectOAuthError(response, 400, "invalid_scope");
   });
 });
