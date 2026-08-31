@@ -13,6 +13,7 @@ A Project belongs to one Organization and defines which Users and Groups partici
 - **Name**: human-readable Project name.
 - **Description**: optional summary.
 - **Status**: `ACTIVE` or `ARCHIVED`.
+- **Archived at**: timestamp recorded when the Project enters `ARCHIVED` state.
 
 Project ownership is fixed in the current model. Moving a Project between Organizations requires separate transfer
 semantics and is not a normal Project update.
@@ -55,5 +56,12 @@ Company B.
 
 ## Archive behavior
 
-An archived Project is read-only for ordinary Project mutations.
-Its ownership, memberships, and role assignments remain available for historical inspection.
+Archiving a Project is a one-way transition to read-only mode. The Project, its memberships, and role assignments remain
+available for historical inspection but ordinary mutations are rejected.
+
+Archived Projects are permanently deleted after the configured retention period. The worker checks expired archives
+periodically and deletes the Project together with Project-owned memberships, role assignments, and history.
+
+The default retention period is 30 days. Configure it with `TASKMIGO_PROJECT_RETENTION_DAYS`. The worker cleanup interval
+defaults to one hour and can be changed with `TASKMIGO_PROJECT_RETENTION_CLEANUP_INTERVAL` using a Spring duration such as
+`PT6H`.

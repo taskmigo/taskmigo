@@ -92,6 +92,12 @@ class ResourceModelIntegrationTest {
         ).isEqualTo(1);
         assertThat(
             this.jdbc.queryForObject(
+                "select count(*) from information_schema.columns where table_name = 'projects' and column_name = 'archived_at'",
+                Integer.class
+            )
+        ).isEqualTo(1);
+        assertThat(
+            this.jdbc.queryForObject(
                 "select count(*) from information_schema.tables where table_name = 'user_emails'",
                 Integer.class
             )

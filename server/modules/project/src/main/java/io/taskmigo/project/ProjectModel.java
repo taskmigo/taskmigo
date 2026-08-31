@@ -10,6 +10,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -40,6 +41,10 @@ class ProjectEntity {
     @Column(nullable = false, length = 16)
     ProjectStatus status;
 
+    @Column(name = "archived_at")
+    @Nullable
+    Instant archivedAt;
+
     protected ProjectEntity() {}
 
     ProjectEntity(UUID id, UUID organizationId, String key, String name, @Nullable String description) {
@@ -49,6 +54,7 @@ class ProjectEntity {
         this.name = name;
         this.description = description;
         this.status = ProjectStatus.ACTIVE;
+        this.archivedAt = null;
     }
 }
 

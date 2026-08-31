@@ -65,10 +65,16 @@ CREATE TABLE projects (
     name VARCHAR(200) NOT NULL,
     description VARCHAR(2000),
     status VARCHAR(16) NOT NULL,
+    archived_at TIMESTAMP WITH TIME ZONE,
     CONSTRAINT uk_projects_organization_key UNIQUE (organization_id, project_key),
-    CONSTRAINT ck_projects_status CHECK (status IN ('ACTIVE', 'ARCHIVED'))
+    CONSTRAINT ck_projects_status CHECK (status IN ('ACTIVE', 'ARCHIVED')),
+    CONSTRAINT ck_projects_archive_state CHECK (
+        (status = 'ACTIVE' AND archived_at IS NULL)
+        OR (status = 'ARCHIVED' AND archived_at IS NOT NULL)
+    )
 );
 CREATE INDEX ix_projects_organization_id ON projects(organization_id);
+CREATE INDEX ix_projects_archived_at ON projects(archived_at) WHERE status = 'ARCHIVED';
 
 CREATE TABLE project_members (
     id UUID PRIMARY KEY,
@@ -90,7 +96,7 @@ CREATE INDEX ix_project_member_roles_role_id ON project_member_roles(role_id);
 
 CREATE TABLE project_history (
     id UUID PRIMARY KEY,
-    project_id UUID NOT NULL REFERENCES projects(id),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     action VARCHAR(64) NOT NULL,
     actor_type VARCHAR(16) NOT NULL,
     actor_id VARCHAR(255) NOT NULL,
@@ -121,6 +127,16 @@ BEGIN
 END; $$;
 CREATE TRIGGER trg_group_members_same_organization BEFORE INSERT OR UPDATE ON group_members
 FOR EACH ROW EXECUTE FUNCTION taskmigo_enforce_group_member_organization();
+
+CREATE FUNCTION taskmigo_enforce_archived_project_read_only() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    IF OLD.status = 'ARCHIVED' THEN
+        RAISE EXCEPTION 'Archived Projects are read-only' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_projects_archived_read_only BEFORE UPDATE ON projects
+FOR EACH ROW EXECUTE FUNCTION taskmigo_enforce_archived_project_read_only();
 
 CREATE FUNCTION taskmigo_enforce_project_member_principal() RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN

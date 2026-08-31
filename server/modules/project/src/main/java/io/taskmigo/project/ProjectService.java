@@ -7,11 +7,13 @@ import io.taskmigo.organization.OrganizationService;
 import io.taskmigo.user.SystemUser;
 import io.taskmigo.user.UserService;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -48,6 +50,20 @@ public class ProjectService {
         this.groups = groups;
         this.access = access;
         this.events = events;
+    }
+
+    public record Patch(
+        boolean keyPresent,
+        @Nullable String key,
+        boolean namePresent,
+        @Nullable String name,
+        boolean descriptionPresent,
+        @Nullable String description,
+        Set<String> unsupportedFields
+    ) {
+        public Patch {
+            unsupportedFields = Set.copyOf(unsupportedFields);
+        }
     }
 
     @Transactional
@@ -92,22 +108,104 @@ public class ProjectService {
     }
 
     @Transactional
+    public void update(UUID projectId, @Nullable String key, @Nullable String name, @Nullable String description) {
+        this.update(projectId, key, name, description, systemActor());
+    }
+
+    @Transactional
+    public void update(
+        UUID projectId,
+        @Nullable String key,
+        @Nullable String name,
+        @Nullable String description,
+        ProjectChanged.Actor actor
+    ) {
+        this.patch(projectId, new Patch(true, key, true, name, true, description, Set.of()), actor);
+    }
+
+    @Transactional
+    public void patch(UUID projectId, Patch patch) {
+        this.patch(projectId, patch, systemActor());
+    }
+
+    /// Applies only fields explicitly present in a Project patch and records persisted changes in Project history.
+    ///
+    /// @param projectId the Project to patch
+    /// @param patch the explicitly supplied mutable fields
+    /// @param actor the actor recorded in Project history
+    @Transactional
+    public void patch(UUID projectId, Patch patch, ProjectChanged.Actor actor) {
+        if (!patch.unsupportedFields().isEmpty()) {
+            throw badRequest("Unsupported Project fields: " + String.join(", ", patch.unsupportedFields()));
+        }
+
+        ProjectEntity project = this.activeProject(projectId);
+        String updatedKey = patch.keyPresent() ? required(patch.key(), "key") : project.key;
+        String updatedName = patch.namePresent() ? required(patch.name(), "name") : project.name;
+        String updatedDescription = patch.descriptionPresent() ? patch.description() : project.description;
+        List<ProjectChanged.Change> changes = new ArrayList<>();
+        if (!project.key.equals(updatedKey)) changes.add(new ProjectChanged.Change("key", project.key, updatedKey));
+        if (!project.name.equals(updatedName)) changes.add(
+            new ProjectChanged.Change("name", project.name, updatedName)
+        );
+        if (!Objects.equals(project.description, updatedDescription)) {
+            changes.add(new ProjectChanged.Change("description", project.description, updatedDescription));
+        }
+        if (changes.isEmpty()) return;
+
+        project.key = updatedKey;
+        project.name = updatedName;
+        project.description = updatedDescription;
+        try {
+            this.projects.flush();
+        } catch (DataIntegrityViolationException exception) {
+            throw new ProjectException(
+                ProjectException.Type.CONFLICT,
+                "Project key already exists in the Organization",
+                exception
+            );
+        }
+        this.publish(
+            project,
+            ProjectChanged.Action.PROJECT_UPDATED,
+            actor,
+            projectTarget(project),
+            List.copyOf(changes),
+            Map.of()
+        );
+    }
+
+    @Transactional
     public void archive(UUID projectId) {
         this.archive(projectId, systemActor());
     }
 
     @Transactional
     public void archive(UUID projectId, ProjectChanged.Actor actor) {
-        ProjectEntity project = this.project(projectId);
+        ProjectEntity project = this.activeProject(projectId);
+        Instant archivedAt = Instant.now();
         project.status = ProjectStatus.ARCHIVED;
+        project.archivedAt = archivedAt;
         this.publish(
             project,
             ProjectChanged.Action.PROJECT_ARCHIVED,
             actor,
             projectTarget(project),
-            List.of(new ProjectChanged.Change("status", ProjectStatus.ACTIVE.name(), ProjectStatus.ARCHIVED.name())),
+            List.of(
+                new ProjectChanged.Change("status", ProjectStatus.ACTIVE.name(), ProjectStatus.ARCHIVED.name()),
+                new ProjectChanged.Change("archivedAt", null, archivedAt)
+            ),
             Map.of()
         );
+    }
+
+    /// Permanently removes archived Projects whose retention window has expired.
+    ///
+    /// @param cutoff delete only Projects archived before this instant
+    /// @return number of Projects deleted
+    @Transactional
+    public int deleteArchivedBefore(Instant cutoff) {
+        return this.projects.deleteArchivedBefore(ProjectStatus.ARCHIVED, cutoff);
     }
 
     @Transactional
@@ -273,6 +371,7 @@ public class ProjectService {
         snapshot.put("name", project.name);
         if (project.description != null) snapshot.put("description", project.description);
         snapshot.put("status", project.status.name());
+        if (project.archivedAt != null) snapshot.put("archivedAt", project.archivedAt);
         return Map.copyOf(snapshot);
     }
 

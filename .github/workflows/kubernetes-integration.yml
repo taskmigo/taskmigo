@@ -145,11 +145,15 @@ jobs:
           printf '%s %s\n' "$minikube_ip" "$public_host" | sudo tee -a /etc/hosts >/dev/null
           e2e_password="$(minikube -p "$PROFILE" kubectl -- -n "$NAMESPACE" get secret taskmigo-secrets \
             -o go-template='{{index .data "bootstrap-user-password" | base64decode}}')"
+          e2e_api_client_secret="$(minikube -p "$PROFILE" kubectl -- -n "$NAMESPACE" get secret taskmigo-secrets \
+            -o go-template='{{index .data "integration-test-client-secret" | base64decode}}')"
 
           export E2E_BASE_URL="http://${public_host}"
           export E2E_AUTH_ORIGIN="http://${public_host}"
           export E2E_USERNAME=system
           export E2E_PASSWORD="$e2e_password"
+          export E2E_API_CLIENT_ID=taskmigo-helm-test
+          export E2E_API_CLIENT_SECRET="$e2e_api_client_secret"
           export NO_PROXY="${NO_PROXY:+${NO_PROXY},}${public_host}"
           export no_proxy="${no_proxy:+${no_proxy},}${public_host}"
 
