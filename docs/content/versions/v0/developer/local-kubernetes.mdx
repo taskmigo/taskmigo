@@ -20,8 +20,8 @@ The local stack contains:
 - the Taskmigo browser client;
 - one `Gateway` plus separate `HTTPRoute` resources for the client and web server.
 
-GitHub Actions starts its cluster in the `setup-minikube` step, then runs the same Taskfile deployment tasks used locally.
-Browser E2E is intentionally separate: the `e2e/` package owns Playwright setup and execution, and CI invokes it directly
+GitHub Actions starts Minikube with `wait: false`, prepares browser E2E while the cluster starts, then lets Taskfile wait at
+the first cluster-dependent operation. Browser E2E is intentionally separate: the `e2e/` package owns Playwright setup and execution, and CI invokes it directly
 after the Taskfile-managed deployment is ready.
 
 ## Prerequisites
@@ -53,13 +53,12 @@ task kubernetes:deploy
 
 `kubernetes:deploy` is an end-to-end, idempotent pipeline. It:
 
-1. Verifies that the selected Minikube profile and its node are ready.
-2. Builds the bootstrap, web, worker, and client images in parallel with Docker Buildx.
-3. Loads the images into Minikube.
-4. Creates the namespace, stable local credentials, and PostgreSQL when absent.
-5. Installs Envoy Gateway and a `GatewayClass`.
-6. Installs or upgrades Taskmigo and runs the bootstrap hook before the runtime workloads.
-7. Waits for workloads and routes, verifies Flyway state, and checks both public endpoints.
+1. Starts image builds while waiting for the selected Minikube profile and node to become ready.
+2. Starts PostgreSQL and Envoy Gateway as soon as the cluster is usable, while the images continue building and loading.
+3. Waits for PostgreSQL only when the bootstrap Job needs it.
+4. Installs or upgrades Taskmigo, waits for the bootstrap hook, and starts the runtime workloads without waiting for their rollouts.
+5. Waits for Envoy Gateway and the Taskmigo workloads in parallel.
+6. Verifies accepted routes, Flyway state, and both public endpoints.
 
 The default task is an alias for the same pipeline, so `task` also works.
 

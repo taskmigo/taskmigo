@@ -73,6 +73,7 @@ jobs:
         uses: medyagh/setup-minikube@v0.0.21
         with:
           start: true
+          wait: false
           cache: false
           minikube-version: 1.38.1
           driver: ${{ env.MINIKUBE_DRIVER }}
@@ -81,6 +82,13 @@ jobs:
           cpus: ${{ env.MINIKUBE_CPUS }}
           memory: ${{ env.MINIKUBE_MEMORY }}
 
+      - name: Install and validate E2E
+        working-directory: e2e
+        run: |
+          npm install --no-audit --no-fund --package-lock=false
+          npm run typecheck
+          npx playwright install --with-deps chromium
+
       - name: Set up Task
         uses: go-task/setup-task@v2.2.0
         with:
@@ -88,13 +96,6 @@ jobs:
 
       - name: Validate chart
         run: task kubernetes:validate
-
-      - name: Install and validate E2E
-        working-directory: e2e
-        run: |
-          npm install --no-audit --no-fund --package-lock=false
-          npm run typecheck
-          npx playwright install --with-deps chromium
 
       - name: Deploy to Minikube
         run: task kubernetes:deploy
