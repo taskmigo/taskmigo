@@ -17,7 +17,9 @@ test.describe("Project API @api @projects", () => {
     const groupMemberId = await api.addProjectMember(projectId, "GROUP", groupId);
     await api.setProjectMemberRoles(projectId, groupMemberId, [roleId]);
 
-    expect(new Set(await api.effectivePermissions(projectId, user.id))).toEqual(new Set(["project.read", "project.update"]));
+    expect(new Set(await api.effectivePermissions(projectId, user.id))).toEqual(
+      new Set(["project.read", "project.update"]),
+    );
     expect(new Set(await api.effectivePermissions(projectId, groupUser.id))).toEqual(
       new Set(["project.read", "project.update"]),
     );
