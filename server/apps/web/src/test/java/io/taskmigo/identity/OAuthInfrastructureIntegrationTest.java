@@ -226,10 +226,7 @@ class OAuthInfrastructureIntegrationTest {
                 "target",
                 Map.of("methods", List.of("GET"), "path", "/api/v0/projects"),
                 "rules",
-                Map.of(
-                    "deny-authenticated",
-                    Map.of("effect", "deny", "when", Map.of("exists", "principal.id"))
-                )
+                Map.of("deny-authenticated", Map.of("effect", "deny", "when", Map.of("exists", "principal.id")))
             )
         );
     }
