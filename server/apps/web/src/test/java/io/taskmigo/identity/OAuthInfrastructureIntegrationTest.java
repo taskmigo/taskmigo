@@ -8,6 +8,7 @@ import io.taskmigo.access.PermissionCatalog;
 import io.taskmigo.identity.oauth.InternalClientMetadata;
 import io.taskmigo.organization.OrganizationService;
 import java.net.http.HttpClient;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -223,7 +224,7 @@ class OAuthInfrastructureIntegrationTest {
             "spec",
             Map.of(
                 "target",
-                Map.of("methods", java.util.List.of("GET"), "path", "/api/v0/projects"),
+                Map.of("methods", List.of("GET"), "path", "/api/v0/projects"),
                 "rules",
                 Map.of(
                     "deny-authenticated",
