@@ -4,7 +4,7 @@ import io.taskmigo.acl.AclPolicyRegistry;
 import io.taskmigo.acl.AclPolicyRegistry.PolicySnapshot;
 import io.taskmigo.acl.ApiAclEngine;
 import io.taskmigo.acl.ApiAclEngine.ResponsePlan;
-import io.taskmigo.user.SystemUser;
+import io.taskmigo.identity.ServicePrincipalPermissions;
 import io.taskmigo.user.UserService;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,6 +22,8 @@ import org.springframework.web.context.request.RequestContextHolder;
 public final class ApiAclSupport {
 
     private static final String POLICY_SNAPSHOT_ATTRIBUTE = ApiAclSupport.class.getName() + ".policySnapshot";
+    private static final String SYSTEM_RESOURCES_MANAGE_AUTHORITY =
+        "PERMISSION_" + ServicePrincipalPermissions.SYSTEM_RESOURCES_MANAGE;
 
     private final AclPolicyRegistry policies;
     private final ApiAclEngine engine;
@@ -47,7 +49,7 @@ public final class ApiAclSupport {
 
     public void requireOrganization(Authentication authentication, UUID organizationId) {
         Context context = this.context(authentication, "ACL_MANAGEMENT", "/api/v0/acl-management");
-        if (!context.systemUser() && !organizationId.equals(context.organizationId())) {
+        if (!hasSystemResourceManagement(authentication) && !organizationId.equals(context.organizationId())) {
             throw new AccessDeniedException("ACL policies can only be managed for the principal organization");
         }
     }
@@ -70,7 +72,6 @@ public final class ApiAclSupport {
         values.put("request.path", path);
 
         UUID organizationId = null;
-        boolean systemUser = false;
         if (authentication instanceof JwtAuthenticationToken token) {
             String principalType = token.getToken().getClaimAsString("principal_type");
             if (principalType != null && !principalType.isBlank()) values.put("principal.type", principalType);
@@ -81,12 +82,18 @@ public final class ApiAclSupport {
                 values.put("principal.id", userId);
                 values.put("principal.username", user.username());
                 organizationId = user.organizationId();
-                systemUser = SystemUser.USERNAME.equals(user.username());
                 if (organizationId != null) values.put("principal.organizationId", organizationId);
             }
         }
-        return new Context(organizationId, systemUser, Map.copyOf(values));
+        return new Context(organizationId, Map.copyOf(values));
     }
 
-    private record Context(@Nullable UUID organizationId, boolean systemUser, Map<String, Object> values) {}
+    private static boolean hasSystemResourceManagement(Authentication authentication) {
+        return authentication
+            .getAuthorities()
+            .stream()
+            .anyMatch(authority -> SYSTEM_RESOURCES_MANAGE_AUTHORITY.equals(authority.getAuthority()));
+    }
+
+    private record Context(@Nullable UUID organizationId, Map<String, Object> values) {}
 }
