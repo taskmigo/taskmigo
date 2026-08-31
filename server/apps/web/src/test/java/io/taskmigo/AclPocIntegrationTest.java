@@ -81,12 +81,8 @@ class AclPocIntegrationTest {
             "principal.type",
             "user"
         );
-        var plan = this.engine.planResponse(
-            this.policies.responsePolicies(organization),
-            "GET",
-            "/api/v0/projects",
-            context
-        );
+        var snapshot = this.policies.snapshot(organization);
+        var plan = this.engine.planResponse(snapshot.responsePolicies(), "GET", "/api/v0/projects", context);
 
         assertThat(this.aclProjects.list(plan))
             .extracting(ProjectAclQueryService.ProjectView::id)
@@ -94,26 +90,26 @@ class AclPocIntegrationTest {
         assertThat(plan.fields().allows("id")).isTrue();
         assertThat(plan.fields().allows("name")).isTrue();
         assertThat(plan.fields().allows("description")).isFalse();
+        assertThat(this.policies.customPolicyNames(organization)).containsExactly("member-projects");
     }
 
     @Test
-    void customRequestDenyIsEvaluatedAlongsideImmutableSystemRules() {
-        UUID organization = UUID.randomUUID();
+    void customRequestDenyIsLoadedFromDatabaseAlongsideImmutableSystemRules() {
+        UUID organization = this.organizations.create("acl-request-" + UUID.randomUUID(), "ACL Request Org");
         this.policies.upsertCustom(organization, "block-archive", requestPolicy());
         Map<String, Object> context = Map.of("principal.id", UUID.randomUUID(), "principal.type", "user");
+        var snapshot = this.policies.snapshot(organization);
 
         assertThat(
             this.engine.isRequestAllowed(
-                this.policies.requestPolicies(organization),
+                snapshot.requestPolicies(),
                 "PATCH",
                 "/api/v0/projects/123/archive",
                 context
             )
         ).isFalse();
         assertThat(this.policies.customPolicyNames(organization)).containsExactly("block-archive");
-        assertThat(this.policies.requestPolicies(organization)).anyMatch(policy ->
-            policy.name().equals("system/api-authenticated")
-        );
+        assertThat(snapshot.requestPolicies()).anyMatch(policy -> policy.name().equals("system/api-authenticated"));
     }
 
     private static Map<String, Object> responsePolicy() {
