@@ -34,7 +34,7 @@ const authorization = (token: string): Record<string, string> => ({
 });
 
 test.describe("API ACL", { tag: ["@api", "@acl"] }, () => {
-  test("loads a persisted request ACL on the next request through the deployed gateway", async ({ request }) => {
+  test("persists organization ACL through the deployed gateway", async ({ request }) => {
     const token = await accessToken(request);
     const headers = authorization(token);
     const suffix = randomUUID();
@@ -55,15 +55,17 @@ test.describe("API ACL", { tag: ["@api", "@acl"] }, () => {
       headers,
       data: {
         kind: "acl/request",
-        target: {
-          methods: ["GET"],
-          path: "/api/v0/projects",
-        },
-        rules: {
-          "deny-authenticated": {
-            effect: "deny",
-            when: {
-              exists: "principal.id",
+        spec: {
+          target: {
+            methods: ["GET"],
+            path: "/api/v0/projects",
+          },
+          rules: {
+            "deny-authenticated": {
+              effect: "deny",
+              when: {
+                exists: "principal.id",
+              },
             },
           },
         },
@@ -77,13 +79,23 @@ test.describe("API ACL", { tag: ["@api", "@acl"] }, () => {
     expect(listedPolicies.status()).toBe(200);
     expect(((await listedPolicies.json()) as ApiResponse<string[]>).data).toContain(policyName);
 
-    const deniedResponse = await request.get("/api/v0/projects", { headers });
-    expect(deniedResponse.status()).toBe(403);
+    // The integration client runs as Taskmigo's organization-less system user. It may administer tenant ACLs, but a
+    // tenant policy must not become a global policy and therefore must not apply to this system request.
+    const systemRequest = await request.get("/api/v0/projects", { headers });
+    expect(systemRequest.status()).toBe(200);
 
     const deleteResponse = await request.delete(policyUrl, { headers });
     expect(deleteResponse.status()).toBe(200);
 
-    const allowedAgain = await request.get("/api/v0/projects", { headers });
-    expect(allowedAgain.status()).toBe(200);
+    const listedAfterDelete = await request.get(`/api/v0/organizations/${organization.data.id}/acl-policies`, {
+      headers,
+    });
+    expect(listedAfterDelete.status()).toBe(200);
+    expect(((await listedAfterDelete.json()) as ApiResponse<string[]>).data).not.toContain(policyName);
+  });
+
+  test("rejects an unauthenticated API request through the deployed gateway", async ({ request }) => {
+    const response = await request.get("/api/v0/projects");
+    expect(response.status()).toBe(401);
   });
 });

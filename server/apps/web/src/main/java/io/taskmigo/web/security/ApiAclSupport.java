@@ -4,6 +4,7 @@ import io.taskmigo.acl.AclPolicyRegistry;
 import io.taskmigo.acl.AclPolicyRegistry.PolicySnapshot;
 import io.taskmigo.acl.ApiAclEngine;
 import io.taskmigo.acl.ApiAclEngine.ResponsePlan;
+import io.taskmigo.user.SystemUser;
 import io.taskmigo.user.UserService;
 import java.util.HashMap;
 import java.util.Map;
@@ -46,7 +47,7 @@ public final class ApiAclSupport {
 
     public void requireOrganization(Authentication authentication, UUID organizationId) {
         Context context = this.context(authentication, "ACL_MANAGEMENT", "/api/v0/acl-management");
-        if (!organizationId.equals(context.organizationId())) {
+        if (!context.systemUser() && !organizationId.equals(context.organizationId())) {
             throw new AccessDeniedException("ACL policies can only be managed for the principal organization");
         }
     }
@@ -69,6 +70,7 @@ public final class ApiAclSupport {
         values.put("request.path", path);
 
         UUID organizationId = null;
+        boolean systemUser = false;
         if (authentication instanceof JwtAuthenticationToken token) {
             String principalType = token.getToken().getClaimAsString("principal_type");
             if (principalType != null && !principalType.isBlank()) values.put("principal.type", principalType);
@@ -77,12 +79,14 @@ public final class ApiAclSupport {
                 UUID userId = UUID.fromString(userIdClaim);
                 UserService.UserInfo user = this.users.require(userId);
                 values.put("principal.id", userId);
+                values.put("principal.username", user.username());
                 organizationId = user.organizationId();
+                systemUser = SystemUser.USERNAME.equals(user.username());
                 if (organizationId != null) values.put("principal.organizationId", organizationId);
             }
         }
-        return new Context(organizationId, Map.copyOf(values));
+        return new Context(organizationId, systemUser, Map.copyOf(values));
     }
 
-    private record Context(@Nullable UUID organizationId, Map<String, Object> values) {}
+    private record Context(@Nullable UUID organizationId, boolean systemUser, Map<String, Object> values) {}
 }
