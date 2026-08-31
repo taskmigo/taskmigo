@@ -23,7 +23,7 @@ test.describe("API resources @api @resources", () => {
 
     const malformed = await api.post("/api/v0/organizations", {
       headers: { "Content-Type": "application/json" },
-      data: '{"key":',
+      data: Buffer.from('{"key":'),
     });
     await expectFailure(malformed, 400, "request.malformed", "MALFORMED_REQUEST");
   });
