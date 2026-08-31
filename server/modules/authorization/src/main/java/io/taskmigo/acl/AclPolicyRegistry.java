@@ -61,7 +61,7 @@ public class AclPolicyRegistry {
     @Transactional
     public void upsertCustom(UUID organizationId, String name, Map<String, Object> definition) {
         String kind = this.compiler.kind(definition);
-        validate(name, kind, definition);
+        this.validate(name, kind, definition);
         AclPolicyEntity entity = this.repository
             .findByOrganizationIdAndName(organizationId, name)
             .orElseGet(() -> new AclPolicyEntity(UUID.randomUUID(), organizationId, name, kind, definition));

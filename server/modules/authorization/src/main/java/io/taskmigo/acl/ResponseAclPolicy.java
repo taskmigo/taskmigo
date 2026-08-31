@@ -34,13 +34,13 @@ public record ResponseAclPolicy(String name, Origin origin, ApiTarget target, Li
         }
 
         public boolean allows(String field) {
-            return all || fields.contains(field);
+            return this.all || this.fields.contains(field);
         }
 
         public FieldSelection intersect(FieldSelection other) {
-            if (all) return other;
+            if (this.all) return other;
             if (other.all) return this;
-            var intersection = new java.util.LinkedHashSet<>(fields);
+            var intersection = new java.util.LinkedHashSet<>(this.fields);
             intersection.retainAll(other.fields);
             return only(intersection);
         }

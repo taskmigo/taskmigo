@@ -16,12 +16,15 @@ public record ApiTarget(Set<String> methods, String path) {
     }
 
     public boolean matches(String method, String requestPath) {
-        return methods.contains(method.toUpperCase(Locale.ROOT)) && Pattern.matches(toRegex(path), requestPath);
+        return (
+            this.methods.contains(method.toUpperCase(Locale.ROOT)) && Pattern.matches(toRegex(this.path), requestPath)
+        );
     }
 
     private static String toRegex(String glob) {
         StringBuilder regex = new StringBuilder("^");
-        for (int index = 0; index < glob.length(); index++) {
+        int index = 0;
+        while (index < glob.length()) {
             char character = glob.charAt(index);
             if (character == '*') {
                 boolean doubleStar = index + 1 < glob.length() && glob.charAt(index + 1) == '*';
@@ -32,6 +35,7 @@ public record ApiTarget(Set<String> methods, String path) {
             } else {
                 regex.append(character);
             }
+            index++;
         }
         return regex.append('$').toString();
     }
