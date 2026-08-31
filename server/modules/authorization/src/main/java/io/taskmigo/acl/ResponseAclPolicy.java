@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Set;
 
 public record ResponseAclPolicy(String name, Origin origin, ApiTarget target, List<Rule> rules) {
-
     public ResponseAclPolicy {
         rules = List.copyOf(rules);
     }

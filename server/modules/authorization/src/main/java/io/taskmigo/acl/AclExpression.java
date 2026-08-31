@@ -4,8 +4,14 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 public sealed interface AclExpression
-    permits AclExpression.Eq, AclExpression.Exists, AclExpression.All, AclExpression.Any, AclExpression.Not, AclExpression.Relation {
-
+    permits
+        AclExpression.Eq,
+        AclExpression.Exists,
+        AclExpression.All,
+        AclExpression.Any,
+        AclExpression.Not,
+        AclExpression.Relation
+{
     record Eq(Value left, Value right) implements AclExpression {}
 
     record Exists(Value value) implements AclExpression {}

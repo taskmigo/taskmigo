@@ -59,12 +59,20 @@ public final class AclPolicyRegistry {
     public void upsertCustom(UUID organizationId, String name, Map<String, Object> definition) {
         switch (this.compiler.kind(definition)) {
             case "acl/request" -> {
-                RequestAclPolicy policy = this.compiler.compileRequest(name, RequestAclPolicy.Origin.CUSTOM, definition);
+                RequestAclPolicy policy = this.compiler.compileRequest(
+                    name,
+                    RequestAclPolicy.Origin.CUSTOM,
+                    definition
+                );
                 this.customResponses.computeIfPresent(organizationId, (ignored, policies) -> without(policies, name));
                 this.customRequests.compute(organizationId, (ignored, policies) -> with(policies, name, policy));
             }
             case "acl/response" -> {
-                ResponseAclPolicy policy = this.compiler.compileResponse(name, ResponseAclPolicy.Origin.CUSTOM, definition);
+                ResponseAclPolicy policy = this.compiler.compileResponse(
+                    name,
+                    ResponseAclPolicy.Origin.CUSTOM,
+                    definition
+                );
                 this.customRequests.computeIfPresent(organizationId, (ignored, policies) -> without(policies, name));
                 this.customResponses.compute(organizationId, (ignored, policies) -> with(policies, name, policy));
             }
@@ -86,13 +94,17 @@ public final class AclPolicyRegistry {
 
     public List<RequestAclPolicy> requestPolicies(@Nullable UUID organizationId) {
         List<RequestAclPolicy> policies = new ArrayList<>(this.systemRequests);
-        if (organizationId != null) policies.addAll(this.customRequests.getOrDefault(organizationId, Map.of()).values());
+        if (organizationId != null) policies.addAll(
+            this.customRequests.getOrDefault(organizationId, Map.of()).values()
+        );
         return List.copyOf(policies);
     }
 
     public List<ResponseAclPolicy> responsePolicies(@Nullable UUID organizationId) {
         List<ResponseAclPolicy> policies = new ArrayList<>(this.systemResponses);
-        if (organizationId != null) policies.addAll(this.customResponses.getOrDefault(organizationId, Map.of()).values());
+        if (organizationId != null) policies.addAll(
+            this.customResponses.getOrDefault(organizationId, Map.of()).values()
+        );
         return List.copyOf(policies);
     }
 

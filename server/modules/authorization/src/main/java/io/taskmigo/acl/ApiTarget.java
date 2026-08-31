@@ -5,9 +5,11 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 public record ApiTarget(Set<String> methods, String path) {
-
     public ApiTarget {
-        methods = methods.stream().map(method -> method.toUpperCase(Locale.ROOT)).collect(java.util.stream.Collectors.toUnmodifiableSet());
+        methods = methods
+            .stream()
+            .map(method -> method.toUpperCase(Locale.ROOT))
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
         if (!path.startsWith("/api/")) {
             throw new IllegalArgumentException("ACL targets must be API paths: " + path);
         }

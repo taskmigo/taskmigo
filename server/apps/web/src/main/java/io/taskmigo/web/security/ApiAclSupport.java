@@ -29,12 +29,22 @@ public final class ApiAclSupport {
 
     boolean isRequestAllowed(Authentication authentication, String method, String path) {
         Context context = this.context(authentication, method, path);
-        return this.engine.isRequestAllowed(this.policies.requestPolicies(context.organizationId()), method, path, context.values());
+        return this.engine.isRequestAllowed(
+            this.policies.requestPolicies(context.organizationId()),
+            method,
+            path,
+            context.values()
+        );
     }
 
     public ResponsePlan responsePlan(Authentication authentication, String method, String path) {
         Context context = this.context(authentication, method, path);
-        return this.engine.planResponse(this.policies.responsePolicies(context.organizationId()), method, path, context.values());
+        return this.engine.planResponse(
+            this.policies.responsePolicies(context.organizationId()),
+            method,
+            path,
+            context.values()
+        );
     }
 
     public void requireOrganization(Authentication authentication, UUID organizationId) {

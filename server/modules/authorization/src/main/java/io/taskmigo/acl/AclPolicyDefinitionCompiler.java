@@ -24,7 +24,11 @@ public final class AclPolicyDefinitionCompiler {
         return string(required(definition, "kind"), "kind");
     }
 
-    public RequestAclPolicy compileRequest(String name, RequestAclPolicy.Origin origin, Map<String, Object> definition) {
+    public RequestAclPolicy compileRequest(
+        String name,
+        RequestAclPolicy.Origin origin,
+        Map<String, Object> definition
+    ) {
         requireKind(definition, "acl/request");
         Map<String, Object> spec = map(required(definition, "spec"), "spec");
         List<RequestAclPolicy.Rule> rules = requestRules(spec);
@@ -126,13 +130,17 @@ public final class AclPolicyDefinitionCompiler {
     }
 
     private static List<AclExpression> expressions(Object raw, String field) {
-        return list(raw, field).stream().map(value -> expression(map(value, field + "[]"))).toList();
+        return list(raw, field)
+            .stream()
+            .map(value -> expression(map(value, field + "[]")))
+            .toList();
     }
 
     private static Value value(Object raw) {
-        if (raw instanceof String string && (
-            string.startsWith("principal.") || string.startsWith("request.") || string.startsWith("object.")
-        )) {
+        if (
+            raw instanceof String string &&
+            (string.startsWith("principal.") || string.startsWith("request.") || string.startsWith("object."))
+        ) {
             return new Ref(string);
         }
         return new Literal(raw);
@@ -145,9 +153,12 @@ public final class AclPolicyDefinitionCompiler {
                 validateRequestValue(right);
             }
             case Exists(var value) -> validateRequestValue(value);
-            case All(var expressions), Any(var expressions) -> expressions.forEach(AclPolicyDefinitionCompiler::validateRequestExpression);
+            case All(var expressions) -> expressions.forEach(AclPolicyDefinitionCompiler::validateRequestExpression);
+            case Any(var expressions) -> expressions.forEach(AclPolicyDefinitionCompiler::validateRequestExpression);
             case Not(var nested) -> validateRequestExpression(nested);
-            case Relation ignored -> throw new IllegalArgumentException("relation is only valid in acl/response policies");
+            case Relation ignored -> throw new IllegalArgumentException(
+                "relation is only valid in acl/response policies"
+            );
         }
     }
 
@@ -159,7 +170,9 @@ public final class AclPolicyDefinitionCompiler {
 
     private static void requireKind(Map<String, Object> definition, String expected) {
         String actual = string(required(definition, "kind"), "kind");
-        if (!expected.equals(actual)) throw new IllegalArgumentException("Expected kind " + expected + ", got " + actual);
+        if (!expected.equals(actual)) throw new IllegalArgumentException(
+            "Expected kind " + expected + ", got " + actual
+        );
     }
 
     private static Object required(Map<String, Object> source, String key) {
@@ -179,7 +192,9 @@ public final class AclPolicyDefinitionCompiler {
         if (!(value instanceof Map<?, ?> raw)) throw new IllegalArgumentException(field + " must be an object");
         Map<String, Object> result = new LinkedHashMap<>();
         for (var entry : raw.entrySet()) {
-            if (!(entry.getKey() instanceof String key)) throw new IllegalArgumentException(field + " keys must be strings");
+            if (!(entry.getKey() instanceof String key)) throw new IllegalArgumentException(
+                field + " keys must be strings"
+            );
             result.put(key, entry.getValue());
         }
         return result;

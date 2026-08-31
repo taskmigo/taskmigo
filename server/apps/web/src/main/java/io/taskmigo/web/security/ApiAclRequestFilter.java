@@ -27,11 +27,11 @@ final class ApiAclRequestFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
         throws ServletException, IOException {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.isAuthenticated() && !this.acl.isRequestAllowed(
-            authentication,
-            request.getMethod(),
-            request.getServletPath()
-        )) {
+        if (
+            authentication != null &&
+            authentication.isAuthenticated() &&
+            !this.acl.isRequestAllowed(authentication, request.getMethod(), request.getServletPath())
+        ) {
             response.sendError(HttpStatus.FORBIDDEN.value(), "ACL denied the request");
             return;
         }

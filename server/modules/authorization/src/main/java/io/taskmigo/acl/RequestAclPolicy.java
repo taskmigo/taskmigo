@@ -3,7 +3,6 @@ package io.taskmigo.acl;
 import java.util.List;
 
 public record RequestAclPolicy(String name, Origin origin, ApiTarget target, List<Rule> rules) {
-
     public RequestAclPolicy {
         rules = List.copyOf(rules);
     }
