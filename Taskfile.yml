@@ -249,6 +249,7 @@ tasks:
           deployment/{{.RELEASE}}-worker --timeout=180s
         {{.KUBECTL}} -n "{{.NAMESPACE}}" rollout status \
           deployment/{{.RELEASE}}-client --timeout=180s
+
   kubernetes:verify:
     desc: Verify workloads, routes, migrations, and public endpoints
     vars:

@@ -21,8 +21,8 @@ The local stack contains:
 - one `Gateway` plus separate `HTTPRoute` resources for the client and web server.
 
 GitHub Actions starts Minikube with `wait: false`, prepares browser E2E while the cluster starts, then lets Taskfile wait at
-the first cluster-dependent operation. Browser E2E is intentionally separate: the `e2e/` package owns Playwright setup and execution, and CI invokes it directly
-after the Taskfile-managed deployment is ready.
+the first cluster-dependent operation. Browser E2E is intentionally separate: the `e2e/` package owns Playwright setup and
+execution, and CI invokes it directly after the Taskfile-managed deployment is ready.
 
 ## Prerequisites
 

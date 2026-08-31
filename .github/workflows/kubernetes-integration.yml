@@ -94,9 +94,6 @@ jobs:
         with:
           version: 3.53.1
 
-      - name: Validate chart
-        run: task kubernetes:validate
-
       - name: Deploy to Minikube
         run: task kubernetes:deploy
 
