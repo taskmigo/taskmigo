@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
-import io.taskmigo.access.PermissionCatalog;
+import io.taskmigo.access.AccessService;
 import io.taskmigo.identity.oauth.InternalClientMetadata;
 import io.taskmigo.organization.OrganizationService;
 import java.net.http.HttpClient;
@@ -65,11 +65,12 @@ class OAuthInfrastructureIntegrationTest {
     }
 
     @Test
-    void managedClientCredentialsTokenCarriesServicePermissionsAndPersistsAuthorization() {
+    void managedClientCredentialsTokenCarriesServicePermissionsAndCanReadStatementCatalog() {
         String clientId = "managed-" + UUID.randomUUID();
         String clientSecret = "managed-secret";
         RegisteredClient client = this.managedClient(clientId, clientSecret);
         this.clients.save(client);
+        UUID organizationId = this.organizations.create("statement-catalog-" + UUID.randomUUID(), "Statement Catalog");
 
         assertThat(InternalClientMetadata.isManaged(client)).isTrue();
 
@@ -77,13 +78,13 @@ class OAuthInfrastructureIntegrationTest {
         String response = Objects.requireNonNull(
             this.http()
                 .get()
-                .uri("/api/v0/permissions")
+                .uri("/api/v0/organizations/{organizationId}/statements", organizationId)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .retrieve()
                 .body(String.class)
         );
 
-        assertThat(response).contains(PermissionCatalog.PROJECT_READ);
+        assertThat(response).contains(AccessService.PROJECT_CREATE_STATEMENT);
         assertThat(this.authorizations.findByToken(token, OAuth2TokenType.ACCESS_TOKEN)).isNotNull();
     }
 
@@ -109,16 +110,17 @@ class OAuthInfrastructureIntegrationTest {
     }
 
     @Test
-    void scopeWithoutManagedClientMarkerCannotAccessApi() {
+    void scopeWithoutManagedClientMarkerCannotReadOrganizationStatementCatalog() {
         String clientId = "scope-only-" + UUID.randomUUID();
         String clientSecret = "scope-only-secret";
         this.clients.save(this.unmanagedClient(clientId, clientSecret));
         String token = this.accessToken(clientId, clientSecret);
+        UUID organizationId = this.organizations.create("unmanaged-catalog-" + UUID.randomUUID(), "Unmanaged Catalog");
 
         assertThatThrownBy(() ->
             this.http()
                 .get()
-                .uri("/api/v0/permissions")
+                .uri("/api/v0/organizations/{organizationId}/statements", organizationId)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .retrieve()
                 .toBodilessEntity()

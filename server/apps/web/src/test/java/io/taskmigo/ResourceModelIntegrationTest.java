@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.access.AccessService;
-import io.taskmigo.access.PermissionCatalog;
 import io.taskmigo.foundation.CursorPage;
 import io.taskmigo.group.GroupService;
 import io.taskmigo.history.ProjectHistory;
@@ -92,6 +91,24 @@ class ResourceModelIntegrationTest {
         ).isEqualTo(1);
         assertThat(
             this.jdbc.queryForObject(
+                "select count(*) from information_schema.tables where table_name = 'acl_statements'",
+                Integer.class
+            )
+        ).isEqualTo(1);
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from information_schema.tables where table_name = 'role_statements'",
+                Integer.class
+            )
+        ).isEqualTo(1);
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from information_schema.tables where table_name = 'user_roles'",
+                Integer.class
+            )
+        ).isEqualTo(1);
+        assertThat(
+            this.jdbc.queryForObject(
                 "select count(*) from information_schema.columns where table_name = 'projects' and column_name = 'archived_at'",
                 Integer.class
             )
@@ -105,6 +122,12 @@ class ResourceModelIntegrationTest {
         assertThat(
             this.jdbc.queryForObject(
                 "select count(*) from information_schema.columns where table_name = 'users' and column_name = 'is_system'",
+                Integer.class
+            )
+        ).isZero();
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from information_schema.columns where table_name = 'users' and column_name = 'role'",
                 Integer.class
             )
         ).isZero();
@@ -158,7 +181,7 @@ class ResourceModelIntegrationTest {
             null,
             admin
         );
-        UUID role = this.access.createRole(org, "History Role", null, Set.of(PermissionCatalog.PROJECT_READ));
+        UUID role = this.access.createRole(org, "history-role", "History Role", null, Set.of());
         UUID member = this.projects.addMember(project, "USER", user, self);
         this.projects.setMemberRoles(project, member, Set.of(role), admin);
         this.projects.removeMember(project, member, admin);
@@ -200,7 +223,7 @@ class ResourceModelIntegrationTest {
     }
 
     @Test
-    void externalGroupAccessIsDerivedLiveAndAdditive() {
+    void externalGroupStatementsAreDerivedLive() {
         UUID customer = this.organizations.create("customer-" + UUID.randomUUID(), "Customer");
         UUID vendor = this.organizations.create("vendor-" + UUID.randomUUID(), "Vendor");
         UUID engineer = this.users.create(
@@ -212,12 +235,14 @@ class ResourceModelIntegrationTest {
         );
         UUID vendorGroup = this.groups.create(vendor, "Backend", null);
         UUID project = this.projects.create(customer, "alpha-" + UUID.randomUUID(), "Alpha", null);
-        UUID directRole = this.access.createRole(customer, "Reader", null, Set.of(PermissionCatalog.PROJECT_READ));
+        UUID projectCreateStatement = this.statementId(customer, AccessService.PROJECT_CREATE_STATEMENT);
+        UUID directRole = this.access.createRole(customer, "observer", "Observer", null, Set.of());
         UUID groupRole = this.access.createRole(
             customer,
-            "Member manager",
+            "delivery-lead",
+            "Delivery Lead",
             null,
-            Set.of(PermissionCatalog.PROJECT_MEMBERS_MANAGE)
+            Set.of(projectCreateStatement)
         );
 
         this.groups.addMember(vendorGroup, engineer);
@@ -226,18 +251,15 @@ class ResourceModelIntegrationTest {
         UUID groupMembership = this.projects.addMember(project, "GROUP", vendorGroup);
         this.projects.setMemberRoles(project, groupMembership, Set.of(groupRole));
 
-        assertThat(this.projects.effectivePermissions(project, engineer)).containsExactlyInAnyOrder(
-            PermissionCatalog.PROJECT_READ,
-            PermissionCatalog.PROJECT_MEMBERS_MANAGE
+        assertThat(this.projects.effectiveStatements(project, engineer)).containsExactly(
+            AccessService.PROJECT_CREATE_STATEMENT
         );
         this.groups.removeMember(vendorGroup, engineer);
-        assertThat(this.projects.effectivePermissions(project, engineer)).containsExactly(
-            PermissionCatalog.PROJECT_READ
-        );
+        assertThat(this.projects.effectiveStatements(project, engineer)).isEmpty();
     }
 
     @Test
-    void systemUserAlwaysHasEveryProjectPermissionWithoutMembership() {
+    void systemUserAlwaysHasEverySystemStatementWithoutMembership() {
         UUID organization = this.organizations.create("system-access-" + UUID.randomUUID(), "System Access");
         UUID project = this.projects.create(
             organization,
@@ -247,8 +269,8 @@ class ResourceModelIntegrationTest {
         );
         UUID systemUser = this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().id();
 
-        assertThat(this.projects.effectivePermissions(project, systemUser)).containsExactlyInAnyOrderElementsOf(
-            PermissionCatalog.ALL
+        assertThat(this.projects.effectiveStatements(project, systemUser)).containsExactlyInAnyOrderElementsOf(
+            this.access.systemStatementKeys()
         );
     }
 
@@ -265,7 +287,7 @@ class ResourceModelIntegrationTest {
         );
         UUID projectA = this.projects.create(orgA, "p-" + UUID.randomUUID(), "Project", null);
         UUID member = this.projects.addMember(projectA, "USER", userB);
-        UUID roleB = this.access.createRole(orgB, "Vendor Role", null, Set.of(PermissionCatalog.PROJECT_READ));
+        UUID roleB = this.access.createRole(orgB, "vendor-role", "Vendor Role", null, Set.of());
         assertThatThrownBy(() -> this.projects.setMemberRoles(projectA, member, Set.of(roleB)))
             .isInstanceOf(ProjectException.class)
             .hasMessageContaining("Project Organization");
@@ -286,5 +308,15 @@ class ResourceModelIntegrationTest {
         assertThatThrownBy(() -> this.projects.addMember(project, "USER", user))
             .isInstanceOf(ProjectException.class)
             .hasMessageContaining("read-only");
+    }
+
+    private UUID statementId(UUID organizationId, String key) {
+        return this.access
+            .statements(organizationId)
+            .stream()
+            .filter(statement -> key.equals(statement.key()))
+            .findFirst()
+            .orElseThrow()
+            .id();
     }
 }

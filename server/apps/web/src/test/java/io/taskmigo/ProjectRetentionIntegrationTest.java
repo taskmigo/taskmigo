@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.access.AccessService;
-import io.taskmigo.access.PermissionCatalog;
 import io.taskmigo.history.ProjectHistory;
 import io.taskmigo.organization.OrganizationService;
 import io.taskmigo.project.ProjectException;
@@ -67,9 +66,10 @@ class ProjectRetentionIntegrationTest {
         );
         UUID role = this.access.createRole(
             organization,
-            "Retention Reader",
+            "retention-observer",
+            "Retention Observer",
             null,
-            Set.of(PermissionCatalog.PROJECT_READ)
+            Set.of()
         );
         UUID project = this.projects.create(
             organization,
@@ -84,7 +84,7 @@ class ProjectRetentionIntegrationTest {
         assertThat(this.projects.deleteArchivedBefore(Instant.now().minus(Duration.ofDays(30)))).isZero();
         assertThat(this.projects.deleteArchivedBefore(Instant.now().plus(Duration.ofDays(1)))).isEqualTo(1);
         assertThat(this.history.list(project, null, 10).items()).isEmpty();
-        assertThatThrownBy(() -> this.projects.effectivePermissions(project, user))
+        assertThatThrownBy(() -> this.projects.effectiveStatements(project, user))
             .isInstanceOf(ProjectException.class)
             .hasMessageContaining("Project not found");
     }
