@@ -1,6 +1,7 @@
 package io.taskmigo.web.security;
 
 import io.taskmigo.acl.AclPolicyRegistry;
+import io.taskmigo.acl.AclPolicyRegistry.PolicySnapshot;
 import io.taskmigo.acl.ApiAclEngine;
 import io.taskmigo.acl.ApiAclEngine.ResponsePlan;
 import io.taskmigo.user.UserService;
@@ -12,10 +13,14 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
 
 /// Adapts authenticated HTTP principals into the stable ACL context used by request and response policy evaluation.
 @Component
 public final class ApiAclSupport {
+
+    private static final String POLICY_SNAPSHOT_ATTRIBUTE = ApiAclSupport.class.getName() + ".policySnapshot";
 
     private final AclPolicyRegistry policies;
     private final ApiAclEngine engine;
@@ -29,22 +34,14 @@ public final class ApiAclSupport {
 
     boolean isRequestAllowed(Authentication authentication, String method, String path) {
         Context context = this.context(authentication, method, path);
-        return this.engine.isRequestAllowed(
-            this.policies.requestPolicies(context.organizationId()),
-            method,
-            path,
-            context.values()
-        );
+        PolicySnapshot snapshot = this.policySnapshot(context.organizationId());
+        return this.engine.isRequestAllowed(snapshot.requestPolicies(), method, path, context.values());
     }
 
     public ResponsePlan responsePlan(Authentication authentication, String method, String path) {
         Context context = this.context(authentication, method, path);
-        return this.engine.planResponse(
-            this.policies.responsePolicies(context.organizationId()),
-            method,
-            path,
-            context.values()
-        );
+        PolicySnapshot snapshot = this.policySnapshot(context.organizationId());
+        return this.engine.planResponse(snapshot.responsePolicies(), method, path, context.values());
     }
 
     public void requireOrganization(Authentication authentication, UUID organizationId) {
@@ -52,6 +49,16 @@ public final class ApiAclSupport {
         if (!organizationId.equals(context.organizationId())) {
             throw new AccessDeniedException("ACL policies can only be managed for the principal organization");
         }
+    }
+
+    private PolicySnapshot policySnapshot(@Nullable UUID organizationId) {
+        RequestAttributes attributes = RequestContextHolder.currentRequestAttributes();
+        Object existing = attributes.getAttribute(POLICY_SNAPSHOT_ATTRIBUTE, RequestAttributes.SCOPE_REQUEST);
+        if (existing instanceof PolicySnapshot snapshot) return snapshot;
+
+        PolicySnapshot snapshot = this.policies.snapshot(organizationId);
+        attributes.setAttribute(POLICY_SNAPSHOT_ATTRIBUTE, snapshot, RequestAttributes.SCOPE_REQUEST);
+        return snapshot;
     }
 
     private Context context(Authentication authentication, String method, String path) {
