@@ -2,7 +2,7 @@
 
 This module proves API-only ACL with two independent policy kinds: `acl/request` and `acl/response`.
 
-System policies are built into `AclPolicyRegistry` and are not exposed by the management API. Custom policies can be managed at `/api/v0/organizations/{organizationId}/acl-policies/{name}` during the POC.
+System policies are built into `AclPolicyRegistry`, are always evaluated as mandatory guardrails, and are not exposed by the management API. Users therefore cannot update, delete, disable, or override them. Custom policies can be managed at `/api/v0/organizations/{organizationId}/acl-policies/{name}` during the POC.
 
 ## Request policy
 
