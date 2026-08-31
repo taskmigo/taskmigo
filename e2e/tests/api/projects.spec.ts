@@ -124,11 +124,11 @@ test.describe("Project API @api @projects", () => {
 
     const first = await api.history(projectId, "?limit=2");
     expect(first.data).toHaveLength(2);
-    expect(first.pagination.next_cursor).toEqual(expect.any(String));
+    expect(first.pagination.cursor.next_cursor).toEqual(expect.any(String));
     expect(first.data[0].actor).toMatchObject({ id: "taskmigo-helm-test" });
 
     const firstIds = first.data.map((event) => event.id);
-    const second = await api.history(projectId, `?limit=2&cursor=${first.pagination.next_cursor}`);
+    const second = await api.history(projectId, `?limit=2&cursor=${first.pagination.cursor.next_cursor}`);
     expect(second.data.length).toBeGreaterThan(0);
     expect(second.data.every((event) => !firstIds.includes(event.id))).toBe(true);
 
