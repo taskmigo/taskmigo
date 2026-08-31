@@ -1,65 +1,32 @@
-import { expect, test } from "@playwright/test";
-
-import {
-  apiHeaders,
-  expectFailure,
-  expectSuccess,
-  requestClientCredentialsToken,
-} from "./client.js";
+import { expectFailure } from "./client.js";
+import { expect, test } from "./fixtures.js";
 
 test.describe("API security @api @security", () => {
-  test("rejects an unauthenticated API request", async ({ request }) => {
-    const response = await request.get("/api/v0/permissions");
-    await expectFailure(
-      response,
-      401,
-      "security.unauthorized",
-      "UNAUTHORIZED",
-    );
+  test("rejects an unauthenticated API request", async ({ api }) => {
+    const response = await api.raw.get("/api/v0/permissions");
+    await expectFailure(response, 401, "security.unauthorized", "UNAUTHORIZED");
   });
 
-  test("rejects a malformed bearer token", async ({ request }) => {
-    const response = await request.get("/api/v0/permissions", {
+  test("rejects a malformed bearer token", async ({ api }) => {
+    const response = await api.raw.get("/api/v0/permissions", {
       headers: { Authorization: "Bearer definitely-not-a-jwt" },
     });
-    await expectFailure(
-      response,
-      401,
-      "security.unauthorized",
-      "UNAUTHORIZED",
-    );
+    await expectFailure(response, 401, "security.unauthorized", "UNAUTHORIZED");
   });
 
-  test("issues a client-credentials token that can call the API", async ({
-    request,
-  }) => {
-    const response = await request.get("/api/v0/permissions", {
-      headers: await apiHeaders(request),
-    });
-    await expectSuccess<string[]>(
-      response,
-      200,
-      "resource.permissions.retrieved",
-    );
+  test("issues a client-credentials token that can call the API", async ({ api }) => {
+    expect(await api.permissions()).not.toHaveLength(0);
   });
 
-  test("rejects invalid OAuth client credentials", async ({ request }) => {
-    const response = await requestClientCredentialsToken(request, {
-      clientSecret: "incorrect-e2e-secret",
-    });
+  test("rejects invalid OAuth client credentials", async ({ api }) => {
+    const response = await api.requestToken({ clientSecret: "incorrect-e2e-secret" });
     expect(response.status()).toBe(401);
-    await expect(response.json()).resolves.toMatchObject({
-      error: "invalid_client",
-    });
+    await expect(response.json()).resolves.toMatchObject({ error: "invalid_client" });
   });
 
-  test("rejects an unsupported OAuth scope", async ({ request }) => {
-    const response = await requestClientCredentialsToken(request, {
-      scope: "taskmigo.invalid",
-    });
+  test("rejects an unsupported OAuth scope", async ({ api }) => {
+    const response = await api.requestToken({ scope: "taskmigo.invalid" });
     expect(response.status()).toBe(400);
-    await expect(response.json()).resolves.toMatchObject({
-      error: "invalid_scope",
-    });
+    await expect(response.json()).resolves.toMatchObject({ error: "invalid_scope" });
   });
 });
