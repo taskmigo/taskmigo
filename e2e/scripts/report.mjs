@@ -53,11 +53,12 @@ const countsFor = (tests) => {
 
 const escapeCell = (value) => String(value).replaceAll("|", "\\|").replaceAll("\n", " ");
 
-const summaryTable = (counts) => [
-  "| Total | Passed | Failed | Flaky | Skipped |",
-  "| ---: | ---: | ---: | ---: | ---: |",
-  `| ${counts.total} | ${counts.passed} | ${counts.failed} | ${counts.flaky} | ${counts.skipped} |`,
-].join("\n");
+const summaryTable = (counts) =>
+  [
+    "| Total | Passed | Failed | Flaky | Skipped |",
+    "| ---: | ---: | ---: | ---: | ---: |",
+    `| ${counts.total} | ${counts.passed} | ${counts.failed} | ${counts.flaky} | ${counts.skipped} |`,
+  ].join("\n");
 
 const tagTable = (tests) => {
   const tags = new Map();
@@ -73,10 +74,12 @@ const tagTable = (tests) => {
   return [
     "| Tag | Tests | Passed | Failed | Flaky | Skipped |",
     "| --- | ---: | ---: | ---: | ---: | ---: |",
-    ...[...tags.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([tag, tagged]) => {
-      const counts = countsFor(tagged);
-      return `| \`${escapeCell(tag)}\` | ${counts.total} | ${counts.passed} | ${counts.failed} | ${counts.flaky} | ${counts.skipped} |`;
-    }),
+    ...[...tags.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([tag, tagged]) => {
+        const counts = countsFor(tagged);
+        return `| \`${escapeCell(tag)}\` | ${counts.total} | ${counts.passed} | ${counts.failed} | ${counts.flaky} | ${counts.skipped} |`;
+      }),
   ].join("\n");
 };
 
