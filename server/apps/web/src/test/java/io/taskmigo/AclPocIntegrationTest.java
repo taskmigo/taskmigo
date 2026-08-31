@@ -101,12 +101,7 @@ class AclPocIntegrationTest {
         var snapshot = this.policies.snapshot(organization);
 
         assertThat(
-            this.engine.isRequestAllowed(
-                snapshot.requestPolicies(),
-                "PATCH",
-                "/api/v0/projects/123/archive",
-                context
-            )
+            this.engine.isRequestAllowed(snapshot.requestPolicies(), "PATCH", "/api/v0/projects/123/archive", context)
         ).isFalse();
         assertThat(this.policies.customPolicyNames(organization)).containsExactly("block-archive");
         assertThat(snapshot.requestPolicies()).anyMatch(policy -> policy.name().equals("system/api-authenticated"));
