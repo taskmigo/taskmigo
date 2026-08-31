@@ -3,15 +3,14 @@ import { z } from "zod";
 
 import { e2eApiEnvironment } from "../support/environment.js";
 import {
-  basicMetaSchema,
+  basicSuccessEnvelopeSchema,
   createdResourceSchema,
-  cursorMetaSchema,
+  cursorSuccessEnvelopeSchema,
   failureEnvelopeSchema,
   oauthErrorSchema,
   oauthTokenSchema,
   permissionListSchema,
   projectHistoryEntrySchema,
-  successEnvelopeSchema,
   type CreatedResource,
   type CursorPagination,
 } from "./schemas.js";
@@ -37,8 +36,8 @@ export const expectSuccess = async <DataSchema extends z.ZodType>(
   dataSchema: DataSchema,
 ): Promise<z.output<DataSchema>> => {
   expect(response.status()).toBe(status);
-  const body = successEnvelopeSchema(dataSchema, basicMetaSchema, status, messageCode).parse(await response.json());
-  return body.data;
+  const body = basicSuccessEnvelopeSchema(status, messageCode).parse(await response.json());
+  return dataSchema.parse(body.data);
 };
 
 export const expectCursorSuccess = async <DataSchema extends z.ZodType>(
@@ -48,8 +47,8 @@ export const expectCursorSuccess = async <DataSchema extends z.ZodType>(
   dataSchema: DataSchema,
 ): Promise<{ data: z.output<DataSchema>; pagination: CursorPagination }> => {
   expect(response.status()).toBe(status);
-  const body = successEnvelopeSchema(dataSchema, cursorMetaSchema, status, messageCode).parse(await response.json());
-  return { data: body.data, pagination: body.meta.pagination };
+  const body = cursorSuccessEnvelopeSchema(status, messageCode).parse(await response.json());
+  return { data: dataSchema.parse(body.data), pagination: body.meta.pagination };
 };
 
 export const expectFailure = async (response: APIResponse, status: number, messageCode: string, errorCode: string) => {

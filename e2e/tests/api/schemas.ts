@@ -71,8 +71,6 @@ export const projectHistoryEntrySchema = z.strictObject({
   occurredAt: z.iso.datetime(),
 });
 
-export type ProjectHistoryEntry = z.infer<typeof projectHistoryEntrySchema>;
-
 export const oauthTokenSchema = z.strictObject({
   access_token: z.string().min(1),
   token_type: z.literal("Bearer"),
@@ -86,19 +84,25 @@ export const oauthErrorSchema = z.strictObject({
   error_uri: z.string().url().optional(),
 });
 
-export const successEnvelopeSchema = <DataSchema extends z.ZodType, MetaSchema extends z.ZodType>(
-  dataSchema: DataSchema,
-  metaSchema: MetaSchema,
-  status: number,
-  messageCode: string,
-) =>
+const successFields = (status: number, messageCode: string) => ({
+  success: z.literal(true),
+  status_code: z.literal(status),
+  message: z.strictObject({ code: z.literal(messageCode), text: z.string() }),
+  error: z.null(),
+});
+
+export const basicSuccessEnvelopeSchema = (status: number, messageCode: string) =>
   z.strictObject({
-    success: z.literal(true),
-    status_code: z.literal(status),
-    message: z.strictObject({ code: z.literal(messageCode), text: z.string() }),
-    error: z.null(),
-    meta: metaSchema,
-    data: dataSchema,
+    ...successFields(status, messageCode),
+    meta: basicMetaSchema,
+    data: z.unknown(),
+  });
+
+export const cursorSuccessEnvelopeSchema = (status: number, messageCode: string) =>
+  z.strictObject({
+    ...successFields(status, messageCode),
+    meta: cursorMetaSchema,
+    data: z.unknown(),
   });
 
 export const failureEnvelopeSchema = (status: number, messageCode: string, errorCode: string) =>
