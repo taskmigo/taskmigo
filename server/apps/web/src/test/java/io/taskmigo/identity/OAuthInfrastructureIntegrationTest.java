@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
-import io.taskmigo.access.AccessService;
 import io.taskmigo.identity.oauth.InternalClientMetadata;
 import io.taskmigo.organization.OrganizationService;
 import java.net.http.HttpClient;
@@ -84,7 +83,9 @@ class OAuthInfrastructureIntegrationTest {
                 .body(String.class)
         );
 
-        assertThat(response).contains(AccessService.PROJECT_CREATE_STATEMENT);
+        assertThat(response)
+            .contains("\"code\":\"resource.statements.retrieved\"")
+            .contains("\"data\":[]");
         assertThat(this.authorizations.findByToken(token, OAuth2TokenType.ACCESS_TOKEN)).isNotNull();
     }
 

@@ -37,7 +37,7 @@ class ApiDocumentationIntegrationTest {
             .contains("\"title\":\"Taskmigo API\"")
             .contains("\"version\":\"v0\"")
             .contains("\"taskmigoOAuth\"")
-            .contains("\"/api/v0/permissions\"")
+            .contains("\"/api/v0/organizations/{organizationId}/statements\"")
             .contains("\"ApiResponse\"")
             .contains("\"BasicMeta\"")
             .contains("\"status_code\"")

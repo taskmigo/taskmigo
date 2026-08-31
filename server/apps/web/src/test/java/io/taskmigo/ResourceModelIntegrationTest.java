@@ -15,6 +15,7 @@ import io.taskmigo.user.SystemUser;
 import io.taskmigo.user.UserService;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -224,6 +225,7 @@ class ResourceModelIntegrationTest {
 
     @Test
     void externalGroupStatementsAreDerivedLive() {
+        this.installProjectCreateStatement();
         UUID customer = this.organizations.create("customer-" + UUID.randomUUID(), "Customer");
         UUID vendor = this.organizations.create("vendor-" + UUID.randomUUID(), "Vendor");
         UUID engineer = this.users.create(
@@ -308,6 +310,34 @@ class ResourceModelIntegrationTest {
         assertThatThrownBy(() -> this.projects.addMember(project, "USER", user))
             .isInstanceOf(ProjectException.class)
             .hasMessageContaining("read-only");
+    }
+
+    private void installProjectCreateStatement() {
+        this.access.reconcileSystem(
+            Map.of(
+                AccessService.PROJECT_CREATE_STATEMENT,
+                new AccessService.SystemStatementDefinition(
+                    "Create Project",
+                    null,
+                    Map.of(
+                        "kind",
+                        "acl/statement",
+                        "spec",
+                        Map.of(
+                            "mode",
+                            "request",
+                            "target",
+                            Map.of("methods", List.of("POST"), "path", "/api/v0/organizations/*/projects"),
+                            "effect",
+                            "allow",
+                            "when",
+                            Map.of("eq", List.of("request.organizationId", "principal.organizationId"))
+                        )
+                    )
+                )
+            ),
+            Map.of()
+        );
     }
 
     private UUID statementId(UUID organizationId, String key) {

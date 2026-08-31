@@ -36,15 +36,13 @@ class ApiResponseIntegrationTest {
 
     @Test
     void successfulResponsesUseTheV0EnvelopeWithoutPaginationWhenReturningAllData() {
-        String response = Objects.requireNonNull(
-            this.api().get().uri("/api/v0/permissions").retrieve().body(String.class)
-        );
+        String response = Objects.requireNonNull(this.api().get().uri("/api/v0/projects").retrieve().body(String.class));
 
         assertThat(response)
             .contains("\"success\":true")
             .contains("\"status_code\":200")
             .contains("\"message\":{")
-            .contains("\"code\":\"resource.permissions.retrieved\"")
+            .contains("\"code\":\"resource.project.listed\"")
             .contains("\"error\":null")
             .contains("\"meta\":{")
             .contains("\"execution\":{")
@@ -103,17 +101,16 @@ class ApiResponseIntegrationTest {
 
     @Test
     void authenticationErrorsUseTheSameV0Envelope() {
-        assertThatThrownBy(() ->
-            this.http().get().uri("/api/v0/permissions").retrieve().body(String.class)
-        ).isInstanceOfSatisfying(HttpClientErrorException.Unauthorized.class, exception ->
-            assertThat(exception.getResponseBodyAsString())
-                .contains("\"success\":false")
-                .contains("\"status_code\":401")
-                .contains("\"code\":\"security.unauthorized\"")
-                .contains("\"code\":\"UNAUTHORIZED\"")
-                .doesNotContain("\"pagination\"")
-                .contains("\"data\":null")
-        );
+        assertThatThrownBy(() -> this.http().get().uri("/api/v0/projects").retrieve().body(String.class))
+            .isInstanceOfSatisfying(HttpClientErrorException.Unauthorized.class, exception ->
+                assertThat(exception.getResponseBodyAsString())
+                    .contains("\"success\":false")
+                    .contains("\"status_code\":401")
+                    .contains("\"code\":\"security.unauthorized\"")
+                    .contains("\"code\":\"UNAUTHORIZED\"")
+                    .doesNotContain("\"pagination\"")
+                    .contains("\"data\":null")
+            );
     }
 
     private RestClient api() {
