@@ -2,7 +2,8 @@ package io.taskmigo.web.api.v0.feature.project;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonSetter;
-import io.taskmigo.acl.ApiAclEngine.ResponsePlan;
+import io.taskmigo.authorization.AuthorizationEngine.FieldDecision;
+import io.taskmigo.authorization.AuthorizationEngine.ObjectPlan;
 import io.taskmigo.foundation.CursorPage;
 import io.taskmigo.history.ProjectHistory;
 import io.taskmigo.project.ProjectAclQueryService;
@@ -11,6 +12,7 @@ import io.taskmigo.project.ProjectService;
 import io.taskmigo.web.api.v0.infrastructure.response.ApiResponse;
 import io.taskmigo.web.api.v0.infrastructure.response.ApiResponseFactory;
 import io.taskmigo.web.security.ApiAclSupport;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -42,8 +44,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v0")
 class ProjectController {
 
-    private static final String PROJECT_LIST_PATH = "/api/v0/projects";
-
     private final ProjectService projects;
     private final ProjectAclQueryService aclProjects;
     private final ProjectHistory history;
@@ -65,8 +65,8 @@ class ProjectController {
     }
 
     @GetMapping("/projects")
-    ResponseEntity<ApiResponse<List<Map<String, Object>>, ApiResponse.BasicMeta>> list(Authentication authentication) {
-        ResponsePlan plan = this.acl.responsePlan(authentication, "GET", PROJECT_LIST_PATH);
+    ResponseEntity<ApiResponse<List<Map<String, Object>>, ApiResponse.BasicMeta>> list(HttpServletRequest request) {
+        ObjectPlan plan = this.acl.objectPlan(request);
         List<Map<String, Object>> visible = this.aclProjects
             .list(plan)
             .stream()
@@ -189,19 +189,20 @@ class ProjectController {
         );
     }
 
-    private static Map<String, Object> mask(ProjectAclQueryService.ProjectView project, ResponsePlan plan) {
+    private Map<String, Object> mask(ProjectAclQueryService.ProjectView project, ObjectPlan plan) {
+        FieldDecision fields = this.acl.fieldDecision(plan, project.authorizationContext(), ProjectAclQueryService.ProjectView.FIELDS);
         Map<String, Object> result = new LinkedHashMap<>();
-        put(result, plan, "id", project.id());
-        put(result, plan, "organizationId", project.organizationId());
-        put(result, plan, "key", project.key());
-        put(result, plan, "name", project.name());
-        if (project.description() != null) put(result, plan, "description", project.description());
-        put(result, plan, "status", project.status());
+        put(result, fields, "id", project.id());
+        put(result, fields, "organizationId", project.organizationId());
+        put(result, fields, "key", project.key());
+        put(result, fields, "name", project.name());
+        if (project.description() != null) put(result, fields, "description", project.description());
+        put(result, fields, "status", project.status());
         return Map.copyOf(result);
     }
 
-    private static void put(Map<String, Object> target, ResponsePlan plan, String field, Object value) {
-        if (plan.fields().allows(field)) target.put(field, value);
+    private static void put(Map<String, Object> target, FieldDecision fields, String field, Object value) {
+        if (!fields.hiddenFields().contains(field)) target.put(field, value);
     }
 
     private static ProjectChanged.Actor actor(Authentication authentication) {

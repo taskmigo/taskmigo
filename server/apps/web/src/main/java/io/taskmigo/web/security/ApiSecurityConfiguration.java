@@ -1,6 +1,5 @@
 package io.taskmigo.web.security;
 
-import io.taskmigo.identity.ServicePrincipalPermissions;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -13,7 +12,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
-import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.RequestMatcher;
@@ -28,8 +26,7 @@ class ApiSecurityConfiguration {
     SecurityFilterChain securityFilterChain(
         HttpSecurity http,
         VersionedApiSecurityErrorHandler securityErrors,
-        AuthorizationServerSettings authorizationServerSettings,
-        ApiAclSupport acl
+        AuthorizationServerSettings authorizationServerSettings
     ) {
         RequestMatcher authEndpointMatcher = request ->
             authorizationServerSettings.getAuthorizationEndpoint().equals(request.getServletPath());
@@ -39,10 +36,7 @@ class ApiSecurityConfiguration {
                 .requestMatchers(authEndpointMatcher)
                 .authenticated()
                 .requestMatchers(VERSIONED_API_PATTERN)
-                .hasAllAuthorities(
-                    "SCOPE_taskmigo.api",
-                    "PERMISSION_" + ServicePrincipalPermissions.SYSTEM_RESOURCES_MANAGE
-                )
+                .hasAuthority("SCOPE_taskmigo.api")
                 .anyRequest()
                 .permitAll()
         )
@@ -60,8 +54,7 @@ class ApiSecurityConfiguration {
                     .authenticationEntryPoint(securityErrors)
                     .accessDeniedHandler(securityErrors)
                     .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
-            )
-            .addFilterAfter(new ApiAclRequestFilter(acl), BearerTokenAuthenticationFilter.class);
+            );
         return http.build();
     }
 
