@@ -3,6 +3,28 @@
   "configurations": [
     {
       "type": "java",
+      "name": "Taskmigo Bootstrap",
+      "request": "launch",
+      "mainClass": "io.taskmigo.TaskmigoBootstrapApplication",
+      "projectName": "bootstrap",
+      "cwd": "${workspaceFolder}/server",
+      "env": {
+        "TASKMIGO_DATABASE_URL": "jdbc:postgresql://localhost:5432/taskmigo",
+        "TASKMIGO_DATABASE_USERNAME": "taskmigo",
+        "TASKMIGO_DATABASE_PASSWORD": "taskmigo",
+        "TASKMIGO_BOOTSTRAP_USER_PASSWORD": "local-password",
+        "SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTID": "cli",
+        "SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTSECRET": "local-secret",
+        "SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CLIENTAUTHENTICATIONMETHODS": "client_secret_basic",
+        "SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_AUTHORIZATIONGRANTTYPES": "client_credentials",
+        "SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_SCOPES": "taskmigo.api",
+        "TASKMIGO_AUTH_BROWSER_ENABLED": "true",
+        "TASKMIGO_AUTH_CLIENT_SECRET": "local-browser-secret",
+        "TASKMIGO_CLIENT_URL": "http://localhost:3000"
+      }
+    },
+    {
+      "type": "java",
       "name": "Taskmigo Web",
       "request": "launch",
       "mainClass": "io.taskmigo.TaskmigoApplication",

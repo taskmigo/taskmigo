@@ -14,12 +14,7 @@ class OpenApiV0Configuration {
             .group("v0")
             .pathsToMatch("/api/v0/**")
             .addOpenApiCustomizer(openApi ->
-                openApi.info(
-                    new Info()
-                        .title("Taskmigo API")
-                        .version("v0")
-                        .description("Taskmigo resource and project management API")
-                )
+                openApi.info(new Info().title("Taskmigo API").version("v0").description("Taskmigo API"))
             )
             .build();
     }

@@ -7,6 +7,7 @@ errorprone-core = "2.50.0"
 nullaway = "0.14.0"
 jspecify = "1.0.1"
 checkstyle = "14.0.0"
+guava = "33.7.1-jre"
 
 [libraries]
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
@@ -31,6 +32,8 @@ spring-boot-starter-oauth2-resource-server = { module = "org.springframework.boo
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
 spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
 flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
+guava-bom = { module = "com.google.guava:guava-bom", version.ref = "guava" }
+guava = { module = "com.google.guava:guava" }
 postgresql-driver = { module = "org.postgresql:postgresql" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter" }
 testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }

@@ -1,4 +1,4 @@
-/// Runs background jobs that operate on Project lifecycle data.
-@org.springframework.modulith.ApplicationModule(allowedDependencies = "project")
+/// Runs background jobs.
+@org.springframework.modulith.ApplicationModule
 @org.jspecify.annotations.NullMarked
 package io.taskmigo.worker;

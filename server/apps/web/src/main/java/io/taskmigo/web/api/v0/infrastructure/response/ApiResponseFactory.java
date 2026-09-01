@@ -137,10 +137,10 @@ public final class ApiResponseFactory {
         var startedAtAttribute = this.request.getAttribute(ApiExecutionTimingFilter.STARTED_AT_ATTRIBUTE);
         var startedAt = startedAtAttribute instanceof Instant value ? value : Instant.now();
         var startNanosAttribute = this.request.getAttribute(ApiExecutionTimingFilter.START_NANOS_ATTRIBUTE);
-        var durationMs =
+        var duration =
             startNanosAttribute instanceof Long value
                 ? TimeUnit.NANOSECONDS.toMillis(Math.max(0, System.nanoTime() - value))
                 : 0L;
-        return new ApiResponse.Execution(startedAt, durationMs);
+        return new ApiResponse.Execution(startedAt, duration);
     }
 }

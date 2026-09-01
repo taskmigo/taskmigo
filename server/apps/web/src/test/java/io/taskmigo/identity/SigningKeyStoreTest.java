@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.Executors;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -15,7 +16,8 @@ class SigningKeyStoreTest {
     Path temporaryDirectory;
 
     @Test
-    void requiresProvisionedKeyByDefault() {
+    @DisplayName("requires a provisioned signing key by default")
+    void shouldRequireProvisionedKeyWhenDevelopmentCreationIsDisabled() {
         Path keyFile = this.temporaryDirectory.resolve("missing.pem");
 
         assertThatThrownBy(() -> SigningKeyStore.load(keyFile, "primary", false))
@@ -24,7 +26,8 @@ class SigningKeyStoreTest {
     }
 
     @Test
-    void concurrentDevelopmentCreationReusesOnePrivateKey() throws Exception {
+    @DisplayName("reuses one private key during concurrent development creation")
+    void shouldReusePrivateKeyWhenDevelopmentCreationIsConcurrent() throws Exception {
         Path keyFile = this.temporaryDirectory.resolve("oauth-signing-key.pem");
 
         try (var executor = Executors.newFixedThreadPool(2)) {
@@ -37,7 +40,8 @@ class SigningKeyStoreTest {
     }
 
     @Test
-    void rejectsCorruptProvisionedKey() throws Exception {
+    @DisplayName("rejects a corrupt provisioned signing key")
+    void shouldRejectProvisionedKeyWhenKeyMaterialIsCorrupt() throws Exception {
         Path keyFile = this.temporaryDirectory.resolve("corrupt.pem");
         Files.writeString(keyFile, "not-a-private-key");
 

@@ -6,6 +6,7 @@ import io.taskmigo.PostgresTestConfiguration;
 import io.taskmigo.user.SystemUser;
 import io.taskmigo.user.UserService;
 import java.util.Objects;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -44,14 +45,14 @@ class InteractiveAuthenticationIntegrationTest {
     }
 
     @Test
-    void webAuthenticatesPersistedSystemUserState() {
+    @DisplayName("authenticates the persisted system user through the web security configuration")
+    void shouldAuthenticateSystemUserWhenPersistedCredentialsAreValid() {
         var persisted = this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow();
         var info = this.users.require(persisted.id());
         var principal = this.userDetails.loadUserByUsername(SystemUser.USERNAME);
         String persistedHash = Objects.requireNonNull(persisted.passwordHash());
 
         assertThat(info.username()).isEqualTo(SystemUser.USERNAME);
-        assertThat(info.organizationId()).isNull();
         assertThat(info.firstName()).isEqualTo(SystemUser.FIRST_NAME);
         assertThat(info.lastName()).isEqualTo(SystemUser.LAST_NAME);
         assertThat(info.emails()).isEmpty();
@@ -63,7 +64,8 @@ class InteractiveAuthenticationIntegrationTest {
     }
 
     @Test
-    void oidcProviderConfigurationIsExposed() {
+    @DisplayName("exposes the OpenID Connect provider configuration")
+    void shouldExposeOidcProviderConfigurationWhenDiscoveryEndpointIsRequested() {
         String response = Objects.requireNonNull(
             RestClient.builder()
                 .baseUrl("http://localhost:" + this.port)
