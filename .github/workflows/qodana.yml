@@ -4,11 +4,13 @@ on:
   pull_request:
     paths:
       - "server/**"
+      - "!server/**/*.md"
       - ".github/workflows/qodana.yml"
   push:
     branches: [next]
     paths:
       - "server/**"
+      - "!server/**/*.md"
       - ".github/workflows/qodana.yml"
   workflow_dispatch:
 
