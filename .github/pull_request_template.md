@@ -14,6 +14,9 @@
 
 ## Checklist
 
+- [ ] The PR title follows the naming rules:
+  - [ ] Summarizes **only the major (main) changes**
+  - [ ] Concise and omits minor/side changes
 - [ ] The pull request is focused and contains no unrelated changes.
 - [ ] Tests and documentation are updated where applicable.
 - [ ] The change follows the contribution guidelines.
