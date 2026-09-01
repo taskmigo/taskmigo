@@ -11,6 +11,8 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -98,7 +100,7 @@ class AuthorizationGroupEntity {
     AuthorizationGroupEntity(UUID id, @Nullable UUID organizationId, AuthorizationResource.Group resource, Origin origin) {
         this.id = id;
         this.organizationId = organizationId;
-        this.memberIds = Set.of();
+        this.memberIds = new LinkedHashSet<>();
         this.replace(resource, origin);
     }
 
@@ -117,7 +119,9 @@ class AuthorizationRoleStatementEdge {
     @Id UUID id;
     @Column(name = "role_id", nullable = false) UUID roleId;
     @Column(name = "statement_id", nullable = false) UUID statementId;
+
     protected AuthorizationRoleStatementEdge() {}
+
     AuthorizationRoleStatementEdge(UUID roleId, UUID statementId) {
         this.id = UUID.randomUUID();
         this.roleId = roleId;
@@ -132,7 +136,9 @@ class AuthorizationRoleInheritanceEdge {
     @Id UUID id;
     @Column(name = "role_id", nullable = false) UUID roleId;
     @Column(name = "included_role_id", nullable = false) UUID includedRoleId;
+
     protected AuthorizationRoleInheritanceEdge() {}
+
     AuthorizationRoleInheritanceEdge(UUID roleId, UUID includedRoleId) {
         this.id = UUID.randomUUID();
         this.roleId = roleId;
@@ -147,7 +153,9 @@ class AuthorizationGroupStatementEdge {
     @Id UUID id;
     @Column(name = "group_id", nullable = false) UUID groupId;
     @Column(name = "statement_id", nullable = false) UUID statementId;
+
     protected AuthorizationGroupStatementEdge() {}
+
     AuthorizationGroupStatementEdge(UUID groupId, UUID statementId) {
         this.id = UUID.randomUUID();
         this.groupId = groupId;
@@ -162,7 +170,9 @@ class AuthorizationGroupInheritanceEdge {
     @Id UUID id;
     @Column(name = "group_id", nullable = false) UUID groupId;
     @Column(name = "included_group_id", nullable = false) UUID includedGroupId;
+
     protected AuthorizationGroupInheritanceEdge() {}
+
     AuthorizationGroupInheritanceEdge(UUID groupId, UUID includedGroupId) {
         this.id = UUID.randomUUID();
         this.groupId = groupId;
@@ -177,7 +187,9 @@ class AuthorizationUserStatementAssignment {
     @Id UUID id;
     @Column(name = "user_id", nullable = false) UUID userId;
     @Column(name = "statement_id", nullable = false) UUID statementId;
+
     protected AuthorizationUserStatementAssignment() {}
+
     AuthorizationUserStatementAssignment(UUID userId, UUID statementId) {
         this.id = UUID.randomUUID();
         this.userId = userId;
@@ -192,7 +204,9 @@ class AuthorizationUserRoleAssignment {
     @Id UUID id;
     @Column(name = "user_id", nullable = false) UUID userId;
     @Column(name = "role_id", nullable = false) UUID roleId;
+
     protected AuthorizationUserRoleAssignment() {}
+
     AuthorizationUserRoleAssignment(UUID userId, UUID roleId) {
         this.id = UUID.randomUUID();
         this.userId = userId;
@@ -206,14 +220,19 @@ class AuthorizationUserRoleAssignment {
 class AuthorizationUserEntity {
     @Id UUID id;
     @Nullable @Column(name = "organization_id") UUID organizationId;
+
     protected AuthorizationUserEntity() {}
 }
 
 interface AuthorizationRoleRepository extends JpaRepository<AuthorizationRoleEntity, UUID> {
     Optional<AuthorizationRoleEntity> findByOrganizationIdAndKey(UUID organizationId, String key);
+
     Optional<AuthorizationRoleEntity> findByOrganizationIdIsNullAndKey(String key);
 
-    @Query("select role from AuthorizationRoleEntity role where role.organizationId = :organizationId or role.organizationId is null order by role.key")
+    @Query(
+        "select role from AuthorizationRoleEntity role " +
+        "where role.organizationId = :organizationId or role.organizationId is null order by role.key"
+    )
     List<AuthorizationRoleEntity> findRelevant(@Param("organizationId") UUID organizationId);
 
     List<AuthorizationRoleEntity> findAllByOrganizationIdIsNullOrderByKey();
@@ -221,9 +240,13 @@ interface AuthorizationRoleRepository extends JpaRepository<AuthorizationRoleEnt
 
 interface AuthorizationGroupRepository extends JpaRepository<AuthorizationGroupEntity, UUID> {
     Optional<AuthorizationGroupEntity> findByOrganizationIdAndKey(UUID organizationId, String key);
+
     Optional<AuthorizationGroupEntity> findByOrganizationIdIsNullAndKey(String key);
 
-    @Query("select group from AuthorizationGroupEntity group where group.organizationId = :organizationId or group.organizationId is null order by group.key")
+    @Query(
+        "select group from AuthorizationGroupEntity group " +
+        "where group.organizationId = :organizationId or group.organizationId is null order by group.key"
+    )
     List<AuthorizationGroupEntity> findRelevant(@Param("organizationId") UUID organizationId);
 
     List<AuthorizationGroupEntity> findAllByOrganizationIdIsNullOrderByKey();
@@ -233,32 +256,38 @@ interface AuthorizationGroupRepository extends JpaRepository<AuthorizationGroupE
 }
 
 interface AuthorizationRoleStatementRepository extends JpaRepository<AuthorizationRoleStatementEdge, UUID> {
-    List<AuthorizationRoleStatementEdge> findAllByRoleIdIn(Iterable<UUID> roleIds);
+    List<AuthorizationRoleStatementEdge> findAllByRoleIdIn(Collection<UUID> roleIds);
+
     void deleteAllByRoleId(UUID roleId);
 }
 
 interface AuthorizationRoleInheritanceRepository extends JpaRepository<AuthorizationRoleInheritanceEdge, UUID> {
-    List<AuthorizationRoleInheritanceEdge> findAllByRoleIdIn(Iterable<UUID> roleIds);
+    List<AuthorizationRoleInheritanceEdge> findAllByRoleIdIn(Collection<UUID> roleIds);
+
     void deleteAllByRoleId(UUID roleId);
 }
 
 interface AuthorizationGroupStatementRepository extends JpaRepository<AuthorizationGroupStatementEdge, UUID> {
-    List<AuthorizationGroupStatementEdge> findAllByGroupIdIn(Iterable<UUID> groupIds);
+    List<AuthorizationGroupStatementEdge> findAllByGroupIdIn(Collection<UUID> groupIds);
+
     void deleteAllByGroupId(UUID groupId);
 }
 
 interface AuthorizationGroupInheritanceRepository extends JpaRepository<AuthorizationGroupInheritanceEdge, UUID> {
-    List<AuthorizationGroupInheritanceEdge> findAllByGroupIdIn(Iterable<UUID> groupIds);
+    List<AuthorizationGroupInheritanceEdge> findAllByGroupIdIn(Collection<UUID> groupIds);
+
     void deleteAllByGroupId(UUID groupId);
 }
 
 interface AuthorizationUserStatementRepository extends JpaRepository<AuthorizationUserStatementAssignment, UUID> {
     List<AuthorizationUserStatementAssignment> findAllByUserId(UUID userId);
+
     boolean existsByUserIdAndStatementId(UUID userId, UUID statementId);
 }
 
 interface AuthorizationUserRoleRepository extends JpaRepository<AuthorizationUserRoleAssignment, UUID> {
     List<AuthorizationUserRoleAssignment> findAllByUserId(UUID userId);
+
     boolean existsByUserIdAndRoleId(UUID userId, UUID roleId);
 }
 

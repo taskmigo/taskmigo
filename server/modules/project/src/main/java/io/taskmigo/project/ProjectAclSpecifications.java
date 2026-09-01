@@ -1,105 +1,183 @@
 package io.taskmigo.project;
 
-import io.taskmigo.acl.AclExpression;
-import io.taskmigo.acl.ApiAclEngine.ResponsePlan;
+import io.taskmigo.authorization.AuthorizationExpression;
+import io.taskmigo.authorization.AuthorizationExpression.Binary;
+import io.taskmigo.authorization.AuthorizationExpression.BinaryOperator;
+import io.taskmigo.authorization.AuthorizationExpression.Literal;
+import io.taskmigo.authorization.AuthorizationExpression.Reference;
+import io.taskmigo.authorization.AuthorizationExpression.Unary;
+import io.taskmigo.authorization.AuthorizationExpression.UnaryOperator;
+import io.taskmigo.authorization.AuthorizationEngine.ObjectPlan;
 import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
+import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
-import java.util.Objects;
+import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
 
 final class ProjectAclSpecifications {
 
+    private static final Map<String, Class<?>> ATTRIBUTES = Map.of(
+        "id",
+        UUID.class,
+        "organizationId",
+        UUID.class,
+        "key",
+        String.class,
+        "name",
+        String.class,
+        "description",
+        String.class,
+        "status",
+        ProjectStatus.class,
+        "archivedAt",
+        Instant.class
+    );
+
     private ProjectAclSpecifications() {}
 
-    static Specification<ProjectEntity> from(ResponsePlan plan) {
-        return (root, query, builder) ->
-            predicate(plan.objectPredicate(), root, Objects.requireNonNull(query), builder);
+    static Specification<ProjectEntity> from(ObjectPlan plan) {
+        return (root, query, builder) -> predicate(plan.predicate(), root, builder);
     }
 
-    private static Predicate predicate(
-        AclExpression expression,
+    private static Predicate predicate(AuthorizationExpression expression, Root<ProjectEntity> root, CriteriaBuilder builder) {
+        return switch (expression) {
+            case Literal(var value, var ignored) when value instanceof Boolean bool -> bool
+                ? builder.conjunction()
+                : builder.disjunction();
+            case Unary(var operator, var operand) when operator == UnaryOperator.NOT -> builder.not(
+                predicate(operand, root, builder)
+            );
+            case Binary(var operator, var left, var right) when operator == BinaryOperator.AND -> builder.and(
+                predicate(left, root, builder),
+                predicate(right, root, builder)
+            );
+            case Binary(var operator, var left, var right) when operator == BinaryOperator.OR -> builder.or(
+                predicate(left, root, builder),
+                predicate(right, root, builder)
+            );
+            case Binary(var operator, var left, var right) -> comparison(operator, left, right, root, builder);
+            default -> throw new IllegalArgumentException("Object authorization expression is not a boolean predicate: " + expression);
+        };
+    }
+
+    private static Predicate comparison(
+        BinaryOperator operator,
+        AuthorizationExpression left,
+        AuthorizationExpression right,
         Root<ProjectEntity> root,
-        CriteriaQuery<?> query,
+        CriteriaBuilder builder
+    ) {
+        Expression<?> leftValue = value(left, right, root, builder);
+        Expression<?> rightValue = value(right, left, root, builder);
+        return switch (operator) {
+            case EQ -> builder.equal(leftValue, rightValue);
+            case NE -> builder.notEqual(leftValue, rightValue);
+            case GT -> ordered(builder, leftValue, rightValue, Ordered.GT);
+            case GE -> ordered(builder, leftValue, rightValue, Ordered.GE);
+            case LT -> ordered(builder, leftValue, rightValue, Ordered.LT);
+            case LE -> ordered(builder, leftValue, rightValue, Ordered.LE);
+            default -> throw new IllegalArgumentException("Unsupported boolean project authorization operator: " + operator);
+        };
+    }
+
+    private static Expression<?> value(
+        AuthorizationExpression expression,
+        AuthorizationExpression peer,
+        Root<ProjectEntity> root,
         CriteriaBuilder builder
     ) {
         return switch (expression) {
-            case AclExpression.Eq(var left, var right) -> builder.equal(
-                value(left, root, builder),
-                value(right, root, builder)
+            case Reference reference -> root.get(attribute(reference));
+            case Literal(var literal, var ignored) -> literal == null
+                ? builder.nullLiteral(expectedType(peer))
+                : builder.literal(coerce(literal, expectedType(peer)));
+            case Unary(var operator, var operand) when operator == UnaryOperator.NEGATE -> builder.neg(
+                number(value(operand, peer, root, builder))
             );
-            case AclExpression.Exists(var value) -> builder.isNotNull(value(value, root, builder));
-            case AclExpression.All(var expressions) -> builder.and(
-                expressions
-                    .stream()
-                    .map(item -> predicate(item, root, query, builder))
-                    .toArray(Predicate[]::new)
+            case Unary(var operator, var operand) when operator == UnaryOperator.POSITIVE -> number(
+                value(operand, peer, root, builder)
             );
-            case AclExpression.Any(var expressions) -> builder.or(
-                expressions
-                    .stream()
-                    .map(item -> predicate(item, root, query, builder))
-                    .toArray(Predicate[]::new)
-            );
-            case AclExpression.Not(var item) -> builder.not(predicate(item, root, query, builder));
-            case AclExpression.Relation(var name, var principal, var object) -> relation(
-                name,
-                principal,
-                object,
-                root,
-                query,
+            case Binary(var operator, var left, var right) -> arithmetic(
+                operator,
+                value(left, right, root, builder),
+                value(right, left, root, builder),
                 builder
             );
+            default -> throw new IllegalArgumentException("Unsupported project authorization value expression: " + expression);
         };
     }
 
-    private static jakarta.persistence.criteria.Expression<?> value(
-        AclExpression.Value value,
-        Root<ProjectEntity> root,
+    private static Expression<? extends Number> arithmetic(
+        BinaryOperator operator,
+        Expression<?> left,
+        Expression<?> right,
         CriteriaBuilder builder
     ) {
-        return switch (value) {
-            case AclExpression.Literal(var literal) -> literal == null
-                ? builder.nullLiteral(Object.class)
-                : builder.literal(literal);
-            case AclExpression.Ref(var path) -> root.get(objectAttribute(path));
+        Expression<? extends Number> leftNumber = number(left);
+        Expression<? extends Number> rightNumber = number(right);
+        return switch (operator) {
+            case ADD -> builder.sum(leftNumber, rightNumber);
+            case SUBTRACT -> builder.diff(leftNumber, rightNumber);
+            case MULTIPLY -> builder.prod(leftNumber, rightNumber);
+            case DIVIDE -> builder.quot(leftNumber, rightNumber);
+            default -> throw new IllegalArgumentException("Unsupported project authorization arithmetic operator: " + operator);
         };
     }
 
-    private static Predicate relation(
-        String name,
-        AclExpression.Value principal,
-        AclExpression.Value object,
-        Root<ProjectEntity> root,
-        CriteriaQuery<?> query,
-        CriteriaBuilder builder
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private static Predicate ordered(
+        CriteriaBuilder builder,
+        Expression<?> left,
+        Expression<?> right,
+        Ordered operator
     ) {
-        if (!name.equals("projectMember")) throw new IllegalArgumentException(
-            "Unsupported project ACL relation: " + name
-        );
-        if (
-            !(principal instanceof AclExpression.Literal(var principalValue)) ||
-            !(principalValue instanceof UUID userId)
-        ) throw new IllegalArgumentException("projectMember principal must specialize to a UUID literal");
-        if (
-            !(object instanceof AclExpression.Ref(var objectPath)) || !objectPath.equals("object.id")
-        ) throw new IllegalArgumentException("projectMember object must reference object.id");
-
-        var subquery = query.subquery(Integer.class);
-        var member = subquery.from(ProjectMemberEntity.class);
-        subquery.select(builder.literal(1));
-        subquery.where(
-            builder.equal(member.get("projectId"), root.get("id")),
-            builder.equal(member.get("principalType"), PrincipalType.USER),
-            builder.equal(member.get("principalId"), userId)
-        );
-        return builder.exists(subquery);
+        Expression<? extends Comparable> comparableLeft = (Expression<? extends Comparable>) left;
+        Expression<? extends Comparable> comparableRight = (Expression<? extends Comparable>) right;
+        return switch (operator) {
+            case GT -> builder.greaterThan((Expression) comparableLeft, (Expression) comparableRight);
+            case GE -> builder.greaterThanOrEqualTo((Expression) comparableLeft, (Expression) comparableRight);
+            case LT -> builder.lessThan((Expression) comparableLeft, (Expression) comparableRight);
+            case LE -> builder.lessThanOrEqualTo((Expression) comparableLeft, (Expression) comparableRight);
+        };
     }
 
-    private static String objectAttribute(String path) {
-        if (!path.startsWith("object.")) throw new IllegalArgumentException("Expected object attribute, got: " + path);
-        return path.substring("object.".length());
+    private static Expression<? extends Number> number(Expression<?> expression) {
+        return expression.as(Number.class);
+    }
+
+    private static String attribute(Reference reference) {
+        if (reference.root() != AuthorizationExpression.Root.OBJECT || reference.path().size() != 1) {
+            throw new IllegalArgumentException("Project authorization supports direct object fields only: " + reference.canonicalPath());
+        }
+        String attribute = reference.path().getFirst();
+        if (!ATTRIBUTES.containsKey(attribute)) throw new IllegalArgumentException(
+            "Unknown project authorization field: " + attribute
+        );
+        return attribute;
+    }
+
+    private static Class<?> expectedType(AuthorizationExpression expression) {
+        if (expression instanceof Reference reference) return ATTRIBUTES.get(attribute(reference));
+        return Object.class;
+    }
+
+    private static Object coerce(Object value, Class<?> expected) {
+        if (expected == Object.class || expected.isInstance(value)) return value;
+        if (expected == UUID.class && value instanceof String text) return UUID.fromString(text);
+        if (expected == Instant.class && value instanceof String text) return Instant.parse(text);
+        if (expected == ProjectStatus.class && value instanceof String text) return ProjectStatus.valueOf(text);
+        throw new IllegalArgumentException(
+            "Authorization value " + value + " cannot be converted to project field type " + expected.getSimpleName()
+        );
+    }
+
+    private enum Ordered {
+        GT,
+        GE,
+        LT,
+        LE,
     }
 }

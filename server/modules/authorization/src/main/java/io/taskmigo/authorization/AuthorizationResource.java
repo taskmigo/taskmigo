@@ -1,6 +1,9 @@
 package io.taskmigo.authorization;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import java.util.List;
+import java.util.Locale;
 import org.jspecify.annotations.Nullable;
 
 public final class AuthorizationResource {
@@ -58,12 +61,32 @@ public final class AuthorizationResource {
 
     public enum Target {
         REQUEST,
-        OBJECT,
+        OBJECT;
+
+        @JsonCreator
+        public static Target fromWireValue(String value) {
+            return Target.valueOf(value.toUpperCase(Locale.ROOT));
+        }
+
+        @JsonValue
+        public String wireValue() {
+            return name().toLowerCase(Locale.ROOT);
+        }
     }
 
     public enum Effect {
         ALLOW,
-        DENY,
+        DENY;
+
+        @JsonCreator
+        public static Effect fromWireValue(String value) {
+            return Effect.valueOf(value.toUpperCase(Locale.ROOT));
+        }
+
+        @JsonValue
+        public String wireValue() {
+            return name().toLowerCase(Locale.ROOT);
+        }
     }
 
     public enum Origin {

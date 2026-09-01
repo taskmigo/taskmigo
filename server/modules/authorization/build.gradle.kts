@@ -7,6 +7,7 @@ description = "Data-driven API authorization resources, graph resolution, and qu
 dependencies {
     api(libs.jspecify)
     api(libs.spring.modulith.starter.core)
+    implementation(libs.jackson.databind)
     implementation(libs.re2j)
     implementation(libs.spring.boot.core.starter)
     implementation(libs.spring.boot.starter.data.jpa)

@@ -21,6 +21,7 @@ import org.springframework.stereotype.Component;
 @Component
 public final class AuthorizationEngine {
 
+    private static final Literal TRUE = new Literal(Boolean.TRUE, ValueType.BOOLEAN);
     private final AuthorizationEvaluator evaluator = new AuthorizationEvaluator();
 
     public AuthorizationDecision authorizeRequest(
@@ -100,15 +101,31 @@ public final class AuthorizationEngine {
         return new ObjectPlan(predicate, fields, decision);
     }
 
+    public ObjectPlan unrestrictedObjects() {
+        return new ObjectPlan(
+            TRUE,
+            List.of(),
+            new AuthorizationDecision(
+                Outcome.PLANNED,
+                Target.OBJECT,
+                List.of(),
+                List.of(),
+                List.of(),
+                Map.of(),
+                TRUE,
+                List.of()
+            )
+        );
+    }
+
     public FieldDecision authorizeFields(ObjectPlan plan, Map<String, Object> objectValues, Set<String> responseFields) {
-        Map<String, Object> values = new LinkedHashMap<>(objectValues);
         Set<String> hidden = new LinkedHashSet<>();
         Map<String, List<String>> deniedBy = new LinkedHashMap<>();
         for (String field : responseFields) {
             List<String> matchingDenies = new ArrayList<>();
             for (PlannedFieldRule rule : plan.fields()) {
                 if (rule.effect() != Effect.DENY || !rule.names().contains(field)) continue;
-                if (this.evaluator.test(rule.condition(), values)) matchingDenies.add(rule.statementKey());
+                if (this.evaluator.test(rule.condition(), objectValues)) matchingDenies.add(rule.statementKey());
             }
             if (!matchingDenies.isEmpty()) {
                 hidden.add(field);

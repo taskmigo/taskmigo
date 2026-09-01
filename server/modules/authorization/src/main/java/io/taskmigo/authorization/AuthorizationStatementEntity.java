@@ -13,6 +13,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -87,7 +88,7 @@ class AuthorizationStatementEntity {
         this.origin = origin;
     }
 
-    Statement resource(List<AuthorizationFieldRuleEntity> fieldRules) {
+    Statement resource(List<AuthorizationFieldRuleEntity> rules) {
         return new Statement(
             this.key,
             this.name,
@@ -96,7 +97,7 @@ class AuthorizationStatementEntity {
             this.target,
             this.effect,
             this.condition,
-            fieldRules.stream().map(AuthorizationFieldRuleEntity::resource).toList()
+            rules.stream().map(AuthorizationFieldRuleEntity::resource).toList()
         );
     }
 }
@@ -153,7 +154,7 @@ interface AuthorizationStatementRepository extends JpaRepository<AuthorizationSt
 }
 
 interface AuthorizationFieldRuleRepository extends JpaRepository<AuthorizationFieldRuleEntity, UUID> {
-    List<AuthorizationFieldRuleEntity> findAllByStatementIdIn(Iterable<UUID> statementIds);
+    List<AuthorizationFieldRuleEntity> findAllByStatementIdIn(Collection<UUID> statementIds);
 
     void deleteAllByStatementId(UUID statementId);
 }
