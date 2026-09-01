@@ -1,6 +1,5 @@
 package io.taskmigo.authorization;
 
-import io.taskmigo.authorization.AuthorizationResource.Origin;
 import io.taskmigo.authorization.EffectiveAuthorization.EffectiveStatement;
 import io.taskmigo.authorization.EffectiveAuthorization.Provenance;
 import java.util.ArrayList;
@@ -68,7 +67,10 @@ public class EffectiveAuthorizationResolver {
         this.fieldRules.findAllByStatementIdIn(statementIds).forEach(field -> fieldsByStatement.computeIfAbsent(field.statementId, ignored -> new ArrayList<>()).add(field));
         Map<UUID, CompiledStatement> compiled = new LinkedHashMap<>();
         for (AuthorizationStatementEntity statement : statementEntities) {
-            compiled.put(statement.id, this.compiler.compile(statement.resource(fieldsByStatement.getOrDefault(statement.id, List.of())), statement.origin));
+            AuthorizationResource.Statement resource = statement.resource(
+                fieldsByStatement.getOrDefault(statement.id, List.of())
+            );
+            compiled.put(statement.id, this.compiler.compileCached(statement.id, resource, statement.origin));
         }
 
         List<AuthorizationRoleEntity> roleEntities = relevantRoles(user.organizationId);

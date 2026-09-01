@@ -10,7 +10,10 @@ import io.taskmigo.authorization.AuthorizationResource.Target;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +24,7 @@ public final class AuthorizationCompiler {
     private static final Pattern FIELD_PATTERN = Pattern.compile("[A-Za-z_][A-Za-z0-9_.-]{0,127}");
     private static final Set<String> METHODS = Set.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS");
     private final AuthorizationExpressionCompiler expressions = new AuthorizationExpressionCompiler();
+    private final Map<UUID, CachedStatement> cache = new ConcurrentHashMap<>();
 
     CompiledStatement compile(Statement resource, Origin origin) {
         String key = required(resource.key(), "key");
@@ -65,6 +69,21 @@ public final class AuthorizationCompiler {
         );
     }
 
+    CompiledStatement compileCached(UUID id, Statement resource, Origin origin) {
+        return this.cache
+            .compute(
+                id,
+                (ignored, current) -> current != null && current.matches(resource, origin)
+                    ? current
+                    : new CachedStatement(resource, origin, compile(resource, origin))
+            )
+            .compiled();
+    }
+
+    void invalidate(UUID id) {
+        this.cache.remove(id);
+    }
+
     private AuthorizationExpression condition(String source, boolean objectAllowed) {
         if (source == null || source.isBlank()) return new Literal(Boolean.TRUE, ValueType.BOOLEAN);
         return this.expressions.compile(source, objectAllowed);
@@ -79,5 +98,11 @@ public final class AuthorizationCompiler {
     private static String required(String value, String field) {
         if (value == null || value.isBlank()) throw new IllegalArgumentException(field + " must be a non-blank string");
         return value;
+    }
+
+    private record CachedStatement(Statement resource, Origin origin, CompiledStatement compiled) {
+        boolean matches(Statement candidate, Origin candidateOrigin) {
+            return this.origin == candidateOrigin && this.resource.equals(candidate);
+        }
     }
 }
