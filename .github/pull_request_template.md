@@ -2,15 +2,53 @@
 
 ## Summary
 
-<!-- What problem does this pull request solve? -->
+<!--
+
+Briefly explain the core problem and high-level strategy (1–3 sentences).
+- Focus on WHAT problem is solved and WHY this approach was taken.
+- FORBIDDEN (AI): Do NOT paraphrase commit messages or re-state the pull request title.
+- FORBIDDEN (AI): Do NOT write meta-commentary (e.g., "This PR introduces changes to..."). Get straight to the point.
+
+-->
 
 ## Changes
 
-<!-- Describe the important implementation and architecture decisions. Start every bullet or sentence with a capital letter. -->
+<!--
+
+List meaningful architectural, functional, or structural modifications.
+- Start every bullet point with a capital letter.
+- Group related modifications together if there are many files.
+- FORBIDDEN (AI): Do NOT include Git lifecycle operations (e.g., "Rebase onto branch", "Merge main", "Resolve merge conflicts").
+- FORBIDDEN (AI): Do NOT list automated formatting noise (e.g., "Fix trailing whitespace", "Add missing semicolon", "Update lockfile").
+- FORBIDDEN (AI): Do NOT list temporary developer actions (e.g., "Add console.log for debugging", "Temporarily disable test").
+- FORBIDDEN (AI): Do NOT list file renames, imports reordering, or mechanical code formatting as core changes.
+
+-->
 
 ## Verification
 
-<!-- Report only meaningful verification not already covered by CI or the Checklist below, such as manual checks, scenarios validated outside CI, or relevant evidence. Start every bullet or sentence with a capital letter. Do not include Git state or change-size metadata such as ahead/behind counts, commit counts, diff statistics, or file/line counts, and do not restate the Changes section. Use `N/A` when verification does not apply and `None` when there is no additional verification or evidence to report. -->
+<!--
+
+Provide concrete validation evidence.
+- IF COVERED BY CI: Write "Covered by automated CI suite."
+- IF MANUAL TESTED: Describe exact manual scenarios executed, edge cases checked, or attach screenshots/logs.
+- IF NOT APPLICABLE: Use `N/A`.
+- FORBIDDEN (AI): Do NOT output single-word vague status like "None", "Nil", "OK", or "Done".
+- FORBIDDEN (AI): Do NOT invent or hallucinate test results/metrics that were not explicitly provided in the diff or logs.
+- FORBIDDEN (AI): Do NOT list Git metadata or diff statistics (e.g., "Tested 4 files changed with +120/-40 lines").
+
+-->
+
+## Breaking Changes & Risk Assessment
+
+<!--
+
+Explicitly highlight any potential side effects or breaking contracts.
+- List DB schema migrations, API contract changes, security impact, or performance risks.
+- Write "None" if there are no breaking changes.
+- FORBIDDEN (AI): Do NOT guess or assume DB/API stability if new parameters/migrations are present.
+
+-->
 
 ## Checklist
 
