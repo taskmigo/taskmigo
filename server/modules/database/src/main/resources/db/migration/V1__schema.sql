@@ -31,11 +31,21 @@ CREATE TABLE user_emails (
 
 CREATE TABLE groups (
     id UUID PRIMARY KEY,
-    organization_id UUID NOT NULL REFERENCES organizations(id),
+    organization_id UUID REFERENCES organizations(id),
+    group_key VARCHAR(128) NOT NULL,
+    authorization_origin VARCHAR(16) NOT NULL,
     name VARCHAR(200) NOT NULL,
-    description VARCHAR(1000)
+    description VARCHAR(1000),
+    CONSTRAINT ck_groups_key_not_blank CHECK (btrim(group_key) <> ''),
+    CONSTRAINT ck_groups_authorization_origin CHECK (authorization_origin IN ('SYSTEM', 'CUSTOM')),
+    CONSTRAINT ck_groups_authorization_scope CHECK (
+        (authorization_origin = 'SYSTEM' AND organization_id IS NULL)
+        OR (authorization_origin = 'CUSTOM' AND organization_id IS NOT NULL)
+    )
 );
 CREATE INDEX ix_groups_organization_id ON groups(organization_id);
+CREATE UNIQUE INDEX uk_groups_system_key ON groups(group_key) WHERE organization_id IS NULL;
+CREATE UNIQUE INDEX uk_groups_organization_key ON groups(organization_id, group_key) WHERE organization_id IS NOT NULL;
 
 CREATE TABLE group_members (
     group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
@@ -46,17 +56,118 @@ CREATE INDEX ix_group_members_user_id ON group_members(user_id);
 
 CREATE TABLE roles (
     id UUID PRIMARY KEY,
-    organization_id UUID NOT NULL REFERENCES organizations(id),
+    organization_id UUID REFERENCES organizations(id),
+    role_key VARCHAR(128) NOT NULL,
+    authorization_origin VARCHAR(16) NOT NULL,
     name VARCHAR(200) NOT NULL,
-    description VARCHAR(1000)
+    description VARCHAR(1000),
+    CONSTRAINT ck_roles_key_not_blank CHECK (btrim(role_key) <> ''),
+    CONSTRAINT ck_roles_authorization_origin CHECK (authorization_origin IN ('SYSTEM', 'CUSTOM')),
+    CONSTRAINT ck_roles_authorization_scope CHECK (
+        (authorization_origin = 'SYSTEM' AND organization_id IS NULL)
+        OR (authorization_origin = 'CUSTOM' AND organization_id IS NOT NULL)
+    )
 );
 CREATE INDEX ix_roles_organization_id ON roles(organization_id);
+CREATE UNIQUE INDEX uk_roles_system_key ON roles(role_key) WHERE organization_id IS NULL;
+CREATE UNIQUE INDEX uk_roles_organization_key ON roles(organization_id, role_key) WHERE organization_id IS NOT NULL;
 
 CREATE TABLE role_permissions (
     role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
     permission_key VARCHAR(100) NOT NULL,
     PRIMARY KEY (role_id, permission_key)
 );
+
+CREATE TABLE authorization_statements (
+    id UUID PRIMARY KEY,
+    organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+    statement_key VARCHAR(128) NOT NULL,
+    name VARCHAR(200),
+    description VARCHAR(1000),
+    match_method VARCHAR(16) NOT NULL,
+    match_path VARCHAR(512) NOT NULL,
+    target VARCHAR(16) NOT NULL,
+    effect VARCHAR(16),
+    condition_expression VARCHAR(1024),
+    origin VARCHAR(16) NOT NULL,
+    CONSTRAINT ck_authorization_statements_key_not_blank CHECK (btrim(statement_key) <> ''),
+    CONSTRAINT ck_authorization_statements_method_upper CHECK (match_method = upper(match_method)),
+    CONSTRAINT ck_authorization_statements_target CHECK (target IN ('REQUEST', 'OBJECT')),
+    CONSTRAINT ck_authorization_statements_effect CHECK (effect IS NULL OR effect IN ('ALLOW', 'DENY')),
+    CONSTRAINT ck_authorization_statements_origin CHECK (origin IN ('SYSTEM', 'CUSTOM')),
+    CONSTRAINT ck_authorization_statements_scope CHECK (
+        (origin = 'SYSTEM' AND organization_id IS NULL)
+        OR (origin = 'CUSTOM' AND organization_id IS NOT NULL)
+    ),
+    CONSTRAINT ck_authorization_request_effect CHECK (target <> 'REQUEST' OR effect IS NOT NULL)
+);
+CREATE INDEX ix_authorization_statements_scope_method ON authorization_statements(organization_id, match_method);
+CREATE INDEX ix_authorization_statements_system_method ON authorization_statements(match_method) WHERE organization_id IS NULL;
+CREATE UNIQUE INDEX uk_authorization_statements_system_key
+    ON authorization_statements(statement_key) WHERE organization_id IS NULL;
+CREATE UNIQUE INDEX uk_authorization_statements_organization_key
+    ON authorization_statements(organization_id, statement_key) WHERE organization_id IS NOT NULL;
+
+CREATE TABLE authorization_statement_field_rules (
+    id UUID PRIMARY KEY,
+    statement_id UUID NOT NULL REFERENCES authorization_statements(id) ON DELETE CASCADE,
+    effect VARCHAR(16) NOT NULL,
+    field_names TEXT NOT NULL,
+    condition_expression VARCHAR(1024),
+    CONSTRAINT ck_authorization_field_rules_effect CHECK (effect IN ('ALLOW', 'DENY')),
+    CONSTRAINT ck_authorization_field_rules_names CHECK (btrim(field_names) <> '')
+);
+CREATE INDEX ix_authorization_statement_field_rules_statement ON authorization_statement_field_rules(statement_id);
+
+CREATE TABLE authorization_role_statements (
+    id UUID PRIMARY KEY,
+    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    statement_id UUID NOT NULL REFERENCES authorization_statements(id) ON DELETE CASCADE,
+    CONSTRAINT uk_authorization_role_statement UNIQUE (role_id, statement_id)
+);
+CREATE INDEX ix_authorization_role_statements_statement ON authorization_role_statements(statement_id);
+
+CREATE TABLE authorization_role_inheritance (
+    id UUID PRIMARY KEY,
+    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    included_role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    CONSTRAINT uk_authorization_role_inheritance UNIQUE (role_id, included_role_id),
+    CONSTRAINT ck_authorization_role_not_self CHECK (role_id <> included_role_id)
+);
+CREATE INDEX ix_authorization_role_inheritance_included ON authorization_role_inheritance(included_role_id);
+
+CREATE TABLE authorization_group_statements (
+    id UUID PRIMARY KEY,
+    group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    statement_id UUID NOT NULL REFERENCES authorization_statements(id) ON DELETE CASCADE,
+    CONSTRAINT uk_authorization_group_statement UNIQUE (group_id, statement_id)
+);
+CREATE INDEX ix_authorization_group_statements_statement ON authorization_group_statements(statement_id);
+
+CREATE TABLE authorization_group_inheritance (
+    id UUID PRIMARY KEY,
+    group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    included_group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    CONSTRAINT uk_authorization_group_inheritance UNIQUE (group_id, included_group_id),
+    CONSTRAINT ck_authorization_group_not_self CHECK (group_id <> included_group_id)
+);
+CREATE INDEX ix_authorization_group_inheritance_included ON authorization_group_inheritance(included_group_id);
+
+CREATE TABLE authorization_user_statements (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    statement_id UUID NOT NULL REFERENCES authorization_statements(id) ON DELETE CASCADE,
+    CONSTRAINT uk_authorization_user_statement UNIQUE (user_id, statement_id)
+);
+CREATE INDEX ix_authorization_user_statements_statement ON authorization_user_statements(statement_id);
+
+CREATE TABLE authorization_user_roles (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    CONSTRAINT uk_authorization_user_role UNIQUE (user_id, role_id)
+);
+CREATE INDEX ix_authorization_user_roles_role ON authorization_user_roles(role_id);
 
 CREATE TABLE acl_policies (
     id UUID PRIMARY KEY,
@@ -132,13 +243,141 @@ DECLARE group_organization UUID; user_organization UUID;
 BEGIN
     SELECT organization_id INTO group_organization FROM groups WHERE id = NEW.group_id;
     SELECT organization_id INTO user_organization FROM users WHERE id = NEW.user_id;
-    IF group_organization IS DISTINCT FROM user_organization THEN
+    IF group_organization IS NOT NULL AND group_organization IS DISTINCT FROM user_organization THEN
         RAISE EXCEPTION 'Group members must belong to the Group organization' USING ERRCODE = '23514';
     END IF;
     RETURN NEW;
 END; $$;
 CREATE TRIGGER trg_group_members_same_organization BEFORE INSERT OR UPDATE ON group_members
 FOR EACH ROW EXECUTE FUNCTION taskmigo_enforce_group_member_organization();
+
+CREATE FUNCTION taskmigo_enforce_authorization_role_statement_scope() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE owner_organization UUID; target_organization UUID;
+BEGIN
+    SELECT organization_id INTO owner_organization FROM roles WHERE id = NEW.role_id;
+    SELECT organization_id INTO target_organization FROM authorization_statements WHERE id = NEW.statement_id;
+    IF target_organization IS NOT NULL AND target_organization IS DISTINCT FROM owner_organization THEN
+        RAISE EXCEPTION 'Role and Statement authorization scopes are incompatible' USING ERRCODE = '23514';
+    END IF;
+    IF owner_organization IS NULL AND target_organization IS NOT NULL THEN
+        RAISE EXCEPTION 'System Role cannot include custom Statement' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_authorization_role_statement_scope BEFORE INSERT OR UPDATE ON authorization_role_statements
+FOR EACH ROW EXECUTE FUNCTION taskmigo_enforce_authorization_role_statement_scope();
+
+CREATE FUNCTION taskmigo_enforce_authorization_role_inheritance_scope() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE owner_organization UUID; target_organization UUID;
+BEGIN
+    SELECT organization_id INTO owner_organization FROM roles WHERE id = NEW.role_id;
+    SELECT organization_id INTO target_organization FROM roles WHERE id = NEW.included_role_id;
+    IF target_organization IS NOT NULL AND target_organization IS DISTINCT FROM owner_organization THEN
+        RAISE EXCEPTION 'Role inheritance scopes are incompatible' USING ERRCODE = '23514';
+    END IF;
+    IF owner_organization IS NULL AND target_organization IS NOT NULL THEN
+        RAISE EXCEPTION 'System Role cannot include custom Role' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_authorization_role_inheritance_scope BEFORE INSERT OR UPDATE ON authorization_role_inheritance
+FOR EACH ROW EXECUTE FUNCTION taskmigo_enforce_authorization_role_inheritance_scope();
+
+CREATE FUNCTION taskmigo_enforce_authorization_group_statement_scope() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE owner_organization UUID; target_organization UUID;
+BEGIN
+    SELECT organization_id INTO owner_organization FROM groups WHERE id = NEW.group_id;
+    SELECT organization_id INTO target_organization FROM authorization_statements WHERE id = NEW.statement_id;
+    IF target_organization IS NOT NULL AND target_organization IS DISTINCT FROM owner_organization THEN
+        RAISE EXCEPTION 'Group and Statement authorization scopes are incompatible' USING ERRCODE = '23514';
+    END IF;
+    IF owner_organization IS NULL AND target_organization IS NOT NULL THEN
+        RAISE EXCEPTION 'System Group cannot include custom Statement' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_authorization_group_statement_scope BEFORE INSERT OR UPDATE ON authorization_group_statements
+FOR EACH ROW EXECUTE FUNCTION taskmigo_enforce_authorization_group_statement_scope();
+
+CREATE FUNCTION taskmigo_enforce_authorization_group_inheritance_scope() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE owner_organization UUID; target_organization UUID;
+BEGIN
+    SELECT organization_id INTO owner_organization FROM groups WHERE id = NEW.group_id;
+    SELECT organization_id INTO target_organization FROM groups WHERE id = NEW.included_group_id;
+    IF target_organization IS NOT NULL AND target_organization IS DISTINCT FROM owner_organization THEN
+        RAISE EXCEPTION 'Group inheritance scopes are incompatible' USING ERRCODE = '23514';
+    END IF;
+    IF owner_organization IS NULL AND target_organization IS NOT NULL THEN
+        RAISE EXCEPTION 'System Group cannot include custom Group' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_authorization_group_inheritance_scope BEFORE INSERT OR UPDATE ON authorization_group_inheritance
+FOR EACH ROW EXECUTE FUNCTION taskmigo_enforce_authorization_group_inheritance_scope();
+
+CREATE FUNCTION taskmigo_enforce_authorization_user_statement_scope() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE user_organization UUID; target_organization UUID;
+BEGIN
+    SELECT organization_id INTO user_organization FROM users WHERE id = NEW.user_id;
+    SELECT organization_id INTO target_organization FROM authorization_statements WHERE id = NEW.statement_id;
+    IF target_organization IS NOT NULL AND target_organization IS DISTINCT FROM user_organization THEN
+        RAISE EXCEPTION 'User and Statement authorization scopes are incompatible' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_authorization_user_statement_scope BEFORE INSERT OR UPDATE ON authorization_user_statements
+FOR EACH ROW EXECUTE FUNCTION taskmigo_enforce_authorization_user_statement_scope();
+
+CREATE FUNCTION taskmigo_enforce_authorization_user_role_scope() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE user_organization UUID; target_organization UUID;
+BEGIN
+    SELECT organization_id INTO user_organization FROM users WHERE id = NEW.user_id;
+    SELECT organization_id INTO target_organization FROM roles WHERE id = NEW.role_id;
+    IF target_organization IS NOT NULL AND target_organization IS DISTINCT FROM user_organization THEN
+        RAISE EXCEPTION 'User and Role authorization scopes are incompatible' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_authorization_user_role_scope BEFORE INSERT OR UPDATE ON authorization_user_roles
+FOR EACH ROW EXECUTE FUNCTION taskmigo_enforce_authorization_user_role_scope();
+
+CREATE FUNCTION taskmigo_reject_authorization_role_cycle() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    IF EXISTS (
+        WITH RECURSIVE reachable(role_id) AS (
+            SELECT NEW.included_role_id
+            UNION
+            SELECT inheritance.included_role_id
+            FROM authorization_role_inheritance inheritance
+            JOIN reachable ON inheritance.role_id = reachable.role_id
+        )
+        SELECT 1 FROM reachable WHERE role_id = NEW.role_id
+    ) THEN
+        RAISE EXCEPTION 'Role inheritance cycle' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_authorization_role_cycle BEFORE INSERT OR UPDATE ON authorization_role_inheritance
+FOR EACH ROW EXECUTE FUNCTION taskmigo_reject_authorization_role_cycle();
+
+CREATE FUNCTION taskmigo_reject_authorization_group_cycle() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    IF EXISTS (
+        WITH RECURSIVE reachable(group_id) AS (
+            SELECT NEW.included_group_id
+            UNION
+            SELECT inheritance.included_group_id
+            FROM authorization_group_inheritance inheritance
+            JOIN reachable ON inheritance.group_id = reachable.group_id
+        )
+        SELECT 1 FROM reachable WHERE group_id = NEW.group_id
+    ) THEN
+        RAISE EXCEPTION 'Group inheritance cycle' USING ERRCODE = '23514';
+    END IF;
+    RETURN NEW;
+END; $$;
+CREATE TRIGGER trg_authorization_group_cycle BEFORE INSERT OR UPDATE ON authorization_group_inheritance
+FOR EACH ROW EXECUTE FUNCTION taskmigo_reject_authorization_group_cycle();
 
 CREATE FUNCTION taskmigo_enforce_archived_project_read_only() RETURNS TRIGGER LANGUAGE plpgsql AS $$
 BEGIN

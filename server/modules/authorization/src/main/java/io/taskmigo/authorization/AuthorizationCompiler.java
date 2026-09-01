@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 public final class AuthorizationCompiler {
 
     private static final Pattern KEY_PATTERN = Pattern.compile("[A-Za-z0-9][A-Za-z0-9._:-]{0,127}");
+    private static final Pattern FIELD_PATTERN = Pattern.compile("[A-Za-z_][A-Za-z0-9_.-]{0,127}");
     private static final Set<String> METHODS = Set.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS");
     private final AuthorizationExpressionCompiler expressions = new AuthorizationExpressionCompiler();
 
@@ -46,7 +47,7 @@ public final class AuthorizationCompiler {
         for (FieldRule field : fields) {
             if (field.effect() == null) throw new IllegalArgumentException("Field rule effect is required");
             if (field.names() == null || field.names().isEmpty()) throw new IllegalArgumentException("Field rule requires at least one field name");
-            List<String> names = field.names().stream().map(name -> required(name, "fields.names[]")).distinct().toList();
+            List<String> names = field.names().stream().map(name -> fieldName(name)).distinct().toList();
             compiledFields.add(new CompiledFieldRule(field.effect(), names, condition(field.when(), true)));
         }
 
@@ -67,6 +68,12 @@ public final class AuthorizationCompiler {
     private AuthorizationExpression condition(String source, boolean objectAllowed) {
         if (source == null || source.isBlank()) return new Literal(Boolean.TRUE, ValueType.BOOLEAN);
         return this.expressions.compile(source, objectAllowed);
+    }
+
+    private static String fieldName(String value) {
+        String name = required(value, "fields.names[]");
+        if (!FIELD_PATTERN.matcher(name).matches()) throw new IllegalArgumentException("Invalid authorization field name: " + name);
+        return name;
     }
 
     private static String required(String value, String field) {

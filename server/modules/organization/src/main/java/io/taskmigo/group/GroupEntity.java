@@ -23,6 +23,12 @@ class GroupEntity {
     @Column(name = "organization_id", nullable = false)
     UUID organizationId;
 
+    @Column(name = "group_key", nullable = false, length = 128)
+    String groupKey;
+
+    @Column(name = "authorization_origin", nullable = false, length = 16)
+    String authorizationOrigin;
+
     @Column(nullable = false, length = 200)
     String name;
 
@@ -40,6 +46,8 @@ class GroupEntity {
     GroupEntity(UUID id, UUID organizationId, String name, @Nullable String description) {
         this.id = id;
         this.organizationId = organizationId;
+        this.groupKey = "group:" + id;
+        this.authorizationOrigin = "CUSTOM";
         this.name = name;
         this.description = description;
     }

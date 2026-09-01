@@ -24,6 +24,12 @@ class RoleEntity {
     @Column(name = "organization_id", nullable = false)
     UUID organizationId;
 
+    @Column(name = "role_key", nullable = false, length = 128)
+    String roleKey;
+
+    @Column(name = "authorization_origin", nullable = false, length = 16)
+    String authorizationOrigin;
+
     @Column(nullable = false, length = 200)
     String name;
 
@@ -41,6 +47,8 @@ class RoleEntity {
     RoleEntity(UUID id, UUID organizationId, String name, @Nullable String description, Set<String> permissions) {
         this.id = id;
         this.organizationId = organizationId;
+        this.roleKey = "role:" + id;
+        this.authorizationOrigin = "CUSTOM";
         this.name = name;
         this.description = description;
         this.permissions.addAll(permissions);
