@@ -15,28 +15,40 @@ import org.jspecify.annotations.Nullable;
 
 final class AuthorizationEvaluator {
 
-    boolean test(AuthorizationExpression expression, Map<String, Object> values) {
-        Object result = value(expression, values);
-        if (!(result instanceof Boolean bool)) throw new IllegalArgumentException("Authorization condition did not evaluate to boolean");
+    boolean test(AuthorizationExpression expression, Map<String, @Nullable Object> values) {
+        Object result = this.value(expression, values);
+        if (!(result instanceof Boolean bool)) throw new IllegalArgumentException(
+            "Authorization condition did not evaluate to boolean"
+        );
         return bool;
     }
 
-    AuthorizationExpression specialize(AuthorizationExpression expression, Map<String, Object> values) {
+    AuthorizationExpression specialize(AuthorizationExpression expression, Map<String, @Nullable Object> values) {
         return switch (expression) {
-            case Reference reference when reference.root() != AuthorizationExpression.Root.OBJECT -> literal(resolve(reference, values));
+            case Reference reference when reference.root() != AuthorizationExpression.Root.OBJECT -> literal(
+                resolve(reference, values)
+            );
             case Literal literal -> literal;
             case Reference reference -> reference;
-            case Unary(var operator, var operand) -> new Unary(operator, specialize(operand, values));
-            case Binary(var operator, var left, var right) -> new Binary(operator, specialize(left, values), specialize(right, values));
+            case Unary(var operator, var operand) -> new Unary(operator, this.specialize(operand, values));
+            case Binary(var operator, var left, var right) -> new Binary(
+                operator,
+                this.specialize(left, values),
+                this.specialize(right, values)
+            );
         };
     }
 
-    private @Nullable Object value(AuthorizationExpression expression, Map<String, Object> values) {
+    private @Nullable Object value(AuthorizationExpression expression, Map<String, @Nullable Object> values) {
         return switch (expression) {
             case Literal(var value, var ignored) -> value;
             case Reference reference -> resolve(reference, values);
-            case Unary(var operator, var operand) -> unary(operator, value(operand, values));
-            case Binary(var operator, var left, var right) -> binary(operator, value(left, values), value(right, values));
+            case Unary(var operator, var operand) -> unary(operator, this.value(operand, values));
+            case Binary(var operator, var left, var right) -> binary(
+                operator,
+                this.value(left, values),
+                this.value(right, values)
+            );
         };
     }
 
@@ -67,19 +79,29 @@ final class AuthorizationEvaluator {
     }
 
     private static int compare(@Nullable Object left, @Nullable Object right) {
-        if (left == null || right == null) throw new IllegalArgumentException("Ordered authorization comparison cannot use null");
-        if (left instanceof Number && right instanceof Number) return requireNumber(left).compareTo(requireNumber(right));
-        if (left instanceof String leftString && right instanceof String rightString) return leftString.compareTo(rightString);
+        if (left == null || right == null) throw new IllegalArgumentException(
+            "Ordered authorization comparison cannot use null"
+        );
+        if (left instanceof Number && right instanceof Number) return requireNumber(left).compareTo(
+            requireNumber(right)
+        );
+        if (left instanceof String leftString && right instanceof String rightString) return leftString.compareTo(
+            rightString
+        );
         throw new IllegalArgumentException("Incompatible ordered authorization operands");
     }
 
     private static boolean requireBoolean(@Nullable Object value) {
-        if (!(value instanceof Boolean bool)) throw new IllegalArgumentException("Authorization boolean operand is unavailable or invalid");
+        if (!(value instanceof Boolean bool)) throw new IllegalArgumentException(
+            "Authorization boolean operand is unavailable or invalid"
+        );
         return bool;
     }
 
     private static BigDecimal requireNumber(@Nullable Object value) {
-        if (!(value instanceof Number number)) throw new IllegalArgumentException("Authorization numeric operand is unavailable or invalid");
+        if (!(value instanceof Number number)) throw new IllegalArgumentException(
+            "Authorization numeric operand is unavailable or invalid"
+        );
         return new BigDecimal(number.toString());
     }
 
@@ -88,23 +110,32 @@ final class AuthorizationEvaluator {
     }
 
     private static Literal literal(@Nullable Object value) {
-        ValueType type = value == null
-            ? ValueType.NULL
-            : value instanceof Boolean
-                ? ValueType.BOOLEAN
-                : value instanceof Number
+        ValueType type =
+            value == null
+                ? ValueType.NULL
+                : value instanceof Boolean
+                  ? ValueType.BOOLEAN
+                  : value instanceof Number
                     ? ValueType.NUMBER
                     : value instanceof String
-                        ? ValueType.STRING
-                        : ValueType.UNKNOWN;
+                      ? ValueType.STRING
+                      : ValueType.UNKNOWN;
         return new Literal(value, type);
     }
 
-    private static @Nullable Object resolve(Reference reference, Map<String, Object> values) {
+    private static @Nullable Object resolve(Reference reference, Map<String, @Nullable Object> values) {
         String key = reference.canonicalPath();
         if (!values.containsKey(key)) throw new IllegalArgumentException("Missing authorization context value: " + key);
         Object value = values.get(key);
-        if (value != null && !(value instanceof String || value instanceof Number || value instanceof Boolean || value instanceof java.util.UUID)) {
+        if (
+            value != null &&
+            !(
+                value instanceof String ||
+                value instanceof Number ||
+                value instanceof Boolean ||
+                value instanceof java.util.UUID
+            )
+        ) {
             throw new IllegalArgumentException("Unsafe authorization context value type for " + key);
         }
         return value;

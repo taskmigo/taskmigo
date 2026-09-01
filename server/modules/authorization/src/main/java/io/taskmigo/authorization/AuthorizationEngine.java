@@ -16,19 +16,22 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
+/// Evaluates request decisions and produces database and field authorization plans from an effective graph.
 @Component
 public final class AuthorizationEngine {
 
     private static final Literal TRUE = new Literal(Boolean.TRUE, ValueType.BOOLEAN);
     private final AuthorizationEvaluator evaluator = new AuthorizationEvaluator();
 
+    /// Applies deny-overrides semantics to matching request Statements and fails closed when none allow access.
     public AuthorizationDecision authorizeRequest(
         EffectiveAuthorization authorization,
         String method,
         String normalizedPath,
-        Map<String, Object> context
+        Map<String, @Nullable Object> context
     ) {
         List<EffectiveStatement> candidates = candidates(authorization, method, normalizedPath, Target.REQUEST);
         List<String> matched = new ArrayList<>();
@@ -37,20 +40,22 @@ public final class AuthorizationEngine {
         Map<String, List<Provenance>> provenance = new LinkedHashMap<>();
         for (EffectiveStatement effective : candidates) {
             CompiledStatement statement = effective.statement();
-            if (!this.evaluator.test(statement.condition(), context)) continue;
-            matched.add(statement.key());
-            provenance.put(statement.key(), effective.provenance());
-            (statement.effect() == Effect.DENY ? denies : allows).add(statement.key());
+            if (this.evaluator.test(statement.condition(), context)) {
+                matched.add(statement.key());
+                provenance.put(statement.key(), effective.provenance());
+                (statement.effect() == Effect.DENY ? denies : allows).add(statement.key());
+            }
         }
         Outcome outcome = !denies.isEmpty() ? Outcome.DENY : !allows.isEmpty() ? Outcome.ALLOW : Outcome.DENY;
         return new AuthorizationDecision(outcome, Target.REQUEST, matched, allows, denies, provenance, null, List.of());
     }
 
+    /// Builds a database predicate and field plan without loading unrestricted domain objects.
     public ObjectPlan planObjects(
         EffectiveAuthorization authorization,
         String method,
         String normalizedPath,
-        Map<String, Object> context
+        Map<String, @Nullable Object> context
     ) {
         List<EffectiveStatement> candidates = candidates(authorization, method, normalizedPath, Target.OBJECT);
         List<AuthorizationExpression> allows = new ArrayList<>();
@@ -118,14 +123,24 @@ public final class AuthorizationEngine {
         );
     }
 
-    public FieldDecision authorizeFields(ObjectPlan plan, Map<String, Object> objectValues, Set<String> responseFields) {
+    /// Determines which response fields must be omitted for one already-authorized object.
+    public FieldDecision authorizeFields(
+        ObjectPlan plan,
+        Map<String, @Nullable Object> objectValues,
+        Set<String> responseFields
+    ) {
         Set<String> hidden = new LinkedHashSet<>();
         Map<String, List<String>> deniedBy = new LinkedHashMap<>();
         for (String field : responseFields) {
             List<String> matchingDenies = new ArrayList<>();
             for (PlannedFieldRule rule : plan.fields()) {
-                if (rule.effect() != Effect.DENY || !rule.names().contains(field)) continue;
-                if (this.evaluator.test(rule.condition(), objectValues)) matchingDenies.add(rule.statementKey());
+                if (
+                    rule.effect() == Effect.DENY &&
+                    rule.names().contains(field) &&
+                    this.evaluator.test(rule.condition(), objectValues)
+                ) {
+                    matchingDenies.add(rule.statementKey());
+                }
             }
             if (!matchingDenies.isEmpty()) {
                 hidden.add(field);
@@ -150,7 +165,10 @@ public final class AuthorizationEngine {
 
     private static AuthorizationExpression or(List<AuthorizationExpression> expressions) {
         if (expressions.isEmpty()) return new Literal(Boolean.FALSE, ValueType.BOOLEAN);
-        return expressions.stream().reduce((left, right) -> new Binary(BinaryOperator.OR, left, right)).orElseThrow();
+        return expressions
+            .stream()
+            .reduce((left, right) -> new Binary(BinaryOperator.OR, left, right))
+            .orElseThrow();
     }
 
     private static AuthorizationExpression and(AuthorizationExpression left, AuthorizationExpression right) {

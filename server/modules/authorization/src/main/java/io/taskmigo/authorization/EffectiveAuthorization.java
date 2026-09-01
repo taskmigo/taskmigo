@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/// Holds deduplicated executable Statements while retaining every assignment and inheritance provenance path.
 public final class EffectiveAuthorization {
 
     private final Map<String, List<EffectiveStatement>> statementsByMethod;

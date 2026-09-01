@@ -8,7 +8,7 @@
         "group",
         "access",
         "project",
-        "acl",
+        "authorization",
     }
 )
 @org.jspecify.annotations.NullMarked

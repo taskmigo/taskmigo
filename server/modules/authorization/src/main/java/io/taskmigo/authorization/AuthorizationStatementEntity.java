@@ -1,7 +1,6 @@
 package io.taskmigo.authorization;
 
 import io.taskmigo.authorization.AuthorizationResource.Effect;
-import io.taskmigo.authorization.AuthorizationResource.FieldRule;
 import io.taskmigo.authorization.AuthorizationResource.Match;
 import io.taskmigo.authorization.AuthorizationResource.Origin;
 import io.taskmigo.authorization.AuthorizationResource.Statement;
@@ -12,15 +11,9 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 @Entity
 @Table(name = "authorization_statements")
@@ -108,61 +101,4 @@ class AuthorizationStatementEntity {
             rules.stream().map(AuthorizationFieldRuleEntity::resource).toList()
         );
     }
-}
-
-@Entity
-@Table(name = "authorization_statement_field_rules")
-@SuppressWarnings({ "CanBeFinal", "NotNullFieldNotInitialized" })
-class AuthorizationFieldRuleEntity {
-
-    @Id
-    UUID id;
-
-    @Column(name = "statement_id", nullable = false)
-    UUID statementId;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 16)
-    Effect effect;
-
-    @Column(name = "field_names", nullable = false, columnDefinition = "text")
-    String fieldNames;
-
-    @Nullable
-    @Column(name = "condition_expression", length = 1024)
-    String condition;
-
-    protected AuthorizationFieldRuleEntity() {}
-
-    AuthorizationFieldRuleEntity(UUID statementId, FieldRule resource) {
-        this.id = UUID.randomUUID();
-        this.statementId = statementId;
-        this.effect = resource.effect();
-        this.fieldNames = String.join("\n", resource.names());
-        this.condition = resource.when();
-    }
-
-    FieldRule resource() {
-        return new FieldRule(this.effect, Arrays.asList(this.fieldNames.split("\\n", -1)), this.condition);
-    }
-}
-
-interface AuthorizationStatementRepository extends JpaRepository<AuthorizationStatementEntity, UUID> {
-    Optional<AuthorizationStatementEntity> findByOrganizationIdAndKey(UUID organizationId, String key);
-
-    Optional<AuthorizationStatementEntity> findByOrganizationIdIsNullAndKey(String key);
-
-    @Query(
-        "select statement from AuthorizationStatementEntity statement " +
-        "where statement.organizationId = :organizationId or statement.organizationId is null order by statement.key"
-    )
-    List<AuthorizationStatementEntity> findRelevant(@Param("organizationId") UUID organizationId);
-
-    List<AuthorizationStatementEntity> findAllByOrganizationIdIsNullOrderByKey();
-}
-
-interface AuthorizationFieldRuleRepository extends JpaRepository<AuthorizationFieldRuleEntity, UUID> {
-    List<AuthorizationFieldRuleEntity> findAllByStatementIdIn(Collection<UUID> statementIds);
-
-    void deleteAllByStatementId(UUID statementId);
 }

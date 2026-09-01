@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
+/// Captures one authorization outcome and the Statements and provenance that produced it.
 public record AuthorizationDecision(
     Outcome outcome,
     Target target,

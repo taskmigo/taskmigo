@@ -10,11 +10,16 @@ import io.taskmigo.authorization.AuthorizationResource.Statement;
 import io.taskmigo.authorization.AuthorizationResource.Target;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class AuthorizationCompilerTest {
 
-    private final AuthorizationCompiler compiler = new AuthorizationCompiler(List.of(new AcceptingObjectQueryDialect()));
+    private final AuthorizationCompiler compiler = new AuthorizationCompiler(
+        List.of(new AcceptingObjectQueryDialect())
+    );
 
     @Test
     void compilesAndCachesSafeObjectCondition() {
@@ -69,25 +74,28 @@ class AuthorizationCompilerTest {
 
     @Test
     void rejectsObjectReferenceFromRequestStatement() {
-        assertThatThrownBy(() -> this.compiler.compile(statement(Target.REQUEST, Effect.ALLOW, "object.id != null"), Origin.CUSTOM))
+        assertThatThrownBy(() ->
+            this.compiler.compile(statement(Target.REQUEST, Effect.ALLOW, "object.id != null"), Origin.CUSTOM)
+        )
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("object.* references are only valid");
     }
 
-    @Test
-    void rejectsUnsafeSpelConstructs() {
-        assertThatThrownBy(() -> this.compiler.compile(statement(Target.OBJECT, Effect.ALLOW, "T(java.lang.Runtime).getRuntime() != null"), Origin.CUSTOM))
+    @ParameterizedTest
+    @MethodSource("forbiddenExpressions")
+    void rejectsUnsafeSpelConstructs(String expression) {
+        assertThatThrownBy(() ->
+            this.compiler.compile(statement(Target.OBJECT, Effect.ALLOW, expression), Origin.CUSTOM)
+        )
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Unsupported SpEL construct");
-
-        assertThatThrownBy(() -> this.compiler.compile(statement(Target.OBJECT, Effect.ALLOW, "object.name.toString() == 'x'"), Origin.CUSTOM))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Only direct authorization property references are supported");
     }
 
     @Test
     void rejectsOrderedComparisonAgainstNull() {
-        assertThatThrownBy(() -> this.compiler.compile(statement(Target.OBJECT, Effect.ALLOW, "object.archivedAt > null"), Origin.CUSTOM))
+        assertThatThrownBy(() ->
+            this.compiler.compile(statement(Target.OBJECT, Effect.ALLOW, "object.archivedAt > null"), Origin.CUSTOM)
+        )
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Ordered comparison against null");
     }
@@ -121,6 +129,62 @@ class AuthorizationCompilerTest {
         assertThatThrownBy(() -> this.compiler.compile(invalidRegex, Origin.CUSTOM))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Invalid or unsupported match.path regex");
+    }
+
+    @Test
+    @SuppressWarnings("NullAway")
+    void rejectsMissingRequiredFields() {
+        Statement missingMatch = new Statement(
+            "project.read",
+            null,
+            null,
+            null,
+            Target.REQUEST,
+            Effect.ALLOW,
+            null,
+            List.of()
+        );
+        Statement missingTarget = new Statement(
+            "project.read",
+            null,
+            null,
+            new Match("GET", "/api/v0/projects"),
+            null,
+            Effect.ALLOW,
+            null,
+            List.of()
+        );
+
+        assertThatThrownBy(() -> this.compiler.compile(missingMatch, Origin.CUSTOM))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("match is required");
+        assertThatThrownBy(() -> this.compiler.compile(missingTarget, Origin.CUSTOM))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("target is required");
+    }
+
+    @Test
+    void rejectsExpressionBeyondComplexityLimit() {
+        String expression = "!(".repeat(33) + "true" + ")".repeat(33);
+
+        assertThatThrownBy(() ->
+            this.compiler.compile(statement(Target.REQUEST, Effect.ALLOW, expression), Origin.CUSTOM)
+        )
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("AST complexity limits");
+    }
+
+    private static Stream<String> forbiddenExpressions() {
+        return Stream.of(
+            "T(java.lang.Runtime).getRuntime() != null",
+            "object.name.toString() == 'x'",
+            "new java.lang.String('x') == 'x'",
+            "@environment != null",
+            "#unknown()",
+            "object.name = 'x'",
+            "object.items.![name] != null",
+            "object.items.?[true] != null"
+        );
     }
 
     private static Statement statement(Target target, Effect effect, String condition) {

@@ -1,18 +1,25 @@
 package io.taskmigo.authorization;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.authorization.AuthorizationDecision.Outcome;
+import io.taskmigo.authorization.AuthorizationExpression.Binary;
+import io.taskmigo.authorization.AuthorizationExpression.BinaryOperator;
 import io.taskmigo.authorization.AuthorizationExpression.Literal;
+import io.taskmigo.authorization.AuthorizationExpression.Reference;
+import io.taskmigo.authorization.AuthorizationExpression.Root;
 import io.taskmigo.authorization.AuthorizationExpression.ValueType;
 import io.taskmigo.authorization.AuthorizationResource.Effect;
 import io.taskmigo.authorization.AuthorizationResource.Origin;
 import io.taskmigo.authorization.AuthorizationResource.Target;
 import io.taskmigo.authorization.EffectiveAuthorization.EffectiveStatement;
 import io.taskmigo.authorization.EffectiveAuthorization.Provenance;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 class AuthorizationEngineTest {
@@ -79,14 +86,36 @@ class AuthorizationEngineTest {
         assertThat(decision.hiddenFields()).doesNotContain("id");
     }
 
+    @Test
+    void explicitNullIsDistinctFromMissingContext() {
+        AuthorizationExpression condition = new Binary(
+            BinaryOperator.EQ,
+            new Reference(Root.PRINCIPAL, List.of("organizationId")),
+            new Literal(null, ValueType.NULL)
+        );
+        EffectiveAuthorization authorization = authorization(
+            statement("allow-null", Target.REQUEST, Effect.ALLOW, true, condition, List.of())
+        );
+        Map<String, @Nullable Object> explicitNull = new LinkedHashMap<>();
+        explicitNull.put("principal.organizationId", null);
+
+        assertThat(
+            this.engine.authorizeRequest(authorization, "GET", "/api/v0/projects", explicitNull).outcome()
+        ).isEqualTo(Outcome.ALLOW);
+        assertThatThrownBy(() -> this.engine.authorizeRequest(authorization, "GET", "/api/v0/projects", Map.of()))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Missing authorization context value");
+    }
+
     private static EffectiveAuthorization authorization(CompiledStatement... statements) {
         return new EffectiveAuthorization(
-            java.util.Arrays
-                .stream(statements)
-                .map(statement -> new EffectiveStatement(
-                    statement,
-                    List.of(new Provenance(List.of("user:test", "statement:" + statement.key())))
-                ))
+            java.util.Arrays.stream(statements)
+                .map(statement ->
+                    new EffectiveStatement(
+                        statement,
+                        List.of(new Provenance(List.of("user:test", "statement:" + statement.key())))
+                    )
+                )
                 .toList()
         );
     }

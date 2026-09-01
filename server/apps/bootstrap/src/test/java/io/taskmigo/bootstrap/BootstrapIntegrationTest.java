@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
+import io.taskmigo.TaskmigoBootstrapApplication;
 import io.taskmigo.identity.oauth.InternalClientMetadata;
 import io.taskmigo.user.SystemUser;
 import io.taskmigo.user.UserService;
@@ -15,6 +16,7 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.DefaultApplicationArguments;
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties.Client;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -27,6 +29,7 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.test.context.TestConstructor;
 
 @SpringBootTest(
+    classes = TaskmigoBootstrapApplication.class,
     properties = {
         "spring.security.oauth2.authorizationserver.client.cli.registration.client-id=integration-client",
         "spring.security.oauth2.authorizationserver.client.cli.registration.client-secret=integration-secret",
@@ -48,6 +51,7 @@ class BootstrapIntegrationTest {
     private final InternalClientReconciler internalClients;
     private final BrowserClientReconciler browserClient;
     private final SystemUserReconciler systemUser;
+    private final AuthorizationResourceReconciler authorizationResources;
     private final PasswordEncoder passwordEncoder;
     private final UserService users;
 
@@ -57,6 +61,7 @@ class BootstrapIntegrationTest {
         InternalClientReconciler internalClients,
         BrowserClientReconciler browserClient,
         SystemUserReconciler systemUser,
+        AuthorizationResourceReconciler authorizationResources,
         PasswordEncoder passwordEncoder,
         UserService users
     ) {
@@ -65,6 +70,7 @@ class BootstrapIntegrationTest {
         this.internalClients = internalClients;
         this.browserClient = browserClient;
         this.systemUser = systemUser;
+        this.authorizationResources = authorizationResources;
         this.passwordEncoder = passwordEncoder;
         this.users = users;
     }
@@ -106,7 +112,7 @@ class BootstrapIntegrationTest {
     }
 
     @Test
-    void reconciliationIsIdempotent() {
+    void reconciliationIsIdempotent() throws Exception {
         String internalId = this.storedClient("integration-client").getId();
         String browserId = this.storedClient(BrowserClientMetadata.CLIENT_ID).getId();
         String passwordHash = Objects.requireNonNull(
@@ -116,6 +122,8 @@ class BootstrapIntegrationTest {
         this.internalClients.reconcile(Map.of("cli", client("integration-client", "integration-secret")));
         this.browserClient.reconcile();
         this.systemUser.reconcile();
+        this.authorizationResources.run(new DefaultApplicationArguments(new String[0]));
+        this.authorizationResources.run(new DefaultApplicationArguments(new String[0]));
 
         assertThat(this.storedClient("integration-client").getId()).isEqualTo(internalId);
         assertThat(this.storedClient(BrowserClientMetadata.CLIENT_ID).getId()).isEqualTo(browserId);

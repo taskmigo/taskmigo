@@ -16,6 +16,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/// Persists canonical authorization resources and assignments while enforcing graph and organization invariants.
 @Service
 public class AuthorizationResourceService {
 
@@ -61,6 +62,7 @@ public class AuthorizationResourceService {
         this.users = users;
     }
 
+    /// Validates and idempotently reconciles a Statement within its trusted origin and organization scope.
     @Transactional
     public UUID upsertStatement(@Nullable UUID organizationId, Statement resource, Origin origin) {
         validateScope(organizationId, origin);
@@ -71,17 +73,27 @@ public class AuthorizationResourceService {
             this.statements.findByOrganizationIdIsNullAndKey(resource.key()).isPresent(),
             origin
         );
-        AuthorizationStatementEntity entity = findExactStatement(organizationId, resource.key())
-            .orElseGet(() -> new AuthorizationStatementEntity(UUID.randomUUID(), organizationId, resource, origin));
-        if (entity.origin != origin) throw new IllegalArgumentException("Authorization resource origin cannot be changed");
+        AuthorizationStatementEntity entity = this.findExactStatement(organizationId, resource.key()).orElseGet(() ->
+            new AuthorizationStatementEntity(UUID.randomUUID(), organizationId, resource, origin)
+        );
+        if (entity.origin != origin) throw new IllegalArgumentException(
+            "Authorization resource origin cannot be changed"
+        );
         entity.replace(resource, origin);
         this.statements.save(entity);
         this.fieldRules.deleteAllByStatementId(entity.id);
-        List<AuthorizationResource.FieldRule> fields = resource.fields() == null ? List.of() : resource.fields();
-        this.fieldRules.saveAll(fields.stream().map(field -> new AuthorizationFieldRuleEntity(entity.id, field)).toList());
+        this.fieldRules.flush();
+        List<AuthorizationResource.FieldRule> fields = orEmpty(resource.fields());
+        this.fieldRules.saveAll(
+            fields
+                .stream()
+                .map(field -> new AuthorizationFieldRuleEntity(entity.id, field))
+                .toList()
+        );
         return entity.id;
     }
 
+    /// Reconciles a Role and atomically replaces its Statement and Role inheritance edges.
     @Transactional
     public UUID upsertRole(@Nullable UUID organizationId, Role resource, Origin origin) {
         validateScope(organizationId, origin);
@@ -92,32 +104,45 @@ public class AuthorizationResourceService {
             this.roles.findByOrganizationIdIsNullAndKey(resource.key()).isPresent(),
             origin
         );
-        List<AuthorizationStatementEntity> referencedStatements = resolveStatements(
+        List<AuthorizationStatementEntity> referencedStatements = this.resolveStatements(
             organizationId,
             origin,
-            resource.statements()
+            orEmpty(resource.statements())
         );
-        List<AuthorizationRoleEntity> includedRoles = resolveRoles(organizationId, origin, resource.roles());
-        AuthorizationRoleEntity entity = findExactRole(organizationId, resource.key())
-            .orElseGet(() -> new AuthorizationRoleEntity(UUID.randomUUID(), organizationId, resource, origin));
-        if (entity.origin != origin) throw new IllegalArgumentException("Authorization resource origin cannot be changed");
-        ensureRoleGraphAcyclic(organizationId, entity.id, entity.key, includedRoles);
+        List<AuthorizationRoleEntity> includedRoles = this.resolveRoles(
+            organizationId,
+            origin,
+            orEmpty(resource.roles())
+        );
+        AuthorizationRoleEntity entity = this.findExactRole(organizationId, resource.key()).orElseGet(() ->
+            new AuthorizationRoleEntity(UUID.randomUUID(), organizationId, resource, origin)
+        );
+        if (entity.origin != origin) throw new IllegalArgumentException(
+            "Authorization resource origin cannot be changed"
+        );
+        this.ensureRoleGraphAcyclic(organizationId, entity.id, entity.key, includedRoles);
         entity.replace(resource, origin);
         this.roles.save(entity);
         this.roleStatements.deleteAllByRoleId(entity.id);
         this.roleInheritance.deleteAllByRoleId(entity.id);
+        this.roleStatements.flush();
+        this.roleInheritance.flush();
         this.roleStatements.saveAll(
-                referencedStatements
-                    .stream()
-                    .map(statement -> new AuthorizationRoleStatementEdge(entity.id, statement.id))
-                    .toList()
-            );
+            referencedStatements
+                .stream()
+                .map(statement -> new AuthorizationRoleStatementEdge(entity.id, statement.id))
+                .toList()
+        );
         this.roleInheritance.saveAll(
-                includedRoles.stream().map(role -> new AuthorizationRoleInheritanceEdge(entity.id, role.id)).toList()
-            );
+            includedRoles
+                .stream()
+                .map(role -> new AuthorizationRoleInheritanceEdge(entity.id, role.id))
+                .toList()
+        );
         return entity.id;
     }
 
+    /// Reconciles a Group and atomically replaces its Statement and Group inheritance edges.
     @Transactional
     public UUID upsertGroup(@Nullable UUID organizationId, Group resource, Origin origin) {
         validateScope(organizationId, origin);
@@ -128,36 +153,48 @@ public class AuthorizationResourceService {
             this.groups.findByOrganizationIdIsNullAndKey(resource.key()).isPresent(),
             origin
         );
-        List<AuthorizationStatementEntity> referencedStatements = resolveStatements(
+        List<AuthorizationStatementEntity> referencedStatements = this.resolveStatements(
             organizationId,
             origin,
-            resource.statements()
+            orEmpty(resource.statements())
         );
-        List<AuthorizationGroupEntity> includedGroups = resolveGroups(organizationId, origin, resource.groups());
-        AuthorizationGroupEntity entity = findExactGroup(organizationId, resource.key())
-            .orElseGet(() -> new AuthorizationGroupEntity(UUID.randomUUID(), organizationId, resource, origin));
-        if (entity.origin != origin) throw new IllegalArgumentException("Authorization resource origin cannot be changed");
-        ensureGroupGraphAcyclic(organizationId, entity.id, entity.key, includedGroups);
+        List<AuthorizationGroupEntity> includedGroups = this.resolveGroups(
+            organizationId,
+            origin,
+            orEmpty(resource.groups())
+        );
+        AuthorizationGroupEntity entity = this.findExactGroup(organizationId, resource.key()).orElseGet(() ->
+            new AuthorizationGroupEntity(UUID.randomUUID(), organizationId, resource, origin)
+        );
+        if (entity.origin != origin) throw new IllegalArgumentException(
+            "Authorization resource origin cannot be changed"
+        );
+        this.ensureGroupGraphAcyclic(organizationId, entity.id, entity.key, includedGroups);
         entity.replace(resource, origin);
         this.groups.save(entity);
         this.groupStatements.deleteAllByGroupId(entity.id);
         this.groupInheritance.deleteAllByGroupId(entity.id);
+        this.groupStatements.flush();
+        this.groupInheritance.flush();
         this.groupStatements.saveAll(
-                referencedStatements
-                    .stream()
-                    .map(statement -> new AuthorizationGroupStatementEdge(entity.id, statement.id))
-                    .toList()
-            );
+            referencedStatements
+                .stream()
+                .map(statement -> new AuthorizationGroupStatementEdge(entity.id, statement.id))
+                .toList()
+        );
         this.groupInheritance.saveAll(
-                includedGroups.stream().map(group -> new AuthorizationGroupInheritanceEdge(entity.id, group.id)).toList()
-            );
+            includedGroups
+                .stream()
+                .map(group -> new AuthorizationGroupInheritanceEdge(entity.id, group.id))
+                .toList()
+        );
         return entity.id;
     }
 
     @Transactional
     public void assignStatement(UUID userId, String statementKey) {
-        AuthorizationUserEntity user = requireUser(userId);
-        AuthorizationStatementEntity statement = requireRelevantStatement(user.organizationId, statementKey);
+        AuthorizationUserEntity user = this.requireUser(userId);
+        AuthorizationStatementEntity statement = this.requireRelevantStatement(user.organizationId, statementKey);
         requireAssignableScope(user.organizationId, statement.organizationId);
         if (!this.userStatements.existsByUserIdAndStatementId(userId, statement.id)) {
             this.userStatements.save(new AuthorizationUserStatementAssignment(userId, statement.id));
@@ -166,8 +203,8 @@ public class AuthorizationResourceService {
 
     @Transactional
     public void assignRole(UUID userId, String roleKey) {
-        AuthorizationUserEntity user = requireUser(userId);
-        AuthorizationRoleEntity role = requireRelevantRole(user.organizationId, roleKey);
+        AuthorizationUserEntity user = this.requireUser(userId);
+        AuthorizationRoleEntity role = this.requireRelevantRole(user.organizationId, roleKey);
         requireAssignableScope(user.organizationId, role.organizationId);
         if (!this.userRoles.existsByUserIdAndRoleId(userId, role.id)) {
             this.userRoles.save(new AuthorizationUserRoleAssignment(userId, role.id));
@@ -176,8 +213,8 @@ public class AuthorizationResourceService {
 
     @Transactional
     public void assignGroup(UUID userId, String groupKey) {
-        AuthorizationUserEntity user = requireUser(userId);
-        AuthorizationGroupEntity group = requireRelevantGroup(user.organizationId, groupKey);
+        AuthorizationUserEntity user = this.requireUser(userId);
+        AuthorizationGroupEntity group = this.requireRelevantGroup(user.organizationId, groupKey);
         requireAssignableScope(user.organizationId, group.organizationId);
         if (group.memberIds.add(userId)) this.groups.save(group);
     }
@@ -187,15 +224,35 @@ public class AuthorizationResourceService {
         Origin origin,
         List<String> keys
     ) {
-        return keys.stream().distinct().map(key -> requireStatementForResource(organizationId, origin, key)).toList();
+        return keys
+            .stream()
+            .distinct()
+            .map(key -> this.requireStatementForResource(organizationId, origin, key))
+            .toList();
     }
 
-    private List<AuthorizationRoleEntity> resolveRoles(@Nullable UUID organizationId, Origin origin, List<String> keys) {
-        return keys.stream().distinct().map(key -> requireRoleForResource(organizationId, origin, key)).toList();
+    private List<AuthorizationRoleEntity> resolveRoles(
+        @Nullable UUID organizationId,
+        Origin origin,
+        List<String> keys
+    ) {
+        return keys
+            .stream()
+            .distinct()
+            .map(key -> this.requireRoleForResource(organizationId, origin, key))
+            .toList();
     }
 
-    private List<AuthorizationGroupEntity> resolveGroups(@Nullable UUID organizationId, Origin origin, List<String> keys) {
-        return keys.stream().distinct().map(key -> requireGroupForResource(organizationId, origin, key)).toList();
+    private List<AuthorizationGroupEntity> resolveGroups(
+        @Nullable UUID organizationId,
+        Origin origin,
+        List<String> keys
+    ) {
+        return keys
+            .stream()
+            .distinct()
+            .map(key -> this.requireGroupForResource(organizationId, origin, key))
+            .toList();
     }
 
     private AuthorizationStatementEntity requireStatementForResource(
@@ -204,23 +261,26 @@ public class AuthorizationResourceService {
         String key
     ) {
         validateKey(key);
-        if (origin == Origin.SYSTEM) return this.statements.findByOrganizationIdIsNullAndKey(key)
+        if (origin == Origin.SYSTEM) return this.statements
+            .findByOrganizationIdIsNullAndKey(key)
             .orElseThrow(() -> unknown("Statement", key));
-        return requireRelevantStatement(organizationId, key);
+        return this.requireRelevantStatement(organizationId, key);
     }
 
     private AuthorizationRoleEntity requireRoleForResource(@Nullable UUID organizationId, Origin origin, String key) {
         validateKey(key);
-        if (origin == Origin.SYSTEM) return this.roles.findByOrganizationIdIsNullAndKey(key)
+        if (origin == Origin.SYSTEM) return this.roles
+            .findByOrganizationIdIsNullAndKey(key)
             .orElseThrow(() -> unknown("Role", key));
-        return requireRelevantRole(organizationId, key);
+        return this.requireRelevantRole(organizationId, key);
     }
 
     private AuthorizationGroupEntity requireGroupForResource(@Nullable UUID organizationId, Origin origin, String key) {
         validateKey(key);
-        if (origin == Origin.SYSTEM) return this.groups.findByOrganizationIdIsNullAndKey(key)
+        if (origin == Origin.SYSTEM) return this.groups
+            .findByOrganizationIdIsNullAndKey(key)
             .orElseThrow(() -> unknown("Group", key));
-        return requireRelevantGroup(organizationId, key);
+        return this.requireRelevantGroup(organizationId, key);
     }
 
     private AuthorizationStatementEntity requireRelevantStatement(@Nullable UUID organizationId, String key) {
@@ -228,8 +288,7 @@ public class AuthorizationResourceService {
             var custom = this.statements.findByOrganizationIdAndKey(organizationId, key);
             if (custom.isPresent()) return custom.orElseThrow();
         }
-        return this.statements.findByOrganizationIdIsNullAndKey(key)
-            .orElseThrow(() -> unknown("Statement", key));
+        return this.statements.findByOrganizationIdIsNullAndKey(key).orElseThrow(() -> unknown("Statement", key));
     }
 
     private AuthorizationRoleEntity requireRelevantRole(@Nullable UUID organizationId, String key) {
@@ -254,11 +313,20 @@ public class AuthorizationResourceService {
         String currentKey,
         List<AuthorizationRoleEntity> included
     ) {
-        List<AuthorizationRoleEntity> allRoles = relevantRoles(organizationId);
-        Set<UUID> ids = allRoles.stream().map(role -> role.id).collect(java.util.stream.Collectors.toSet());
+        List<AuthorizationRoleEntity> allRoles = this.relevantRoles(organizationId);
+        Set<UUID> ids = allRoles
+            .stream()
+            .map(role -> role.id)
+            .collect(java.util.stream.Collectors.toSet());
         ids.add(currentId);
-        java.util.Map<UUID, List<UUID>> edges = groupedRoleEdges(ids);
-        edges.put(currentId, included.stream().map(role -> role.id).toList());
+        java.util.Map<UUID, List<UUID>> edges = this.groupedRoleEdges(ids);
+        edges.put(
+            currentId,
+            included
+                .stream()
+                .map(role -> role.id)
+                .toList()
+        );
         java.util.Map<UUID, String> names = new HashMap<>();
         allRoles.forEach(role -> names.put(role.id, role.key));
         names.put(currentId, currentKey);
@@ -271,11 +339,20 @@ public class AuthorizationResourceService {
         String currentKey,
         List<AuthorizationGroupEntity> included
     ) {
-        List<AuthorizationGroupEntity> allGroups = relevantGroups(organizationId);
-        Set<UUID> ids = allGroups.stream().map(group -> group.id).collect(java.util.stream.Collectors.toSet());
+        List<AuthorizationGroupEntity> allGroups = this.relevantGroups(organizationId);
+        Set<UUID> ids = allGroups
+            .stream()
+            .map(group -> group.id)
+            .collect(java.util.stream.Collectors.toSet());
         ids.add(currentId);
-        java.util.Map<UUID, List<UUID>> edges = groupedGroupEdges(ids);
-        edges.put(currentId, included.stream().map(group -> group.id).toList());
+        java.util.Map<UUID, List<UUID>> edges = this.groupedGroupEdges(ids);
+        edges.put(
+            currentId,
+            included
+                .stream()
+                .map(group -> group.id)
+                .toList()
+        );
         java.util.Map<UUID, String> names = new HashMap<>();
         allGroups.forEach(group -> names.put(group.id, group.key));
         names.put(currentId, currentKey);
@@ -286,7 +363,9 @@ public class AuthorizationResourceService {
         java.util.Map<UUID, List<UUID>> result = new HashMap<>();
         this.roleInheritance
             .findAllByRoleIdIn(ids)
-            .forEach(edge -> result.computeIfAbsent(edge.roleId, ignored -> new ArrayList<>()).add(edge.includedRoleId));
+            .forEach(edge ->
+                result.computeIfAbsent(edge.roleId, ignored -> new ArrayList<>()).add(edge.includedRoleId)
+            );
         return result;
     }
 
@@ -294,7 +373,9 @@ public class AuthorizationResourceService {
         java.util.Map<UUID, List<UUID>> result = new HashMap<>();
         this.groupInheritance
             .findAllByGroupIdIn(ids)
-            .forEach(edge -> result.computeIfAbsent(edge.groupId, ignored -> new ArrayList<>()).add(edge.includedGroupId));
+            .forEach(edge ->
+                result.computeIfAbsent(edge.groupId, ignored -> new ArrayList<>()).add(edge.includedGroupId)
+            );
         return result;
     }
 
@@ -317,9 +398,16 @@ public class AuthorizationResourceService {
         ArrayDeque<UUID> path
     ) {
         if (active.contains(node)) {
-            List<String> cycle = path.stream().map(id -> names.getOrDefault(id, id.toString())).toList();
+            List<String> cycle = path
+                .stream()
+                .map(id -> names.getOrDefault(id, id.toString()))
+                .toList();
             throw new IllegalArgumentException(
-                type + " inheritance cycle: " + String.join(" -> ", cycle) + " -> " + names.getOrDefault(node, node.toString())
+                type +
+                    " inheritance cycle: " +
+                    String.join(" -> ", cycle) +
+                    " -> " +
+                    names.getOrDefault(node, node.toString())
             );
         }
         if (!visited.add(node)) return;
@@ -331,15 +419,15 @@ public class AuthorizationResourceService {
     }
 
     private List<AuthorizationRoleEntity> relevantRoles(@Nullable UUID organizationId) {
-        return organizationId == null ? this.roles.findAllByOrganizationIdIsNullOrderByKey() : this.roles.findRelevant(
-            organizationId
-        );
+        return organizationId == null
+            ? this.roles.findAllByOrganizationIdIsNullOrderByKey()
+            : this.roles.findRelevant(organizationId);
     }
 
     private List<AuthorizationGroupEntity> relevantGroups(@Nullable UUID organizationId) {
-        return organizationId == null ? this.groups.findAllByOrganizationIdIsNullOrderByKey() : this.groups.findRelevant(
-            organizationId
-        );
+        return organizationId == null
+            ? this.groups.findAllByOrganizationIdIsNullOrderByKey()
+            : this.groups.findRelevant(organizationId);
     }
 
     private AuthorizationUserEntity requireUser(UUID userId) {
@@ -389,16 +477,23 @@ public class AuthorizationResourceService {
         );
     }
 
-    private static void validateKey(String key) {
+    private static void validateKey(@Nullable String key) {
         if (key == null || !KEY_PATTERN.matcher(key).matches()) throw new IllegalArgumentException(
             "Invalid authorization resource key: " + key
         );
     }
 
-    private static void requireAssignableScope(@Nullable UUID userOrganizationId, @Nullable UUID resourceOrganizationId) {
-        if (resourceOrganizationId != null && !resourceOrganizationId.equals(userOrganizationId)) throw new IllegalArgumentException(
-            "Authorization resource belongs to another organization"
-        );
+    private static void requireAssignableScope(
+        @Nullable UUID userOrganizationId,
+        @Nullable UUID resourceOrganizationId
+    ) {
+        if (
+            resourceOrganizationId != null && !resourceOrganizationId.equals(userOrganizationId)
+        ) throw new IllegalArgumentException("Authorization resource belongs to another organization");
+    }
+
+    private static <T> List<T> orEmpty(@Nullable List<T> values) {
+        return values == null ? List.of() : values;
     }
 
     private static IllegalArgumentException unknown(String type, String key) {

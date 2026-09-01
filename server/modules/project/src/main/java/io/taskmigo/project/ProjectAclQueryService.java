@@ -61,8 +61,8 @@ public class ProjectAclQueryService {
             "archivedAt"
         );
 
-        public Map<String, Object> authorizationContext() {
-            Map<String, Object> context = new LinkedHashMap<>();
+        public Map<String, @Nullable Object> authorizationContext() {
+            Map<String, @Nullable Object> context = new LinkedHashMap<>();
             context.put("object.id", this.id);
             context.put("object.organizationId", this.organizationId);
             context.put("object.key", this.key);

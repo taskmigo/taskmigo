@@ -20,9 +20,3 @@ record CompiledStatement(
         fields = List.copyOf(fields);
     }
 }
-
-record CompiledFieldRule(Effect effect, List<String> names, AuthorizationExpression condition) {
-    CompiledFieldRule {
-        names = List.copyOf(names);
-    }
-}

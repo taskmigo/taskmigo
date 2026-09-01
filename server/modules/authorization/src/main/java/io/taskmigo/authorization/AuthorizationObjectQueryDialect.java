@@ -1,8 +1,9 @@
 package io.taskmigo.authorization;
 
+import org.jspecify.annotations.NonNull;
+
 /// Validates whether a record-visibility authorization predicate can be compiled by a database query backend.
 public interface AuthorizationObjectQueryDialect {
-
     /// Returns the HTTP method of the database-backed operation supported by this dialect.
     String method();
 
@@ -13,5 +14,5 @@ public interface AuthorizationObjectQueryDialect {
     ///
     /// @param expression the Taskmigo authorization AST to validate
     /// @throws IllegalArgumentException if the predicate cannot be compiled by this query backend
-    void validate(AuthorizationExpression expression);
+    void validate(@NonNull AuthorizationExpression expression);
 }

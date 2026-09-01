@@ -79,12 +79,16 @@ final class AuthorizationExpressionCompiler {
     }
 
     private static Typed reference(CompoundExpression compound, boolean objectAllowed) {
-        if (compound.getChildCount() < 2) throw new IllegalArgumentException("Authorization references require a root and property");
+        if (compound.getChildCount() < 2) throw new IllegalArgumentException(
+            "Authorization references require a root and property"
+        );
         List<String> segments = new ArrayList<>(compound.getChildCount());
         for (int index = 0; index < compound.getChildCount(); index++) {
             SpelNode child = compound.getChild(index);
             if (!(child instanceof PropertyOrFieldReference property)) {
-                throw new IllegalArgumentException("Only direct authorization property references are supported: " + compound.toStringAST());
+                throw new IllegalArgumentException(
+                    "Unsupported SpEL construct " + child.getClass().getSimpleName() + ": " + compound.toStringAST()
+                );
             }
             segments.add(property.getName());
         }
@@ -150,7 +154,13 @@ final class AuthorizationExpressionCompiler {
     }
 
     private static boolean equalityCompatible(ValueType left, ValueType right) {
-        return left == ValueType.UNKNOWN || right == ValueType.UNKNOWN || left == ValueType.NULL || right == ValueType.NULL || left == right;
+        return (
+            left == ValueType.UNKNOWN ||
+            right == ValueType.UNKNOWN ||
+            left == ValueType.NULL ||
+            right == ValueType.NULL ||
+            left == right
+        );
     }
 
     private static boolean orderedCompatible(ValueType left, ValueType right) {
@@ -163,11 +173,15 @@ final class AuthorizationExpressionCompiler {
     }
 
     private static ValueType literalType(@Nullable Object value) {
-        if (value == null) return ValueType.NULL;
-        if (value instanceof Boolean) return ValueType.BOOLEAN;
-        if (value instanceof Number) return ValueType.NUMBER;
-        if (value instanceof String) return ValueType.STRING;
-        throw new IllegalArgumentException("Unsupported authorization literal type: " + value.getClass().getSimpleName());
+        return switch (value) {
+            case null -> ValueType.NULL;
+            case Boolean ignored -> ValueType.BOOLEAN;
+            case Number ignored -> ValueType.NUMBER;
+            case String ignored -> ValueType.STRING;
+            default -> throw new IllegalArgumentException(
+                "Unsupported authorization literal type: " + value.getClass().getSimpleName()
+            );
+        };
     }
 
     private static Complexity complexity(SpelNode node, int depth) {

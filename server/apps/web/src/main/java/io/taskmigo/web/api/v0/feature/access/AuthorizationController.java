@@ -90,7 +90,7 @@ class AuthorizationController {
         @PathVariable String key,
         Authentication authentication
     ) {
-        requireAssignableUser(authentication, organizationId, userId);
+        this.requireAssignableUser(authentication, organizationId, userId);
         this.resources.assignStatement(userId, key);
         return this.responses.ok("authorization.statement.assigned", "Authorization Statement assigned");
     }
@@ -102,7 +102,7 @@ class AuthorizationController {
         @PathVariable String key,
         Authentication authentication
     ) {
-        requireAssignableUser(authentication, organizationId, userId);
+        this.requireAssignableUser(authentication, organizationId, userId);
         this.resources.assignRole(userId, key);
         return this.responses.ok("authorization.role.assigned", "Authorization Role assigned");
     }
@@ -114,7 +114,7 @@ class AuthorizationController {
         @PathVariable String key,
         Authentication authentication
     ) {
-        requireAssignableUser(authentication, organizationId, userId);
+        this.requireAssignableUser(authentication, organizationId, userId);
         this.resources.assignGroup(userId, key);
         return this.responses.ok("authorization.group.assigned", "Authorization Group assigned");
     }

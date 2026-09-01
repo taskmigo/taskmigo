@@ -14,6 +14,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -48,9 +49,12 @@ final class ProjectAclSpecifications {
 
     private static void validatePredicate(AuthorizationExpression expression) {
         switch (expression) {
-            case Literal(var value, var ignored) when value instanceof Boolean -> {}
+            case Literal(var value, var ignored) when value instanceof Boolean -> {
+            }
             case Unary(var operator, var operand) when operator == UnaryOperator.NOT -> validatePredicate(operand);
-            case Binary(var operator, var left, var right) when operator == BinaryOperator.AND || operator == BinaryOperator.OR -> {
+            case Binary(var operator, var left, var right) when (
+                operator == BinaryOperator.AND || operator == BinaryOperator.OR
+            ) -> {
                 validatePredicate(left);
                 validatePredicate(right);
             }
@@ -66,10 +70,16 @@ final class ProjectAclSpecifications {
 
     private static void validateValue(AuthorizationExpression expression) {
         switch (expression) {
-            case Reference reference when reference.root() == AuthorizationExpression.Root.OBJECT -> attribute(reference);
-            case Reference ignored -> {}
-            case Literal ignored -> {}
-            case Unary(var operator, var operand) when operator == UnaryOperator.NEGATE || operator == UnaryOperator.POSITIVE -> validateValue(operand);
+            case Reference reference when reference.root() == AuthorizationExpression.Root.OBJECT -> attribute(
+                reference
+            );
+            case Reference ignored -> {
+            }
+            case Literal ignored -> {
+            }
+            case Unary(var operator, var operand) when (
+                operator == UnaryOperator.NEGATE || operator == UnaryOperator.POSITIVE
+            ) -> validateValue(operand);
             case Binary(var operator, var left, var right) when isSupportedArithmetic(operator) -> {
                 validateValue(left);
                 validateValue(right);
@@ -94,7 +104,11 @@ final class ProjectAclSpecifications {
         };
     }
 
-    private static Predicate predicate(AuthorizationExpression expression, Root<ProjectEntity> root, CriteriaBuilder builder) {
+    private static Predicate predicate(
+        AuthorizationExpression expression,
+        Root<ProjectEntity> root,
+        CriteriaBuilder builder
+    ) {
         return switch (expression) {
             case Literal(var value, var ignored) when value instanceof Boolean bool -> bool
                 ? builder.conjunction()
@@ -111,7 +125,9 @@ final class ProjectAclSpecifications {
                 predicate(right, root, builder)
             );
             case Binary(var operator, var left, var right) -> comparison(operator, left, right, root, builder);
-            default -> throw new IllegalArgumentException("Object authorization expression is not a boolean predicate: " + expression);
+            default -> throw new IllegalArgumentException(
+                "Object authorization expression is not a boolean predicate: " + expression
+            );
         };
     }
 
@@ -131,7 +147,9 @@ final class ProjectAclSpecifications {
             case GE -> ordered(builder, leftValue, rightValue, Ordered.GE);
             case LT -> ordered(builder, leftValue, rightValue, Ordered.LT);
             case LE -> ordered(builder, leftValue, rightValue, Ordered.LE);
-            default -> throw new IllegalArgumentException("Unsupported boolean project authorization operator: " + operator);
+            default -> throw new IllegalArgumentException(
+                "Unsupported boolean project authorization operator: " + operator
+            );
         };
     }
 
@@ -158,7 +176,9 @@ final class ProjectAclSpecifications {
                 value(right, left, root, builder),
                 builder
             );
-            default -> throw new IllegalArgumentException("Unsupported project authorization value expression: " + expression);
+            default -> throw new IllegalArgumentException(
+                "Unsupported project authorization value expression: " + expression
+            );
         };
     }
 
@@ -175,7 +195,9 @@ final class ProjectAclSpecifications {
             case SUBTRACT -> builder.diff(leftNumber, rightNumber);
             case MULTIPLY -> builder.prod(leftNumber, rightNumber);
             case DIVIDE -> builder.quot(leftNumber, rightNumber);
-            default -> throw new IllegalArgumentException("Unsupported project authorization arithmetic operator: " + operator);
+            default -> throw new IllegalArgumentException(
+                "Unsupported project authorization arithmetic operator: " + operator
+            );
         };
     }
 
@@ -202,7 +224,9 @@ final class ProjectAclSpecifications {
 
     private static String attribute(Reference reference) {
         if (reference.root() != AuthorizationExpression.Root.OBJECT || reference.path().size() != 1) {
-            throw new IllegalArgumentException("Project authorization supports direct object fields only: " + reference.canonicalPath());
+            throw new IllegalArgumentException(
+                "Project authorization supports direct object fields only: " + reference.canonicalPath()
+            );
         }
         String attribute = reference.path().getFirst();
         if (!ATTRIBUTES.containsKey(attribute)) throw new IllegalArgumentException(
@@ -212,18 +236,25 @@ final class ProjectAclSpecifications {
     }
 
     private static Class<?> expectedType(AuthorizationExpression expression) {
-        if (expression instanceof Reference reference) return ATTRIBUTES.get(attribute(reference));
+        if (expression instanceof Reference reference) return Objects.requireNonNull(
+            ATTRIBUTES.get(attribute(reference))
+        );
         return Object.class;
     }
 
     private static Object coerce(Object value, Class<?> expected) {
         if (expected == Object.class || expected.isInstance(value)) return value;
-        if (expected == UUID.class && value instanceof String text) return UUID.fromString(text);
-        if (expected == Instant.class && value instanceof String text) return Instant.parse(text);
-        if (expected == ProjectStatus.class && value instanceof String text) return ProjectStatus.valueOf(text);
-        throw new IllegalArgumentException(
-            "Authorization value " + value + " cannot be converted to project field type " + expected.getSimpleName()
-        );
+        return switch (value) {
+            case String text when expected == UUID.class -> UUID.fromString(text);
+            case String text when expected == Instant.class -> Instant.parse(text);
+            case String text when expected == ProjectStatus.class -> ProjectStatus.valueOf(text);
+            default -> throw new IllegalArgumentException(
+                "Authorization value " +
+                    value +
+                    " cannot be converted to project field type " +
+                    expected.getSimpleName()
+            );
+        };
     }
 
     private enum Ordered {

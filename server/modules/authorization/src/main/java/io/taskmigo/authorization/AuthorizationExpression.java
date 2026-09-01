@@ -3,6 +3,7 @@ package io.taskmigo.authorization;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
+/// Represents the allowlisted, typed authorization AST used instead of evaluating raw SpEL.
 public sealed interface AuthorizationExpression
     permits
         AuthorizationExpression.Literal,
@@ -19,7 +20,7 @@ public sealed interface AuthorizationExpression
         }
 
         public String canonicalPath() {
-            return root.name().toLowerCase(java.util.Locale.ROOT) + "." + String.join(".", path);
+            return this.root.name().toLowerCase(java.util.Locale.ROOT) + "." + String.join(".", this.path);
         }
     }
 

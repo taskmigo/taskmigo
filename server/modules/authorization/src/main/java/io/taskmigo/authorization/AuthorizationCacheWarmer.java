@@ -39,7 +39,9 @@ class AuthorizationCacheWarmer implements ApplicationRunner {
         Map<UUID, List<AuthorizationFieldRuleEntity>> fieldsByStatement = new HashMap<>();
         this.fieldRules
             .findAllByStatementIdIn(statementIds)
-            .forEach(field -> fieldsByStatement.computeIfAbsent(field.statementId, ignored -> new ArrayList<>()).add(field));
+            .forEach(field ->
+                fieldsByStatement.computeIfAbsent(field.statementId, ignored -> new ArrayList<>()).add(field)
+            );
         for (AuthorizationStatementEntity statement : statementEntities) {
             AuthorizationResource.Statement resource = statement.resource(
                 fieldsByStatement.getOrDefault(statement.id, List.of())

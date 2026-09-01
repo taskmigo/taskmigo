@@ -38,15 +38,22 @@ class AuthorizationResourceReconciler implements ApplicationRunner {
             bundle = this.yaml.readValue(input, Bundle.class);
         }
 
-        for (Statement statement : bundle.statements()) this.resources.upsertStatement(null, statement, Origin.SYSTEM);
-        for (Role role : bundle.roles()) this.resources.upsertRole(null, role, Origin.SYSTEM);
-        for (Group group : bundle.groups()) this.resources.upsertGroup(null, group, Origin.SYSTEM);
+        List<Statement> statements = orEmpty(bundle.statements());
+        List<Role> roles = orEmpty(bundle.roles());
+        List<Group> groups = orEmpty(bundle.groups());
+        for (Statement statement : statements) this.resources.upsertStatement(null, statement, Origin.SYSTEM);
+        for (Role role : roles) this.resources.upsertRole(null, role, Origin.SYSTEM);
+        for (Group group : groups) this.resources.upsertGroup(null, group, Origin.SYSTEM);
         LOGGER.info(
             "authorization_resources_reconciled statements={} roles={} groups={}",
-            bundle.statements().size(),
-            bundle.roles().size(),
-            bundle.groups().size()
+            statements.size(),
+            roles.size(),
+            groups.size()
         );
+    }
+
+    private static <T> List<T> orEmpty(@Nullable List<T> values) {
+        return values == null ? List.of() : values;
     }
 
     private record Bundle(

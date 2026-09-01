@@ -21,7 +21,9 @@ final class SafePathPattern {
         try {
             return new SafePathPattern(source, Pattern.compile(normalized));
         } catch (PatternSyntaxException exception) {
-            throw new IllegalArgumentException("Invalid or unsupported match.path regex: " + exception.getDescription());
+            throw new IllegalArgumentException(
+                "Invalid or unsupported match.path regex: " + exception.getDescription()
+            );
         }
     }
 
@@ -37,26 +39,28 @@ final class SafePathPattern {
         StringBuilder normalized = new StringBuilder(source.length());
         boolean escaped = false;
         boolean characterClass = false;
-        for (int index = 0; index < source.length(); index++) {
+        int index = 0;
+        while (index < source.length()) {
             char current = source.charAt(index);
             if (escaped) {
                 normalized.append(current);
                 escaped = false;
-                continue;
-            }
-            if (current == '\\') {
+                index++;
+            } else if (current == '\\') {
                 normalized.append(current);
                 escaped = true;
-                continue;
+                index++;
+            } else {
+                if (current == '[') characterClass = true;
+                if (current == ']') characterClass = false;
+                if (!characterClass && source.startsWith("(?:", index)) {
+                    normalized.append('(');
+                    index += 3;
+                } else {
+                    normalized.append(current);
+                    index++;
+                }
             }
-            if (current == '[') characterClass = true;
-            if (current == ']') characterClass = false;
-            if (!characterClass && source.startsWith("(?:", index)) {
-                normalized.append('(');
-                index += 2;
-                continue;
-            }
-            normalized.append(current);
         }
         return normalized.toString();
     }

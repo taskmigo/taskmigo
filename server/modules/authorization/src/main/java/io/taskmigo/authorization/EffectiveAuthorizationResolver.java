@@ -14,6 +14,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/// Resolves direct, Role, and Group assignments into one provenance-preserving authorization snapshot.
 @Service
 public class EffectiveAuthorizationResolver {
 
@@ -58,13 +59,23 @@ public class EffectiveAuthorizationResolver {
         this.users = users;
     }
 
+    /// Loads the relevant graph in bulk and resolves it deterministically for a single user request.
     @Transactional(readOnly = true)
     public EffectiveAuthorization resolve(UUID userId) {
-        AuthorizationUserEntity user = this.users.findById(userId).orElseThrow(() -> new IllegalArgumentException("Unknown User: " + userId));
-        List<AuthorizationStatementEntity> statementEntities = relevantStatements(user.organizationId);
-        Set<UUID> statementIds = statementEntities.stream().map(statement -> statement.id).collect(java.util.stream.Collectors.toSet());
+        AuthorizationUserEntity user = this.users
+            .findById(userId)
+            .orElseThrow(() -> new IllegalArgumentException("Unknown User: " + userId));
+        List<AuthorizationStatementEntity> statementEntities = this.relevantStatements(user.organizationId);
+        Set<UUID> statementIds = statementEntities
+            .stream()
+            .map(statement -> statement.id)
+            .collect(java.util.stream.Collectors.toSet());
         Map<UUID, List<AuthorizationFieldRuleEntity>> fieldsByStatement = new HashMap<>();
-        this.fieldRules.findAllByStatementIdIn(statementIds).forEach(field -> fieldsByStatement.computeIfAbsent(field.statementId, ignored -> new ArrayList<>()).add(field));
+        this.fieldRules
+            .findAllByStatementIdIn(statementIds)
+            .forEach(field ->
+                fieldsByStatement.computeIfAbsent(field.statementId, ignored -> new ArrayList<>()).add(field)
+            );
         Map<UUID, CompiledStatement> compiled = new LinkedHashMap<>();
         for (AuthorizationStatementEntity statement : statementEntities) {
             AuthorizationResource.Statement resource = statement.resource(
@@ -73,37 +84,82 @@ public class EffectiveAuthorizationResolver {
             compiled.put(statement.id, this.compiler.compileCached(statement.id, resource, statement.origin));
         }
 
-        List<AuthorizationRoleEntity> roleEntities = relevantRoles(user.organizationId);
+        List<AuthorizationRoleEntity> roleEntities = this.relevantRoles(user.organizationId);
         Map<UUID, AuthorizationRoleEntity> roleById = indexRoles(roleEntities);
         Set<UUID> roleIds = roleById.keySet();
         Map<UUID, List<UUID>> roleStatementsByRole = new HashMap<>();
-        this.roleStatements.findAllByRoleIdIn(roleIds).forEach(edge -> roleStatementsByRole.computeIfAbsent(edge.roleId, ignored -> new ArrayList<>()).add(edge.statementId));
+        this.roleStatements
+            .findAllByRoleIdIn(roleIds)
+            .forEach(edge ->
+                roleStatementsByRole.computeIfAbsent(edge.roleId, ignored -> new ArrayList<>()).add(edge.statementId)
+            );
         Map<UUID, List<UUID>> rolesByRole = new HashMap<>();
-        this.roleInheritance.findAllByRoleIdIn(roleIds).forEach(edge -> rolesByRole.computeIfAbsent(edge.roleId, ignored -> new ArrayList<>()).add(edge.includedRoleId));
+        this.roleInheritance
+            .findAllByRoleIdIn(roleIds)
+            .forEach(edge ->
+                rolesByRole.computeIfAbsent(edge.roleId, ignored -> new ArrayList<>()).add(edge.includedRoleId)
+            );
 
-        List<AuthorizationGroupEntity> groupEntities = relevantGroups(user.organizationId);
+        List<AuthorizationGroupEntity> groupEntities = this.relevantGroups(user.organizationId);
         Map<UUID, AuthorizationGroupEntity> groupById = indexGroups(groupEntities);
         Set<UUID> groupIds = groupById.keySet();
-        Map<UUID, List<UUID>> groupStatementsByGroup = new HashMap<>();
-        this.groupStatements.findAllByGroupIdIn(groupIds).forEach(edge -> groupStatementsByGroup.computeIfAbsent(edge.groupId, ignored -> new ArrayList<>()).add(edge.statementId));
+        Map<UUID, List<UUID>> statementsByGroup = new HashMap<>();
+        this.groupStatements
+            .findAllByGroupIdIn(groupIds)
+            .forEach(edge ->
+                statementsByGroup.computeIfAbsent(edge.groupId, ignored -> new ArrayList<>()).add(edge.statementId)
+            );
         Map<UUID, List<UUID>> groupsByGroup = new HashMap<>();
-        this.groupInheritance.findAllByGroupIdIn(groupIds).forEach(edge -> groupsByGroup.computeIfAbsent(edge.groupId, ignored -> new ArrayList<>()).add(edge.includedGroupId));
+        this.groupInheritance
+            .findAllByGroupIdIn(groupIds)
+            .forEach(edge ->
+                groupsByGroup.computeIfAbsent(edge.groupId, ignored -> new ArrayList<>()).add(edge.includedGroupId)
+            );
 
         Map<UUID, AccumulatedStatement> effective = new LinkedHashMap<>();
         String userNode = "user:" + userId;
         for (AuthorizationUserStatementAssignment assignment : this.userStatements.findAllByUserId(userId)) {
-            add(effective, compiled, assignment.statementId, List.of(userNode, statementNode(compiled, assignment.statementId)));
+            add(
+                effective,
+                compiled,
+                assignment.statementId,
+                List.of(userNode, statementNode(compiled, assignment.statementId))
+            );
         }
         for (AuthorizationUserRoleAssignment assignment : this.userRoles.findAllByUserId(userId)) {
-            walkRole(assignment.roleId, List.of(userNode), new HashSet<>(), roleById, rolesByRole, roleStatementsByRole, compiled, effective);
+            walkRole(
+                assignment.roleId,
+                List.of(userNode),
+                new HashSet<>(),
+                roleById,
+                rolesByRole,
+                roleStatementsByRole,
+                compiled,
+                effective
+            );
         }
         for (AuthorizationGroupEntity group : this.groups.findAllForMember(userId)) {
-            if (!groupById.containsKey(group.id)) throw new IllegalStateException("Group membership crosses authorization scope: " + group.key);
-            walkGroup(group.id, List.of(userNode), new HashSet<>(), groupById, groupsByGroup, groupStatementsByGroup, compiled, effective);
+            if (!groupById.containsKey(group.id)) throw new IllegalStateException(
+                "Group membership crosses authorization scope: " + group.key
+            );
+            walkGroup(
+                group.id,
+                List.of(userNode),
+                new HashSet<>(),
+                groupById,
+                groupsByGroup,
+                statementsByGroup,
+                compiled,
+                effective
+            );
         }
 
         return new EffectiveAuthorization(
-            effective.values().stream().map(value -> new EffectiveStatement(value.statement(), List.copyOf(value.provenance()))).toList()
+            effective
+                .values()
+                .stream()
+                .map(value -> new EffectiveStatement(value.statement(), List.copyOf(value.provenance())))
+                .toList()
         );
     }
 
@@ -120,8 +176,10 @@ public class EffectiveAuthorizationResolver {
         if (!active.add(roleId)) throw new IllegalStateException("Role authorization graph contains a cycle");
         AuthorizationRoleEntity role = require(roles, roleId, "Role");
         List<String> path = append(prefix, "role:" + role.key);
-        for (UUID statementId : statementEdges.getOrDefault(roleId, List.of())) add(effective, statements, statementId, append(path, statementNode(statements, statementId)));
-        for (UUID included : inheritance.getOrDefault(roleId, List.of())) walkRole(included, path, active, roles, inheritance, statementEdges, statements, effective);
+        for (UUID statementId : statementEdges.getOrDefault(roleId, List.of()))
+            add(effective, statements, statementId, append(path, statementNode(statements, statementId)));
+        for (UUID included : inheritance.getOrDefault(roleId, List.of()))
+            walkRole(included, path, active, roles, inheritance, statementEdges, statements, effective);
         active.remove(roleId);
     }
 
@@ -138,40 +196,61 @@ public class EffectiveAuthorizationResolver {
         if (!active.add(groupId)) throw new IllegalStateException("Group authorization graph contains a cycle");
         AuthorizationGroupEntity group = require(groups, groupId, "Group");
         List<String> path = append(prefix, "group:" + group.key);
-        for (UUID statementId : statementEdges.getOrDefault(groupId, List.of())) add(effective, statements, statementId, append(path, statementNode(statements, statementId)));
-        for (UUID included : inheritance.getOrDefault(groupId, List.of())) walkGroup(included, path, active, groups, inheritance, statementEdges, statements, effective);
+        for (UUID statementId : statementEdges.getOrDefault(groupId, List.of()))
+            add(effective, statements, statementId, append(path, statementNode(statements, statementId)));
+        for (UUID included : inheritance.getOrDefault(groupId, List.of()))
+            walkGroup(included, path, active, groups, inheritance, statementEdges, statements, effective);
         active.remove(groupId);
     }
 
-    private static void add(Map<UUID, AccumulatedStatement> effective, Map<UUID, CompiledStatement> statements, UUID statementId, List<String> path) {
+    private static void add(
+        Map<UUID, AccumulatedStatement> effective,
+        Map<UUID, CompiledStatement> statements,
+        UUID statementId,
+        List<String> path
+    ) {
         CompiledStatement statement = statements.get(statementId);
-        if (statement == null) throw new IllegalStateException("Authorization graph references an unavailable Statement: " + statementId);
-        AccumulatedStatement accumulated = effective.computeIfAbsent(statementId, ignored -> new AccumulatedStatement(statement, new ArrayList<>()));
+        if (statement == null) throw new IllegalStateException(
+            "Authorization graph references an unavailable Statement: " + statementId
+        );
+        AccumulatedStatement accumulated = effective.computeIfAbsent(statementId, ignored ->
+            new AccumulatedStatement(statement, new ArrayList<>())
+        );
         accumulated.provenance().add(new Provenance(path));
     }
 
     private static String statementNode(Map<UUID, CompiledStatement> statements, UUID statementId) {
         CompiledStatement statement = statements.get(statementId);
-        if (statement == null) throw new IllegalStateException("Authorization graph references an unavailable Statement: " + statementId);
+        if (statement == null) throw new IllegalStateException(
+            "Authorization graph references an unavailable Statement: " + statementId
+        );
         return "statement:" + statement.key();
     }
 
     private static <T> T require(Map<UUID, T> values, UUID id, String type) {
         T value = values.get(id);
-        if (value == null) throw new IllegalStateException(type + " authorization graph references an unavailable resource: " + id);
+        if (value == null) throw new IllegalStateException(
+            type + " authorization graph references an unavailable resource: " + id
+        );
         return value;
     }
 
     private List<AuthorizationStatementEntity> relevantStatements(@Nullable UUID organizationId) {
-        return organizationId == null ? this.statements.findAllByOrganizationIdIsNullOrderByKey() : this.statements.findRelevant(organizationId);
+        return organizationId == null
+            ? this.statements.findAllByOrganizationIdIsNullOrderByKey()
+            : this.statements.findRelevant(organizationId);
     }
 
     private List<AuthorizationRoleEntity> relevantRoles(@Nullable UUID organizationId) {
-        return organizationId == null ? this.roles.findAllByOrganizationIdIsNullOrderByKey() : this.roles.findRelevant(organizationId);
+        return organizationId == null
+            ? this.roles.findAllByOrganizationIdIsNullOrderByKey()
+            : this.roles.findRelevant(organizationId);
     }
 
     private List<AuthorizationGroupEntity> relevantGroups(@Nullable UUID organizationId) {
-        return organizationId == null ? this.groups.findAllByOrganizationIdIsNullOrderByKey() : this.groups.findRelevant(organizationId);
+        return organizationId == null
+            ? this.groups.findAllByOrganizationIdIsNullOrderByKey()
+            : this.groups.findRelevant(organizationId);
     }
 
     private static Map<UUID, AuthorizationRoleEntity> indexRoles(List<AuthorizationRoleEntity> roles) {

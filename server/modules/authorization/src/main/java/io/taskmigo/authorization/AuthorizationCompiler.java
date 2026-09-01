@@ -18,6 +18,7 @@ import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
+/// Validates canonical Statements and compiles them into cached, executable authorization plans.
 @Component
 public final class AuthorizationCompiler {
 
@@ -34,41 +35,48 @@ public final class AuthorizationCompiler {
 
     CompiledStatement compile(Statement resource, Origin origin) {
         String key = required(resource.key(), "key");
-        if (!KEY_PATTERN.matcher(key).matches()) throw new IllegalArgumentException("Invalid authorization resource key: " + key);
-        if (resource.match() == null) throw new IllegalArgumentException("match is required");
-        String method = required(resource.match().method(), "match.method").toUpperCase(Locale.ROOT);
+        if (!KEY_PATTERN.matcher(key).matches()) throw new IllegalArgumentException(
+            "Invalid authorization resource key: " + key
+        );
+        //noinspection ConstantValue -- Jackson can omit a record component despite its Java declaration.
+        AuthorizationResource.Match match = resource.match();
+        if (match == null) throw new IllegalArgumentException("match is required");
+        String suppliedMethod = required(match.method(), "match.method");
+        String method = suppliedMethod.toUpperCase(Locale.ROOT);
         if (!METHODS.contains(method)) throw new IllegalArgumentException("Unsupported HTTP method: " + method);
-        if (!resource.match().method().equals(method)) throw new IllegalArgumentException("match.method must use canonical uppercase form");
-        SafePathPattern path = SafePathPattern.compile(required(resource.match().path(), "match.path"));
-        if (!path.source().startsWith("/")) throw new IllegalArgumentException("match.path must match an absolute API path");
-        if (resource.target() == null) throw new IllegalArgumentException("target is required");
+        if (!suppliedMethod.equals(method)) throw new IllegalArgumentException(
+            "match.method must use canonical uppercase form"
+        );
+        SafePathPattern path = SafePathPattern.compile(required(match.path(), "match.path"));
+        if (!path.source().startsWith("/")) throw new IllegalArgumentException(
+            "match.path must match an absolute API path"
+        );
+        //noinspection ConstantValue -- Jackson can omit a record component despite its Java declaration.
+        Target target = resource.target();
+        if (target == null) throw new IllegalArgumentException("target is required");
 
-        List<FieldRule> fields = resource.fields();
-        if (resource.target() == Target.REQUEST) {
+        @Nullable
+        List<FieldRule> suppliedFields = resource.fields();
+        List<FieldRule> fields = suppliedFields == null ? List.of() : suppliedFields;
+        if (target == Target.REQUEST) {
             if (resource.effect() == null) throw new IllegalArgumentException("target: request requires effect");
             if (!fields.isEmpty()) throw new IllegalArgumentException("target: request must not contain fields");
         } else if (resource.effect() == null && fields.isEmpty()) {
             throw new IllegalArgumentException("target: object requires effect or at least one field rule");
         }
 
-        AuthorizationExpression condition = condition(resource.when(), resource.target() == Target.OBJECT);
-        if (resource.target() == Target.OBJECT && resource.effect() != null) {
-            validateObjectPredicate(method, path, condition);
+        AuthorizationExpression condition = this.condition(resource.when(), target == Target.OBJECT);
+        if (target == Target.OBJECT && resource.effect() != null) {
+            this.validateObjectPredicate(method, path, condition);
         }
-        List<CompiledFieldRule> compiledFields = new ArrayList<>(fields.size());
-        for (FieldRule field : fields) {
-            if (field.effect() == null) throw new IllegalArgumentException("Field rule effect is required");
-            if (field.names() == null || field.names().isEmpty()) throw new IllegalArgumentException("Field rule requires at least one field name");
-            List<String> names = field.names().stream().map(name -> fieldName(name)).distinct().toList();
-            compiledFields.add(new CompiledFieldRule(field.effect(), names, condition(field.when(), true)));
-        }
+        List<CompiledFieldRule> compiledFields = this.compileFields(fields);
 
         Effect effect = resource.effect() == null ? Effect.ALLOW : resource.effect();
         return new CompiledStatement(
             key,
             method,
             path,
-            resource.target(),
+            target,
             effect,
             resource.effect() != null,
             condition,
@@ -77,13 +85,28 @@ public final class AuthorizationCompiler {
         );
     }
 
+    private List<CompiledFieldRule> compileFields(List<FieldRule> fields) {
+        List<CompiledFieldRule> compiled = new ArrayList<>(fields.size());
+        for (FieldRule field : fields) {
+            //noinspection ConstantValue -- Jackson can omit a record component despite its Java declaration.
+            if (field.effect() == null) throw new IllegalArgumentException("Field rule effect is required");
+            //noinspection ConstantValue -- Jackson can omit a record component despite its Java declaration.
+            List<String> suppliedNames = field.names() == null ? List.of() : field.names();
+            if (suppliedNames.isEmpty()) throw new IllegalArgumentException(
+                "Field rule requires at least one field name"
+            );
+            List<String> names = suppliedNames.stream().map(AuthorizationCompiler::fieldName).distinct().toList();
+            compiled.add(new CompiledFieldRule(field.effect(), names, this.condition(field.when(), true)));
+        }
+        return List.copyOf(compiled);
+    }
+
     CompiledStatement compileCached(UUID id, Statement resource, Origin origin) {
         return this.cache
-            .compute(
-                id,
-                (ignored, current) -> current != null && current.matches(resource, origin)
+            .compute(id, (ignored, current) ->
+                current != null && current.matches(resource, origin)
                     ? current
-                    : new CachedStatement(resource, origin, compile(resource, origin))
+                    : new CachedStatement(resource, origin, this.compile(resource, origin))
             )
             .compiled();
     }
@@ -99,7 +122,10 @@ public final class AuthorizationCompiler {
             .toList();
         if (matching.isEmpty()) {
             throw new IllegalArgumentException(
-                "No database authorization query dialect supports object Statement matcher " + method + " " + path.source()
+                "No database authorization query dialect supports object Statement matcher " +
+                    method +
+                    " " +
+                    path.source()
             );
         }
         matching.forEach(dialect -> dialect.validate(condition));
@@ -112,11 +138,13 @@ public final class AuthorizationCompiler {
 
     private static String fieldName(String value) {
         String name = required(value, "fields.names[]");
-        if (!FIELD_PATTERN.matcher(name).matches()) throw new IllegalArgumentException("Invalid authorization field name: " + name);
+        if (!FIELD_PATTERN.matcher(name).matches()) throw new IllegalArgumentException(
+            "Invalid authorization field name: " + name
+        );
         return name;
     }
 
-    private static String required(String value, String field) {
+    private static String required(@Nullable String value, String field) {
         if (value == null || value.isBlank()) throw new IllegalArgumentException(field + " must be a non-blank string");
         return value;
     }

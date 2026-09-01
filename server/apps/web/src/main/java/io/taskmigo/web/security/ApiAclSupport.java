@@ -61,8 +61,8 @@ public final class ApiAclSupport {
             return;
         }
 
-        UserService.UserInfo user = currentUser(authentication);
-        Map<String, Object> context = context(user, request, method, path);
+        UserService.UserInfo user = this.currentUser(authentication);
+        Map<String, @Nullable Object> context = context(user, request, method, path);
         EffectiveAuthorization authorization = this.resolver.resolve(user.id());
         Snapshot snapshot = new Snapshot(
             false,
@@ -87,7 +87,9 @@ public final class ApiAclSupport {
         Snapshot snapshot = snapshot(request);
         if (snapshot.bypass()) return this.engine.unrestrictedObjects();
         EffectiveAuthorization authorization = snapshot.authorization();
-        if (authorization == null) throw new IllegalStateException("Authorization snapshot is missing the effective graph");
+        if (authorization == null) throw new IllegalStateException(
+            "Authorization snapshot is missing the effective graph"
+        );
         ObjectPlan plan = this.engine.planObjects(
             authorization,
             snapshot.method(),
@@ -98,25 +100,29 @@ public final class ApiAclSupport {
         return plan;
     }
 
-    public FieldDecision fieldDecision(ObjectPlan plan, Map<String, Object> objectContext, Set<String> responseFields) {
+    public FieldDecision fieldDecision(
+        ObjectPlan plan,
+        Map<String, @Nullable Object> objectContext,
+        Set<String> responseFields
+    ) {
         return this.engine.authorizeFields(plan, objectContext, responseFields);
     }
 
     public void requireOrganization(Authentication authentication, UUID organizationId) {
         if (hasSystemResourceManagement(authentication)) return;
-        UserService.UserInfo user = currentUser(authentication);
+        UserService.UserInfo user = this.currentUser(authentication);
         if (!organizationId.equals(user.organizationId())) throw new AccessDeniedException(
             "Authorization resources can only be managed for the principal organization"
         );
     }
 
-    private static Map<String, Object> context(
+    private static Map<String, @Nullable Object> context(
         UserService.UserInfo user,
         HttpServletRequest request,
         String method,
         String path
     ) {
-        Map<String, Object> values = new LinkedHashMap<>();
+        Map<String, @Nullable Object> values = new LinkedHashMap<>();
         values.put("principal.id", user.id());
         values.put("principal.organizationId", user.organizationId());
         values.put("principal.username", user.username());
@@ -221,7 +227,7 @@ public final class ApiAclSupport {
     private record Snapshot(
         boolean bypass,
         @Nullable EffectiveAuthorization authorization,
-        Map<String, Object> context,
+        Map<String, @Nullable Object> context,
         String method,
         String path,
         String correlationId,

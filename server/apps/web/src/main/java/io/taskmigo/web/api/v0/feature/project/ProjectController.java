@@ -70,7 +70,7 @@ class ProjectController {
         List<Map<String, Object>> visible = this.aclProjects
             .list(plan)
             .stream()
-            .map(project -> mask(project, plan))
+            .map(project -> this.mask(project, plan))
             .toList();
         return this.responses.ok(visible, "resource.project.listed", "Projects listed");
     }
@@ -190,7 +190,11 @@ class ProjectController {
     }
 
     private Map<String, Object> mask(ProjectAclQueryService.ProjectView project, ObjectPlan plan) {
-        FieldDecision fields = this.acl.fieldDecision(plan, project.authorizationContext(), ProjectAclQueryService.ProjectView.FIELDS);
+        FieldDecision fields = this.acl.fieldDecision(
+            plan,
+            project.authorizationContext(),
+            ProjectAclQueryService.ProjectView.FIELDS
+        );
         Map<String, Object> result = new LinkedHashMap<>();
         put(result, fields, "id", project.id());
         put(result, fields, "organizationId", project.organizationId());
@@ -201,7 +205,7 @@ class ProjectController {
         return Map.copyOf(result);
     }
 
-    private static void put(Map<String, Object> target, FieldDecision fields, String field, Object value) {
+    private static void put(Map<String, Object> target, FieldDecision fields, String field, @Nullable Object value) {
         if (!fields.hiddenFields().contains(field)) target.put(field, value);
     }
 

@@ -2,6 +2,7 @@ package io.taskmigo.project;
 
 import io.taskmigo.authorization.AuthorizationExpression;
 import io.taskmigo.authorization.AuthorizationObjectQueryDialect;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -18,7 +19,7 @@ final class ProjectAuthorizationObjectQueryDialect implements AuthorizationObjec
     }
 
     @Override
-    public void validate(AuthorizationExpression expression) {
+    public void validate(@NonNull AuthorizationExpression expression) {
         ProjectAclSpecifications.validate(expression);
     }
 }

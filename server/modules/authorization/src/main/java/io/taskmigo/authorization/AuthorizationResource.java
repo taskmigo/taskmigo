@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Locale;
 import org.jspecify.annotations.Nullable;
 
+/// Defines the canonical authorization resources shared by YAML bootstrap and JSON management requests.
 public final class AuthorizationResource {
 
     private AuthorizationResource() {}
@@ -18,7 +19,7 @@ public final class AuthorizationResource {
         Target target,
         @Nullable Effect effect,
         @Nullable String when,
-        List<FieldRule> fields
+        @Nullable List<FieldRule> fields
     ) {
         public Statement {
             fields = fields == null ? List.of() : List.copyOf(fields);
@@ -37,8 +38,8 @@ public final class AuthorizationResource {
         String key,
         @Nullable String name,
         @Nullable String description,
-        List<String> statements,
-        List<String> roles
+        @Nullable List<String> statements,
+        @Nullable List<String> roles
     ) {
         public Role {
             statements = statements == null ? List.of() : List.copyOf(statements);
@@ -50,8 +51,8 @@ public final class AuthorizationResource {
         String key,
         @Nullable String name,
         @Nullable String description,
-        List<String> statements,
-        List<String> groups
+        @Nullable List<String> statements,
+        @Nullable List<String> groups
     ) {
         public Group {
             statements = statements == null ? List.of() : List.copyOf(statements);
@@ -70,7 +71,7 @@ public final class AuthorizationResource {
 
         @JsonValue
         public String wireValue() {
-            return name().toLowerCase(Locale.ROOT);
+            return this.name().toLowerCase(Locale.ROOT);
         }
     }
 
@@ -85,7 +86,7 @@ public final class AuthorizationResource {
 
         @JsonValue
         public String wireValue() {
-            return name().toLowerCase(Locale.ROOT);
+            return this.name().toLowerCase(Locale.ROOT);
         }
     }
 

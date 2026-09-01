@@ -8,7 +8,6 @@ import io.taskmigo.access.PermissionCatalog;
 import io.taskmigo.identity.oauth.InternalClientMetadata;
 import io.taskmigo.organization.OrganizationService;
 import java.net.http.HttpClient;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -88,20 +87,24 @@ class OAuthInfrastructureIntegrationTest {
     }
 
     @Test
-    void managedClientCredentialsCanManageOrganizationAcl() {
+    void managedClientCredentialsCanManageOrganizationAuthorization() {
         String clientId = "managed-acl-" + UUID.randomUUID();
         String clientSecret = "managed-acl-secret";
         this.clients.save(this.managedClient(clientId, clientSecret));
         String token = this.accessToken(clientId, clientSecret);
         UUID organizationId = this.organizations.create("acl-managed-" + UUID.randomUUID(), "Managed ACL Org");
-        String policyName = "deny-project-list-" + UUID.randomUUID();
+        String statementKey = "deny-project-list-" + UUID.randomUUID();
 
         var response = this.http()
             .put()
-            .uri("/api/v0/organizations/{organizationId}/acl-policies/{policyName}", organizationId, policyName)
+            .uri(
+                "/api/v0/organizations/{organizationId}/authorization/statements/{statementKey}",
+                organizationId,
+                statementKey
+            )
             .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
             .contentType(MediaType.APPLICATION_JSON)
-            .body(requestAclPolicy())
+            .body(requestStatement(statementKey))
             .retrieve()
             .toBodilessEntity();
 
@@ -217,17 +220,18 @@ class OAuthInfrastructureIntegrationTest {
             .build();
     }
 
-    private static Map<String, Object> requestAclPolicy() {
+    private static Map<String, Object> requestStatement(String key) {
         return Map.of(
-            "kind",
-            "acl/request",
-            "spec",
-            Map.of(
-                "target",
-                Map.of("methods", List.of("GET"), "path", "/api/v0/projects"),
-                "rules",
-                Map.of("deny-authenticated", Map.of("effect", "deny", "when", Map.of("exists", "principal.id")))
-            )
+            "key",
+            key,
+            "match",
+            Map.of("method", "GET", "path", "/api/v0/projects"),
+            "target",
+            "request",
+            "effect",
+            "deny",
+            "when",
+            "principal.id != null"
         );
     }
 

@@ -36,7 +36,7 @@ spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-te
 flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
 postgresql-driver = { module = "org.postgresql:postgresql" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter" }
-testcontainers-postgresql = { module = "org.testcontainers:postgresql" }
+testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }
 
 [plugins]
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
