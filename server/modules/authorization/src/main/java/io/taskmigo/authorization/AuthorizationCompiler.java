@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -42,8 +43,7 @@ public final class AuthorizationCompiler {
         if (!path.source().startsWith("/")) throw new IllegalArgumentException("match.path must match an absolute API path");
         if (resource.target() == null) throw new IllegalArgumentException("target is required");
 
-        @SuppressWarnings("NullAway")
-        List<FieldRule> fields = resource.fields() == null ? List.of() : resource.fields();
+        List<FieldRule> fields = resource.fields();
         if (resource.target() == Target.REQUEST) {
             if (resource.effect() == null) throw new IllegalArgumentException("target: request requires effect");
             if (!fields.isEmpty()) throw new IllegalArgumentException("target: request must not contain fields");
@@ -105,7 +105,7 @@ public final class AuthorizationCompiler {
         matching.forEach(dialect -> dialect.validate(condition));
     }
 
-    private AuthorizationExpression condition(String source, boolean objectAllowed) {
+    private AuthorizationExpression condition(@Nullable String source, boolean objectAllowed) {
         if (source == null || source.isBlank()) return new Literal(Boolean.TRUE, ValueType.BOOLEAN);
         return this.expressions.compile(source, objectAllowed);
     }

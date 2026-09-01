@@ -73,7 +73,15 @@ class AuthorizationStatementEntity {
     AuthorizationStatementEntity(UUID id, @Nullable UUID organizationId, Statement resource, Origin origin) {
         this.id = id;
         this.organizationId = organizationId;
-        this.replace(resource, origin);
+        this.key = resource.key();
+        this.name = resource.name();
+        this.description = resource.description();
+        this.method = resource.match().method();
+        this.path = resource.match().path();
+        this.target = resource.target();
+        this.effect = resource.effect();
+        this.condition = resource.when();
+        this.origin = origin;
     }
 
     void replace(Statement resource, Origin origin) {

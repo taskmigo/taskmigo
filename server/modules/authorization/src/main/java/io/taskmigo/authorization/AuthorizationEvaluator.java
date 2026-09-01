@@ -31,7 +31,7 @@ final class AuthorizationEvaluator {
         };
     }
 
-    private Object value(AuthorizationExpression expression, Map<String, Object> values) {
+    private @Nullable Object value(AuthorizationExpression expression, Map<String, Object> values) {
         return switch (expression) {
             case Literal(var value, var ignored) -> value;
             case Reference reference -> resolve(reference, values);

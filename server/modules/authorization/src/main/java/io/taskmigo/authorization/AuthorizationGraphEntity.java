@@ -53,7 +53,10 @@ class AuthorizationRoleEntity {
     AuthorizationRoleEntity(UUID id, @Nullable UUID organizationId, AuthorizationResource.Role resource, Origin origin) {
         this.id = id;
         this.organizationId = organizationId;
-        this.replace(resource, origin);
+        this.key = resource.key();
+        this.name = resource.name() == null || resource.name().isBlank() ? resource.key() : resource.name();
+        this.description = resource.description();
+        this.origin = origin;
     }
 
     void replace(AuthorizationResource.Role resource, Origin origin) {
@@ -100,8 +103,11 @@ class AuthorizationGroupEntity {
     AuthorizationGroupEntity(UUID id, @Nullable UUID organizationId, AuthorizationResource.Group resource, Origin origin) {
         this.id = id;
         this.organizationId = organizationId;
+        this.key = resource.key();
+        this.name = resource.name() == null || resource.name().isBlank() ? resource.key() : resource.name();
+        this.description = resource.description();
+        this.origin = origin;
         this.memberIds = new LinkedHashSet<>();
-        this.replace(resource, origin);
     }
 
     void replace(AuthorizationResource.Group resource, Origin origin) {

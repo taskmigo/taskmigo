@@ -11,6 +11,7 @@ import io.taskmigo.authorization.AuthorizationExpression.ValueType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import org.jspecify.annotations.Nullable;
 import org.springframework.expression.spel.SpelNode;
 import org.springframework.expression.spel.SpelParserConfiguration;
 import org.springframework.expression.spel.ast.CompoundExpression;
@@ -48,7 +49,8 @@ final class AuthorizationExpressionCompiler {
     private static Typed convert(SpelNode node, boolean objectAllowed) {
         if (node instanceof org.springframework.expression.spel.ast.Literal literal) {
             Object value = literal.getLiteralValue().getValue();
-            return new Typed(new Literal(value, literalType(value)), literalType(value));
+            ValueType type = literalType(value);
+            return new Typed(new Literal(value, type), type);
         }
         if (node instanceof CompoundExpression compound) return reference(compound, objectAllowed);
         return switch (node.getClass().getSimpleName()) {
@@ -160,7 +162,7 @@ final class AuthorizationExpressionCompiler {
         if (actual != ValueType.UNKNOWN && actual != expected) throw new IllegalArgumentException(message);
     }
 
-    private static ValueType literalType(Object value) {
+    private static ValueType literalType(@Nullable Object value) {
         if (value == null) return ValueType.NULL;
         if (value instanceof Boolean) return ValueType.BOOLEAN;
         if (value instanceof Number) return ValueType.NUMBER;

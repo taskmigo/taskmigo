@@ -18,7 +18,7 @@ public final class AuthorizationResource {
         Target target,
         @Nullable Effect effect,
         @Nullable String when,
-        @Nullable List<FieldRule> fields
+        List<FieldRule> fields
     ) {
         public Statement {
             fields = fields == null ? List.of() : List.copyOf(fields);
@@ -37,8 +37,8 @@ public final class AuthorizationResource {
         String key,
         @Nullable String name,
         @Nullable String description,
-        @Nullable List<String> statements,
-        @Nullable List<String> roles
+        List<String> statements,
+        List<String> roles
     ) {
         public Role {
             statements = statements == null ? List.of() : List.copyOf(statements);
@@ -50,8 +50,8 @@ public final class AuthorizationResource {
         String key,
         @Nullable String name,
         @Nullable String description,
-        @Nullable List<String> statements,
-        @Nullable List<String> groups
+        List<String> statements,
+        List<String> groups
     ) {
         public Group {
             statements = statements == null ? List.of() : List.copyOf(statements);
