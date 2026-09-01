@@ -5,10 +5,15 @@ on:
     paths:
       - "Taskfile.yml"
       - "deploy/minikube/**"
+      - "!deploy/minikube/**/*.md"
       - "helm/**"
+      - "!helm/**/*.md"
       - "server/**"
+      - "!server/**/*.md"
       - "client/**"
+      - "!client/**/*.md"
       - "e2e/**"
+      - "!e2e/**/*.md"
       - ".github/docker-bake.integration.hcl"
       - ".github/workflows/kubernetes-integration.yml"
   push:
@@ -16,10 +21,15 @@ on:
     paths:
       - "Taskfile.yml"
       - "deploy/minikube/**"
+      - "!deploy/minikube/**/*.md"
       - "helm/**"
+      - "!helm/**/*.md"
       - "server/**"
+      - "!server/**/*.md"
       - "client/**"
+      - "!client/**/*.md"
       - "e2e/**"
+      - "!e2e/**/*.md"
       - ".github/docker-bake.integration.hcl"
       - ".github/workflows/kubernetes-integration.yml"
 
