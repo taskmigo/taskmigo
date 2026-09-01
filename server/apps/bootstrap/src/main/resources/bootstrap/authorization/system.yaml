@@ -1,0 +1,96 @@
+statements:
+  - key: system.api.authenticated.get
+    name: Authenticated API GET
+    description: Allows an assigned authenticated user to call versioned GET APIs.
+    match:
+      method: GET
+      path: /api/v0/.*
+    target: request
+    effect: allow
+    when: principal.id != null
+
+  - key: system.api.authenticated.post
+    name: Authenticated API POST
+    description: Allows an assigned authenticated user to call versioned POST APIs.
+    match:
+      method: POST
+      path: /api/v0/.*
+    target: request
+    effect: allow
+    when: principal.id != null
+
+  - key: system.api.authenticated.put
+    name: Authenticated API PUT
+    description: Allows an assigned authenticated user to call versioned PUT APIs.
+    match:
+      method: PUT
+      path: /api/v0/.*
+    target: request
+    effect: allow
+    when: principal.id != null
+
+  - key: system.api.authenticated.patch
+    name: Authenticated API PATCH
+    description: Allows an assigned authenticated user to call versioned PATCH APIs.
+    match:
+      method: PATCH
+      path: /api/v0/.*
+    target: request
+    effect: allow
+    when: principal.id != null
+
+  - key: system.api.authenticated.delete
+    name: Authenticated API DELETE
+    description: Allows an assigned authenticated user to call versioned DELETE APIs.
+    match:
+      method: DELETE
+      path: /api/v0/.*
+    target: request
+    effect: allow
+    when: principal.id != null
+
+  - key: system.api.authenticated.head
+    name: Authenticated API HEAD
+    description: Allows an assigned authenticated user to call versioned HEAD APIs.
+    match:
+      method: HEAD
+      path: /api/v0/.*
+    target: request
+    effect: allow
+    when: principal.id != null
+
+  - key: system.api.authenticated.options
+    name: Authenticated API OPTIONS
+    description: Allows an assigned authenticated user to call versioned OPTIONS APIs.
+    match:
+      method: OPTIONS
+      path: /api/v0/.*
+    target: request
+    effect: allow
+    when: principal.id != null
+
+  - key: system.project.same-organization
+    name: Project organization boundary
+    description: Limits the project collection to the principal organization.
+    match:
+      method: GET
+      path: /api/v0/projects
+    target: object
+    effect: allow
+    when: object.organizationId == principal.organizationId
+
+roles:
+  - key: system.user
+    name: Taskmigo user
+    description: Baseline API access and project organization boundary for regular users.
+    statements:
+      - system.api.authenticated.get
+      - system.api.authenticated.post
+      - system.api.authenticated.put
+      - system.api.authenticated.patch
+      - system.api.authenticated.delete
+      - system.api.authenticated.head
+      - system.api.authenticated.options
+      - system.project.same-organization
+
+groups: []
