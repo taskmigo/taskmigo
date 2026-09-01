@@ -4,12 +4,14 @@ on:
   pull_request:
     paths:
       - "client/**"
+      - "!client/**/*.md"
       - ".github/workflows/client.yml"
   push:
     branches:
       - next
     paths:
       - "client/**"
+      - "!client/**/*.md"
       - ".github/workflows/client.yml"
 
 permissions:
