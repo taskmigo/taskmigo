@@ -1,5 +1,6 @@
 package io.taskmigo.project;
 
+import io.taskmigo.authorization.AuthorizationEngine.ObjectPlan;
 import io.taskmigo.authorization.AuthorizationExpression;
 import io.taskmigo.authorization.AuthorizationExpression.Binary;
 import io.taskmigo.authorization.AuthorizationExpression.BinaryOperator;
@@ -7,7 +8,6 @@ import io.taskmigo.authorization.AuthorizationExpression.Literal;
 import io.taskmigo.authorization.AuthorizationExpression.Reference;
 import io.taskmigo.authorization.AuthorizationExpression.Unary;
 import io.taskmigo.authorization.AuthorizationExpression.UnaryOperator;
-import io.taskmigo.authorization.AuthorizationEngine.ObjectPlan;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -38,8 +38,60 @@ final class ProjectAclSpecifications {
 
     private ProjectAclSpecifications() {}
 
+    static void validate(AuthorizationExpression expression) {
+        validatePredicate(expression);
+    }
+
     static Specification<ProjectEntity> from(ObjectPlan plan) {
         return (root, query, builder) -> predicate(plan.predicate(), root, builder);
+    }
+
+    private static void validatePredicate(AuthorizationExpression expression) {
+        switch (expression) {
+            case Literal(var value, var ignored) when value instanceof Boolean -> {}
+            case Unary(var operator, var operand) when operator == UnaryOperator.NOT -> validatePredicate(operand);
+            case Binary(var operator, var left, var right) when operator == BinaryOperator.AND || operator == BinaryOperator.OR -> {
+                validatePredicate(left);
+                validatePredicate(right);
+            }
+            case Binary(var operator, var left, var right) when isComparison(operator) -> {
+                validateValue(left);
+                validateValue(right);
+            }
+            default -> throw new IllegalArgumentException(
+                "Project object authorization cannot compile predicate to a database query: " + expression
+            );
+        }
+    }
+
+    private static void validateValue(AuthorizationExpression expression) {
+        switch (expression) {
+            case Reference reference when reference.root() == AuthorizationExpression.Root.OBJECT -> attribute(reference);
+            case Reference ignored -> {}
+            case Literal ignored -> {}
+            case Unary(var operator, var operand) when operator == UnaryOperator.NEGATE || operator == UnaryOperator.POSITIVE -> validateValue(operand);
+            case Binary(var operator, var left, var right) when isSupportedArithmetic(operator) -> {
+                validateValue(left);
+                validateValue(right);
+            }
+            default -> throw new IllegalArgumentException(
+                "Project object authorization cannot compile value to a database query: " + expression
+            );
+        }
+    }
+
+    private static boolean isComparison(BinaryOperator operator) {
+        return switch (operator) {
+            case EQ, NE, GT, GE, LT, LE -> true;
+            default -> false;
+        };
+    }
+
+    private static boolean isSupportedArithmetic(BinaryOperator operator) {
+        return switch (operator) {
+            case ADD, SUBTRACT, MULTIPLY, DIVIDE -> true;
+            default -> false;
+        };
     }
 
     private static Predicate predicate(AuthorizationExpression expression, Root<ProjectEntity> root, CriteriaBuilder builder) {

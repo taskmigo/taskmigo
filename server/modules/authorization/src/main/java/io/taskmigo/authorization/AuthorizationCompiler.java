@@ -24,7 +24,12 @@ public final class AuthorizationCompiler {
     private static final Pattern FIELD_PATTERN = Pattern.compile("[A-Za-z_][A-Za-z0-9_.-]{0,127}");
     private static final Set<String> METHODS = Set.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS");
     private final AuthorizationExpressionCompiler expressions = new AuthorizationExpressionCompiler();
+    private final List<AuthorizationObjectQueryDialect> objectQueryDialects;
     private final Map<UUID, CachedStatement> cache = new ConcurrentHashMap<>();
+
+    public AuthorizationCompiler(List<AuthorizationObjectQueryDialect> objectQueryDialects) {
+        this.objectQueryDialects = List.copyOf(objectQueryDialects);
+    }
 
     CompiledStatement compile(Statement resource, Origin origin) {
         String key = required(resource.key(), "key");
@@ -47,6 +52,9 @@ public final class AuthorizationCompiler {
         }
 
         AuthorizationExpression condition = condition(resource.when(), resource.target() == Target.OBJECT);
+        if (resource.target() == Target.OBJECT && resource.effect() != null) {
+            validateObjectPredicate(method, path, condition);
+        }
         List<CompiledFieldRule> compiledFields = new ArrayList<>(fields.size());
         for (FieldRule field : fields) {
             if (field.effect() == null) throw new IllegalArgumentException("Field rule effect is required");
@@ -82,6 +90,19 @@ public final class AuthorizationCompiler {
 
     void invalidate(UUID id) {
         this.cache.remove(id);
+    }
+
+    private void validateObjectPredicate(String method, SafePathPattern path, AuthorizationExpression condition) {
+        List<AuthorizationObjectQueryDialect> matching = this.objectQueryDialects
+            .stream()
+            .filter(dialect -> dialect.method().equals(method) && path.matches(dialect.path()))
+            .toList();
+        if (matching.isEmpty()) {
+            throw new IllegalArgumentException(
+                "No database authorization query dialect supports object Statement matcher " + method + " " + path.source()
+            );
+        }
+        matching.forEach(dialect -> dialect.validate(condition));
     }
 
     private AuthorizationExpression condition(String source, boolean objectAllowed) {

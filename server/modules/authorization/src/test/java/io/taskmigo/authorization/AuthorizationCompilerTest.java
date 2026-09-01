@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 
 class AuthorizationCompilerTest {
 
-    private final AuthorizationCompiler compiler = new AuthorizationCompiler();
+    private final AuthorizationCompiler compiler = new AuthorizationCompiler(List.of(new AcceptingObjectQueryDialect()));
 
     @Test
     void compilesAndCachesSafeObjectCondition() {
@@ -54,6 +54,17 @@ class AuthorizationCompilerTest {
         assertThat(second).isNotSameAs(first);
         assertThat(second.method()).isEqualTo("POST");
         assertThat(second.effect()).isEqualTo(Effect.DENY);
+    }
+
+    @Test
+    void rejectsObjectStatementWithoutDatabaseDialect() {
+        AuthorizationCompiler withoutDialect = new AuthorizationCompiler(List.of());
+
+        assertThatThrownBy(() ->
+            withoutDialect.compile(statement(Target.OBJECT, Effect.ALLOW, "object.id != null"), Origin.CUSTOM)
+        )
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("No database authorization query dialect supports");
     }
 
     @Test
@@ -123,5 +134,21 @@ class AuthorizationCompilerTest {
             condition,
             List.of()
         );
+    }
+
+    private static final class AcceptingObjectQueryDialect implements AuthorizationObjectQueryDialect {
+
+        @Override
+        public String method() {
+            return "GET";
+        }
+
+        @Override
+        public String path() {
+            return "/api/v0/projects";
+        }
+
+        @Override
+        public void validate(AuthorizationExpression expression) {}
     }
 }
