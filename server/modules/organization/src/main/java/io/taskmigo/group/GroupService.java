@@ -59,7 +59,11 @@ public class GroupService {
 
     @Transactional(readOnly = true)
     public List<UUID> groupsForUser(UUID userId) {
-        return this.groups.findIdsContainingUser(userId);
+        return this.groups
+            .findAllByMemberIdsContains(userId)
+            .stream()
+            .map(group -> group.id)
+            .toList();
     }
 
     public record GroupInfo(UUID id, UUID organizationId, String name) {}
