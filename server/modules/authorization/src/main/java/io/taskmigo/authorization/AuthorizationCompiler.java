@@ -54,14 +54,7 @@ public final class AuthorizationCompiler {
         Target target = resource.target();
         if (target == null) throw new IllegalArgumentException("target is required");
 
-        List<FieldRule> suppliedFields = Objects.requireNonNullElse(resource.fields(), List.of());
-        List<FieldRule> fields = suppliedFields;
-        if (target == Target.REQUEST) {
-            if (resource.effect() == null) throw new IllegalArgumentException("target: request requires effect");
-            if (!fields.isEmpty()) throw new IllegalArgumentException("target: request must not contain fields");
-        } else if (resource.effect() == null && fields.isEmpty()) {
-            throw new IllegalArgumentException("target: object requires effect or at least one field rule");
-        }
+        List<FieldRule> fields = this.validateTarget(resource, target);
 
         AuthorizationExpression condition = this.condition(resource.when(), target == Target.OBJECT);
         if (target == Target.OBJECT && resource.effect() != null) {
@@ -81,6 +74,17 @@ public final class AuthorizationCompiler {
             compiledFields,
             origin
         );
+    }
+
+    private List<FieldRule> validateTarget(Statement resource, Target target) {
+        List<FieldRule> fields = Objects.requireNonNullElse(resource.fields(), List.of());
+        if (target == Target.REQUEST) {
+            if (resource.effect() == null) throw new IllegalArgumentException("target: request requires effect");
+            if (!fields.isEmpty()) throw new IllegalArgumentException("target: request must not contain fields");
+        } else if (resource.effect() == null && fields.isEmpty()) {
+            throw new IllegalArgumentException("target: object requires effect or at least one field rule");
+        }
+        return fields;
     }
 
     private List<CompiledFieldRule> compileFields(List<FieldRule> fields) {

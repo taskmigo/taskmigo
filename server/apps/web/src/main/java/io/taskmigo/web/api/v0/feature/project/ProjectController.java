@@ -201,13 +201,13 @@ class ProjectController {
         put(result, fields, "organizationId", project.organizationId());
         put(result, fields, "key", project.key());
         put(result, fields, "name", project.name());
-        if (description != null) put(result, fields, "description", description);
+        put(result, fields, "description", description);
         put(result, fields, "status", project.status());
         return Map.copyOf(result);
     }
 
     private static void put(Map<String, Object> target, FieldDecision fields, String field, @Nullable Object value) {
-        if (!fields.hiddenFields().contains(field)) target.put(field, value);
+        if (value != null && !fields.hiddenFields().contains(field)) target.put(field, value);
     }
 
     private static ProjectChanged.Actor actor(Authentication authentication) {
