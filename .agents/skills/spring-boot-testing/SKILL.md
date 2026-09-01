@@ -14,7 +14,7 @@ Stack assumed: JUnit 5, Mockito, AssertJ, Testcontainers, Spring Boot Test.
 Ask this before writing anything: **does this test need real collaborators (DB, HTTP layer, Spring context) to be meaningful, or can it verify behavior with the real object under test and everything else mocked?**
 
 | Use a **unit test** when... | Use an **integration test** when... |
-|---|---|
+| --- | --- |
 | Testing business/validation logic inside a single class | Testing DB constraints, triggers, or Liquibase-managed schema behavior |
 | The class's collaborators can be faithfully mocked (repository, client, etc.) | Testing wiring across layers (controller → service → repository → DB) |
 | You want fast, no-context feedback (milliseconds) | Testing actual HTTP request/response handling, serialization, status codes |
@@ -67,6 +67,7 @@ Class naming: `XxxTest` for unit tests, `XxxIntegrationTest` for integration tes
 ## Step 3: Best practices
 
 **Unit tests (Mockito):**
+
 - Mock only *direct* collaborators of the class under test — don't mock things two layers deep.
 - One behavior per test. If a test needs "and" in its description to explain what it checks, split it.
 - Use `@Nested` classes to group tests by the method under test (see template) once a test class covers more than ~2 methods.
@@ -74,6 +75,7 @@ Class naming: `XxxTest` for unit tests, `XxxIntegrationTest` for integration tes
 - Don't use `@MockBean`/`@SpringBootTest` for pure unit tests — that's what makes them slow. Plain `@ExtendWith(MockitoExtension.class)` is enough.
 
 **Integration tests (Testcontainers):**
+
 - Use `@ServiceConnection` (Spring Boot's Testcontainers integration) instead of manually wiring `@DynamicPropertySource` — less boilerplate, less to get wrong.
 - Reuse containers across test classes where possible (a shared static container or Testcontainers' reuse mode) instead of starting a fresh container per class — this is the single biggest lever on integration test suite speed.
 - Prefer Spring's test slices (`@DataJpaTest`, `@WebMvcTest`) over full `@SpringBootTest` when the test doesn't actually need the whole context — full `@SpringBootTest` should be reserved for true end-to-end scenarios.
@@ -81,6 +83,7 @@ Class naming: `XxxTest` for unit tests, `XxxIntegrationTest` for integration tes
 - Don't share mutable state between test methods; each test should be able to run alone and in any order.
 
 **Both:**
+
 - No test logic (loops, conditionals) inside a test method — if you need that, it's a sign the test is doing too much or needs parameterization (`@ParameterizedTest`).
 - Test data via small builder/factory helpers when a class has many fields, so each test only sets what it actually cares about.
 - Never leave a test that only exists to "keep coverage up" without a real behavior it verifies — every test's `@DisplayName` should describe a behavior someone would notice if it broke.
@@ -88,6 +91,7 @@ Class naming: `XxxTest` for unit tests, `XxxIntegrationTest` for integration tes
 ## Step 4: Verify
 
 After writing the test, check:
+
 - [ ] Every test method has `@DisplayName` and a `should...When...` name
 - [ ] Every test has an Arrange comment explaining *why*, not just *what*
 - [ ] Unit test has no Spring context (`@ExtendWith(MockitoExtension.class)` only); integration test boots one on purpose
