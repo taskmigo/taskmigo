@@ -12,5 +12,6 @@ public interface AuthorizationObjectQueryDialect {
     ///
     /// @param expression the Taskmigo authorization AST to validate
     /// @throws IllegalArgumentException if the predicate cannot be compiled by this query backend
+    @SuppressWarnings("NullableProblems")
     void validate(AuthorizationExpression expression) throws IllegalArgumentException;
 }
