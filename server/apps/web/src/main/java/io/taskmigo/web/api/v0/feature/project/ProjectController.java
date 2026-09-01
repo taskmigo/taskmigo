@@ -196,11 +196,12 @@ class ProjectController {
             ProjectAclQueryService.ProjectView.FIELDS
         );
         Map<String, Object> result = new LinkedHashMap<>();
+        String description = project.description();
         put(result, fields, "id", project.id());
         put(result, fields, "organizationId", project.organizationId());
         put(result, fields, "key", project.key());
         put(result, fields, "name", project.name());
-        if (project.description() != null) put(result, fields, "description", project.description());
+        if (description != null) put(result, fields, "description", description);
         put(result, fields, "status", project.status());
         return Map.copyOf(result);
     }

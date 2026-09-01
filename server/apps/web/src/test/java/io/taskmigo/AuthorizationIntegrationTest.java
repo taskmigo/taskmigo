@@ -18,6 +18,7 @@ import io.taskmigo.organization.OrganizationService;
 import io.taskmigo.project.ProjectAclQueryService;
 import io.taskmigo.project.ProjectService;
 import io.taskmigo.user.UserService;
+import io.taskmigo.web.api.v0.feature.access.OrganizationAclPolicyService;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +53,7 @@ class AuthorizationIntegrationTest {
     private final AuthorizationResourceService resources;
     private final EffectiveAuthorizationResolver resolver;
     private final AuthorizationEngine engine;
+    private final OrganizationAclPolicyService aclPolicies;
 
     AuthorizationIntegrationTest(
         OrganizationService organizations,
@@ -60,7 +62,8 @@ class AuthorizationIntegrationTest {
         ProjectAclQueryService aclProjects,
         AuthorizationResourceService resources,
         EffectiveAuthorizationResolver resolver,
-        AuthorizationEngine engine
+        AuthorizationEngine engine,
+        OrganizationAclPolicyService aclPolicies
     ) {
         this.organizations = organizations;
         this.users = users;
@@ -69,6 +72,7 @@ class AuthorizationIntegrationTest {
         this.resources = resources;
         this.resolver = resolver;
         this.engine = engine;
+        this.aclPolicies = aclPolicies;
     }
 
     @Test
@@ -295,5 +299,33 @@ class AuthorizationIntegrationTest {
         assertThatThrownBy(() -> this.resources.assignStatement(user, foreignKey))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Unknown Statement");
+    }
+
+    @Test
+    void persistsCustomAclPoliciesPerOrganization() {
+        UUID organization = this.organizations.create("acl-policy-" + UUID.randomUUID(), "ACL Policy Org");
+        UUID otherOrganization = this.organizations.create(
+            "acl-policy-other-" + UUID.randomUUID(),
+            "Other ACL Policy Org"
+        );
+        String name = "deny-project-list-" + UUID.randomUUID();
+        this.aclPolicies.upsert(
+            organization,
+            name,
+            new OrganizationAclPolicyService.Policy(
+                "acl/request",
+                Map.of(
+                    "target",
+                    Map.of("methods", List.of("GET"), "path", "/api/v0/projects"),
+                    "rules",
+                    Map.of("deny-authenticated", Map.of("effect", "deny", "when", Map.of("exists", "principal.id")))
+                )
+            )
+        );
+
+        assertThat(this.aclPolicies.list(organization)).contains(name);
+        assertThat(this.aclPolicies.list(otherOrganization)).isEmpty();
+        assertThat(this.aclPolicies.delete(organization, name)).isTrue();
+        assertThat(this.aclPolicies.list(organization)).doesNotContain(name);
     }
 }

@@ -15,8 +15,8 @@ public final class AuthorizationResource {
         String key,
         @Nullable String name,
         @Nullable String description,
-        Match match,
-        Target target,
+        @Nullable Match match,
+        @Nullable Target target,
         @Nullable Effect effect,
         @Nullable String when,
         @Nullable List<FieldRule> fields
@@ -28,9 +28,9 @@ public final class AuthorizationResource {
 
     public record Match(String method, String path) {}
 
-    public record FieldRule(Effect effect, List<String> names, @Nullable String when) {
+    public record FieldRule(@Nullable Effect effect, @Nullable List<String> names, @Nullable String when) {
         public FieldRule {
-            names = List.copyOf(names);
+            names = names == null ? List.of() : List.copyOf(names);
         }
     }
 

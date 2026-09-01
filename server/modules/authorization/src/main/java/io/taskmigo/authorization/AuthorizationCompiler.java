@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,7 +39,6 @@ public final class AuthorizationCompiler {
         if (!KEY_PATTERN.matcher(key).matches()) throw new IllegalArgumentException(
             "Invalid authorization resource key: " + key
         );
-        //noinspection ConstantValue -- Jackson can omit a record component despite its Java declaration.
         AuthorizationResource.Match match = resource.match();
         if (match == null) throw new IllegalArgumentException("match is required");
         String suppliedMethod = required(match.method(), "match.method");
@@ -51,13 +51,11 @@ public final class AuthorizationCompiler {
         if (!path.source().startsWith("/")) throw new IllegalArgumentException(
             "match.path must match an absolute API path"
         );
-        //noinspection ConstantValue -- Jackson can omit a record component despite its Java declaration.
         Target target = resource.target();
         if (target == null) throw new IllegalArgumentException("target is required");
 
-        @Nullable
-        List<FieldRule> suppliedFields = resource.fields();
-        List<FieldRule> fields = suppliedFields == null ? List.of() : suppliedFields;
+        List<FieldRule> suppliedFields = Objects.requireNonNullElse(resource.fields(), List.of());
+        List<FieldRule> fields = suppliedFields;
         if (target == Target.REQUEST) {
             if (resource.effect() == null) throw new IllegalArgumentException("target: request requires effect");
             if (!fields.isEmpty()) throw new IllegalArgumentException("target: request must not contain fields");
@@ -88,9 +86,7 @@ public final class AuthorizationCompiler {
     private List<CompiledFieldRule> compileFields(List<FieldRule> fields) {
         List<CompiledFieldRule> compiled = new ArrayList<>(fields.size());
         for (FieldRule field : fields) {
-            //noinspection ConstantValue -- Jackson can omit a record component despite its Java declaration.
             if (field.effect() == null) throw new IllegalArgumentException("Field rule effect is required");
-            //noinspection ConstantValue -- Jackson can omit a record component despite its Java declaration.
             List<String> suppliedNames = field.names() == null ? List.of() : field.names();
             if (suppliedNames.isEmpty()) throw new IllegalArgumentException(
                 "Field rule requires at least one field name"

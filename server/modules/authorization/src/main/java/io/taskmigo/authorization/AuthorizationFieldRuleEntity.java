@@ -9,6 +9,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
@@ -39,8 +41,8 @@ class AuthorizationFieldRuleEntity {
     AuthorizationFieldRuleEntity(UUID statementId, FieldRule resource) {
         this.id = UUID.randomUUID();
         this.statementId = statementId;
-        this.effect = resource.effect();
-        this.fieldNames = String.join("\n", resource.names());
+        this.effect = Objects.requireNonNull(resource.effect(), "Field rule effect is required");
+        this.fieldNames = String.join("\n", Objects.requireNonNullElse(resource.names(), List.of()));
         this.condition = resource.when();
     }
 

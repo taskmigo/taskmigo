@@ -12,6 +12,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
@@ -69,9 +70,10 @@ class AuthorizationStatementEntity {
         this.key = resource.key();
         this.name = resource.name();
         this.description = resource.description();
-        this.method = resource.match().method();
-        this.path = resource.match().path();
-        this.target = resource.target();
+        Match match = Objects.requireNonNull(resource.match(), "match is required");
+        this.method = match.method();
+        this.path = match.path();
+        this.target = Objects.requireNonNull(resource.target(), "target is required");
         this.effect = resource.effect();
         this.condition = resource.when();
         this.origin = origin;
@@ -81,9 +83,10 @@ class AuthorizationStatementEntity {
         this.key = resource.key();
         this.name = resource.name();
         this.description = resource.description();
-        this.method = resource.match().method();
-        this.path = resource.match().path();
-        this.target = resource.target();
+        Match match = Objects.requireNonNull(resource.match(), "match is required");
+        this.method = match.method();
+        this.path = match.path();
+        this.target = Objects.requireNonNull(resource.target(), "target is required");
         this.effect = resource.effect();
         this.condition = resource.when();
         this.origin = origin;
