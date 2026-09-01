@@ -34,6 +34,21 @@
             />
         </module>
 
+        <!-- Spring Data @Query hides database queries in repository annotations; keep persistence logic composable instead. -->
+        <module name="MatchXpath">
+            <property
+                name="query"
+                value="//ANNOTATION[
+                      IDENT[@text='Query']
+                      or DOT/IDENT[@text='Query']
+                    ]"
+            />
+            <message
+                key="matchxpath.match"
+                value="org.springframework.data.jpa.repository.Query is forbidden. Do not use @Query; use repository method derivation, Specifications, or another composable persistence API instead."
+            />
+        </module>
+
         <!-- Require Bean methods to remain package-private. -->
         <module name="MatchXpath">
             <property

@@ -205,7 +205,7 @@ public class ProjectService {
     /// @return number of Projects deleted
     @Transactional
     public int deleteArchivedBefore(Instant cutoff) {
-        return this.projects.deleteArchivedBefore(ProjectStatus.ARCHIVED, cutoff);
+        return Math.toIntExact(this.projects.deleteByStatusAndArchivedAtBefore(ProjectStatus.ARCHIVED, cutoff));
     }
 
     @Transactional

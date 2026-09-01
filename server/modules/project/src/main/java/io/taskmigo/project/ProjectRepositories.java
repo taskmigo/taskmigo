@@ -7,15 +7,10 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 @SuppressWarnings("ClassNameDiffersFromFileName")
 interface ProjectRepository extends JpaRepository<ProjectEntity, UUID>, JpaSpecificationExecutor<ProjectEntity> {
-    @Modifying
-    @Query("delete from ProjectEntity project where project.status = :status and project.archivedAt < :cutoff")
-    int deleteArchivedBefore(@Param("status") ProjectStatus status, @Param("cutoff") Instant cutoff);
+    long deleteByStatusAndArchivedAtBefore(ProjectStatus status, Instant cutoff);
 }
 
 @SuppressWarnings("ClassNameDiffersFromFileName")
