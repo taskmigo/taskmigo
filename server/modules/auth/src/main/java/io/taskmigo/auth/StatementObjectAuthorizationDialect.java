@@ -1,6 +1,7 @@
 package io.taskmigo.auth;
 
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /// Registers the queryable fields for the Statement collection API.
@@ -21,7 +22,7 @@ final class StatementObjectAuthorizationDialect implements AuthorizationObjectQu
     public Map<String, Class<?>> fields() {
         return Map.of(
             "id",
-            java.util.UUID.class,
+            UUID.class,
             "name",
             String.class,
             "description",

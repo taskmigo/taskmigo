@@ -19,6 +19,7 @@ import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
@@ -51,10 +52,10 @@ class StatementController {
 
     @PostMapping("/statements")
     @Operation(summary = "Create an authorization statement")
-    ResponseEntity<ApiResponse<Map<String, java.util.UUID>, ApiResponse.BasicMeta>> create(
+    ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(
         @Valid @RequestBody Request request
     ) {
-        java.util.UUID id = this.statements.create(
+        UUID id = this.statements.create(
             request.name(),
             request.description(),
             request.effect(),

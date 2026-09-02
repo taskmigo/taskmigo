@@ -1,6 +1,7 @@
 package io.taskmigo.auth;
 
 import java.util.Map;
+import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /// Registers the queryable fields for the Group collection API.
@@ -19,7 +20,7 @@ final class GroupObjectAuthorizationDialect implements AuthorizationObjectQueryD
 
     @Override
     public Map<String, Class<?>> fields() {
-        return Map.of("id", java.util.UUID.class, "name", String.class, "description", String.class);
+        return Map.of("id", UUID.class, "name", String.class, "description", String.class);
     }
 
     @Override

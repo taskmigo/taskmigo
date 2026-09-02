@@ -17,6 +17,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import java.net.URI;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -64,7 +65,7 @@ class UserController {
 
     @GetMapping
     @Operation(summary = "List users")
-    ResponseEntity<ApiResponse<java.util.List<UserInfo>, ApiResponse.OffsetMeta>> list(
+    ResponseEntity<ApiResponse<List<UserInfo>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         @AuthenticationPrincipal @Nullable Jwt jwt
     ) {
