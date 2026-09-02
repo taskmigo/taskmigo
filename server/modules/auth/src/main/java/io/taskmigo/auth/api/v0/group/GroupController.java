@@ -1,15 +1,17 @@
-package io.taskmigo.web.api.v0.feature.group;
+package io.taskmigo.auth.api.v0.group;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.taskmigo.api.v0.ApiV0Controller;
+import io.taskmigo.api.v0.infrastructure.pagination.OffsetPageRequest;
+import io.taskmigo.api.v0.infrastructure.response.ApiResponse;
+import io.taskmigo.api.v0.infrastructure.response.ApiResponseFactory;
+import io.taskmigo.auth.api.v0.security.ObjectAuthorizationContext;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
 import io.taskmigo.auth.group.GroupInfo;
 import io.taskmigo.auth.group.GroupService;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.web.api.v0.infrastructure.pagination.OffsetPageRequest;
-import io.taskmigo.web.api.v0.infrastructure.response.ApiResponse;
-import io.taskmigo.web.api.v0.infrastructure.response.ApiResponseFactory;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.net.URI;
@@ -26,9 +28,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
-@RestController
+@ApiV0Controller
 @RequestMapping("/api/v0")
 @Tag(name = "Group")
 class GroupController {
@@ -52,12 +53,7 @@ class GroupController {
         OffsetPage<GroupInfo> groups = this.groups.list(
             pagination.page(),
             pagination.pageSize(),
-            io.taskmigo.web.security.ObjectAuthorizationContext.plan(
-                this.objectAuthorization,
-                jwt,
-                "GET",
-                "/api/v0/groups"
-            )
+            ObjectAuthorizationContext.plan(this.objectAuthorization, jwt, "GET", "/api/v0/groups")
         );
         return this.responses.ok(
             groups.items(),

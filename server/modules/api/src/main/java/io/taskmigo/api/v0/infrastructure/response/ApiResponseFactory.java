@@ -1,4 +1,4 @@
-package io.taskmigo.web.api.v0.infrastructure.response;
+package io.taskmigo.api.v0.infrastructure.response;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
@@ -88,8 +88,6 @@ public final class ApiResponseFactory {
     }
 
     /// Creates a failure envelope without coupling the caller to a [ResponseEntity].
-    ///
-    /// This is useful for adapters that must render the standard v0 error body through a lower-level response API.
     ///
     /// @param status the HTTP status represented by the envelope
     /// @param messageCode the stable machine-readable message code

@@ -1,4 +1,4 @@
-package io.taskmigo.web.security;
+package io.taskmigo.auth.api.v0.security;
 
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
 import java.util.Map;

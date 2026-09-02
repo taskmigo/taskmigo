@@ -26,3 +26,29 @@ dependencies {
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers.postgresql)
 }
+
+val verifyWebCompositionRoot = tasks.register("verifyWebCompositionRoot") {
+    group = "verification"
+    description = "Ensures feature HTTP controllers are owned by server modules instead of apps/web"
+
+    doLast {
+        val forbiddenImports = listOf(
+            "import io.taskmigo.api.v0.ApiV0Controller;",
+            "import org.springframework.web.bind.annotation.RestController;",
+        )
+        val controllers = fileTree("src/main/java") {
+            include("**/*.java")
+        }.files
+            .filter { file -> forbiddenImports.any { forbidden -> file.readText().contains(forbidden) } }
+            .map { it.relativeTo(projectDir).invariantSeparatorsPath }
+            .sorted()
+
+        check(controllers.isEmpty()) {
+            "apps/web is a composition root; move HTTP controllers into their owning modules: ${controllers.joinToString()}"
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn(verifyWebCompositionRoot)
+}

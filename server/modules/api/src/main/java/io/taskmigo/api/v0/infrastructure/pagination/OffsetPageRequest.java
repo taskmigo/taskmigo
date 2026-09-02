@@ -1,4 +1,4 @@
-package io.taskmigo.web.api.v0.infrastructure.pagination;
+package io.taskmigo.api.v0.infrastructure.pagination;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;

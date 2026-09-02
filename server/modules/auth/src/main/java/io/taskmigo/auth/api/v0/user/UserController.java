@@ -1,8 +1,13 @@
-package io.taskmigo.web.api.v0.feature.user;
+package io.taskmigo.auth.api.v0.user;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.taskmigo.api.v0.ApiV0Controller;
+import io.taskmigo.api.v0.infrastructure.pagination.OffsetPageRequest;
+import io.taskmigo.api.v0.infrastructure.response.ApiResponse;
+import io.taskmigo.api.v0.infrastructure.response.ApiResponseFactory;
+import io.taskmigo.auth.api.v0.security.ObjectAuthorizationContext;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
 import io.taskmigo.auth.authorization.statement.StatementService;
 import io.taskmigo.auth.group.GroupService;
@@ -10,9 +15,6 @@ import io.taskmigo.auth.role.RoleService;
 import io.taskmigo.auth.user.UserInfo;
 import io.taskmigo.auth.user.UserService;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.web.api.v0.infrastructure.pagination.OffsetPageRequest;
-import io.taskmigo.web.api.v0.infrastructure.response.ApiResponse;
-import io.taskmigo.web.api.v0.infrastructure.response.ApiResponseFactory;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -33,9 +35,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 
-@RestController
+@ApiV0Controller
 @RequestMapping("/api/v0/users")
 @Tag(name = "User")
 class UserController {
@@ -72,12 +73,7 @@ class UserController {
         OffsetPage<UserInfo> users = this.users.list(
             pagination.page(),
             pagination.pageSize(),
-            io.taskmigo.web.security.ObjectAuthorizationContext.plan(
-                this.objectAuthorization,
-                jwt,
-                "GET",
-                "/api/v0/users"
-            )
+            ObjectAuthorizationContext.plan(this.objectAuthorization, jwt, "GET", "/api/v0/users")
         );
         return this.responses.ok(
             users.items(),

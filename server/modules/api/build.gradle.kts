@@ -12,5 +12,6 @@ dependencies {
     implementation(libs.jackson.databind)
     implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.spring.boot.starter.validation)
+    implementation(libs.spring.boot.starter.oauth2.resource.server)
     implementation(libs.springdoc.openapi.starter.webmvc.scalar)
 }

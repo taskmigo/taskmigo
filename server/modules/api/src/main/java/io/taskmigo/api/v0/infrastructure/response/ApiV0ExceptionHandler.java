@@ -1,5 +1,6 @@
-package io.taskmigo.web.api.v0.infrastructure.response;
+package io.taskmigo.api.v0.infrastructure.response;
 
+import io.taskmigo.api.v0.ApiV0Controller;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -10,7 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice(basePackages = "io.taskmigo.web.api.v0")
+@RestControllerAdvice(annotations = ApiV0Controller.class)
 final class ApiV0ExceptionHandler {
 
     private final ApiResponseFactory responses;

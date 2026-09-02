@@ -1,9 +1,9 @@
-package io.taskmigo.web.api.v0.infrastructure.response;
+package io.taskmigo.api.v0.infrastructure.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.taskmigo.api.v0.infrastructure.pagination.OffsetPageRequest;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.web.api.v0.infrastructure.pagination.OffsetPageRequest;
 import java.time.Instant;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
