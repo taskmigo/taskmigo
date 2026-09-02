@@ -41,6 +41,7 @@ class UserEntity {
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "role_id", nullable = false)
+    @SuppressWarnings("CanBeFinal")
     Set<UUID> roleIds = new HashSet<>();
 
     @Enumerated(EnumType.STRING)

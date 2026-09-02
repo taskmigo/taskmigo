@@ -66,13 +66,12 @@ public class AccessService {
     }
 
     @Transactional(readOnly = true)
-    public List<RoleInfo> requireRoles(Collection<UUID> ids) {
+    public void requireRoles(Collection<UUID> ids) {
         List<RoleEntity> found = this.roles.findAllByIdIn(ids);
         if (found.size() != ids.size()) throw new AccessException(
             AccessException.Type.BAD_REQUEST,
             "One or more Roles do not exist"
         );
-        return found.stream().map(AccessService::info).toList();
     }
 
     /// Lists global Roles with a stable id order for offset pagination.
@@ -118,7 +117,7 @@ public class AccessService {
     /// @return all descendants, excluding the root Role
     @Transactional(readOnly = true)
     public List<RoleInfo> descendantRoles(UUID roleId) {
-        this.entity(roleId);
+        this.requireEntity(roleId);
         return this.effectiveRoles(Set.of(roleId))
             .stream()
             .filter(role -> !role.id.equals(roleId))
@@ -160,8 +159,8 @@ public class AccessService {
         @JsonInclude(JsonInclude.Include.NON_EMPTY) List<RoleInfo> children
     ) {}
 
-    private RoleEntity entity(UUID id) {
-        return this.roles
+    private void requireEntity(UUID id) {
+        this.roles
             .findById(id)
             .orElseThrow(() -> new AccessException(AccessException.Type.BAD_REQUEST, "Role does not exist"));
     }
