@@ -1,14 +1,10 @@
 package io.taskmigo.web.security;
 
-import java.util.LinkedHashSet;
-import java.util.Objects;
-import java.util.Set;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
@@ -60,17 +56,8 @@ class ApiSecurityConfiguration {
     }
 
     private static JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtGrantedAuthoritiesConverter scopes = new JwtGrantedAuthoritiesConverter();
-        JwtGrantedAuthoritiesConverter permissions = new JwtGrantedAuthoritiesConverter();
-        permissions.setAuthoritiesClaimName("permissions");
-        permissions.setAuthorityPrefix("PERMISSION_");
-
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(jwt -> {
-            Set<GrantedAuthority> authorities = new LinkedHashSet<>(Objects.requireNonNull(scopes.convert(jwt)));
-            authorities.addAll(Objects.requireNonNull(permissions.convert(jwt)));
-            return authorities;
-        });
+        converter.setJwtGrantedAuthoritiesConverter(new JwtGrantedAuthoritiesConverter());
         return converter;
     }
 }

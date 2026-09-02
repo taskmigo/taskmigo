@@ -96,12 +96,7 @@ class RoleController {
     ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> createRole(
         @Valid @RequestBody Request request
     ) {
-        UUID id = this.access.createRole(
-            request.name(),
-            request.description(),
-            request.permissions(),
-            request.roleIds()
-        );
+        UUID id = this.access.createRole(request.name(), request.description(), request.roleIds());
         return this.responses.created(
             URI.create("/api/v0/roles/" + id),
             Map.of("id", id),
@@ -111,12 +106,7 @@ class RoleController {
     }
 
     @Schema(name = "CreateRoleRequest")
-    record Request(
-        @NotBlank @Nullable String name,
-        @Nullable String description,
-        @Nullable Set<String> permissions,
-        @Nullable Set<UUID> roleIds
-    ) {}
+    record Request(@NotBlank @Nullable String name, @Nullable String description, @Nullable Set<UUID> roleIds) {}
 
     @Schema(name = "ReplaceRoleStatementsRequest")
     record StatementAssignmentRequest(@Nullable Set<UUID> statementIds) {}

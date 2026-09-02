@@ -15,7 +15,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/// Manages global roles and their permission grants.
+/// Manages global roles, statement assignments, and role hierarchy.
 @Service
 public class AccessService {
 
@@ -27,11 +27,6 @@ public class AccessService {
         this.objectAuthorization = objectAuthorization;
     }
 
-    @Transactional
-    public UUID createRole(@Nullable String name, @Nullable String description, @Nullable Set<String> permissions) {
-        return this.createRole(name, description, permissions, Set.of());
-    }
-
     /// Creates a Role and its direct child-Role relationships as one atomic operation.
     ///
     /// Duplicate child ids are normalized. Creation fails without persisting the Role when a child does not exist or
@@ -39,29 +34,21 @@ public class AccessService {
     ///
     /// @param name the display name of the Role
     /// @param description the optional explanation of the Role's purpose
-    /// @param permissions the optional direct permission grants
     /// @param childRoleIds the optional direct child Roles inherited by the new Role
     /// @return the id of the created Role
     @Transactional
     public UUID createRole(
         @Nullable String name,
         @Nullable String description,
-        @Nullable Set<String> permissions,
         @Nullable Collection<UUID> childRoleIds
     ) {
-        Set<String> requested = permissions == null ? Set.of() : Set.copyOf(permissions);
-        if (!PermissionCatalog.ALL.containsAll(requested)) {
-            Set<String> unknown = new HashSet<>(requested);
-            unknown.removeAll(PermissionCatalog.ALL);
-            throw new AccessException(AccessException.Type.BAD_REQUEST, "Unknown permissions: " + unknown);
-        }
         UUID id = UUID.randomUUID();
         Set<UUID> requestedChildIds = childRoleIds == null ? Set.of() : Set.copyOf(childRoleIds);
         List<RoleEntity> allRoles = this.roles.findAllForUpdate();
         List<RoleEntity> children = requireChildRoles(requestedChildIds, allRoles);
         RoleHierarchy.from(allRoles).replacingChildren(id, requestedChildIds);
 
-        RoleEntity role = new RoleEntity(id, AuthorizationName.requiredRole(name, "name"), description, requested);
+        RoleEntity role = new RoleEntity(id, AuthorizationName.requiredRole(name, "name"), description);
         role.childRoles.addAll(children);
         this.roles.save(role);
         return id;

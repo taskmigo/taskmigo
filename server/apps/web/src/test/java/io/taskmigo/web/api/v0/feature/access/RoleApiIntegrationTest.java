@@ -36,7 +36,7 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
 
         UUID created = this.api()
             .roles()
-            .create(new CreateRoleRequest(uniqueRoleName("ParentRole"), null, null, List.of(child, child)));
+            .create(new CreateRoleRequest(uniqueRoleName("ParentRole"), null, List.of(child, child)));
 
         assertThat(this.access.descendantRoles(created))
             .extracting(AccessService.RoleInfo::id)
@@ -56,7 +56,7 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
     void shouldCreateRoleWhenChildRolesAreOmitted() {
         UUID created = this.api()
             .roles()
-            .create(new CreateRoleRequest(uniqueRoleName("LeafRole"), null, null, null));
+            .create(new CreateRoleRequest(uniqueRoleName("LeafRole"), null, null));
 
         assertThat(this.access.descendantRoles(created)).isEmpty();
     }
@@ -69,7 +69,7 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
         assertThatThrownBy(() ->
             this.api()
                 .roles()
-                .create(new CreateRoleRequest(uniqueRoleName("InvalidParent"), null, null, List.of(UUID.randomUUID())))
+                .create(new CreateRoleRequest(uniqueRoleName("InvalidParent"), null, List.of(UUID.randomUUID())))
         ).isInstanceOfSatisfying(HttpClientErrorException.BadRequest.class, exception ->
             assertThat(exception.getResponseBodyAsString()).contains("One or more child Roles do not exist")
         );
@@ -106,7 +106,7 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
         // Arrange
         UUID role = this.api()
             .roles()
-            .create(new CreateRoleRequest(uniqueRoleName("StatementRole"), null, Set.of(), Set.of()));
+            .create(new CreateRoleRequest(uniqueRoleName("StatementRole"), null, Set.of()));
         UUID first = this.createStatement("role-first-" + UUID.randomUUID());
         UUID second = this.createStatement("role-second-" + UUID.randomUUID());
 
@@ -138,7 +138,7 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
         // Arrange
         UUID role = this.api()
             .roles()
-            .create(new CreateRoleRequest(uniqueRoleName("InvalidStatementRole"), null, Set.of(), Set.of()));
+            .create(new CreateRoleRequest(uniqueRoleName("InvalidStatementRole"), null, Set.of()));
         UUID statement = this.createStatement("role-existing-" + UUID.randomUUID());
         this.api().roles().replaceStatements(role, List.of(statement));
 

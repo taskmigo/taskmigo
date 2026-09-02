@@ -107,12 +107,7 @@ public final class TaskmigoApiClient {
     public record ClientCredentials(String clientId, String clientSecret, String scope) {}
 
     /// Payload accepted by `POST /api/v0/roles`.
-    public record CreateRoleRequest(
-        String name,
-        @Nullable String description,
-        @Nullable Set<String> permissions,
-        @Nullable Collection<UUID> roleIds
-    ) {}
+    public record CreateRoleRequest(String name, @Nullable String description, @Nullable Collection<UUID> roleIds) {}
 
     /// Payload accepted by `POST /api/v0/groups`.
     public record CreateGroupRequest(

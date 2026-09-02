@@ -32,11 +32,6 @@ class RoleEntity {
     String description;
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "role_permissions", joinColumns = @JoinColumn(name = "role_id"))
-    @Column(name = "permission_key", nullable = false, length = 100)
-    Set<String> permissions = new LinkedHashSet<>();
-
-    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "role_statements", joinColumns = @JoinColumn(name = "role_id"))
     @Column(name = "statement_id", nullable = false)
     Set<UUID> statementIds = new LinkedHashSet<>();
@@ -52,10 +47,9 @@ class RoleEntity {
 
     protected RoleEntity() {}
 
-    RoleEntity(UUID id, String name, @Nullable String description, Set<String> permissions) {
+    RoleEntity(UUID id, String name, @Nullable String description) {
         this.id = id;
         this.name = name;
         this.description = description;
-        this.permissions.addAll(permissions);
     }
 }

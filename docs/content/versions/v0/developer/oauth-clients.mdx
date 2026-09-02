@@ -13,11 +13,7 @@ are added with the interactive login phase rather than being accepted before the
 ## Built-in CLI client
 
 The `cli` registration is the first system-managed client. It uses `client_credentials` and is also a service principal.
-The client requires both the `taskmigo.api` scope and the `system.resources.manage` service permission to access
-`/api/v0/**`.
-
-Scope alone is insufficient. This prevents a newly registered machine client from gaining resource-management access merely
-by requesting an API scope.
+The client requires the `taskmigo.api` scope to access `/api/v0/**`.
 
 Use Spring Boot's Authorization Server properties directly. Taskmigo does not expose parallel client properties that could
 conflict with Spring's configuration:
@@ -75,4 +71,4 @@ The database never stores the private signing key.
 
 Each independently deployed frontend receives a separate registration. Interactive login will add OpenID Connect and
 Authorization Code with PKCE in a later phase. It must not reuse the CLI registration because user-delegated and machine
-credentials have different grants, permissions, rotation, and audit lifecycles.
+credentials have different grants, authorization, rotation, and audit lifecycles.

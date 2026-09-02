@@ -5,8 +5,6 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
-import java.util.ArrayList;
-import java.util.Set;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties;
 import org.springframework.context.annotation.Bean;
@@ -77,10 +75,8 @@ class AuthorizationServerConfiguration {
             if (!OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) return;
 
             if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
-                Set<String> permissions = Set.of();
                 context.getClaims().subject(context.getRegisteredClient().getClientId());
                 context.getClaims().claim("principal_type", "service");
-                context.getClaims().claim("permissions", new ArrayList<>(permissions));
                 userService.findForAuthentication(SystemUser.USERNAME).ifPresent(user -> {
                     context.getClaims().claim("user_id", user.id().toString());
                     context.getClaims().claim("principal_username", user.username());

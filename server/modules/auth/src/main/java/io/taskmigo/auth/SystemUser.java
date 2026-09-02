@@ -2,7 +2,7 @@ package io.taskmigo.auth;
 
 /// Defines the reserved bootstrap username and default profile used to create Taskmigo's platform administrator.
 ///
-/// The bootstrap account is persisted with the same schema as every other user. Its elevated permissions are an
+/// The bootstrap account is persisted with the same schema as every other user. Its elevated authorization is an
 /// authorization concern and are intentionally not represented by user-table flags or constraints.
 public final class SystemUser {
 

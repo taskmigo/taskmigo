@@ -76,10 +76,10 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
     void shouldCreateUsersWhenOptionalAssignmentsAreProvided() {
         UUID employee = this.api()
             .roles()
-            .create(new CreateRoleRequest(uniqueRoleName("EmployeeRole"), null, Set.of(), Set.of()));
+            .create(new CreateRoleRequest(uniqueRoleName("EmployeeRole"), null, Set.of()));
         UUID developer = this.api()
             .roles()
-            .create(new CreateRoleRequest(uniqueRoleName("DeveloperRole"), null, Set.of(), Set.of(employee)));
+            .create(new CreateRoleRequest(uniqueRoleName("DeveloperRole"), null, Set.of(employee)));
         UUID engineering = this.api()
             .groups()
             .create(new CreateGroupRequest("Engineering", null, Set.of(), Set.of(developer)));
@@ -131,19 +131,19 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
     void shouldResolveEffectiveRolesWhenHierarchyContainsDirectAndGroupAssignments() {
         UUID roleB = this.api()
             .roles()
-            .create(new CreateRoleRequest(uniqueRoleName("Role_B"), null, Set.of(), Set.of()));
+            .create(new CreateRoleRequest(uniqueRoleName("Role_B"), null, Set.of()));
         UUID roleA = this.api()
             .roles()
-            .create(new CreateRoleRequest(uniqueRoleName("Role_A"), null, Set.of(), List.of(roleB)));
+            .create(new CreateRoleRequest(uniqueRoleName("Role_A"), null, List.of(roleB)));
         UUID developer = this.api()
             .roles()
-            .create(new CreateRoleRequest(uniqueRoleName("DeveloperRole"), null, Set.of(), Set.of()));
+            .create(new CreateRoleRequest(uniqueRoleName("DeveloperRole"), null, Set.of()));
         UUID backendDeveloper = this.api()
             .roles()
-            .create(new CreateRoleRequest(uniqueRoleName("BackendDeveloper"), null, Set.of(), List.of(developer)));
+            .create(new CreateRoleRequest(uniqueRoleName("BackendDeveloper"), null, List.of(developer)));
         UUID employee = this.api()
             .roles()
-            .create(new CreateRoleRequest(uniqueRoleName("EmployeeRole"), null, Set.of(), Set.of()));
+            .create(new CreateRoleRequest(uniqueRoleName("EmployeeRole"), null, Set.of()));
         UUID backend = this.api()
             .groups()
             .create(new CreateGroupRequest("Backend", null, Set.of(), List.of(backendDeveloper)));
@@ -201,13 +201,13 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
 
         UUID childRole = this.api()
             .roles()
-            .create(new CreateRoleRequest(uniqueRoleName("ChildRole"), null, Set.of(), Set.of()));
+            .create(new CreateRoleRequest(uniqueRoleName("ChildRole"), null, Set.of()));
         UUID parentRole = this.api()
             .roles()
-            .create(new CreateRoleRequest(uniqueRoleName("ParentRole"), null, Set.of(), Set.of(childRole)));
+            .create(new CreateRoleRequest(uniqueRoleName("ParentRole"), null, Set.of(childRole)));
         UUID groupRole = this.api()
             .roles()
-            .create(new CreateRoleRequest(uniqueRoleName("GroupRole"), null, Set.of(), Set.of()));
+            .create(new CreateRoleRequest(uniqueRoleName("GroupRole"), null, Set.of()));
         this.api().roles().replaceStatements(childRole, List.of(inheritedRoleStatement, sharedStatement));
         this.api().roles().replaceStatements(parentRole, List.of(sharedStatement));
         this.api().roles().replaceStatements(groupRole, List.of(groupStatement));

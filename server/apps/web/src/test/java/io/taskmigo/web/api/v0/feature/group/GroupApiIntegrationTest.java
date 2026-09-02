@@ -31,7 +31,7 @@ class GroupApiIntegrationTest extends ApiIntegrationTestSupport {
     @DisplayName("creates a group with unique child groups and roles")
     void shouldCreateGroupWithUniqueRelationshipsWhenChildrenAndRolesAreProvided() {
         UUID employee = this.access.createRole(uniqueRoleName("EmployeeRole"), null, Set.of());
-        UUID developer = this.access.createRole(uniqueRoleName("DeveloperRole"), null, Set.of(), Set.of(employee));
+        UUID developer = this.access.createRole(uniqueRoleName("DeveloperRole"), null, Set.of(employee));
         UUID backend = this.groups.create("Backend", null, Set.of(), Set.of(developer));
 
         UUID created = this.api()

@@ -44,12 +44,6 @@ CREATE TABLE user_roles (
 );
 CREATE INDEX ix_user_roles_role_id ON user_roles(role_id);
 
-CREATE TABLE role_permissions (
-    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    permission_key VARCHAR(100) NOT NULL,
-    PRIMARY KEY (role_id, permission_key)
-);
-
 CREATE TABLE role_hierarchy (
     parent_role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
     child_role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
