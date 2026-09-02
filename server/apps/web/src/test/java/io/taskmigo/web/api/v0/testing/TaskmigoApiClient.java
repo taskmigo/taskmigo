@@ -22,6 +22,7 @@ public final class TaskmigoApiClient {
     private final Roles roles;
     private final Groups groups;
     private final Users users;
+    private final Statements statements;
 
     /// Authenticates a test client against a running Taskmigo server.
     ///
@@ -47,6 +48,7 @@ public final class TaskmigoApiClient {
         this.roles = new Roles();
         this.groups = new Groups();
         this.users = new Users();
+        this.statements = new Statements();
     }
 
     /// Returns the typed client for Role creation.
@@ -62,6 +64,11 @@ public final class TaskmigoApiClient {
     /// Returns the typed client for User creation.
     public Users users() {
         return this.users;
+    }
+
+    /// Returns the typed client for Statement creation.
+    public Statements statements() {
+        return this.statements;
     }
 
     /// Sends an authenticated GET request for API assertions not yet covered by a typed endpoint client.
@@ -84,6 +91,16 @@ public final class TaskmigoApiClient {
         )
             .data()
             .id();
+    }
+
+    private void patch(String path, Object request) {
+        this.client
+            .patch()
+            .uri(path)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(request)
+            .retrieve()
+            .toBodilessEntity();
     }
 
     /// OAuth client credentials used by the integration-test server.
@@ -115,6 +132,24 @@ public final class TaskmigoApiClient {
         @Nullable Collection<UUID> groupIds
     ) {}
 
+    /// Payload accepted by `POST /api/v0/statements`.
+    public record CreateStatementRequest(
+        String name,
+        @Nullable String description,
+        String effect,
+        StatementTarget target,
+        @Nullable Collection<String> conditions
+    ) {}
+
+    /// Payload accepted by the direct Statement-assignment PATCH APIs.
+    public record ReplaceStatementsRequest(@Nullable Collection<UUID> statementIds) {}
+
+    /// API target embedded in a Statement request.
+    public record StatementTarget(String type, StatementApiTarget api) {}
+
+    /// HTTP method and regular-expression path embedded in a Statement target.
+    public record StatementApiTarget(String method, String path) {}
+
     /// Creates Roles through the public HTTP API.
     public final class Roles {
 
@@ -126,6 +161,14 @@ public final class TaskmigoApiClient {
         /// @return the created Role id
         public UUID create(CreateRoleRequest request) {
             return TaskmigoApiClient.this.create("/api/v0/roles", request);
+        }
+
+        /// Replaces the complete set of Statements directly assigned to a Role.
+        public void replaceStatements(UUID roleId, Collection<UUID> statementIds) {
+            TaskmigoApiClient.this.patch(
+                "/api/v0/roles/" + roleId + "/statements",
+                new ReplaceStatementsRequest(statementIds)
+            );
         }
     }
 
@@ -154,6 +197,25 @@ public final class TaskmigoApiClient {
         /// @return the created User id
         public UUID create(CreateUserRequest request) {
             return TaskmigoApiClient.this.create("/api/v0/users", request);
+        }
+
+        /// Replaces the complete set of Statements directly assigned to a User.
+        public void replaceStatements(UUID userId, Collection<UUID> statementIds) {
+            TaskmigoApiClient.this.patch(
+                "/api/v0/users/" + userId + "/statements",
+                new ReplaceStatementsRequest(statementIds)
+            );
+        }
+    }
+
+    /// Creates Statements through the public HTTP API.
+    public final class Statements {
+
+        private Statements() {}
+
+        /// Creates a Statement and returns its server-assigned id.
+        public UUID create(CreateStatementRequest request) {
+            return TaskmigoApiClient.this.create("/api/v0/statements", request);
         }
     }
 

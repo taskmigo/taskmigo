@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
-import io.taskmigo.identity.oauth.InternalClientMetadata;
-import io.taskmigo.user.SystemUser;
-import io.taskmigo.user.UserService;
+import io.taskmigo.auth.AccessService;
+import io.taskmigo.auth.StatementService;
+import io.taskmigo.auth.SystemUser;
+import io.taskmigo.auth.UserService;
+import io.taskmigo.auth.oauth.InternalClientMetadata;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -51,6 +53,8 @@ class BootstrapIntegrationTest {
     private final SystemUserReconciler systemUser;
     private final PasswordEncoder passwordEncoder;
     private final UserService users;
+    private final AccessService access;
+    private final StatementService statements;
 
     BootstrapIntegrationTest(
         Flyway flyway,
@@ -59,7 +63,9 @@ class BootstrapIntegrationTest {
         BrowserClientReconciler browserClient,
         SystemUserReconciler systemUser,
         PasswordEncoder passwordEncoder,
-        UserService users
+        UserService users,
+        AccessService access,
+        StatementService statements
     ) {
         this.flyway = flyway;
         this.clients = clients;
@@ -68,6 +74,8 @@ class BootstrapIntegrationTest {
         this.systemUser = systemUser;
         this.passwordEncoder = passwordEncoder;
         this.users = users;
+        this.access = access;
+        this.statements = statements;
     }
 
     @Test
@@ -122,6 +130,73 @@ class BootstrapIntegrationTest {
 
         assertThat(this.storedClient("integration-client").getId()).isEqualTo(internalId);
         assertThat(this.storedClient(BrowserClientMetadata.CLIENT_ID).getId()).isEqualTo(browserId);
+        assertThat(this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()).isEqualTo(
+            passwordHash
+        );
+    }
+
+    /**
+     * Verifies that bootstrap authorization data uses the canonical Statement model and normal Role assignment path.
+     *
+     * Given: the system bootstrap has reconciled the YAML authorization bundle.
+     * Expect: the canonical statement is present and the system user receives it through the managed system role.
+     */
+    @Test
+    @DisplayName("reconciles built-in statements through normal role assignments")
+    void shouldAssignBuiltInStatementsWhenBootstrapRuns() {
+        // Arrange
+        var system = this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow();
+
+        // Act
+        var statements = this.statements.list(1, 100).items();
+        var roles = this.access.effectiveRoles(this.users.roleIds(system.id()));
+
+        // Assert
+        assertThat(statements).extracting(StatementService.StatementInfo::name).contains("system_operator_request_all");
+        assertThat(roles).extracting(AccessService.RoleInfo::name).contains("System Operator");
+        assertThat(this.users.roleIds(system.id())).hasSize(1);
+    }
+
+    /**
+     * Verifies that a bootstrap User definition is upserted without replacing persisted credentials.
+     *
+     * Given: a User is absent, or already exists with a password credential.
+     * Expect: bootstrap creates the absent User and preserves the existing User identity and password.
+     */
+    @Test
+    @DisplayName("upserts users from bootstrap data")
+    void shouldUpsertBootstrapUserWhenUserIsMissingOrPresent() {
+        // Arrange
+        String username = "bootstrap-user";
+        UUID roleId = this.access.requireRoleByName("System Operator");
+        UUID statementId = this.statements.requireByName("system_operator_request_all");
+        UUID createdId = this.users.reconcileBootstrapUser(
+            username,
+            Set.of("BOOTSTRAP@EXAMPLE.COM"),
+            "Bootstrap",
+            "User",
+            Set.of(roleId),
+            Set.of(statementId)
+        );
+        String passwordHash = Objects.requireNonNull(
+            this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()
+        );
+
+        // Act
+        UUID reconciledId = this.users.reconcileBootstrapUser(
+            username,
+            Set.of("updated@example.com"),
+            "Updated",
+            "User",
+            Set.of(roleId),
+            Set.of(statementId)
+        );
+
+        // Assert
+        assertThat(reconciledId).isEqualTo(createdId);
+        assertThat(this.users.require(createdId))
+            .extracting(UserService.UserInfo::firstName, UserService.UserInfo::emails)
+            .containsExactly("Updated", Set.of("updated@example.com"));
         assertThat(this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()).isEqualTo(
             passwordHash
         );

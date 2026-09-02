@@ -1,0 +1,27 @@
+package io.taskmigo.auth;
+
+import java.util.Map;
+import org.springframework.stereotype.Component;
+
+/// Registers the queryable fields for the Role collection API.
+@Component
+final class RoleObjectAuthorizationDialect implements AuthorizationObjectQueryDialect {
+
+    @Override
+    public String method() {
+        return "GET";
+    }
+
+    @Override
+    public String path() {
+        return "/api/v0/roles";
+    }
+
+    @Override
+    public Map<String, Class<?>> fields() {
+        return Map.of("id", java.util.UUID.class, "name", String.class, "description", String.class);
+    }
+
+    @Override
+    public void validate(AuthorizationCompiler.Expression predicate) {}
+}

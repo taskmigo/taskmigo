@@ -1,8 +1,9 @@
 package io.taskmigo.bootstrap;
 
-import io.taskmigo.user.UserService;
+import io.taskmigo.auth.UserService;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 /// Ensures the persistent platform bootstrap user exists after database migration.
 @Component
+@Order(1)
 final class SystemUserReconciler implements ApplicationRunner {
 
     private static final int MAX_RECONCILIATION_ATTEMPTS = 3;

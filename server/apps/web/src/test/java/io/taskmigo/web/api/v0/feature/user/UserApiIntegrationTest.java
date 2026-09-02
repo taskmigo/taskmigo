@@ -3,13 +3,18 @@ package io.taskmigo.web.api.v0.feature.user;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.access.AccessService;
-import io.taskmigo.group.GroupService;
-import io.taskmigo.user.UserService;
+import io.taskmigo.auth.AccessService;
+import io.taskmigo.auth.EffectiveStatementResolver;
+import io.taskmigo.auth.GroupService;
+import io.taskmigo.auth.StatementService;
+import io.taskmigo.auth.UserService;
 import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.web.api.v0.testing.TaskmigoApiClient.CreateGroupRequest;
 import io.taskmigo.web.api.v0.testing.TaskmigoApiClient.CreateRoleRequest;
+import io.taskmigo.web.api.v0.testing.TaskmigoApiClient.CreateStatementRequest;
 import io.taskmigo.web.api.v0.testing.TaskmigoApiClient.CreateUserRequest;
+import io.taskmigo.web.api.v0.testing.TaskmigoApiClient.StatementApiTarget;
+import io.taskmigo.web.api.v0.testing.TaskmigoApiClient.StatementTarget;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -24,13 +29,46 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
     private final AccessService access;
     private final GroupService groups;
     private final UserService users;
+    private final EffectiveStatementResolver statementResolver;
     private final JdbcTemplate jdbc;
 
-    UserApiIntegrationTest(AccessService access, GroupService groups, UserService users, JdbcTemplate jdbc) {
+    UserApiIntegrationTest(
+        AccessService access,
+        GroupService groups,
+        UserService users,
+        EffectiveStatementResolver statementResolver,
+        JdbcTemplate jdbc
+    ) {
         this.access = access;
         this.groups = groups;
         this.users = users;
+        this.statementResolver = statementResolver;
         this.jdbc = jdbc;
+    }
+
+    /**
+     * Verifies that the user collection exposes the shared offset pagination contract.
+     *
+     * Given: the application contains bootstrap and test Users.
+     * Expect: GET users returns an offset page with the requested page size and pagination metadata.
+     */
+    @Test
+    @DisplayName("lists users with offset pagination")
+    void shouldListUsersWithOffsetPaginationWhenPageParametersAreProvided() {
+        // Arrange
+        String response = this.api().get("/api/v0/users?page=1&pageSize=1");
+
+        // Act
+        // The public API client has executed the GET request; retain its raw response for contract assertions.
+
+        // Assert
+        assertThat(response)
+            .contains("\"code\":\"resource.user.listed\"")
+            .contains("\"type\":\"offset\"")
+            .contains("\"currentPage\":1")
+            .contains("\"pageSize\":1")
+            .contains("\"totalItems\":")
+            .contains("\"totalPages\":");
     }
 
     @Test
@@ -38,10 +76,10 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
     void shouldCreateUsersWhenOptionalAssignmentsAreProvided() {
         UUID employee = this.api()
             .roles()
-            .create(new CreateRoleRequest("Employee", null, Set.of(), Set.of()));
+            .create(new CreateRoleRequest(uniqueRoleName("EmployeeRole"), null, Set.of(), Set.of()));
         UUID developer = this.api()
             .roles()
-            .create(new CreateRoleRequest("Developer", null, Set.of(), Set.of(employee)));
+            .create(new CreateRoleRequest(uniqueRoleName("DeveloperRole"), null, Set.of(), Set.of(employee)));
         UUID engineering = this.api()
             .groups()
             .create(new CreateGroupRequest("Engineering", null, Set.of(), Set.of(developer)));
@@ -93,19 +131,19 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
     void shouldResolveEffectiveRolesWhenHierarchyContainsDirectAndGroupAssignments() {
         UUID roleB = this.api()
             .roles()
-            .create(new CreateRoleRequest("Role B", null, Set.of(), Set.of()));
+            .create(new CreateRoleRequest(uniqueRoleName("Role_B"), null, Set.of(), Set.of()));
         UUID roleA = this.api()
             .roles()
-            .create(new CreateRoleRequest("Role A", null, Set.of(), List.of(roleB)));
+            .create(new CreateRoleRequest(uniqueRoleName("Role_A"), null, Set.of(), List.of(roleB)));
         UUID developer = this.api()
             .roles()
-            .create(new CreateRoleRequest("Developer", null, Set.of(), Set.of()));
+            .create(new CreateRoleRequest(uniqueRoleName("DeveloperRole"), null, Set.of(), Set.of()));
         UUID backendDeveloper = this.api()
             .roles()
-            .create(new CreateRoleRequest("Backend Developer", null, Set.of(), List.of(developer)));
+            .create(new CreateRoleRequest(uniqueRoleName("BackendDeveloper"), null, Set.of(), List.of(developer)));
         UUID employee = this.api()
             .roles()
-            .create(new CreateRoleRequest("Employee", null, Set.of(), Set.of()));
+            .create(new CreateRoleRequest(uniqueRoleName("EmployeeRole"), null, Set.of(), Set.of()));
         UUID backend = this.api()
             .groups()
             .create(new CreateGroupRequest("Backend", null, Set.of(), List.of(backendDeveloper)));
@@ -142,11 +180,147 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
             );
     }
 
+    /**
+     * Verifies that effective Statements include every direct and inherited source exactly once.
+     *
+     * Given: a User with a direct Statement and Role, a nested Group with a Role, and overlapping assignments.
+     * Expect: one resolver call returns the direct, Role-inherited, Group-derived, and deduplicated Statements.
+     */
+    @Test
+    @DisplayName("resolves direct and inherited statements without duplicates")
+    void shouldResolveAllEffectiveStatementsWhenUserHasMixedAssignments() {
+        // Arrange
+        String inheritedRoleName = "inherited-role-" + UUID.randomUUID();
+        String groupStatementName = "group-" + UUID.randomUUID();
+        String directStatementName = "direct-" + UUID.randomUUID();
+        String sharedStatementName = "shared-" + UUID.randomUUID();
+        UUID inheritedRoleStatement = this.createStatement(inheritedRoleName);
+        UUID groupStatement = this.createStatement(groupStatementName);
+        UUID directStatement = this.createStatement(directStatementName);
+        UUID sharedStatement = this.createStatement(sharedStatementName);
+
+        UUID childRole = this.api()
+            .roles()
+            .create(new CreateRoleRequest(uniqueRoleName("ChildRole"), null, Set.of(), Set.of()));
+        UUID parentRole = this.api()
+            .roles()
+            .create(new CreateRoleRequest(uniqueRoleName("ParentRole"), null, Set.of(), Set.of(childRole)));
+        UUID groupRole = this.api()
+            .roles()
+            .create(new CreateRoleRequest(uniqueRoleName("GroupRole"), null, Set.of(), Set.of()));
+        this.api().roles().replaceStatements(childRole, List.of(inheritedRoleStatement, sharedStatement));
+        this.api().roles().replaceStatements(parentRole, List.of(sharedStatement));
+        this.api().roles().replaceStatements(groupRole, List.of(groupStatement));
+
+        UUID nestedGroup = this.api()
+            .groups()
+            .create(new CreateGroupRequest("Nested", null, Set.of(), Set.of()));
+        UUID parentGroup = this.api()
+            .groups()
+            .create(new CreateGroupRequest("Parent group", null, List.of(nestedGroup), Set.of()));
+        this.groups.setRoles(nestedGroup, Set.of(childRole, groupRole));
+        UUID user = this.create("mixed-statements", List.of(parentRole), List.of(parentGroup));
+        this.users.setStatements(user, List.of(directStatement, sharedStatement));
+
+        // Act
+        List<String> names = this.statementResolver
+            .resolve(user)
+            .stream()
+            .map(StatementService.StatementInfo::name)
+            .toList();
+
+        // Assert
+        assertThat(names).containsExactlyInAnyOrder(
+            inheritedRoleName,
+            groupStatementName,
+            directStatementName,
+            sharedStatementName
+        );
+        assertThat(names).doesNotHaveDuplicates();
+    }
+
     private UUID create(String username, Collection<UUID> roleIds, Collection<UUID> groupIds) {
         return this.api()
             .users()
             .create(
                 new CreateUserRequest(username, Set.of(username + "@example.com"), "Test", "User", roleIds, groupIds)
             );
+    }
+
+    /**
+     * Verifies that a User's direct Statement set can be replaced and duplicate ids are collapsed.
+     *
+     * Given: a persisted User and two Statements, with a replacement request containing one duplicate id.
+     * Expect: the User-to-Statement join table contains exactly the two requested relationships.
+     */
+    @Test
+    @DisplayName("replaces a user's direct statements")
+    void shouldReplaceUserStatementsWhenAssignmentsAreProvided() {
+        // Arrange
+        UUID user = this.create("statement-user", Set.of(), Set.of());
+        UUID first = this.createStatement("user-first-" + UUID.randomUUID());
+        UUID second = this.createStatement("user-second-" + UUID.randomUUID());
+
+        // Act
+        this.api()
+            .users()
+            .replaceStatements(user, List.of(first, second, first));
+
+        // Assert
+        assertThat(
+            this.jdbc.queryForList(
+                "select statement_id from user_statements where user_id = ? order by statement_id",
+                UUID.class,
+                user
+            )
+        ).containsExactlyInAnyOrder(first, second);
+    }
+
+    /**
+     * Verifies that an unknown User id is rejected before any Statement relationship can be created.
+     *
+     * Given: an unknown User id and a valid Statement id.
+     * Expect: a bad-request response and no row in the User-to-Statement join table.
+     */
+    @Test
+    @DisplayName("rejects statements for an unknown user")
+    void shouldRejectUserStatementsWhenUserIsUnknown() {
+        // Arrange
+        UUID statement = this.createStatement("unknown-user-" + UUID.randomUUID());
+        UUID unknownUser = UUID.randomUUID();
+
+        // Act
+        assertThatThrownBy(() ->
+            this.api().users().replaceStatements(unknownUser, List.of(statement))
+        ).isInstanceOfSatisfying(HttpClientErrorException.NotFound.class, exception ->
+            assertThat(exception.getResponseBodyAsString()).contains("User not found")
+        );
+
+        // Assert
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from user_statements where user_id = ?",
+                Integer.class,
+                unknownUser
+            )
+        ).isZero();
+    }
+
+    private UUID createStatement(String name) {
+        return this.api()
+            .statements()
+            .create(
+                new CreateStatementRequest(
+                    name,
+                    null,
+                    "allow",
+                    new StatementTarget("request", new StatementApiTarget("GET", "/api/v0/users")),
+                    List.of()
+                )
+            );
+    }
+
+    private static String uniqueRoleName(String prefix) {
+        return prefix + UUID.randomUUID().toString().replace("-", "");
     }
 }

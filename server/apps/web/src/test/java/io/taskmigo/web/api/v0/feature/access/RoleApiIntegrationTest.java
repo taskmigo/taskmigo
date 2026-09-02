@@ -3,9 +3,12 @@ package io.taskmigo.web.api.v0.feature.access;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.access.AccessService;
+import io.taskmigo.auth.AccessService;
 import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.web.api.v0.testing.TaskmigoApiClient.CreateRoleRequest;
+import io.taskmigo.web.api.v0.testing.TaskmigoApiClient.CreateStatementRequest;
+import io.taskmigo.web.api.v0.testing.TaskmigoApiClient.StatementApiTarget;
+import io.taskmigo.web.api.v0.testing.TaskmigoApiClient.StatementTarget;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -27,13 +30,13 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     @DisplayName("creates a role with unique child roles")
     void shouldCreateRoleWithUniqueChildRolesWhenChildRolesAreProvided() {
-        UUID child = this.access.createRole("Child", null, Set.of());
-        UUID grandchild = this.access.createRole("Grandchild", null, Set.of());
+        UUID child = this.access.createRole(uniqueRoleName("ChildRole"), null, Set.of());
+        UUID grandchild = this.access.createRole(uniqueRoleName("Grandchild"), null, Set.of());
         this.access.setChildRoles(child, Set.of(grandchild));
 
         UUID created = this.api()
             .roles()
-            .create(new CreateRoleRequest("Parent", null, null, List.of(child, child)));
+            .create(new CreateRoleRequest(uniqueRoleName("ParentRole"), null, null, List.of(child, child)));
 
         assertThat(this.access.descendantRoles(created))
             .extracting(AccessService.RoleInfo::id)
@@ -53,7 +56,7 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
     void shouldCreateRoleWhenChildRolesAreOmitted() {
         UUID created = this.api()
             .roles()
-            .create(new CreateRoleRequest("Leaf", null, null, null));
+            .create(new CreateRoleRequest(uniqueRoleName("LeafRole"), null, null, null));
 
         assertThat(this.access.descendantRoles(created)).isEmpty();
     }
@@ -66,7 +69,7 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
         assertThatThrownBy(() ->
             this.api()
                 .roles()
-                .create(new CreateRoleRequest("Invalid parent", null, null, List.of(UUID.randomUUID())))
+                .create(new CreateRoleRequest(uniqueRoleName("InvalidParent"), null, null, List.of(UUID.randomUUID())))
         ).isInstanceOfSatisfying(HttpClientErrorException.BadRequest.class, exception ->
             assertThat(exception.getResponseBodyAsString()).contains("One or more child Roles do not exist")
         );
@@ -77,8 +80,8 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     @DisplayName("lists roles with offset pagination")
     void shouldListRolesWithOffsetPaginationWhenNoFiltersAreProvided() {
-        this.access.createRole("Offset role one", null, Set.of());
-        this.access.createRole("Offset role two", null, Set.of());
+        this.access.createRole(uniqueRoleName("OffsetRoleOne"), null, Set.of());
+        this.access.createRole(uniqueRoleName("OffsetRoleTwo"), null, Set.of());
 
         String response = this.api().get("/api/v0/roles?page=2&pageSize=1");
 
@@ -89,5 +92,89 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
             .contains("\"pageSize\":1")
             .contains("\"totalItems\":")
             .contains("\"totalPages\":");
+    }
+
+    /**
+     * Verifies that a Role's direct Statement set is replaced as a complete desired set.
+     *
+     * Given: a Role and two Statements, followed by assignments containing a duplicate and then one replacement.
+     * Expect: the join table contains each requested Statement once and the removed Statement is no longer assigned.
+     */
+    @Test
+    @DisplayName("replaces a role's direct statements")
+    void shouldReplaceRoleStatementsWhenAssignmentsAreProvided() {
+        // Arrange
+        UUID role = this.api()
+            .roles()
+            .create(new CreateRoleRequest(uniqueRoleName("StatementRole"), null, Set.of(), Set.of()));
+        UUID first = this.createStatement("role-first-" + UUID.randomUUID());
+        UUID second = this.createStatement("role-second-" + UUID.randomUUID());
+
+        // Act
+        this.api()
+            .roles()
+            .replaceStatements(role, List.of(first, first, second));
+        this.api().roles().replaceStatements(role, List.of(second));
+
+        // Assert
+        assertThat(
+            this.jdbc.queryForList(
+                "select statement_id from role_statements where role_id = ? order by statement_id",
+                UUID.class,
+                role
+            )
+        ).containsExactly(second);
+    }
+
+    /**
+     * Verifies that invalid Statement references do not partially replace a Role's existing assignments.
+     *
+     * Given: a Role assigned to one valid Statement and a replacement request containing an unknown Statement id.
+     * Expect: the request is rejected and the original one-row relationship remains unchanged.
+     */
+    @Test
+    @DisplayName("rejects unknown role statements without changing assignments")
+    void shouldPreserveRoleStatementsWhenStatementIsUnknown() {
+        // Arrange
+        UUID role = this.api()
+            .roles()
+            .create(new CreateRoleRequest(uniqueRoleName("InvalidStatementRole"), null, Set.of(), Set.of()));
+        UUID statement = this.createStatement("role-existing-" + UUID.randomUUID());
+        this.api().roles().replaceStatements(role, List.of(statement));
+
+        // Act
+        assertThatThrownBy(() ->
+            this.api().roles().replaceStatements(role, List.of(UUID.randomUUID()))
+        ).isInstanceOfSatisfying(HttpClientErrorException.BadRequest.class, exception ->
+            assertThat(exception.getResponseBodyAsString()).contains("One or more Statements do not exist")
+        );
+
+        // Assert
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from role_statements where role_id = ? and statement_id = ?",
+                Integer.class,
+                role,
+                statement
+            )
+        ).isEqualTo(1);
+    }
+
+    private UUID createStatement(String name) {
+        return this.api()
+            .statements()
+            .create(
+                new CreateStatementRequest(
+                    name,
+                    null,
+                    "allow",
+                    new StatementTarget("request", new StatementApiTarget("GET", "/api/v0/roles")),
+                    List.of()
+                )
+            );
+    }
+
+    private static String uniqueRoleName(String prefix) {
+        return prefix + UUID.randomUUID().toString().replace("-", "");
     }
 }

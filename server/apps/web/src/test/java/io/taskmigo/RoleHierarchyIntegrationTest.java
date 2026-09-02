@@ -3,7 +3,7 @@ package io.taskmigo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.access.AccessService;
+import io.taskmigo.auth.AccessService;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -41,10 +41,10 @@ class RoleHierarchyIntegrationTest {
     @Test
     @DisplayName("persists unique role edges and resolves transitive descendants")
     void shouldResolveTransitiveDescendantsWhenUniqueRoleEdgesArePersisted() {
-        UUID root = role("Root");
-        UUID left = role("Left");
-        UUID right = role("Right");
-        UUID leaf = role("Leaf");
+        UUID root = role("RootRole");
+        UUID left = role("LeftRole");
+        UUID right = role("RightRole");
+        UUID leaf = role("LeafRole");
 
         this.access.setChildRoles(root, List.of(right, left, left));
         this.access.setChildRoles(left, Set.of(leaf));
@@ -66,9 +66,9 @@ class RoleHierarchyIntegrationTest {
     @Test
     @DisplayName("rejects role cycles without changing existing edges")
     void shouldPreserveExistingEdgesWhenRoleCycleIsRejected() {
-        UUID root = role("Root");
-        UUID child = role("Child");
-        UUID leaf = role("Leaf");
+        UUID root = role("RootRole");
+        UUID child = role("ChildRole");
+        UUID leaf = role("LeafRole");
         this.access.setChildRoles(root, Set.of(child));
         this.access.setChildRoles(child, Set.of(leaf));
 
@@ -86,6 +86,6 @@ class RoleHierarchyIntegrationTest {
     }
 
     private UUID role(String name) {
-        return this.access.createRole(name, null, Set.of());
+        return this.access.createRole(name + UUID.randomUUID().toString().replace("-", ""), null, Set.of());
     }
 }

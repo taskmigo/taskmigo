@@ -3,10 +3,10 @@ package io.taskmigo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.access.AccessException;
-import io.taskmigo.access.AccessService;
-import io.taskmigo.group.GroupException;
-import io.taskmigo.group.GroupService;
+import io.taskmigo.auth.AccessException;
+import io.taskmigo.auth.AccessService;
+import io.taskmigo.auth.GroupException;
+import io.taskmigo.auth.GroupService;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -46,9 +46,9 @@ class GroupHierarchyIntegrationTest {
     @Test
     @DisplayName("persists unique group edges and resolves descendant roles")
     void shouldResolveDescendantRolesWhenUniqueGroupEdgesArePersisted() {
-        UUID employee = role("Employee");
-        UUID developer = role("Developer");
-        UUID manager = role("Manager");
+        UUID employee = role("EmployeeRole");
+        UUID developer = role("DeveloperRole");
+        UUID manager = role("ManagerRole");
         this.access.setChildRoles(developer, Set.of(employee));
 
         UUID engineering = group("Engineering");
@@ -91,10 +91,10 @@ class GroupHierarchyIntegrationTest {
     @Test
     @DisplayName("rejects group cycles without changing existing edges")
     void shouldPreserveExistingEdgesWhenGroupCycleIsRejected() {
-        UUID root = group("Root");
-        UUID child = group("Child");
-        UUID leaf = group("Leaf");
-        UUID role = role("Leaf role");
+        UUID root = group("RootGroup");
+        UUID child = group("ChildGroup");
+        UUID leaf = group("LeafGroup");
+        UUID role = role("LeafRole");
         this.groups.setChildGroups(root, Set.of(child));
         this.groups.setChildGroups(child, Set.of(leaf));
         this.groups.setRoles(leaf, Set.of(role));
@@ -113,9 +113,9 @@ class GroupHierarchyIntegrationTest {
     @Test
     @DisplayName("rejects unknown group relationships without changing existing edges")
     void shouldPreserveExistingEdgesWhenGroupRelationshipIsUnknown() {
-        UUID root = group("Root");
-        UUID child = group("Child");
-        UUID role = role("Role");
+        UUID root = group("RootGroup");
+        UUID child = group("ChildGroup");
+        UUID role = role("RoleName");
         this.groups.setChildGroups(root, Set.of(child));
         this.groups.setRoles(child, Set.of(role));
 
@@ -134,6 +134,6 @@ class GroupHierarchyIntegrationTest {
     }
 
     private UUID role(String name) {
-        return this.access.createRole(name, null, Set.of());
+        return this.access.createRole(name + UUID.randomUUID().toString().replace("-", ""), null, Set.of());
     }
 }

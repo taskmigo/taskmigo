@@ -3,8 +3,10 @@ package io.taskmigo.web.api.v0.feature.access;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.taskmigo.access.AccessService;
-import io.taskmigo.access.AccessService.RoleInfo;
+import io.taskmigo.auth.AccessService;
+import io.taskmigo.auth.AccessService.RoleInfo;
+import io.taskmigo.auth.ObjectAuthorizationService;
+import io.taskmigo.auth.StatementService;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.web.api.v0.infrastructure.pagination.OffsetPageRequest;
 import io.taskmigo.web.api.v0.infrastructure.response.ApiResponse;
@@ -19,7 +21,12 @@ import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,19 +38,51 @@ import org.springframework.web.bind.annotation.RestController;
 class RoleController {
 
     private final AccessService access;
+    private final StatementService statements;
+    private final ObjectAuthorizationService objectAuthorization;
     private final ApiResponseFactory responses;
 
-    RoleController(AccessService access, ApiResponseFactory responses) {
+    RoleController(
+        AccessService access,
+        StatementService statements,
+        ObjectAuthorizationService objectAuthorization,
+        ApiResponseFactory responses
+    ) {
         this.access = access;
+        this.statements = statements;
+        this.objectAuthorization = objectAuthorization;
         this.responses = responses;
+    }
+
+    @PatchMapping("/roles/{roleId}/statements")
+    @Operation(summary = "Replace a role's direct statements")
+    @Transactional
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setStatements(
+        @PathVariable UUID roleId,
+        @Valid @RequestBody StatementAssignmentRequest request
+    ) {
+        Set<UUID> statementIds = request.statementIds() == null ? Set.of() : request.statementIds();
+        this.statements.requireStatements(statementIds);
+        this.access.setStatements(roleId, statementIds);
+        return this.responses.ok("resource.role.statements.updated", "Role statements updated");
     }
 
     @GetMapping("/roles")
     @Operation(summary = "List roles")
     ResponseEntity<ApiResponse<List<RoleInfo>, ApiResponse.OffsetMeta>> list(
-        @ParameterObject @Valid OffsetPageRequest pagination
+        @ParameterObject @Valid OffsetPageRequest pagination,
+        @AuthenticationPrincipal @Nullable Jwt jwt
     ) {
-        OffsetPage<RoleInfo> roles = this.access.listRoles(pagination.page(), pagination.pageSize());
+        OffsetPage<RoleInfo> roles = this.access.listRoles(
+            pagination.page(),
+            pagination.pageSize(),
+            io.taskmigo.web.security.ObjectAuthorizationContext.plan(
+                this.objectAuthorization,
+                jwt,
+                "GET",
+                "/api/v0/roles"
+            )
+        );
         return this.responses.ok(
             roles.items(),
             new ApiResponse.OffsetPagination(pagination, roles),
@@ -78,4 +117,7 @@ class RoleController {
         @Nullable Set<String> permissions,
         @Nullable Set<UUID> roleIds
     ) {}
+
+    @Schema(name = "ReplaceRoleStatementsRequest")
+    record StatementAssignmentRequest(@Nullable Set<UUID> statementIds) {}
 }

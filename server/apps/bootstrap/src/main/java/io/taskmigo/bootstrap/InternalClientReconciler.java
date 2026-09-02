@@ -1,6 +1,6 @@
 package io.taskmigo.bootstrap;
 
-import io.taskmigo.identity.oauth.InternalClientMetadata;
+import io.taskmigo.auth.oauth.InternalClientMetadata;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
