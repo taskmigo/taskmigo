@@ -1,6 +1,6 @@
 package io.taskmigo.bootstrap;
 
-import io.taskmigo.auth.UserService;
+import io.taskmigo.auth.user.UserService;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;

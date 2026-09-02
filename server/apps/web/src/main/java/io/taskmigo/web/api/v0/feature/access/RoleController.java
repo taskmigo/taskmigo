@@ -3,10 +3,11 @@ package io.taskmigo.web.api.v0.feature.access;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.taskmigo.auth.AccessService;
-import io.taskmigo.auth.AccessService.RoleInfo;
-import io.taskmigo.auth.ObjectAuthorizationService;
-import io.taskmigo.auth.StatementService;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
+import io.taskmigo.auth.authorization.statement.StatementService;
+import io.taskmigo.auth.role.RoleAuthorizationService;
+import io.taskmigo.auth.role.RoleInfo;
+import io.taskmigo.auth.role.RoleService;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.web.api.v0.infrastructure.pagination.OffsetPageRequest;
 import io.taskmigo.web.api.v0.infrastructure.response.ApiResponse;
@@ -37,18 +38,21 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Role")
 class RoleController {
 
-    private final AccessService access;
+    private final RoleService access;
+    private final RoleAuthorizationService roleAuthorization;
     private final StatementService statements;
     private final ObjectAuthorizationService objectAuthorization;
     private final ApiResponseFactory responses;
 
     RoleController(
-        AccessService access,
+        RoleService access,
+        RoleAuthorizationService roleAuthorization,
         StatementService statements,
         ObjectAuthorizationService objectAuthorization,
         ApiResponseFactory responses
     ) {
         this.access = access;
+        this.roleAuthorization = roleAuthorization;
         this.statements = statements;
         this.objectAuthorization = objectAuthorization;
         this.responses = responses;
@@ -63,7 +67,7 @@ class RoleController {
     ) {
         Set<UUID> statementIds = request.statementIds() == null ? Set.of() : request.statementIds();
         this.statements.requireStatements(statementIds);
-        this.access.setStatements(roleId, statementIds);
+        this.roleAuthorization.setStatements(roleId, statementIds);
         return this.responses.ok("resource.role.statements.updated", "Role statements updated");
     }
 

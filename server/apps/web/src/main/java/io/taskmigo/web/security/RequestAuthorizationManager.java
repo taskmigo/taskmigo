@@ -1,9 +1,6 @@
 package io.taskmigo.web.security;
 
-import io.taskmigo.auth.AuthorizationCompiler;
-import io.taskmigo.auth.AuthorizationExpressionEvaluator;
-import io.taskmigo.auth.EffectiveStatementResolver;
-import io.taskmigo.auth.StatementService;
+import io.taskmigo.auth.authorization.request.RequestAuthorizationService;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -21,18 +18,10 @@ import org.springframework.stereotype.Component;
 @Component
 final class RequestAuthorizationManager implements AuthorizationManager<RequestAuthorizationContext> {
 
-    private final EffectiveStatementResolver statements;
-    private final AuthorizationCompiler compiler;
-    private final AuthorizationExpressionEvaluator evaluator;
+    private final RequestAuthorizationService authorization;
 
-    RequestAuthorizationManager(
-        EffectiveStatementResolver statements,
-        AuthorizationCompiler compiler,
-        AuthorizationExpressionEvaluator evaluator
-    ) {
-        this.statements = statements;
-        this.compiler = compiler;
-        this.evaluator = evaluator;
+    RequestAuthorizationManager(RequestAuthorizationService authorization) {
+        this.authorization = authorization;
     }
 
     @Override
@@ -65,18 +54,16 @@ final class RequestAuthorizationManager implements AuthorizationManager<RequestA
                     context.getRequest().getRequestURI().split("\\?", 2)[0]
                 )
             );
-            boolean allowed = false;
-            for (StatementService.StatementInfo statement : this.statements.resolve(id)) {
-                if (
-                    statement.target().type() == StatementService.TargetType.REQUEST &&
-                    statement.matches(context.getRequest().getMethod(), context.getRequest().getRequestURI()) &&
-                    this.evaluator.evaluate(this.compiler.compile(statement), roots)
-                ) {
-                    if (statement.effect() == StatementService.Effect.DENY) return new AuthorizationDecision(false);
-                    allowed = true;
-                }
-            }
-            return new AuthorizationDecision(allowed);
+            return new AuthorizationDecision(
+                this.authorization
+                    .authorize(
+                        id,
+                        context.getRequest().getMethod(),
+                        context.getRequest().getRequestURI().split("\\?", 2)[0],
+                        roots
+                    )
+                    .allowed()
+            );
         } catch (RuntimeException exception) {
             return new AuthorizationDecision(false);
         }

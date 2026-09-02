@@ -1,8 +1,11 @@
 package io.taskmigo.bootstrap;
 
-import io.taskmigo.auth.AccessService;
-import io.taskmigo.auth.StatementService;
-import io.taskmigo.auth.UserService;
+import io.taskmigo.auth.authorization.statement.Effect;
+import io.taskmigo.auth.authorization.statement.StatementService;
+import io.taskmigo.auth.authorization.statement.TargetType;
+import io.taskmigo.auth.role.RoleAuthorizationService;
+import io.taskmigo.auth.role.RoleService;
+import io.taskmigo.auth.user.UserService;
 import java.io.InputStream;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,13 +29,20 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
     private static final String RESOURCE_PREFIX = "bootstrap/authorization/";
 
     private final StatementService statements;
-    private final AccessService access;
+    private final RoleAuthorizationService access;
+    private final RoleService roles;
     private final UserService users;
     private final YAMLMapper yaml = YAMLMapper.builder().build();
 
-    AuthorizationStatementReconciler(StatementService statements, AccessService access, UserService users) {
+    AuthorizationStatementReconciler(
+        StatementService statements,
+        RoleAuthorizationService access,
+        RoleService roles,
+        UserService users
+    ) {
         this.statements = statements;
         this.access = access;
+        this.roles = roles;
         this.users = users;
     }
 
@@ -86,7 +96,7 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
                 .stream()
                 .map(name -> this.resolveStatement(statementIds, name))
                 .toList();
-            result.put(definition.name(), this.access.reconcileRole(definition.name(), definition.description(), ids));
+            result.put(definition.name(), this.access.reconcile(definition.name(), definition.description(), ids));
         }
         return result;
     }
@@ -115,7 +125,7 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
     }
 
     private UUID resolveRole(Map<String, UUID> values, String name) {
-        return values.computeIfAbsent(name, this.access::requireRoleByName);
+        return values.computeIfAbsent(name, this.roles::requireRoleByName);
     }
 
     private static <T> List<T> values(@Nullable List<T> values) {
@@ -140,15 +150,9 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
         }
     }
 
-    private record Statement(
-        String name,
-        String description,
-        StatementService.Effect effect,
-        Target target,
-        List<String> conditions
-    ) {}
+    private record Statement(String name, String description, Effect effect, Target target, List<String> conditions) {}
 
-    private record Target(StatementService.TargetType type, Api api) {}
+    private record Target(TargetType type, Api api) {}
 
     private record Api(String method, String path) {}
 

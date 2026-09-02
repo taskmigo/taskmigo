@@ -3,6 +3,8 @@ package io.taskmigo.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.taskmigo.PostgresTestConfiguration;
+import io.taskmigo.auth.user.SystemUser;
+import io.taskmigo.auth.user.UserService;
 import java.util.Objects;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

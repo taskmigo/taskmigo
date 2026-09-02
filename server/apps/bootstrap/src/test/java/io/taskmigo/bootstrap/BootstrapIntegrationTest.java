@@ -4,11 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
-import io.taskmigo.auth.AccessService;
-import io.taskmigo.auth.StatementService;
-import io.taskmigo.auth.SystemUser;
-import io.taskmigo.auth.UserService;
+import io.taskmigo.auth.authorization.statement.StatementInfo;
+import io.taskmigo.auth.authorization.statement.StatementService;
 import io.taskmigo.auth.oauth.InternalClientMetadata;
+import io.taskmigo.auth.role.RoleInfo;
+import io.taskmigo.auth.role.RoleService;
+import io.taskmigo.auth.user.SystemUser;
+import io.taskmigo.auth.user.UserInfo;
+import io.taskmigo.auth.user.UserService;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -53,7 +56,7 @@ class BootstrapIntegrationTest {
     private final SystemUserReconciler systemUser;
     private final PasswordEncoder passwordEncoder;
     private final UserService users;
-    private final AccessService access;
+    private final RoleService access;
     private final StatementService statements;
 
     BootstrapIntegrationTest(
@@ -64,7 +67,7 @@ class BootstrapIntegrationTest {
         SystemUserReconciler systemUser,
         PasswordEncoder passwordEncoder,
         UserService users,
-        AccessService access,
+        RoleService access,
         StatementService statements
     ) {
         this.flyway = flyway;
@@ -152,8 +155,8 @@ class BootstrapIntegrationTest {
         var roles = this.access.effectiveRoles(this.users.roleIds(system.id()));
 
         // Assert
-        assertThat(statements).extracting(StatementService.StatementInfo::name).contains("system_operator_request_all");
-        assertThat(roles).extracting(AccessService.RoleInfo::name).contains("System Operator");
+        assertThat(statements).extracting(StatementInfo::name).contains("system_operator_request_all");
+        assertThat(roles).extracting(RoleInfo::name).contains("System Operator");
         assertThat(this.users.roleIds(system.id())).hasSize(1);
     }
 
@@ -195,7 +198,7 @@ class BootstrapIntegrationTest {
         // Assert
         assertThat(reconciledId).isEqualTo(createdId);
         assertThat(this.users.require(createdId))
-            .extracting(UserService.UserInfo::firstName, UserService.UserInfo::emails)
+            .extracting(UserInfo::firstName, UserInfo::emails)
             .containsExactly("Updated", Set.of("updated@example.com"));
         assertThat(this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()).isEqualTo(
             passwordHash

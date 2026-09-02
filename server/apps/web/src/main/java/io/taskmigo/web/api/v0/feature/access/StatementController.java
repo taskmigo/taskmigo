@@ -3,12 +3,12 @@ package io.taskmigo.web.api.v0.feature.access;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.taskmigo.auth.ObjectAuthorizationService;
-import io.taskmigo.auth.StatementService;
-import io.taskmigo.auth.StatementService.ApiInfo;
-import io.taskmigo.auth.StatementService.Effect;
-import io.taskmigo.auth.StatementService.StatementInfo;
-import io.taskmigo.auth.StatementService.TargetType;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
+import io.taskmigo.auth.authorization.statement.ApiInfo;
+import io.taskmigo.auth.authorization.statement.Effect;
+import io.taskmigo.auth.authorization.statement.StatementInfo;
+import io.taskmigo.auth.authorization.statement.StatementService;
+import io.taskmigo.auth.authorization.statement.TargetType;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.web.api.v0.infrastructure.pagination.OffsetPageRequest;
 import io.taskmigo.web.api.v0.infrastructure.response.ApiResponse;
@@ -52,9 +52,7 @@ class StatementController {
 
     @PostMapping("/statements")
     @Operation(summary = "Create an authorization statement")
-    ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(
-        @Valid @RequestBody Request request
-    ) {
+    ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(@Valid @RequestBody Request request) {
         UUID id = this.statements.create(
             request.name(),
             request.description(),

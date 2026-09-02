@@ -3,11 +3,12 @@ package io.taskmigo.web.api.v0.feature.user;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.auth.AccessService;
-import io.taskmigo.auth.EffectiveStatementResolver;
-import io.taskmigo.auth.GroupService;
-import io.taskmigo.auth.StatementService;
-import io.taskmigo.auth.UserService;
+import io.taskmigo.auth.authorization.request.EffectiveStatementResolver;
+import io.taskmigo.auth.authorization.statement.StatementInfo;
+import io.taskmigo.auth.group.GroupService;
+import io.taskmigo.auth.role.RoleInfo;
+import io.taskmigo.auth.role.RoleService;
+import io.taskmigo.auth.user.UserService;
 import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.web.api.v0.testing.TaskmigoApiClient.CreateGroupRequest;
 import io.taskmigo.web.api.v0.testing.TaskmigoApiClient.CreateRoleRequest;
@@ -26,14 +27,14 @@ import org.springframework.web.client.HttpClientErrorException;
 
 class UserApiIntegrationTest extends ApiIntegrationTestSupport {
 
-    private final AccessService access;
+    private final RoleService access;
     private final GroupService groups;
     private final UserService users;
     private final EffectiveStatementResolver statementResolver;
     private final JdbcTemplate jdbc;
 
     UserApiIntegrationTest(
-        AccessService access,
+        RoleService access,
         GroupService groups,
         UserService users,
         EffectiveStatementResolver statementResolver,
@@ -91,13 +92,13 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
 
         assertThat(this.groups.effectiveRolesForUser(noAssignments)).isEmpty();
         assertThat(this.groups.effectiveRolesForUser(withRoles))
-            .extracting(AccessService.RoleInfo::id)
+            .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(employee, developer).stream().sorted().toList());
         assertThat(this.groups.effectiveRolesForUser(withGroups))
-            .extracting(AccessService.RoleInfo::id)
+            .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(employee, developer).stream().sorted().toList());
         assertThat(this.groups.effectiveRolesForUser(withBoth))
-            .extracting(AccessService.RoleInfo::id)
+            .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(employee, developer).stream().sorted().toList());
         assertThat(
             this.jdbc.queryForObject("select count(*) from user_roles where user_id = ?", Integer.class, withRoles)
@@ -156,15 +157,13 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
         UUID backendUser = this.create("backend-user", Set.of(), List.of(backend));
 
         assertThat(this.groups.effectiveRolesForUser(user))
-            .extracting(AccessService.RoleInfo::id)
+            .extracting(RoleInfo::id)
             .containsExactlyElementsOf(
                 List.of(roleA, roleB, employee, backendDeveloper, developer).stream().sorted().toList()
             );
-        assertThat(this.groups.effectiveRolesForUser(childRoleUser))
-            .extracting(AccessService.RoleInfo::id)
-            .containsExactly(roleB);
+        assertThat(this.groups.effectiveRolesForUser(childRoleUser)).extracting(RoleInfo::id).containsExactly(roleB);
         assertThat(this.groups.effectiveRolesForUser(backendUser))
-            .extracting(AccessService.RoleInfo::id)
+            .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(backendDeveloper, developer).stream().sorted().toList());
 
         assertThatThrownBy(() -> this.access.setChildRoles(roleB, Set.of(roleA))).hasMessageContaining(
@@ -174,7 +173,7 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
             "Group hierarchy must be acyclic"
         );
         assertThat(this.groups.effectiveRolesForUser(user))
-            .extracting(AccessService.RoleInfo::id)
+            .extracting(RoleInfo::id)
             .containsExactlyElementsOf(
                 List.of(roleA, roleB, employee, backendDeveloper, developer).stream().sorted().toList()
             );
@@ -223,11 +222,7 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
         this.users.setStatements(user, List.of(directStatement, sharedStatement));
 
         // Act
-        List<String> names = this.statementResolver
-            .resolve(user)
-            .stream()
-            .map(StatementService.StatementInfo::name)
-            .toList();
+        List<String> names = this.statementResolver.resolve(user).stream().map(StatementInfo::name).toList();
 
         // Assert
         assertThat(names).containsExactlyInAnyOrder(

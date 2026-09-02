@@ -3,12 +3,12 @@ package io.taskmigo.web.api.v0.feature.user;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.taskmigo.auth.AccessService;
-import io.taskmigo.auth.GroupService;
-import io.taskmigo.auth.ObjectAuthorizationService;
-import io.taskmigo.auth.StatementService;
-import io.taskmigo.auth.UserService;
-import io.taskmigo.auth.UserService.UserInfo;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
+import io.taskmigo.auth.authorization.statement.StatementService;
+import io.taskmigo.auth.group.GroupService;
+import io.taskmigo.auth.role.RoleService;
+import io.taskmigo.auth.user.UserInfo;
+import io.taskmigo.auth.user.UserService;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.web.api.v0.infrastructure.pagination.OffsetPageRequest;
 import io.taskmigo.web.api.v0.infrastructure.response.ApiResponse;
@@ -41,7 +41,7 @@ import org.springframework.web.bind.annotation.RestController;
 class UserController {
 
     private final UserService users;
-    private final AccessService access;
+    private final RoleService access;
     private final GroupService groups;
     private final StatementService statements;
     private final ObjectAuthorizationService objectAuthorization;
@@ -49,7 +49,7 @@ class UserController {
 
     UserController(
         UserService users,
-        AccessService access,
+        RoleService access,
         GroupService groups,
         StatementService statements,
         ObjectAuthorizationService objectAuthorization,

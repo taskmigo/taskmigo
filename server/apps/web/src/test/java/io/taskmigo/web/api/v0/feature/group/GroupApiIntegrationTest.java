@@ -3,8 +3,9 @@ package io.taskmigo.web.api.v0.feature.group;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.auth.AccessService;
-import io.taskmigo.auth.GroupService;
+import io.taskmigo.auth.group.GroupService;
+import io.taskmigo.auth.role.RoleInfo;
+import io.taskmigo.auth.role.RoleService;
 import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.web.api.v0.testing.TaskmigoApiClient.CreateGroupRequest;
 import java.util.List;
@@ -17,11 +18,11 @@ import org.springframework.web.client.HttpClientErrorException;
 
 class GroupApiIntegrationTest extends ApiIntegrationTestSupport {
 
-    private final AccessService access;
+    private final RoleService access;
     private final GroupService groups;
     private final JdbcTemplate jdbc;
 
-    GroupApiIntegrationTest(AccessService access, GroupService groups, JdbcTemplate jdbc) {
+    GroupApiIntegrationTest(RoleService access, GroupService groups, JdbcTemplate jdbc) {
         this.access = access;
         this.groups = groups;
         this.jdbc = jdbc;
@@ -41,7 +42,7 @@ class GroupApiIntegrationTest extends ApiIntegrationTestSupport {
             );
 
         assertThat(this.groups.effectiveRoles(created))
-            .extracting(AccessService.RoleInfo::id)
+            .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(employee, developer).stream().sorted().toList());
         assertThat(
             this.jdbc.queryForObject(

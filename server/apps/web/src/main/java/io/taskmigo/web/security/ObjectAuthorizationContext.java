@@ -1,6 +1,6 @@
 package io.taskmigo.web.security;
 
-import io.taskmigo.auth.ObjectAuthorizationService;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;

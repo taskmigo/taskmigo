@@ -3,7 +3,8 @@ package io.taskmigo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.auth.AccessService;
+import io.taskmigo.auth.role.RoleInfo;
+import io.taskmigo.auth.role.RoleService;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -30,10 +31,10 @@ import org.springframework.test.context.TestConstructor;
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 class RoleHierarchyIntegrationTest {
 
-    private final AccessService access;
+    private final RoleService access;
     private final JdbcTemplate jdbc;
 
-    RoleHierarchyIntegrationTest(AccessService access, JdbcTemplate jdbc) {
+    RoleHierarchyIntegrationTest(RoleService access, JdbcTemplate jdbc) {
         this.access = access;
         this.jdbc = jdbc;
     }
@@ -51,7 +52,7 @@ class RoleHierarchyIntegrationTest {
         this.access.setChildRoles(right, Set.of(leaf));
 
         assertThat(this.access.descendantRoles(root))
-            .extracting(AccessService.RoleInfo::id)
+            .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(left, right, leaf).stream().sorted().toList());
         assertThat(
             this.jdbc.queryForObject(
@@ -80,7 +81,7 @@ class RoleHierarchyIntegrationTest {
             .hasMessageContaining("Role hierarchy must be acyclic");
 
         assertThat(this.access.descendantRoles(root))
-            .extracting(AccessService.RoleInfo::id)
+            .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(child, leaf).stream().sorted().toList());
         assertThat(this.access.descendantRoles(leaf)).isEmpty();
     }

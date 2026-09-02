@@ -1,9 +1,11 @@
 package io.taskmigo;
 
-import io.taskmigo.auth.AccessService;
-import io.taskmigo.auth.StatementService;
-import io.taskmigo.auth.UserService;
+import io.taskmigo.auth.authorization.statement.Effect;
+import io.taskmigo.auth.authorization.statement.StatementService;
+import io.taskmigo.auth.authorization.statement.TargetType;
 import io.taskmigo.auth.oauth.InternalClientMetadata;
+import io.taskmigo.auth.role.RoleAuthorizationService;
+import io.taskmigo.auth.user.UserService;
 import java.util.UUID;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -28,7 +30,7 @@ public class PostgresTestConfiguration {
     @Bean
     ApplicationRunner persistedRuntimeStateFixture(
         UserService users,
-        AccessService access,
+        RoleAuthorizationService access,
         StatementService statements,
         PasswordEncoder passwordEncoder,
         JdbcRegisteredClientRepository clients
@@ -40,8 +42,8 @@ public class PostgresTestConfiguration {
             UUID fullAccess = statements.reconcile(
                 "system_operator_request_all",
                 "Allows the system administrator to access the versioned API.",
-                StatementService.Effect.ALLOW,
-                StatementService.TargetType.REQUEST,
+                Effect.ALLOW,
+                TargetType.REQUEST,
                 "*",
                 "/api/v0/.*",
                 java.util.List.of()
@@ -50,7 +52,7 @@ public class PostgresTestConfiguration {
             UUID rolesAccess = objectStatement(statements, "system_roles_full_access", "/api/v0/roles");
             UUID groupsAccess = objectStatement(statements, "system_groups_full_access", "/api/v0/groups");
             UUID statementsAccess = objectStatement(statements, "system_statements_full_access", "/api/v0/statements");
-            UUID roleId = access.reconcileRole(
+            UUID roleId = access.reconcile(
                 "System Operator",
                 "Highest-privilege integration-test role.",
                 java.util.List.of(fullAccess, usersAccess, rolesAccess, groupsAccess, statementsAccess)
@@ -76,8 +78,8 @@ public class PostgresTestConfiguration {
         return statements.reconcile(
             name,
             "Allows the system administrator to view every object.",
-            StatementService.Effect.ALLOW,
-            StatementService.TargetType.OBJECT,
+            Effect.ALLOW,
+            TargetType.OBJECT,
             "GET",
             path,
             java.util.List.of()

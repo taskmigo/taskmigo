@@ -3,7 +3,8 @@ package io.taskmigo.web.api.v0.feature.access;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.auth.AccessService;
+import io.taskmigo.auth.role.RoleInfo;
+import io.taskmigo.auth.role.RoleService;
 import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.web.api.v0.testing.TaskmigoApiClient.CreateRoleRequest;
 import io.taskmigo.web.api.v0.testing.TaskmigoApiClient.CreateStatementRequest;
@@ -19,10 +20,10 @@ import org.springframework.web.client.HttpClientErrorException;
 
 class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
 
-    private final AccessService access;
+    private final RoleService access;
     private final JdbcTemplate jdbc;
 
-    RoleApiIntegrationTest(AccessService access, JdbcTemplate jdbc) {
+    RoleApiIntegrationTest(RoleService access, JdbcTemplate jdbc) {
         this.access = access;
         this.jdbc = jdbc;
     }
@@ -39,7 +40,7 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
             .create(new CreateRoleRequest(uniqueRoleName("ParentRole"), null, List.of(child, child)));
 
         assertThat(this.access.descendantRoles(created))
-            .extracting(AccessService.RoleInfo::id)
+            .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(child, grandchild).stream().sorted().toList());
         assertThat(
             this.jdbc.queryForObject(
