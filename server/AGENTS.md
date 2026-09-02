@@ -2,6 +2,13 @@
 
 These instructions apply to `server/` and all of its descendants. Repository-wide instructions in the root `AGENTS.md` and `CONTRIBUTING.md` also apply.
 
+## HTTP module ownership
+
+- Feature HTTP controllers belong to the Gradle module that owns the feature. Do not place feature controllers under `apps/web`.
+- `apps/web` is a composition root. Adding `implementation(project(":modules:<feature>"))` must be sufficient for that module's Spring-managed HTTP API to become available; do not add feature-specific `@Import`, controller registration, component-scan wiring, or mirrored feature packages in `apps/web`.
+- Reuse `modules/api` for shared HTTP transport concerns such as the v0 controller marker, response envelope, response factory, pagination bindings, and common API exception translation.
+- Feature modules may depend on `modules/api`; feature modules must never depend on `apps/web`.
+
 ## Persistence queries
 
 - Do not use `org.springframework.data.jpa.repository.Query` by default. Prefer Spring Data derived queries, specifications, the persistence API supplied by the owning library, or another repository abstraction when those alternatives keep the solution readable, maintainable, and ergonomic.
