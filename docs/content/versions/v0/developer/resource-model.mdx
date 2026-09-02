@@ -47,10 +47,6 @@ Role
   name
   description
 
-RolePermission
-  role_id
-  permission_key
-
 Project
   id
   organization_id
@@ -87,7 +83,6 @@ ProjectMemberRole
 - `Project(organization_id, key)` is unique.
 - `ProjectMember(project_id, principal_type, principal_id)` is unique.
 - `ProjectMemberRole(project_member_id, role_id)` is unique.
-- `RolePermission(role_id, permission_key)` is unique.
 
 ## Project authorization
 
@@ -96,8 +91,8 @@ For a User `U` and Project `P`:
 1. Load a direct `ProjectMember` for `U`, if one exists.
 2. Load Groups containing `U` that also have `ProjectMember` records for `P`.
 3. Union all Roles assigned through those memberships.
-4. Union the permission keys granted by those Roles.
-5. Allow the operation when the required permission exists and the resource-level invariant also passes.
+4. Union the authorization Statements granted by those Roles.
+5. Allow the operation when an effective Statement permits it and the resource-level invariant also passes.
 
 There is no deny rule and no Role inheritance.
 
@@ -117,7 +112,7 @@ The following mutations must be atomic:
 - add or remove a Group Member;
 - add or remove a Project Member;
 - change Project Member Role assignments;
-- change Role permissions.
+- change Role Statement assignments.
 
 Authorization reads must never treat ownership as participation. A User belonging to the Project's Organization has no
 Project access unless direct or Group-derived Project Membership grants it.

@@ -3,8 +3,9 @@ package io.taskmigo.web.api.v0.feature.group;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.access.AccessService;
-import io.taskmigo.group.GroupService;
+import io.taskmigo.auth.group.GroupService;
+import io.taskmigo.auth.role.RoleInfo;
+import io.taskmigo.auth.role.RoleService;
 import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.web.api.v0.testing.TaskmigoApiClient.CreateGroupRequest;
 import java.util.List;
@@ -17,11 +18,11 @@ import org.springframework.web.client.HttpClientErrorException;
 
 class GroupApiIntegrationTest extends ApiIntegrationTestSupport {
 
-    private final AccessService access;
+    private final RoleService access;
     private final GroupService groups;
     private final JdbcTemplate jdbc;
 
-    GroupApiIntegrationTest(AccessService access, GroupService groups, JdbcTemplate jdbc) {
+    GroupApiIntegrationTest(RoleService access, GroupService groups, JdbcTemplate jdbc) {
         this.access = access;
         this.groups = groups;
         this.jdbc = jdbc;
@@ -30,8 +31,8 @@ class GroupApiIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     @DisplayName("creates a group with unique child groups and roles")
     void shouldCreateGroupWithUniqueRelationshipsWhenChildrenAndRolesAreProvided() {
-        UUID employee = this.access.createRole("Employee", null, Set.of());
-        UUID developer = this.access.createRole("Developer", null, Set.of(), Set.of(employee));
+        UUID employee = this.access.createRole(uniqueRoleName("EmployeeRole"), null, Set.of());
+        UUID developer = this.access.createRole(uniqueRoleName("DeveloperRole"), null, Set.of(employee));
         UUID backend = this.groups.create("Backend", null, Set.of(), Set.of(developer));
 
         UUID created = this.api()
@@ -41,7 +42,7 @@ class GroupApiIntegrationTest extends ApiIntegrationTestSupport {
             );
 
         assertThat(this.groups.effectiveRoles(created))
-            .extracting(AccessService.RoleInfo::id)
+            .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(employee, developer).stream().sorted().toList());
         assertThat(
             this.jdbc.queryForObject(
@@ -112,5 +113,9 @@ class GroupApiIntegrationTest extends ApiIntegrationTestSupport {
         );
 
         assertThat(this.jdbc.queryForObject("select count(*) from groups", Integer.class)).isEqualTo(before);
+    }
+
+    private static String uniqueRoleName(String prefix) {
+        return prefix + UUID.randomUUID().toString().replace("-", "");
     }
 }

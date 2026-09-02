@@ -1,0 +1,13 @@
+roles:
+  - name: System Operator
+    description: Highest-privilege built-in operational role.
+    statements:
+      - system_operator_request_all
+      - system_operator_object_all
+
+  - name: Administrator
+    description: Built-in administrator role without visibility of the system user.
+    statements:
+      - administrator_request_all
+      - administrator_object_all
+      - administrator_hide_system_user

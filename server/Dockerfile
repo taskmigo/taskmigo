@@ -8,9 +8,7 @@ COPY gradle gradle
 COPY gradlew settings.gradle.kts build.gradle.kts ./
 COPY modules/foundation/build.gradle.kts modules/foundation/build.gradle.kts
 COPY modules/database/build.gradle.kts modules/database/build.gradle.kts
-COPY modules/identity/build.gradle.kts modules/identity/build.gradle.kts
-COPY modules/access/build.gradle.kts modules/access/build.gradle.kts
-COPY modules/authorization/build.gradle.kts modules/authorization/build.gradle.kts
+COPY modules/auth/build.gradle.kts modules/auth/build.gradle.kts
 COPY apps/bootstrap/build.gradle.kts apps/bootstrap/build.gradle.kts
 COPY apps/web/build.gradle.kts apps/web/build.gradle.kts
 COPY apps/worker/build.gradle.kts apps/worker/build.gradle.kts
@@ -23,9 +21,7 @@ RUN chmod +x gradlew \
 
 COPY modules/foundation/src modules/foundation/src
 COPY modules/database/src modules/database/src
-COPY modules/identity/src modules/identity/src
-COPY modules/access/src modules/access/src
-COPY modules/authorization/src modules/authorization/src
+COPY modules/auth/src modules/auth/src
 COPY apps/bootstrap/src apps/bootstrap/src
 COPY apps/web/src apps/web/src
 COPY apps/worker/src apps/worker/src

@@ -1,5 +1,6 @@
 package io.taskmigo.web.api.v0.infrastructure.pagination;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 
@@ -9,10 +10,12 @@ import jakarta.validation.constraints.Min;
 public final class OffsetPageRequest {
 
     @Min(1)
+    @Schema(description = "Page number to retrieve (1-based index)", defaultValue = "1", minimum = "1")
     private int page = 1;
 
     @Min(1)
     @Max(100)
+    @Schema(description = "Number of items per page", defaultValue = "20", minimum = "1", maximum = "100")
     private int pageSize = 20;
 
     public int page() {

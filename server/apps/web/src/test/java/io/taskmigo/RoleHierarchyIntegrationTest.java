@@ -3,7 +3,8 @@ package io.taskmigo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.access.AccessService;
+import io.taskmigo.auth.role.RoleInfo;
+import io.taskmigo.auth.role.RoleService;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -30,10 +31,10 @@ import org.springframework.test.context.TestConstructor;
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 class RoleHierarchyIntegrationTest {
 
-    private final AccessService access;
+    private final RoleService access;
     private final JdbcTemplate jdbc;
 
-    RoleHierarchyIntegrationTest(AccessService access, JdbcTemplate jdbc) {
+    RoleHierarchyIntegrationTest(RoleService access, JdbcTemplate jdbc) {
         this.access = access;
         this.jdbc = jdbc;
     }
@@ -41,17 +42,17 @@ class RoleHierarchyIntegrationTest {
     @Test
     @DisplayName("persists unique role edges and resolves transitive descendants")
     void shouldResolveTransitiveDescendantsWhenUniqueRoleEdgesArePersisted() {
-        UUID root = role("Root");
-        UUID left = role("Left");
-        UUID right = role("Right");
-        UUID leaf = role("Leaf");
+        UUID root = role("RootRole");
+        UUID left = role("LeftRole");
+        UUID right = role("RightRole");
+        UUID leaf = role("LeafRole");
 
         this.access.setChildRoles(root, List.of(right, left, left));
         this.access.setChildRoles(left, Set.of(leaf));
         this.access.setChildRoles(right, Set.of(leaf));
 
         assertThat(this.access.descendantRoles(root))
-            .extracting(AccessService.RoleInfo::id)
+            .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(left, right, leaf).stream().sorted().toList());
         assertThat(
             this.jdbc.queryForObject(
@@ -66,9 +67,9 @@ class RoleHierarchyIntegrationTest {
     @Test
     @DisplayName("rejects role cycles without changing existing edges")
     void shouldPreserveExistingEdgesWhenRoleCycleIsRejected() {
-        UUID root = role("Root");
-        UUID child = role("Child");
-        UUID leaf = role("Leaf");
+        UUID root = role("RootRole");
+        UUID child = role("ChildRole");
+        UUID leaf = role("LeafRole");
         this.access.setChildRoles(root, Set.of(child));
         this.access.setChildRoles(child, Set.of(leaf));
 
@@ -80,12 +81,12 @@ class RoleHierarchyIntegrationTest {
             .hasMessageContaining("Role hierarchy must be acyclic");
 
         assertThat(this.access.descendantRoles(root))
-            .extracting(AccessService.RoleInfo::id)
+            .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(child, leaf).stream().sorted().toList());
         assertThat(this.access.descendantRoles(leaf)).isEmpty();
     }
 
     private UUID role(String name) {
-        return this.access.createRole(name, null, Set.of());
+        return this.access.createRole(name + UUID.randomUUID().toString().replace("-", ""), null, Set.of());
     }
 }

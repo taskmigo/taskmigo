@@ -1,5 +1,3 @@
-@org.springframework.modulith.ApplicationModule(
-    allowedDependencies = { "foundation", "identity", "user", "group", "access", "acl" }
-)
+@org.springframework.modulith.ApplicationModule(allowedDependencies = { "foundation", "auth :: *" })
 @org.jspecify.annotations.NullMarked
 package io.taskmigo.web;

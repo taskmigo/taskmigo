@@ -1,0 +1,8 @@
+users:
+  - username: system
+    email: []
+    firstName: System
+    lastName: User
+    roles:
+      - System Operator
+    statements: []
