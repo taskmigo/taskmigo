@@ -162,7 +162,7 @@ public class ObjectAuthorizationService {
         };
     }
 
-    @SuppressWarnings({ "unchecked", "SuspiciousNameCombination" })
+    @SuppressWarnings("unchecked")
     private <T> Predicate comparison(
         AuthorizationCompiler.Binary binary,
         Root<T> root,
@@ -182,7 +182,6 @@ public class ObjectAuthorizationService {
         };
     }
 
-    @SuppressWarnings("SuspiciousNameCombination")
     private static Expression<? extends Number> arithmetic(
         AuthorizationCompiler.Binary binary,
         Root<?> root,
