@@ -8,6 +8,7 @@ COPY gradle gradle
 COPY gradlew settings.gradle.kts build.gradle.kts ./
 COPY modules/foundation/build.gradle.kts modules/foundation/build.gradle.kts
 COPY modules/database/build.gradle.kts modules/database/build.gradle.kts
+COPY modules/api/build.gradle.kts modules/api/build.gradle.kts
 COPY modules/auth/build.gradle.kts modules/auth/build.gradle.kts
 COPY apps/bootstrap/build.gradle.kts apps/bootstrap/build.gradle.kts
 COPY apps/web/build.gradle.kts apps/web/build.gradle.kts
@@ -21,6 +22,7 @@ RUN chmod +x gradlew \
 
 COPY modules/foundation/src modules/foundation/src
 COPY modules/database/src modules/database/src
+COPY modules/api/src modules/api/src
 COPY modules/auth/src modules/auth/src
 COPY apps/bootstrap/src apps/bootstrap/src
 COPY apps/web/src apps/web/src
