@@ -71,7 +71,10 @@ include:
   - name: UnusedAssignment
   - name: UnusedLabel
   - name: UnusedReturnValue
-  - name: UnusedLibrary
+  # UnusedLibrary intentionally stays disabled. It checks whether IntelliJ libraries are
+  # referenced directly from source, so Gradle transitive/runtime dependencies (for example,
+  # Spring starter dependencies) are incorrectly reported as unused.
+  # - name: UnusedLibrary
   - name: IgnoreResultOfCall
   - name: ResultOfObjectAllocationIgnored
   - name: CanBeFinal
