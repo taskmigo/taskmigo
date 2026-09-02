@@ -51,6 +51,7 @@ jobs:
           upload-result: true
           args: >-
             --config qodana.yaml
+            --project-dir server
             --print-problems
             --disable-update-checks
 
