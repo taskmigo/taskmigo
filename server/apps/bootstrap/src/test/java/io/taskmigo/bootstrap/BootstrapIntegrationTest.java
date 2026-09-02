@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties.Client;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -70,7 +71,8 @@ class BootstrapIntegrationTest {
     }
 
     @Test
-    void bootstrapOwnsMigrationAndInstallationState() {
+    @DisplayName("installs the schema, system user, and managed OAuth clients")
+    void shouldInstallRequiredStateWhenBootstrapRuns() {
         var migrations = this.flyway.info().applied();
         assertThat(migrations).hasSize(1);
         assertThat(migrations[0].getVersion().getVersion()).isEqualTo("1");
@@ -106,7 +108,8 @@ class BootstrapIntegrationTest {
     }
 
     @Test
-    void reconciliationIsIdempotent() {
+    @DisplayName("preserves managed client and user state during reconciliation")
+    void shouldPreserveStateWhenReconciliationRunsAgain() {
         String internalId = this.storedClient("integration-client").getId();
         String browserId = this.storedClient(BrowserClientMetadata.CLIENT_ID).getId();
         String passwordHash = Objects.requireNonNull(
@@ -125,7 +128,8 @@ class BootstrapIntegrationTest {
     }
 
     @Test
-    void concurrentInternalClientReconciliationCreatesOneRegistration() throws Exception {
+    @DisplayName("creates one registration during concurrent internal client reconciliation")
+    void shouldCreateOneRegistrationWhenInternalClientReconciliationIsConcurrent() throws Exception {
         String clientId = "concurrent-" + UUID.randomUUID();
         var configuredClients = Map.of("concurrent", client(clientId, "concurrent-secret"));
 
@@ -140,7 +144,8 @@ class BootstrapIntegrationTest {
     }
 
     @Test
-    void internalClientReconciliationRefusesToAdoptUnmanagedClient() {
+    @DisplayName("refuses to adopt an unmanaged internal OAuth client")
+    void shouldRejectClientWhenInternalClientIsUnmanaged() {
         String clientId = "unmanaged-" + UUID.randomUUID();
         this.clients.save(
             RegisteredClient.withId(UUID.randomUUID().toString())

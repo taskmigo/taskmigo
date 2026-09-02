@@ -1,12 +1,14 @@
 package io.taskmigo;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
 
 class ModulithArchitectureTest {
 
     @Test
-    void verifiesModuleBoundaries() {
+    @DisplayName("verifies application module boundaries")
+    void shouldVerifyModuleBoundariesWhenApplicationModulesAreInspected() {
         ApplicationModules.of(TaskmigoApplication.class).verify();
     }
 }

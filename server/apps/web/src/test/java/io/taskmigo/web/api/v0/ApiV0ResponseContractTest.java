@@ -8,6 +8,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -37,7 +38,8 @@ class ApiV0ResponseContractTest {
     }
 
     @Test
-    void everyV0EndpointDeclaresTheStandardResponseEnvelope() {
+    @DisplayName("declares the standard response envelope for every v0 endpoint")
+    void shouldDeclareStandardResponseEnvelopeWhenV0EndpointsAreInspected() {
         List<String> violations = new ArrayList<>();
 
         this.mappings.getHandlerMethods().forEach((mapping, handler) -> {
