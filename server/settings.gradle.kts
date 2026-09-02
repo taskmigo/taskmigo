@@ -3,7 +3,7 @@ rootProject.name = "taskmigo"
 include(
     ":modules:foundation",
     ":modules:database",
-    ":modules:api",
+    ":modules:api-foundation",
     ":modules:auth",
     ":apps:bootstrap",
     ":apps:web",

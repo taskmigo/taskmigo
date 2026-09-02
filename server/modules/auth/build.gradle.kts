@@ -9,7 +9,7 @@ dependencies {
     api(libs.spring.modulith.starter.core)
     api(project(":modules:foundation"))
 
-    implementation(project(":modules:api"))
+    implementation(project(":modules:api-foundation"))
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.jackson.databind)
     implementation(libs.spring.boot.core.starter)

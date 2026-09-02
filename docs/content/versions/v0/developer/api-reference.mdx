@@ -27,7 +27,7 @@ Feature modules own their inbound HTTP adapters. `apps/web` composes modules int
 mirror each feature with another controller package.
 
 ```text
-server/modules/api
+server/modules/api-foundation
 └── io.taskmigo.api.v0
     ├── ApiV0Controller
     └── infrastructure
@@ -53,9 +53,9 @@ server/apps/web
         └── application-wide API/OpenAPI configuration
 ```
 
-The reusable v0 transport contract lives in `modules/api`, including `ApiV0Controller`, `ApiResponse`,
+The reusable v0 transport contract lives in `modules/api-foundation`, including `ApiV0Controller`, `ApiResponse`,
 `ApiResponseFactory`, common pagination bindings, timing metadata, and shared exception translation. A feature module depends
-on `modules/api` and keeps its controller next to the feature implementation.
+on `modules/api-foundation` and keeps its controller next to the feature implementation.
 
 ### Drop-in module contract
 
@@ -71,8 +71,8 @@ implementation(project(":modules:project"))
 therefore registered automatically when the owning module is imported.
 
 Do not add feature-specific `@Import`, `@ComponentScan`, controller registration, or a mirrored
-`apps/web/.../feature/<feature>` package. If a module needs reusable HTTP behavior, put that behavior in `modules/api` rather
-than coupling the module back to `apps/web`.
+`apps/web/.../feature/<feature>` package. If a module needs reusable HTTP behavior, put that behavior in
+`modules/api-foundation` rather than coupling the module back to `apps/web`.
 
 ## v0 response envelope
 
