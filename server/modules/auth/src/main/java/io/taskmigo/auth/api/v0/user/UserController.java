@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -37,6 +38,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 @ApiV0Controller
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @RequestMapping("/api/v0/users")
 @Tag(name = "User")
 class UserController {

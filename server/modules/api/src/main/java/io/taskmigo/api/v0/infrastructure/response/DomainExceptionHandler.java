@@ -3,6 +3,7 @@ package io.taskmigo.api.v0.infrastructure.response;
 import io.taskmigo.api.v0.ApiV0Controller;
 import io.taskmigo.foundation.DomainException;
 import org.jspecify.annotations.Nullable;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @RestControllerAdvice(annotations = ApiV0Controller.class)
 final class DomainExceptionHandler {
 
