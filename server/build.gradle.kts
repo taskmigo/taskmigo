@@ -1,3 +1,4 @@
+import com.diffplug.gradle.spotless.SpotlessExtension
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.plugins.quality.Checkstyle
 import org.gradle.api.plugins.quality.CheckstyleExtension
@@ -7,6 +8,7 @@ plugins {
     base
     alias(libs.plugins.spring.boot) apply false
     alias(libs.plugins.errorprone) apply false
+    alias(libs.plugins.spotless) apply false
 }
 
 allprojects {
@@ -22,6 +24,16 @@ subprojects {
     plugins.withType<JavaPlugin> {
         apply(plugin = "net.ltgt.errorprone")
         apply(plugin = "checkstyle")
+        apply(plugin = "com.diffplug.spotless")
+
+        extensions.configure<SpotlessExtension> {
+            java {
+                shortenFullyQualifiedTypes()
+                importOrder()
+                removeUnusedImports()
+                cleanthat().sourceCompatibility("26")
+            }
+        }
 
         extensions.configure<CheckstyleExtension> {
             toolVersion = libs.versions.checkstyle.get()
