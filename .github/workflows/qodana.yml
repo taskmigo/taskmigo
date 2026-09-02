@@ -49,7 +49,6 @@ jobs:
           upload-result: true
           args: >-
             --project-dir server
-            --within-docker true
 
       - name: Check SARIF
         if: ${{ always() }}

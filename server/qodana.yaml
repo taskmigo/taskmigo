@@ -4,6 +4,7 @@ profile:
   name: qodana.recommended
 projectJDK: "26"
 failThreshold: 0
+withinDocker: false
 
 include:
   # Correctness and API contracts.
