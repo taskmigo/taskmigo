@@ -41,18 +41,15 @@ jobs:
         with:
           distribution: temurin
           java-version: "26"
-          cache: gradle
 
       - name: Scan
-        uses: JetBrains/qodana-action@v2026.2
+        uses: JetBrains/qodana-action@v2026.2.0
         with:
           pr-mode: false
-          use-caches: true
+          use-caches: false
           upload-result: true
           args: >-
-            --config qodana.yaml
-            --print-problems
-            --disable-update-checks
+            --project-dir server
 
       - name: Check SARIF
         if: ${{ always() }}
@@ -71,4 +68,4 @@ jobs:
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ${{ runner.temp }}/qodana/results/qodana.sarif.json
-          wait-for-processing: false
+          wait-for-processing: true
