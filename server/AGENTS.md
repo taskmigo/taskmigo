@@ -2,6 +2,11 @@
 
 These instructions apply to `server/` and all of its descendants. Repository-wide instructions in the root `AGENTS.md` and `CONTRIBUTING.md` also apply.
 
+## Java source style
+
+- Do not use fully qualified type names in Java source. Import the type and use its simple name instead.
+- `package-info.java` is the only exception and may use fully qualified type names where package-level annotations require them.
+
 ## Persistence queries
 
 - Do not use `org.springframework.data.jpa.repository.Query` by default. Prefer Spring Data derived queries, specifications, the persistence API supplied by the owning library, or another repository abstraction when those alternatives keep the solution readable, maintainable, and ergonomic.

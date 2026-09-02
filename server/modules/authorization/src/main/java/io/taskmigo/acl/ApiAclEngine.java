@@ -12,6 +12,7 @@ import io.taskmigo.acl.AclExpression.Value;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 
@@ -135,7 +136,7 @@ public final class ApiAclEngine {
 
     private static boolean evaluate(AclExpression expression, Map<String, Object> context) {
         return switch (expression) {
-            case Eq(var left, var right) -> java.util.Objects.equals(resolve(left, context), resolve(right, context));
+            case Eq(var left, var right) -> Objects.equals(resolve(left, context), resolve(right, context));
             case Exists(var value) -> resolve(value, context) != null;
             case All(var expressions) -> expressions.stream().allMatch(item -> evaluate(item, context));
             case Any(var expressions) -> expressions.stream().anyMatch(item -> evaluate(item, context));

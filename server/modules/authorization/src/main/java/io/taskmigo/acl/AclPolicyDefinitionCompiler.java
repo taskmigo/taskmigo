@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 
 /// Compiles the JSON object accepted by the ACL management API into the restricted ACL AST.
@@ -51,7 +52,7 @@ public final class AclPolicyDefinitionCompiler {
         Set<String> methods = list(required(target, "methods"), "spec.target.methods")
             .stream()
             .map(value -> string(value, "spec.target.methods[]"))
-            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+            .collect(Collectors.toUnmodifiableSet());
         return new ApiTarget(methods, string(required(target, "path"), "spec.target.path"));
     }
 
@@ -100,7 +101,7 @@ public final class AclPolicyDefinitionCompiler {
         Set<String> names = list(allow, "fields.allow")
             .stream()
             .map(value -> string(value, "fields.allow[]"))
-            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+            .collect(Collectors.toUnmodifiableSet());
         return ResponseAclPolicy.FieldSelection.only(names);
     }
 

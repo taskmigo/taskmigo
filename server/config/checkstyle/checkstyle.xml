@@ -23,6 +23,30 @@
         <!-- Require overloaded methods to be declared together. -->
         <module name="OverloadMethodsDeclarationOrder"/>
 
+        <!-- Require imported type names instead of package-qualified type references in source code. -->
+        <module name="MatchXpath">
+            <property name="id" value="FullyQualifiedName"/>
+            <property
+                name="query"
+                value="//DOT[
+                      ./IDENT[last()][matches(@text, '^[A-Z_$]')]
+                      and .//IDENT[matches(@text, '^[a-z_$]')]
+                      and not(ancestor::PACKAGE_DEF or ancestor::IMPORT or ancestor::STATIC_IMPORT)
+                    ]"
+            />
+            <message
+                key="matchxpath.match"
+                value="Fully qualified type names are forbidden. Import the type and use its simple name instead."
+            />
+        </module>
+
+        <!-- package-info.java commonly needs package-qualified annotation names and is the sole FQN exception. -->
+        <module name="SuppressionXpathSingleFilter">
+            <property name="files" value="(^|.*[/\\])package-info[.]java$"/>
+            <property name="id" value="FullyQualifiedName"/>
+            <property name="query" value="//*"/>
+        </module>
+
         <!-- Make test reports readable without relying on implementation-oriented method names. -->
         <module name="MatchXpath">
             <property name="id" value="JUnitDisplayName"/>

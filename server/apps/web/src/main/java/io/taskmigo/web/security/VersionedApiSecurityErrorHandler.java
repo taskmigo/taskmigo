@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
@@ -37,7 +38,7 @@ final class VersionedApiSecurityErrorHandler implements AuthenticationEntryPoint
     public void handle(
         HttpServletRequest request,
         HttpServletResponse response,
-        org.springframework.security.access.AccessDeniedException accessDeniedException
+        AccessDeniedException accessDeniedException
     ) throws IOException {
         this.write(request, response, HttpStatus.FORBIDDEN, "security.forbidden", "Access is forbidden");
     }

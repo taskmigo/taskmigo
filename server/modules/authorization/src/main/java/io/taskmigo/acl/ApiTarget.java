@@ -3,13 +3,14 @@ package io.taskmigo.acl;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public record ApiTarget(Set<String> methods, String path) {
     public ApiTarget {
         methods = methods
             .stream()
             .map(method -> method.toUpperCase(Locale.ROOT))
-            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+            .collect(Collectors.toUnmodifiableSet());
         if (!path.startsWith("/api/")) {
             throw new IllegalArgumentException("ACL targets must be API paths: " + path);
         }
