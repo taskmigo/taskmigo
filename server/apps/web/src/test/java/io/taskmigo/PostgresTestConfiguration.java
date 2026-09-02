@@ -45,7 +45,7 @@ public class PostgresTestConfiguration {
                 Effect.ALLOW,
                 TargetType.REQUEST,
                 "*",
-                "/api/v0/.*",
+                "/api/v.*/.*",
                 java.util.List.of()
             );
             UUID usersAccess = objectStatement(statements, "system_users_full_access", "/api/v0/users");

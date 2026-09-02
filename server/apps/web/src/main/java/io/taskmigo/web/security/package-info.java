@@ -2,5 +2,7 @@
 ///
 /// New API versions can implement [ApiSecurityErrorRenderer] without coupling the shared security layer to a response
 /// schema.
-@org.jspecify.annotations.NullMarked
+@NullMarked
 package io.taskmigo.web.security;
+
+import org.jspecify.annotations.NullMarked;

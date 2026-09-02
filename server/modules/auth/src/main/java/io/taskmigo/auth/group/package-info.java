@@ -1,4 +1,7 @@
 /// Owns authorization groups, memberships, and group hierarchy operations.
-@org.springframework.modulith.NamedInterface
-@org.jspecify.annotations.NullMarked
+@NamedInterface
+@NullMarked
 package io.taskmigo.auth.group;
+
+import org.jspecify.annotations.NullMarked;
+import org.springframework.modulith.NamedInterface;

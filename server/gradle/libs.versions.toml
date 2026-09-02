@@ -6,7 +6,7 @@ errorprone-gradle-plugin = "5.1.0"
 errorprone-core = "2.50.0"
 nullaway = "0.14.0"
 jspecify = "1.0.1"
-checkstyle = "14.0.0"
+checkstyle = "14.1.0"
 spotless = "8.10.1"
 guava = "33.7.1-jre"
 

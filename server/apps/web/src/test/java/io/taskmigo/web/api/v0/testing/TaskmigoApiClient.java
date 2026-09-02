@@ -79,6 +79,16 @@ public final class TaskmigoApiClient {
         return Objects.requireNonNull(this.client.get().uri(path).retrieve().body(String.class));
     }
 
+    /// Returns the HTTP status for an authenticated GET request.
+    public int getStatus(String path) {
+        return Objects.requireNonNull(
+            this.client
+                .get()
+                .uri(path)
+                .exchange((request, response) -> response.getStatusCode().value())
+        );
+    }
+
     private UUID create(String path, Object request) {
         return Objects.requireNonNull(
             this.client

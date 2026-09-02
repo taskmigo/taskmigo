@@ -5,6 +5,7 @@ spring:
     web-application-type: none
   flyway:
     enabled: true
+    validate-migration-naming: true
 
 taskmigo:
   security:

@@ -48,6 +48,8 @@ class ApiDocumentationIntegrationTest {
         assertThat(openApi)
             .contains("\"title\":\"Taskmigo API\"")
             .contains("\"version\":\"v0\"")
+            .contains("\"/api/v0/groups\"")
+            .doesNotContain("\"/api/0/")
             .contains("\"taskmigoOAuth\"")
             .contains("\"statusCode\"")
             .contains("\"formErrors\"")

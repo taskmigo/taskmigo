@@ -26,20 +26,20 @@ BOMs provide compatible versions for their dependency families.
 
 ## Project structure
 
-| Project                       | Responsibility                                                         | Output              |
-| ----------------------------- | ---------------------------------------------------------------------- | ------------------- |
-| `server/apps/bootstrap`       | Database migration and installation-state reconciliation               | Executable Boot JAR |
-| `server/apps/web`             | HTTP API, OAuth authorization server, and resource server              | Executable Boot JAR |
-| `server/apps/worker`          | Background processing without an embedded web server                   | Executable Boot JAR |
-| `server/modules/database`     | Shared datasource configuration and canonical Flyway migration history | Library JAR         |
-| `server/modules/identity`     | OAuth identity contracts shared by independently runnable applications | Library JAR         |
-| `server/modules/organization` | Users, organizations, groups, roles, and permissions                   | Library JAR         |
-| `server/modules/project`      | Projects, memberships, authorization, and project history              | Library JAR         |
-| `server/modules/foundation`   | Cross-domain primitives used by server modules                         | Library JAR         |
-| `client`                      | Next.js application and client-side packages                           | Application         |
-| `helm/taskmigo`               | Kubernetes deployment and Helm smoke/integration tests                 | Helm chart          |
-| `e2e`                         | Browser-level tests against a deployed Taskmigo environment            | Playwright suite    |
-| `docs`                        | Documentation site and versioned product contract                      | Static site         |
+| Project                       | Responsibility                                                           | Output              |
+| ----------------------------- | ------------------------------------------------------------------------ | ------------------- |
+| `server/apps/bootstrap`       | Database migration and installation-state reconciliation                 | Executable Boot JAR |
+| `server/apps/web`             | HTTP API, API transport, OAuth authorization server, and resource server | Executable Boot JAR |
+| `server/apps/worker`          | Background processing without an embedded web server                     | Executable Boot JAR |
+| `server/modules/database`     | Shared datasource configuration and canonical Flyway migration history   | Library JAR         |
+| `server/modules/identity`     | OAuth identity contracts shared by independently runnable applications   | Library JAR         |
+| `server/modules/organization` | Users, organizations, groups, roles, and permissions                     | Library JAR         |
+| `server/modules/project`      | Projects, memberships, authorization, and project history                | Library JAR         |
+| `server/modules/foundation`   | Cross-domain primitives used by server modules                           | Library JAR         |
+| `client`                      | Next.js application and client-side packages                             | Application         |
+| `helm/taskmigo`               | Kubernetes deployment and Helm smoke/integration tests                   | Helm chart          |
+| `e2e`                         | Browser-level tests against a deployed Taskmigo environment              | Playwright suite    |
+| `docs`                        | Documentation site and versioned product contract                        | Static site         |
 
 Applications compose shared modules; shared modules never depend on executable applications. Spring Modulith verifies the
 runtime application-module boundaries used by `web` and `worker`.
@@ -56,7 +56,7 @@ The deployment order is:
    OAuth clients.
 4. Start `apps/web` and `apps/worker` only after bootstrap succeeds.
 
-`web` and `worker` explicitly disable Flyway and never reconcile installation state. Hibernate uses
+`web` and `worker` do not include Flyway and never reconcile installation state. Hibernate uses
 `spring.jpa.hibernate.ddl-auto=validate`; runtime applications therefore fail fast when started against an incompatible
 schema instead of mutating it.
 

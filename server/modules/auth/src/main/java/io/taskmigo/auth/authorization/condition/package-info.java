@@ -1,4 +1,7 @@
 /// Provides the authorization condition language and validation primitives.
-@org.springframework.modulith.NamedInterface
-@org.jspecify.annotations.NullMarked
+@NamedInterface
+@NullMarked
 package io.taskmigo.auth.authorization.condition;
+
+import org.jspecify.annotations.NullMarked;
+import org.springframework.modulith.NamedInterface;

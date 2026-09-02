@@ -21,41 +21,35 @@ curl -u "${SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CL
   http://localhost:8080/oauth2/token
 ```
 
-## Module-owned HTTP APIs
+## HTTP API ownership
 
-Feature modules own their inbound HTTP adapters. `apps/web` composes modules into the executable application; it does not
-mirror each feature with another controller package.
+`apps/web` owns the inbound HTTP adapters and composes feature SDK modules into the executable application. Feature modules
+provide domain and application services; they do not expose REST controllers.
 
 ```text
-server/modules/api-foundation
-└── io.taskmigo.api.v0
-    ├── ApiV0Controller
-    └── infrastructure
-        ├── pagination
-        └── response
-
 server/modules/auth
 └── io.taskmigo.auth
     ├── user
     ├── group
     ├── role
     ├── authorization
-    └── api/v0
-        ├── user
-        ├── group
-        └── access
 
 server/apps/web
 └── io.taskmigo
     ├── TaskmigoApplication
-    └── web
-        ├── security
-        └── application-wide API/OpenAPI configuration
+    ├── api/foundation
+    │   ├── infrastructure
+    │   └── v0/infrastructure
+    └── web/api/v0/auth
+        ├── user
+        ├── group
+        ├── authorization
+        └── security
 ```
 
-The reusable v0 transport contract lives in `modules/api-foundation`, including `ApiV0Controller`, `ApiResponse`,
-`ApiResponseFactory`, common pagination bindings, timing metadata, and shared exception translation. A feature module depends
-on `modules/api-foundation` and keeps its controller next to the feature implementation.
+The reusable v0 transport contract lives in `apps/web`, including Spring MVC API versioning configuration, `ApiResponse`,
+`ApiResponseFactory`, common pagination bindings, timing metadata, and shared exception translation. The auth module remains
+usable as an SDK without depending on the web application.
 
 ### Drop-in module contract
 
@@ -67,12 +61,12 @@ implementation(project(":modules:project"))
 ```
 
 `TaskmigoApplication` is rooted at `io.taskmigo`, so Spring Boot component scanning discovers Spring-managed components from
-`io.taskmigo.<feature>` packages that are present on the runtime classpath. Controllers annotated with `ApiV0Controller` are
-therefore registered automatically when the owning module is imported.
+`io.taskmigo.<feature>` packages that are present on the runtime classpath. Feature controllers declare Spring's standard
+The `@RestController` and `@RequestMapping(version = "0")` declarations live in `apps/web`; they receive the shared
+`/api/v{version}` path prefix and preserve the public `/api/v0/...` contract.
 
-Do not add feature-specific `@Import`, `@ComponentScan`, controller registration, or a mirrored
-`apps/web/.../feature/<feature>` package. If a module needs reusable HTTP behavior, put that behavior in
-`modules/api-foundation` rather than coupling the module back to `apps/web`.
+Do not add feature-specific `@Import`, `@ComponentScan`, or controller registration. If a controller needs reusable domain
+behavior, depend on the feature SDK rather than coupling the SDK back to `apps/web`.
 
 ## v0 response envelope
 

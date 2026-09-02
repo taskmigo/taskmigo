@@ -1,7 +1,7 @@
 package io.taskmigo.web.api.v0.infrastructure.security;
 
-import io.taskmigo.api.v0.infrastructure.response.ApiResponse;
-import io.taskmigo.api.v0.infrastructure.response.ApiResponseFactory;
+import io.taskmigo.api.foundation.v0.infrastructure.response.ApiResponse;
+import io.taskmigo.api.foundation.v0.infrastructure.response.ApiResponseFactory;
 import io.taskmigo.web.security.ApiSecurityErrorRenderer;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

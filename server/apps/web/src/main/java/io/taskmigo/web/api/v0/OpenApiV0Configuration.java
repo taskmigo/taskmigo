@@ -12,7 +12,7 @@ class OpenApiV0Configuration {
     GroupedOpenApi v0OpenApi() {
         return GroupedOpenApi.builder()
             .group("v0")
-            .pathsToMatch("/api/v0/**")
+            .pathsToMatch("/api/v{version}/**")
             .addOpenApiCustomizer(openApi ->
                 openApi.info(new Info().title("Taskmigo API").version("v0").description("Taskmigo API"))
             )

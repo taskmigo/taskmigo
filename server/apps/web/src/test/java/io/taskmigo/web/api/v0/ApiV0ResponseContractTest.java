@@ -3,7 +3,7 @@ package io.taskmigo.web.api.v0;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.taskmigo.PostgresTestConfiguration;
-import io.taskmigo.api.v0.infrastructure.response.ApiResponse;
+import io.taskmigo.api.foundation.v0.infrastructure.response.ApiResponse;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -14,6 +14,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.TestConstructor;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 @SpringBootTest(
@@ -43,12 +44,16 @@ class ApiV0ResponseContractTest {
         List<String> violations = new ArrayList<>();
 
         this.mappings.getHandlerMethods().forEach((mapping, handler) -> {
-            boolean isV0 = mapping
-                .getPatternValues()
-                .stream()
-                .anyMatch(pattern -> pattern.startsWith("/api/v0"));
-            if (isV0 && !usesApiResponse(handler.getMethod().getGenericReturnType())) {
-                violations.add(handler.getMethod().toGenericString());
+            RequestMapping controllerMapping = handler.getBeanType().getAnnotation(RequestMapping.class);
+            boolean isV0 = controllerMapping != null && controllerMapping.version().equals("0");
+            if (isV0) {
+                boolean hasVersionedPrefix = mapping
+                    .getPatternValues()
+                    .stream()
+                    .anyMatch(pattern -> pattern.startsWith("/api/v{version}"));
+                if (!hasVersionedPrefix || !usesApiResponse(handler.getMethod().getGenericReturnType())) {
+                    violations.add(handler.getMethod().toGenericString());
+                }
             }
         });
 
