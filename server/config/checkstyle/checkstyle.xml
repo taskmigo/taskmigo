@@ -84,6 +84,21 @@
             />
         </module>
 
+        <!-- HTTP PUT endpoints are forbidden; APIs must not use Spring's @PutMapping annotation. -->
+        <module name="MatchXpath">
+            <property
+                name="query"
+                value="//ANNOTATION[
+                      IDENT[@text='PutMapping']
+                      or DOT/IDENT[@text='PutMapping']
+                    ]"
+            />
+            <message
+                key="matchxpath.match"
+                value="@PutMapping is forbidden. Do not define HTTP PUT API methods."
+            />
+        </module>
+
         <!-- Require Bean methods to remain package-private. -->
         <module name="MatchXpath">
             <property

@@ -2,6 +2,12 @@
 
 These instructions apply to `server/` and all of its descendants. Repository-wide instructions in the root `AGENTS.md` and `CONTRIBUTING.md` also apply.
 
+## API design
+
+- Do not define HTTP `PUT` API methods.
+- Do not use Spring MVC's `org.springframework.web.bind.annotation.PutMapping` annotation, including fully qualified annotation usage.
+- Use another HTTP method that matches the operation semantics instead of introducing a `PUT` endpoint.
+
 ## Persistence queries
 
 - Do not use `org.springframework.data.jpa.repository.Query` by default. Prefer Spring Data derived queries, specifications, the persistence API supplied by the owning library, or another repository abstraction when those alternatives keep the solution readable, maintainable, and ergonomic.
