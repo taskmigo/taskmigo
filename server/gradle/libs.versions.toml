@@ -8,6 +8,7 @@ nullaway = "0.14.0"
 jspecify = "1.0.1"
 checkstyle = "14.0.0"
 spotless = "8.10.1"
+sonarqube = "7.5.0.8588"
 guava = "33.7.1-jre"
 
 [libraries]
@@ -44,3 +45,4 @@ testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgr
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
 errorprone = { id = "net.ltgt.errorprone", version.ref = "errorprone-gradle-plugin" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+sonarqube = { id = "org.sonarqube", version.ref = "sonarqube" }
