@@ -12,9 +12,7 @@ class ApiVersioningConfiguration implements WebMvcConfigurer {
 
     @Override
     public void configureApiVersioning(ApiVersionConfigurer configurer) {
-        configurer
-            .usePathSegment(1, path -> path.value().startsWith("/api/v"))
-            .setVersionRequired(false);
+        configurer.usePathSegment(1, path -> path.value().startsWith("/api/v")).setVersionRequired(false);
     }
 
     @Override
