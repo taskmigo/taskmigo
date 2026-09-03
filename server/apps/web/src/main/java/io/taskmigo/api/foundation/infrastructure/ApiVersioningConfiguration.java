@@ -13,9 +13,7 @@ class ApiVersioningConfiguration implements WebMvcConfigurer {
     @Override
     public void configureApiVersioning(ApiVersionConfigurer configurer) {
         configurer
-            .usePathSegment(1, path -> {
-                return path.value().startsWith("/api/v");
-            })
+            .usePathSegment(1, path -> path.value().startsWith("/api/v"))
             .setVersionRequired(false);
     }
 
@@ -23,6 +21,7 @@ class ApiVersioningConfiguration implements WebMvcConfigurer {
     public void configurePathMatch(PathMatchConfigurer configurer) {
         configurer.addPathPrefix("/api/v{version}", handlerType -> {
             RequestMapping mapping = handlerType.getAnnotation(RequestMapping.class);
+
             return mapping != null && mapping.version().equals("0");
         });
     }
