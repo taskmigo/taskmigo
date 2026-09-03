@@ -38,28 +38,19 @@ class RestPackageArchitectureTest {
             .resideInAnyPackage("io.taskmigo.rest.api.v0.auth.authorization..")
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage(
-                "io.taskmigo.rest.api.v0.auth.group..",
-                "io.taskmigo.rest.api.v0.auth.user.."
-            );
+            .resideInAnyPackage("io.taskmigo.rest.api.v0.auth.group..", "io.taskmigo.rest.api.v0.auth.user..");
         ArchRule groupDoesNotDependOnOtherFeatures = noClasses()
             .that()
             .resideInAnyPackage("io.taskmigo.rest.api.v0.auth.group..")
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage(
-                "io.taskmigo.rest.api.v0.auth.authorization..",
-                "io.taskmigo.rest.api.v0.auth.user.."
-            );
+            .resideInAnyPackage("io.taskmigo.rest.api.v0.auth.authorization..", "io.taskmigo.rest.api.v0.auth.user..");
         ArchRule userDoesNotDependOnOtherFeatures = noClasses()
             .that()
             .resideInAnyPackage("io.taskmigo.rest.api.v0.auth.user..")
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage(
-                "io.taskmigo.rest.api.v0.auth.authorization..",
-                "io.taskmigo.rest.api.v0.auth.group.."
-            );
+            .resideInAnyPackage("io.taskmigo.rest.api.v0.auth.authorization..", "io.taskmigo.rest.api.v0.auth.group..");
 
         // Act
         apiDoesNotDependOnInternal.check(classes);

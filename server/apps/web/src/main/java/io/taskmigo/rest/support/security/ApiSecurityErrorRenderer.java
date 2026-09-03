@@ -7,9 +7,9 @@ import org.springframework.http.HttpStatus;
 
 /// Renders authentication and authorization failures using an API-version-specific response contract.
 ///
-/// [VersionedApiSecurityErrorHandler] delegates to the first configured renderer whose [#supports(HttpServletRequest)]
-/// method matches the request. A matching renderer owns the complete response and prevents later renderers from
-/// running.
+/// The shared security error handler delegates to the first configured renderer whose
+/// [#supports(HttpServletRequest)] method matches the request. A matching renderer owns the complete response and
+/// prevents later renderers from running.
 public interface ApiSecurityErrorRenderer {
     /// Returns whether this renderer owns security failures for the request.
     ///

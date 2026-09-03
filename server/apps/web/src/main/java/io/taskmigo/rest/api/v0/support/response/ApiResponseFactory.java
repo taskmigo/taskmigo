@@ -5,7 +5,6 @@ import java.net.URI;
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 import org.jspecify.annotations.Nullable;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -14,7 +13,6 @@ import org.springframework.stereotype.Component;
 ///
 /// When timing attributes are unavailable, execution metadata falls back to the current instant and a zero duration.
 @Component
-@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public final class ApiResponseFactory {
 
     private final HttpServletRequest request;
