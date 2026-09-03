@@ -21,24 +21,52 @@ curl -u "${SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_CLI_REGISTRATION_CL
   http://localhost:8080/oauth2/token
 ```
 
-## v0 package boundaries
+## HTTP API ownership
 
-API v0 separates feature code from shared HTTP infrastructure:
+`apps/web` owns the inbound HTTP adapters and composes feature SDK modules into the executable application. Feature modules
+provide domain and application services; they do not expose REST controllers.
 
 ```text
-io.taskmigo.web.api.v0
-├── feature
-│   └── <feature>
-└── infrastructure
-    ├── response
-    └── security
+server/modules/auth
+└── io.taskmigo.auth
+    ├── user
+    ├── group
+    ├── role
+    ├── authorization
+
+server/apps/web
+└── io.taskmigo
+    ├── TaskmigoApplication
+    ├── api/foundation
+    │   ├── infrastructure
+    │   └── v0/infrastructure
+    └── web/api/v0/auth
+        ├── user
+        ├── group
+        ├── authorization
+        └── security
 ```
 
-Put controllers and feature-specific exception translation under `feature.<feature>`, for example
-`feature.resource`. Put reusable v0 transport concerns under `infrastructure`. Feature packages may depend on infrastructure;
-infrastructure must not depend on a concrete feature package.
+The reusable v0 transport contract lives in `apps/web`, including Spring MVC API versioning configuration, `ApiResponse`,
+`ApiResponseFactory`, common pagination bindings, timing metadata, and shared exception translation. The auth module remains
+usable as an SDK without depending on the web application.
 
-The shared response classes are under `io.taskmigo.web.api.v0.infrastructure.response`.
+### Drop-in module contract
+
+Adding a feature module to the web application must not require feature-specific Spring wiring. For a module such as
+`modules/project`, the expected application change is only the dependency:
+
+```kotlin
+implementation(project(":modules:project"))
+```
+
+`TaskmigoApplication` is rooted at `io.taskmigo`, so Spring Boot component scanning discovers Spring-managed components from
+`io.taskmigo.<feature>` packages that are present on the runtime classpath. Feature controllers declare Spring's standard
+The `@RestController` and `@RequestMapping(version = "0")` declarations live in `apps/web`; they receive the shared
+`/api/v{version}` path prefix and preserve the public `/api/v0/...` contract.
+
+Do not add feature-specific `@Import`, `@ComponentScan`, or controller registration. If a controller needs reusable domain
+behavior, depend on the feature SDK rather than coupling the SDK back to `apps/web`.
 
 ## v0 response envelope
 

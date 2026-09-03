@@ -1,6 +1,12 @@
+import org.springframework.boot.gradle.tasks.bundling.BootJar
+
 plugins {
     java
     id("org.springframework.boot")
+}
+
+tasks.named<BootJar>("bootJar") {
+    archiveFileName.set("worker.jar")
 }
 
 description = "Taskmigo background worker application"

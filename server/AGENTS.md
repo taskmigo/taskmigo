@@ -2,6 +2,15 @@
 
 These instructions apply to `server/` and all of its descendants. Repository-wide instructions in the root `AGENTS.md` and `CONTRIBUTING.md` also apply.
 
+## HTTP module ownership
+
+- `apps/web` owns the HTTP adapters, OAuth endpoints, shared API transport infrastructure, and OpenAPI configuration.
+- Feature modules own SDK/domain/application services. They must not depend on `apps/web` or expose REST controllers.
+- Keep reusable feature behavior in its feature module and keep HTTP-specific DTOs, controllers, response envelopes,
+  pagination bindings, versioning, and exception translation in `apps/web`.
+- Adding `implementation(project(":modules:<feature>"))` to `apps/web` must be sufficient to make the feature available;
+  do not add feature-specific `@Import`, controller registration, or component-scan wiring.
+
 ## Persistence queries
 
 - Do not use `org.springframework.data.jpa.repository.Query` by default. Prefer Spring Data derived queries, specifications, the persistence API supplied by the owning library, or another repository abstraction when those alternatives keep the solution readable, maintainable, and ergonomic.

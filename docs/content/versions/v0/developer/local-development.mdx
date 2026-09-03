@@ -37,7 +37,7 @@ docker compose ps
 
 The database is available at `localhost:5432` with database, user, and password all set to `taskmigo`.
 
-`apps/bootstrap` is the only application allowed to run Flyway migrations. Web and worker keep Flyway disabled and expect
+`apps/bootstrap` is the only application that includes and runs Flyway migrations. Web and worker do not include Flyway and expect
 an already-compatible schema.
 
 To use another PostgreSQL instance, set `TASKMIGO_DATABASE_URL`, `TASKMIGO_DATABASE_USERNAME`, and
@@ -85,7 +85,7 @@ the configuration and deployment rules.
 ## Run the worker
 
 The worker is a separate Spring Boot application without an HTTP server. It uses the migrated PostgreSQL schema and keeps
-Flyway disabled.
+Flyway out of its runtime classpath.
 
 ```bash
 cd server

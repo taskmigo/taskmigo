@@ -57,7 +57,7 @@ The lifecycle is:
 1. Helm runs the bootstrap Job before install or upgrade.
 2. Bootstrap runs Flyway migrations and reconciles installation state such as the system user and managed OAuth clients.
 3. Only after the hook succeeds does Helm create or update web, worker, and client workloads.
-4. Web and worker keep Flyway disabled and only consume the migrated schema.
+4. Web and worker do not include Flyway and only consume the migrated schema.
 
 A failed bootstrap hook fails the Helm release before runtime workloads are changed.
 

@@ -1,3 +1,5 @@
 /// Installation bootstrap tasks executed after schema migration and before runtime applications start.
-@org.jspecify.annotations.NullMarked
+@NullMarked
 package io.taskmigo.bootstrap;
+
+import org.jspecify.annotations.NullMarked;

@@ -1,4 +1,7 @@
 /// Provides the authentication and authorization module namespace.
-@org.springframework.modulith.ApplicationModule(allowedDependencies = "foundation")
-@org.jspecify.annotations.NullMarked
+@ApplicationModule(allowedDependencies = "foundation")
+@NullMarked
 package io.taskmigo.auth;
+
+import org.jspecify.annotations.NullMarked;
+import org.springframework.modulith.ApplicationModule;

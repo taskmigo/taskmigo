@@ -1,4 +1,7 @@
 /// Provides database-side object authorization and query dialects.
-@org.springframework.modulith.NamedInterface
-@org.jspecify.annotations.NullMarked
+@NamedInterface
+@NullMarked
 package io.taskmigo.auth.authorization.object;
+
+import org.jspecify.annotations.NullMarked;
+import org.springframework.modulith.NamedInterface;

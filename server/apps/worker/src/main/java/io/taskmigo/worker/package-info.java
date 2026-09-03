@@ -1,4 +1,7 @@
 /// Runs background jobs.
-@org.springframework.modulith.ApplicationModule
-@org.jspecify.annotations.NullMarked
+@ApplicationModule
+@NullMarked
 package io.taskmigo.worker;
+
+import org.jspecify.annotations.NullMarked;
+import org.springframework.modulith.ApplicationModule;

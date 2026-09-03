@@ -1,8 +1,6 @@
 spring:
   config:
     import: classpath:application-database.yaml
-  flyway:
-    enabled: false
 
 springdoc:
   api-docs:
