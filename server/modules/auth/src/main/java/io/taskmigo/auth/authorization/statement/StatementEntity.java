@@ -38,8 +38,7 @@ public class StatementEntity {
     @Column(nullable = false, length = 2000)
     String path;
 
-    @Column(columnDefinition = "text")
-    @Nullable
+    @Column(nullable = false, columnDefinition = "text")
     String policy;
 
     protected StatementEntity() {}
@@ -52,7 +51,7 @@ public class StatementEntity {
         Scope scope,
         String method,
         String path,
-        @Nullable String policy
+        String policy
     ) {
         this.id = id;
         this.name = name;

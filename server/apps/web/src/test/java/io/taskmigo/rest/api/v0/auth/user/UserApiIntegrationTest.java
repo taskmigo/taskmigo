@@ -311,7 +311,7 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
                     "allow",
                     "request",
                     new StatementTarget(new StatementApiTarget("GET", "/api/v0/users")),
-                    null
+                    "export default () => true;"
                 )
             );
     }

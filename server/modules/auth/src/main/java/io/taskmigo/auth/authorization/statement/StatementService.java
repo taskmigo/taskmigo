@@ -68,10 +68,20 @@ public class StatementService {
         if (validMethod.length() > 16) throw new AuthorizationException(
             "target.api.method must not exceed 16 characters"
         );
-        validatePolicy(policy, validScope);
+        String validPolicy = requiredPolicy(policy);
+        this.policyCompiler.compile(validPolicy, validScope);
         UUID id = UUID.randomUUID();
         this.statements.save(
-            new StatementEntity(id, validName, description, validEffect, validScope, validMethod, validPath, policy)
+            new StatementEntity(
+                id,
+                validName,
+                description,
+                validEffect,
+                validScope,
+                validMethod,
+                validPath,
+                validPolicy
+            )
         );
         return id;
     }
@@ -107,13 +117,14 @@ public class StatementService {
         } catch (PatternSyntaxException exception) {
             throw new AuthorizationException("target.api.path must be a valid regular expression");
         }
-        validatePolicy(policy, validScope);
+        String validPolicy = requiredPolicy(policy);
+        this.policyCompiler.compile(validPolicy, validScope);
         existing.description = description;
         existing.effect = validEffect;
         existing.scope = validScope;
         existing.method = validMethod;
         existing.path = validPath;
-        existing.policy = policy;
+        existing.policy = validPolicy;
         this.statements.flush();
         return existing.id;
     }
@@ -176,8 +187,8 @@ public class StatementService {
         return value;
     }
 
-    private void validatePolicy(@Nullable String policy, Scope scope) {
-        if (policy != null && policy.isBlank()) throw new AuthorizationException("policy must not be blank");
-        if (policy != null) this.policyCompiler.compile(policy, scope);
+    private static String requiredPolicy(@Nullable String policy) {
+        if (policy == null || policy.isBlank()) throw new AuthorizationException("policy must not be blank");
+        return policy;
     }
 }

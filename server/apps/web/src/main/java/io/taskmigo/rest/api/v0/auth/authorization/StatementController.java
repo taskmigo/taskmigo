@@ -97,7 +97,7 @@ class StatementController {
         @NotNull Effect effect,
         @NotNull Scope scope,
         @NotNull Target target,
-        @Nullable String policy
+        @NotBlank String policy
     ) {}
 
     record Target(@NotNull ApiInfo api) {}

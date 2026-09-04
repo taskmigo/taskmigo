@@ -72,13 +72,10 @@ public class ObjectAuthorizationService {
 
         for (StatementInfo statement : snapshot.statements()) {
             if (statement.scope() == Scope.OBJECT && statement.matches(method, path)) {
-                FilterAst filter =
-                    statement.policy() == null
-                        ? new FilterAst(new FilterAst.All())
-                        : this.partialEvaluator.partial(
-                              this.policyCompiler.compile(statement.policy(), Scope.OBJECT),
-                              snapshot.roots()
-                          );
+                FilterAst filter = this.partialEvaluator.partial(
+                    this.policyCompiler.compile(statement.policy(), Scope.OBJECT),
+                    snapshot.roots()
+                );
                 matched.add(statement);
                 (statement.effect() == Effect.DENY ? denies : allows).add(filter.expression());
             }

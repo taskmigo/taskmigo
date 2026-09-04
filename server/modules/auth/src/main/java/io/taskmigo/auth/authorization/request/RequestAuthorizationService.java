@@ -15,7 +15,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -78,11 +77,8 @@ public class RequestAuthorizationService {
         for (StatementInfo statement : snapshot.statements()) {
             if (statement.scope() != Scope.REQUEST || !statement.matches(method, path)) continue;
             try {
-                JavaScriptPolicyModule module =
-                    statement.policy() == null
-                        ? null
-                        : this.policyCompiler.compileModule(statement.policy(), Scope.REQUEST);
-                if (module != null) descriptors.addAll(module.resources());
+                JavaScriptPolicyModule module = this.policyCompiler.compileModule(statement.policy(), Scope.REQUEST);
+                descriptors.addAll(module.resources());
                 evaluations.add(new Evaluation(statement, module));
             } catch (RuntimeException exception) {
                 return new RequestAuthorizationDecision(false);
@@ -100,15 +96,10 @@ public class RequestAuthorizationService {
         for (Evaluation evaluation : evaluations) {
             StatementInfo statement = evaluation.statement();
             try {
-                Map<String, ?> evaluationRoots = approvedRoots;
-                if (evaluation.module() != null) {
-                    Map<String, Object> withObject = new LinkedHashMap<>(approvedRoots);
-                    withObject.put("object", resolved.objectValues(evaluation.module().resources()));
-                    evaluationRoots = Collections.unmodifiableMap(withObject);
-                }
-                boolean matches =
-                    evaluation.module() == null ||
-                    this.policyEvaluator.evaluate(evaluation.module().policy(), evaluationRoots);
+                Map<String, Object> withObject = new LinkedHashMap<>(approvedRoots);
+                withObject.put("object", resolved.objectValues(evaluation.module().resources()));
+                Map<String, ?> evaluationRoots = Collections.unmodifiableMap(withObject);
+                boolean matches = this.policyEvaluator.evaluate(evaluation.module().policy(), evaluationRoots);
                 if (matches) {
                     if (statement.effect() == Effect.DENY) return new RequestAuthorizationDecision(false);
                     allowed = true;
@@ -120,5 +111,5 @@ public class RequestAuthorizationService {
         return new RequestAuthorizationDecision(allowed);
     }
 
-    private record Evaluation(StatementInfo statement, @Nullable JavaScriptPolicyModule module) {}
+    private record Evaluation(StatementInfo statement, JavaScriptPolicyModule module) {}
 }

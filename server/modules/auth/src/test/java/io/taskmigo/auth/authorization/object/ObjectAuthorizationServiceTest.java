@@ -20,7 +20,6 @@ import io.taskmigo.auth.authorization.statement.TargetInfo;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -36,17 +35,19 @@ class ObjectAuthorizationServiceTest {
     );
 
     /**
-     * Verifies that an unconditional object Statement contributes an allow predicate to the object plan.
+     * Verifies that a constant-true object Statement contributes an allow predicate to the object plan.
      *
-     * Given: an unconditional allow Statement targeting the queried object operation.
+     * Given: an allow Statement with `export default () => true;` targeting the queried object operation.
      * Expect: the plan contains one matching Statement and a true allow branch.
      */
     @Test
     @DisplayName("builds an unconditional object allow filter")
-    void shouldBuildUnconditionalAllowFilterWhenStatementHasNoPolicy() {
+    void shouldBuildConstantTrueAllowFilterWhenStatementPolicyIsTrue() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        when(this.statements.resolve(userId)).thenReturn(List.of(statement(Effect.ALLOW, null)));
+        when(this.statements.resolve(userId)).thenReturn(
+            List.of(statement(Effect.ALLOW, "export default () => true;"))
+        );
 
         // Act
         ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
@@ -61,7 +62,7 @@ class ObjectAuthorizationServiceTest {
         assertThat(plan.predicate().expression()).isEqualTo(
             new FilterAst.Binary(
                 FilterAst.Operator.AND,
-                new FilterAst.All(),
+                new FilterAst.Literal(true),
                 new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.None())
             )
         );
@@ -70,7 +71,7 @@ class ObjectAuthorizationServiceTest {
     /**
      * Verifies that an object deny predicate overrides an otherwise matching allow predicate.
      *
-     * Given: unconditional allow and deny Statements targeting the same object operation.
+     * Given: constant-true allow and deny Statements targeting the same object operation.
      * Expect: the combined filter contains an allow-any branch and a negated deny-any branch.
      */
     @Test
@@ -79,7 +80,10 @@ class ObjectAuthorizationServiceTest {
         // Arrange
         UUID userId = UUID.randomUUID();
         when(this.statements.resolve(userId)).thenReturn(
-            List.of(statement(Effect.ALLOW, null), statement(Effect.DENY, null))
+            List.of(
+                statement(Effect.ALLOW, "export default () => true;"),
+                statement(Effect.DENY, "export default () => true;")
+            )
         );
 
         // Act
@@ -94,8 +98,8 @@ class ObjectAuthorizationServiceTest {
         assertThat(plan.predicate().expression()).isEqualTo(
             new FilterAst.Binary(
                 FilterAst.Operator.AND,
-                new FilterAst.All(),
-                new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.All())
+                new FilterAst.Literal(true),
+                new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Literal(true))
             )
         );
     }
@@ -201,7 +205,7 @@ class ObjectAuthorizationServiceTest {
         UUID userId = UUID.randomUUID();
         AuthorizationSnapshot snapshot = new AuthorizationSnapshot(
             userId,
-            List.of(statement(Effect.ALLOW, null)),
+            List.of(statement(Effect.ALLOW, "export default () => true;")),
             roots(userId.toString(), "GET")
         );
 
@@ -213,7 +217,7 @@ class ObjectAuthorizationServiceTest {
         verifyNoInteractions(this.statements);
     }
 
-    private static StatementInfo statement(Effect effect, @Nullable String policy) {
+    private static StatementInfo statement(Effect effect, String policy) {
         return new StatementInfo(
             UUID.randomUUID(),
             "statement-" + UUID.randomUUID(),

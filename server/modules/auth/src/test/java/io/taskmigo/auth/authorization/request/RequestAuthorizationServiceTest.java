@@ -18,7 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -265,10 +264,10 @@ class RequestAuthorizationServiceTest {
     }
 
     private static StatementInfo statement(Effect effect) {
-        return statement(effect, null);
+        return statement(effect, "export default () => true;");
     }
 
-    private static StatementInfo statement(Effect effect, @Nullable String policy) {
+    private static StatementInfo statement(Effect effect, String policy) {
         return new StatementInfo(
             UUID.randomUUID(),
             "statement-" + UUID.randomUUID(),

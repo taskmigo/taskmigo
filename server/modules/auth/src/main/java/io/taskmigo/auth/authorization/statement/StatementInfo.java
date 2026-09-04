@@ -12,7 +12,7 @@ public record StatementInfo(
     Effect effect,
     Scope scope,
     TargetInfo target,
-    @Nullable String policy
+    String policy
 ) {
     /// Tests an incoming method and path using the target method and full-match path expression.
     public boolean matches(String requestMethod, String requestPath) {

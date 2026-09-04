@@ -5,13 +5,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,6 +22,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class StatementServiceTest {
+
+    private static final String VALID_POLICY = "export default () => true;";
 
     @Mock
     private StatementRepository statements;
@@ -68,25 +70,28 @@ class StatementServiceTest {
     }
 
     /**
-     * Verifies that an omitted policy is persisted as a valid unconditional Statement.
+     * Verifies that a Statement cannot be activated without a non-blank policy source.
      *
-     * Given: a valid request Statement without a policy source.
-     * Expect: the saved entity has a null policy and policy compilation is not invoked.
+     * Given: Statements with a missing, empty, or whitespace-only policy source.
+     * Expect: each activation fails with an authorization error before policy compilation or persistence.
      */
     @Test
-    @DisplayName("persists an unconditional statement when policy is omitted")
-    void shouldPersistUnconditionalStatementWhenPolicyIsOmitted() {
+    @DisplayName("rejects a statement when policy is missing or blank")
+    void shouldRejectStatementWhenPolicyIsMissingOrBlank() {
         // Arrange
-        when(this.statements.existsByName("users_all")).thenReturn(false);
-        ArgumentCaptor<StatementEntity> saved = ArgumentCaptor.forClass(StatementEntity.class);
+        when(this.statements.existsByName(org.mockito.ArgumentMatchers.anyString())).thenReturn(false);
 
-        // Act
-        this.service.create("users_all", null, Effect.ALLOW, Scope.REQUEST, "GET", "/api/v0/users", null);
-
-        // Assert
-        verify(this.statements).save(saved.capture());
-        assertThat(saved.getValue().policy).isNull();
-        verifyNoInteractions(this.policyCompiler);
+        // Act + Assert
+        assertThatThrownBy(() -> this.create("missing-policy", null)).isInstanceOf(AuthorizationException.class);
+        assertThatThrownBy(() -> this.create("empty-policy", "")).isInstanceOf(AuthorizationException.class);
+        assertThatThrownBy(() -> this.create("blank-policy", " \t\n ")).isInstanceOf(AuthorizationException.class);
+        verify(this.policyCompiler, org.mockito.Mockito.never()).compile(
+            org.mockito.ArgumentMatchers.anyString(),
+            org.mockito.ArgumentMatchers.any(Scope.class)
+        );
+        verify(this.statements, org.mockito.Mockito.never()).save(
+            org.mockito.ArgumentMatchers.any(StatementEntity.class)
+        );
     }
 
     /**
@@ -136,7 +141,9 @@ class StatementServiceTest {
         when(this.statements.existsByName("invalid")).thenReturn(false);
 
         // Act + Assert
-        assertThatThrownBy(() -> this.service.create("invalid", null, Effect.ALLOW, Scope.REQUEST, "GET", "[", null))
+        assertThatThrownBy(() ->
+            this.service.create("invalid", null, Effect.ALLOW, Scope.REQUEST, "GET", "[", VALID_POLICY)
+        )
             .isInstanceOf(AuthorizationException.class)
             .hasMessageContaining("valid regular expression");
     }
@@ -158,7 +165,7 @@ class StatementServiceTest {
             Effect.ALLOW,
             Scope.REQUEST,
             new TargetInfo(new ApiInfo("GET", "/api/v0/users/[0-9]+")),
-            null
+            VALID_POLICY
         );
 
         // Act
@@ -183,7 +190,15 @@ class StatementServiceTest {
     void shouldMatchEveryMethodWhenTargetMethodIsWildcard() {
         // Arrange
         when(this.statements.existsByName("users_all")).thenReturn(false);
-        UUID id = this.service.create("users_all", null, Effect.ALLOW, Scope.REQUEST, "*", "/api/v0/users", null);
+        UUID id = this.service.create(
+            "users_all",
+            null,
+            Effect.ALLOW,
+            Scope.REQUEST,
+            "*",
+            "/api/v0/users",
+            VALID_POLICY
+        );
         StatementEntity entity = new StatementEntity(
             id,
             "users_all",
@@ -192,7 +207,7 @@ class StatementServiceTest {
             Scope.REQUEST,
             "*",
             "/api/v0/users",
-            null
+            VALID_POLICY
         );
 
         // Act
@@ -202,5 +217,9 @@ class StatementServiceTest {
         // Assert
         assertThat(getMatches).isTrue();
         assertThat(deleteMatches).isTrue();
+    }
+
+    private UUID create(String name, @Nullable String policy) {
+        return this.service.create(name, null, Effect.ALLOW, Scope.REQUEST, "GET", "/api/v0/users", policy);
     }
 }

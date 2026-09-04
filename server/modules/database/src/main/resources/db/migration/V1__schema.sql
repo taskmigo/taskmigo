@@ -73,10 +73,11 @@ CREATE TABLE statements (
     scope VARCHAR(16) NOT NULL,
     method VARCHAR(16) NOT NULL,
     path VARCHAR(2000) NOT NULL,
-    policy TEXT,
+    policy TEXT NOT NULL,
     CONSTRAINT uk_statements_name UNIQUE (name),
     CONSTRAINT ck_statements_effect CHECK (effect IN ('ALLOW', 'DENY')),
-    CONSTRAINT ck_statements_scope CHECK (scope IN ('OBJECT', 'REQUEST'))
+    CONSTRAINT ck_statements_scope CHECK (scope IN ('OBJECT', 'REQUEST')),
+    CONSTRAINT ck_statements_policy_nonblank CHECK (btrim(policy) <> '')
 );
 
 CREATE TABLE role_statements (

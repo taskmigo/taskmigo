@@ -1,6 +1,7 @@
 package io.taskmigo.rest.api.v0.auth.authorization;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.rest.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.CreateStatementRequest;
@@ -9,6 +10,7 @@ import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.StatementTarget;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.client.HttpClientErrorException;
 
 class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
 
@@ -44,14 +46,14 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     /**
-     * Verifies that the public API accepts a Statement without a policy and preserves its unconditional form.
+     * Verifies that the public API rejects a Statement with a blank required policy source.
      *
-     * Given: a valid request Statement whose policy is omitted.
-     * Expect: creation succeeds and the listed canonical Statement has a null policy.
+     * Given: a request Statement whose policy is an empty string.
+     * Expect: creation fails with an unprocessable-content response and no Statement is created.
      */
     @Test
-    @DisplayName("creates an unconditional statement when policy is omitted")
-    void shouldCreateUnconditionalStatementWhenPolicyIsOmitted() {
+    @DisplayName("rejects a statement when policy is blank")
+    void shouldRejectStatementWhenPolicyIsBlank() {
         // Arrange
         CreateStatementRequest request = new CreateStatementRequest(
             "users_all",
@@ -59,17 +61,13 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
             "allow",
             "request",
             new StatementTarget(new StatementApiTarget("GET", "/api/v0/users")),
-            null
+            ""
         );
 
-        // Act
-        this.api().statements().create(request);
-        String response = this.findStatement("users_all");
-
-        // Assert
-        assertThat(response)
-            .contains("\"scope\":\"REQUEST\"")
-            .contains("\"policy\":null");
+        // Act + Assert
+        assertThatThrownBy(() -> this.api().statements().create(request))
+            .isInstanceOf(HttpClientErrorException.UnprocessableContent.class)
+            .hasMessageContaining("policy");
     }
 
     /**
@@ -109,7 +107,7 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
             "allow",
             "request",
             new StatementTarget(new StatementApiTarget("GET", "/api/v0/statements")),
-            null
+            "export default () => true;"
         );
     }
 

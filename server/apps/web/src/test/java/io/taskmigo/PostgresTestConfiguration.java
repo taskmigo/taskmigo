@@ -46,7 +46,7 @@ public class PostgresTestConfiguration {
                 Scope.REQUEST,
                 "*",
                 "/api/v.*/.*",
-                null
+                "export default () => true;"
             );
             UUID usersAccess = objectStatement(statements, "system_users_full_access", "/api/v0/users");
             UUID rolesAccess = objectStatement(statements, "system_roles_full_access", "/api/v0/roles");
@@ -82,7 +82,7 @@ public class PostgresTestConfiguration {
             Scope.OBJECT,
             "GET",
             path,
-            null
+            "export default () => true;"
         );
     }
 }

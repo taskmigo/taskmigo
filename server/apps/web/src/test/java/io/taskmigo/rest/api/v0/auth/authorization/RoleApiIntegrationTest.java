@@ -171,7 +171,7 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
                     "allow",
                     "request",
                     new StatementTarget(new StatementApiTarget("GET", "/api/v0/roles")),
-                    null
+                    "export default () => true;"
                 )
             );
     }
