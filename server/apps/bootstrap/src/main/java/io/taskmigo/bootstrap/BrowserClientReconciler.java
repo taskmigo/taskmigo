@@ -36,7 +36,10 @@ final class BrowserClientReconciler implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments arguments) {
-        if (!this.properties.enabled()) return;
+        if (!this.properties.enabled()) {
+            return;
+        }
+
         this.reconcile();
     }
 
@@ -46,7 +49,9 @@ final class BrowserClientReconciler implements ApplicationRunner {
                 this.transactions.executeWithoutResult(status -> this.reconcileClient());
                 return;
             } catch (TransientDataAccessException | DataIntegrityViolationException exception) {
-                if (attempt == MAX_RECONCILIATION_ATTEMPTS) throw exception;
+                if (attempt == MAX_RECONCILIATION_ATTEMPTS) {
+                    throw exception;
+                }
             }
         }
     }
