@@ -25,7 +25,9 @@ public final class PolicyIrPartialEvaluator {
     /// @throws AuthorizationException when the policy cannot be represented by the Filter AST
     public FilterAst partial(PolicyIr policy, Map<String, ?> roots) {
         FilterAst.Expression residual = this.filter(this.specialize(policy.expression(), roots));
-        if (!isPredicate(residual)) throw invalid("Object authorization policy must return a boolean predicate");
+        if (!isPredicate(residual)) {
+            throw invalid("Object authorization policy must return a boolean predicate");
+        }
         return new FilterAst(residual);
     }
 
@@ -64,11 +66,15 @@ public final class PolicyIrPartialEvaluator {
         PolicyIr.Expression left = this.specialize(binary.left(), roots);
         PolicyIr.Expression right = this.specialize(binary.right(), roots);
         if (binary.operator() == PolicyIr.BinaryOperator.AND && left instanceof PolicyIr.Literal literal) {
-            if (!truthy(literal.value())) return literal;
+            if (!truthy(literal.value())) {
+                return literal;
+            }
             return right;
         }
         if (binary.operator() == PolicyIr.BinaryOperator.OR && left instanceof PolicyIr.Literal literal) {
-            if (truthy(literal.value())) return literal;
+            if (truthy(literal.value())) {
+                return literal;
+            }
             return right;
         }
         PolicyIr.Binary specialized = new PolicyIr.Binary(binary.operator(), left, right);
@@ -88,7 +94,7 @@ public final class PolicyIrPartialEvaluator {
             case PolicyIr.UndefinedValue ignored -> throw invalid("undefined is not a database filter value");
             case PolicyIr.Reference reference -> objectField(reference);
             case PolicyIr.PropertyAccess ignored -> throw invalid("computed properties are not queryable");
-            case PolicyIr.Binary binary -> binary(binary);
+            case PolicyIr.Binary binary -> this.binary(binary);
             case PolicyIr.Unary unary when unary.operator() == PolicyIr.UnaryOperator.NOT -> new FilterAst.Unary(
                 FilterAst.Operator.NOT,
                 this.filter(unary.operand())
@@ -121,17 +127,16 @@ public final class PolicyIrPartialEvaluator {
     }
 
     private static FilterAst.Field objectField(PolicyIr.Reference reference) {
-        if (!reference.root().equals("object") || reference.path().size() != 1) throw invalid(
-            "only direct object fields are queryable"
-        );
+        if (!reference.root().equals("object") || reference.path().size() != 1) {
+            throw invalid("only direct object fields are queryable");
+        }
         return new FilterAst.Field(reference.path().getFirst());
     }
 
-    private static Object resolve(PolicyIr.Reference reference, Map<String, ?> roots) {
-        if (!roots.containsKey(reference.root())) throw invalid(
-            "missing authorization context value: " + reference.root()
-        );
-        @Nullable
+    private static @Nullable Object resolve(PolicyIr.Reference reference, Map<String, ?> roots) {
+        if (!roots.containsKey(reference.root())) {
+            throw invalid("missing authorization context value: " + reference.root());
+        }
         Object current = roots.get(reference.root());
         for (String part : reference.path()) {
             current =
@@ -182,9 +187,15 @@ public final class PolicyIrPartialEvaluator {
     }
 
     private static boolean truthy(@Nullable Object value) {
-        if (value == null || value == JavaScriptPolicyEvaluator.undefinedValue()) return false;
-        if (value instanceof Boolean bool) return bool;
-        if (value instanceof Number number) return number.doubleValue() != 0 && !Double.isNaN(number.doubleValue());
+        if (value == null || value == JavaScriptPolicyEvaluator.undefinedValue()) {
+            return false;
+        }
+        if (value instanceof Boolean bool) {
+            return bool;
+        }
+        if (value instanceof Number number) {
+            return number.doubleValue() != 0 && !Double.isNaN(number.doubleValue());
+        }
         return !(value instanceof String string) || !string.isEmpty();
     }
 

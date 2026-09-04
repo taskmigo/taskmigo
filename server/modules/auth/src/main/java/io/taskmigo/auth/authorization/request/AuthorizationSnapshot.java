@@ -32,7 +32,9 @@ public record AuthorizationSnapshot(
         if (
             executableStatements.size() != statements.size() ||
             executableStatements.stream().anyMatch(artifact -> !effectiveStatements.contains(artifact.statement()))
-        ) throw new IllegalArgumentException("authorization snapshot artifacts do not match effective Statements");
+        ) {
+            throw new IllegalArgumentException("authorization snapshot artifacts do not match effective Statements");
+        }
         roots = immutableMap(roots);
     }
 
@@ -47,32 +49,33 @@ public record AuthorizationSnapshot(
     }
 
     private static Map<String, ?> immutableMap(Map<String, ?> values) {
-        Map<String, Object> copy = new LinkedHashMap<>();
+        Map<String, @Nullable Object> copy = new LinkedHashMap<>();
         values.forEach((key, value) -> copy.put(key, immutableValue(value)));
         return Collections.unmodifiableMap(copy);
     }
 
     private static @Nullable Object immutableValue(@Nullable Object value) {
-        if (value == null) return null;
-        if (value instanceof Map<?, ?> map) {
-            Map<String, Object> stringMap = new LinkedHashMap<>();
-            map.forEach((key, nested) -> {
-                if (!(key instanceof String name)) throw new IllegalArgumentException(
-                    "authorization input map keys must be strings"
-                );
-                stringMap.put(name, immutableValue(nested));
-            });
-            return immutableMap(stringMap);
-        }
-        if (value instanceof List<?> list) return Collections.unmodifiableList(
-            list.stream().map(AuthorizationSnapshot::immutableValue).toList()
-        );
-        if (value instanceof Set<?> set) return Set.copyOf(
-            set.stream().map(AuthorizationSnapshot::immutableValue).toList()
-        );
-        if (value instanceof String || value instanceof Number || value instanceof Boolean || value instanceof UUID) {
-            return value;
-        }
-        throw new IllegalArgumentException("authorization input values must be immutable approved values");
+        return switch (value) {
+            case null -> null;
+            case Map<?, ?> map -> {
+                Map<String, @Nullable Object> stringMap = new LinkedHashMap<>();
+                map.forEach((key, nested) -> {
+                    if (!(key instanceof String name)) {
+                        throw new IllegalArgumentException("authorization input map keys must be strings");
+                    }
+                    stringMap.put(name, immutableValue(nested));
+                });
+                yield immutableMap(stringMap);
+            }
+            case List<?> list -> list.stream().map(AuthorizationSnapshot::immutableValue).toList();
+            case Set<?> set -> Set.copyOf(set.stream().map(AuthorizationSnapshot::immutableValue).toList());
+            case String string -> string;
+            case Number number -> number;
+            case Boolean bool -> bool;
+            case UUID uuid -> uuid;
+            default -> throw new IllegalArgumentException(
+                "authorization input values must be immutable approved values"
+            );
+        };
     }
 }

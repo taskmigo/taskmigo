@@ -114,7 +114,9 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
     private String findStatement(String name) {
         for (int page = 1; page <= 100; page++) {
             String response = this.api().get("/api/v0/statements?page=" + page + "&pageSize=100");
-            if (response.contains("\"name\":\"" + name + "\"")) return response;
+            if (response.contains("\"name\":\"" + name + "\"")) {
+                return response;
+            }
         }
         throw new AssertionError("Statement was not found in the paginated collection: " + name);
     }

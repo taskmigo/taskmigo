@@ -118,9 +118,9 @@ public class ObjectAuthorizationService {
         boolean leftLiteralNull = binary.left() instanceof FilterAst.Literal literal && literal.value() == null;
         boolean rightLiteralNull = binary.right() instanceof FilterAst.Literal literal && literal.value() == null;
         if (leftLiteralNull || rightLiteralNull) {
-            if (
-                binary.operator() != FilterAst.Operator.EQ && binary.operator() != FilterAst.Operator.NE
-            ) throw new AuthorizationException("Null object values only support equality");
+            if (binary.operator() != FilterAst.Operator.EQ && binary.operator() != FilterAst.Operator.NE) {
+                throw new AuthorizationException("Null object values only support equality");
+            }
             FilterAst.Expression other = leftLiteralNull ? binary.right() : binary.left();
             Expression<?> expression = this.valueExpression(other, root, builder, fields);
             return binary.operator() == FilterAst.Operator.EQ ? expression.isNull() : expression.isNotNull();
@@ -159,26 +159,35 @@ public class ObjectAuthorizationService {
                 ? builder.nullLiteral(Object.class)
                 : builder.literal(literal.value());
             case FilterAst.Binary binary when binary.operator() == FilterAst.Operator.ADD -> builder.sum(
-                (Expression) this.valueExpression(binary.left(), root, builder, fields),
-                (Expression) this.valueExpression(binary.right(), root, builder, fields)
+                this.numericExpression(binary.left(), root, builder, fields),
+                this.numericExpression(binary.right(), root, builder, fields)
             );
             case FilterAst.Binary binary when binary.operator() == FilterAst.Operator.SUBTRACT -> builder.diff(
-                (Expression) this.valueExpression(binary.left(), root, builder, fields),
-                (Expression) this.valueExpression(binary.right(), root, builder, fields)
+                this.numericExpression(binary.left(), root, builder, fields),
+                this.numericExpression(binary.right(), root, builder, fields)
             );
             case FilterAst.Binary binary when binary.operator() == FilterAst.Operator.MULTIPLY -> builder.prod(
-                (Expression) this.valueExpression(binary.left(), root, builder, fields),
-                (Expression) this.valueExpression(binary.right(), root, builder, fields)
+                this.numericExpression(binary.left(), root, builder, fields),
+                this.numericExpression(binary.right(), root, builder, fields)
             );
             case FilterAst.Binary binary when binary.operator() == FilterAst.Operator.DIVIDE -> builder.quot(
-                (Expression) this.valueExpression(binary.left(), root, builder, fields),
-                (Expression) this.valueExpression(binary.right(), root, builder, fields)
+                this.numericExpression(binary.left(), root, builder, fields),
+                this.numericExpression(binary.right(), root, builder, fields)
             );
             case FilterAst.Unary unary when unary.operator() == FilterAst.Operator.NEGATE -> builder.neg(
-                (Expression) this.valueExpression(unary.operand(), root, builder, fields)
+                this.numericExpression(unary.operand(), root, builder, fields)
             );
             default -> throw new AuthorizationException("Object filter expression is not a value");
         };
+    }
+
+    private <T> Expression<Number> numericExpression(
+        FilterAst.Expression expression,
+        Root<T> root,
+        CriteriaBuilder builder,
+        Map<String, Class<?>> fields
+    ) {
+        return this.valueExpression(expression, root, builder, fields).as(Number.class);
     }
 
     private void validate(FilterAst.Expression expression, FilterSchema schema) {
@@ -190,20 +199,23 @@ public class ObjectAuthorizationService {
             case FilterAst.Literal ignored -> {
             }
             case FilterAst.Field field -> {
-                if (!schema.fields().containsKey(field.name())) throw new AuthorizationException(
-                    "Object field is not queryable: " + field.name()
-                );
+                if (!schema.fields().containsKey(field.name())) {
+                    throw new AuthorizationException("Object field is not queryable: " + field.name());
+                }
             }
             case FilterAst.Unary unary -> {
                 requireOperator(unary.operator(), schema);
-                if (unary.operator() == FilterAst.Operator.NEGATE) validateNumeric(unary.operand(), schema);
-                else this.validate(unary.operand(), schema);
+                if (unary.operator() == FilterAst.Operator.NEGATE) {
+                    this.validateNumeric(unary.operand(), schema);
+                } else {
+                    this.validate(unary.operand(), schema);
+                }
             }
             case FilterAst.Binary binary -> {
                 requireOperator(binary.operator(), schema);
                 if (isArithmetic(binary.operator())) {
-                    validateNumeric(binary.left(), schema);
-                    validateNumeric(binary.right(), schema);
+                    this.validateNumeric(binary.left(), schema);
+                    this.validateNumeric(binary.right(), schema);
                 } else {
                     this.validate(binary.left(), schema);
                     this.validate(binary.right(), schema);
@@ -219,9 +231,11 @@ public class ObjectAuthorizationService {
             case FilterAst.None ignored -> {
             }
             case FilterAst.Literal literal -> {
-                if (!(literal.value() instanceof Boolean)) throw new AuthorizationException(
-                    "Object authorization policy must return a boolean or a database predicate"
-                );
+                if (!(literal.value() instanceof Boolean)) {
+                    throw new AuthorizationException(
+                        "Object authorization policy must return a boolean or a database predicate"
+                    );
+                }
             }
             case FilterAst.Unary unary when unary.operator() == FilterAst.Operator.NOT -> {
                 requireOperator(unary.operator(), schema);
@@ -253,32 +267,34 @@ public class ObjectAuthorizationService {
     }
 
     private static void requireOperator(FilterAst.Operator operator, FilterSchema schema) {
-        if (!schema.operators().contains(operator)) throw new AuthorizationException(
-            "Object filter operator is not supported by the selected Filter Schema: " + operator
-        );
+        if (!schema.operators().contains(operator)) {
+            throw new AuthorizationException(
+                "Object filter operator is not supported by the selected Filter Schema: " + operator
+            );
+        }
     }
 
     private void validateNumeric(FilterAst.Expression expression, FilterSchema schema) {
         switch (expression) {
             case FilterAst.Literal literal -> {
-                if (!(literal.value() instanceof Number)) throw new AuthorizationException(
-                    "Object arithmetic requires numeric values"
-                );
+                if (!(literal.value() instanceof Number)) {
+                    throw new AuthorizationException("Object arithmetic requires numeric values");
+                }
             }
             case FilterAst.Field field -> {
                 Class<?> type = schema.fields().get(field.name());
-                if (type == null || !numeric(type)) throw new AuthorizationException(
-                    "Object arithmetic requires numeric fields"
-                );
+                if (type == null || !numeric(type)) {
+                    throw new AuthorizationException("Object arithmetic requires numeric fields");
+                }
             }
             case FilterAst.Binary binary when isArithmetic(binary.operator()) -> {
                 requireOperator(binary.operator(), schema);
-                validateNumeric(binary.left(), schema);
-                validateNumeric(binary.right(), schema);
+                this.validateNumeric(binary.left(), schema);
+                this.validateNumeric(binary.right(), schema);
             }
             case FilterAst.Unary unary when unary.operator() == FilterAst.Operator.NEGATE -> {
                 requireOperator(unary.operator(), schema);
-                validateNumeric(unary.operand(), schema);
+                this.validateNumeric(unary.operand(), schema);
             }
             default -> throw new AuthorizationException("Object arithmetic requires numeric values");
         }
@@ -304,23 +320,35 @@ public class ObjectAuthorizationService {
     }
 
     private <T> Expression<?> field(FilterAst.Expression expression, Root<T> root, Map<String, Class<?>> fields) {
-        if (!(expression instanceof FilterAst.Field reference)) throw new AuthorizationException(
-            "Object filter expression is not a mapped field"
-        );
-        if (!fields.containsKey(reference.name())) throw new AuthorizationException(
-            "Object field is not queryable: " + reference.name()
-        );
+        if (!(expression instanceof FilterAst.Field reference)) {
+            throw new AuthorizationException("Object filter expression is not a mapped field");
+        }
+        if (!fields.containsKey(reference.name())) {
+            throw new AuthorizationException("Object field is not queryable: " + reference.name());
+        }
         return root.get(reference.name());
     }
 
     private static @Nullable Object coerce(@Nullable Object value, @Nullable Class<?> type) {
-        if (value == null || type == null || type.isInstance(value)) return value;
-        if (type == UUID.class && value instanceof String text) return UUID.fromString(text);
+        if (value == null || type == null || type.isInstance(value)) {
+            return value;
+        }
+        if (type == UUID.class && value instanceof String text) {
+            return UUID.fromString(text);
+        }
         if (value instanceof Number number) {
-            if (type == Integer.class || type == int.class) return number.intValue();
-            if (type == Long.class || type == long.class) return number.longValue();
-            if (type == Double.class || type == double.class) return number.doubleValue();
-            if (type == Float.class || type == float.class) return number.floatValue();
+            if (type == Integer.class || type == int.class) {
+                return number.intValue();
+            }
+            if (type == Long.class || type == long.class) {
+                return number.longValue();
+            }
+            if (type == Double.class || type == double.class) {
+                return number.doubleValue();
+            }
+            if (type == Float.class || type == float.class) {
+                return number.floatValue();
+            }
         }
         throw new AuthorizationException("Object authorization value has incompatible type");
     }

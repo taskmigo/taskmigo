@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +28,7 @@ public class UserAuthorizationResourceAdapter implements AuthorizationResourceAd
 
     @Override
     @Transactional(readOnly = true)
-    public Map<String, Map<String, ?>> resolve(Collection<String> keys) {
+    public Map<String, Map<String, ?>> resolve(@NonNull Collection<String> keys) {
         Map<String, UUID> identifiers = new LinkedHashMap<>();
         for (String key : keys) {
             try {

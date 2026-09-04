@@ -47,7 +47,9 @@ public class StatementService {
         @Nullable String policy
     ) {
         String validName = AuthorizationName.required(name, "name");
-        if (this.statements.existsByName(validName)) throw new AuthorizationException("Statement name already exists");
+        if (this.statements.existsByName(validName)) {
+            throw new AuthorizationException("Statement name already exists");
+        }
         Effect validEffect = required(effect, "effect");
         Scope validScope = required(scope, "scope");
         String validMethod = required(method, "target.api.method");
@@ -58,17 +60,17 @@ public class StatementService {
             throw new AuthorizationException("target.api.method must be a valid HTTP method");
         }
         String validPath = required(path, "target.api.path");
-        if (validPath.length() > 2000) throw new AuthorizationException(
-            "target.api.path must not exceed 2000 characters"
-        );
+        if (validPath.length() > 2000) {
+            throw new AuthorizationException("target.api.path must not exceed 2000 characters");
+        }
         try {
             Pattern.compile(validPath);
         } catch (PatternSyntaxException exception) {
             throw new AuthorizationException("target.api.path must be a valid regular expression");
         }
-        if (validMethod.length() > 16) throw new AuthorizationException(
-            "target.api.method must not exceed 16 characters"
-        );
+        if (validMethod.length() > 16) {
+            throw new AuthorizationException("target.api.method must not exceed 16 characters");
+        }
         String validPolicy = requiredPolicy(policy);
         this.policyCompiler.compile(validPolicy, validScope);
         UUID id = UUID.randomUUID();
@@ -143,7 +145,9 @@ public class StatementService {
         int perPage,
         ObjectAuthorizationService.@Nullable ObjectAuthorizationPlan authorization
     ) {
-        if (authorization != null && authorization.deniesAll()) return new OffsetPage<>(List.of(), 0, 0);
+        if (authorization != null && authorization.deniesAll()) {
+            return new OffsetPage<>(List.of(), 0, 0);
+        }
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
         var result =
             authorization == null
@@ -180,17 +184,23 @@ public class StatementService {
     }
 
     private static String required(@Nullable String value, String field) {
-        if (value == null || value.isBlank()) throw new AuthorizationException(field + " must not be blank");
+        if (value == null || value.isBlank()) {
+            throw new AuthorizationException(field + " must not be blank");
+        }
         return value.trim();
     }
 
     private static <T> T required(@Nullable T value, String field) {
-        if (value == null) throw new AuthorizationException(field + " is required");
+        if (value == null) {
+            throw new AuthorizationException(field + " is required");
+        }
         return value;
     }
 
     private static String requiredPolicy(@Nullable String policy) {
-        if (policy == null || policy.isBlank()) throw new AuthorizationException("policy must not be blank");
+        if (policy == null || policy.isBlank()) {
+            throw new AuthorizationException("policy must not be blank");
+        }
         return policy;
     }
 }

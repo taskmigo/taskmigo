@@ -128,7 +128,9 @@ public class UserService {
         int perPage,
         ObjectAuthorizationService.@Nullable ObjectAuthorizationPlan authorization
     ) {
-        if (authorization != null && authorization.deniesAll()) return new OffsetPage<>(java.util.List.of(), 0, 0);
+        if (authorization != null && authorization.deniesAll()) {
+            return new OffsetPage<>(java.util.List.of(), 0, 0);
+        }
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
         var result =
             authorization == null
@@ -238,7 +240,9 @@ public class UserService {
             return true;
         }
 
-        if (initialPasswordHash == null || initialPasswordHash.isBlank()) return false;
+        if (initialPasswordHash == null || initialPasswordHash.isBlank()) {
+            return false;
+        }
 
         UserEntity user = new UserEntity(
             UUID.randomUUID(),
@@ -254,7 +258,9 @@ public class UserService {
     }
 
     private static Set<String> normalizeEmails(@Nullable Collection<String> emails) {
-        if (emails == null || emails.isEmpty()) return Set.of();
+        if (emails == null || emails.isEmpty()) {
+            return Set.of();
+        }
         return emails
             .stream()
             .map(email -> required(email, "email").toLowerCase(Locale.ROOT))
@@ -273,10 +279,9 @@ public class UserService {
     }
 
     private static String required(@Nullable String value, String field) {
-        if (value == null || value.isBlank()) throw new UserException(
-            UserException.Type.BAD_REQUEST,
-            field + " is required"
-        );
+        if (value == null || value.isBlank()) {
+            throw new UserException(UserException.Type.BAD_REQUEST, field + " is required");
+        }
         return value.trim();
     }
 }

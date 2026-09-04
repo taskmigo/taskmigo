@@ -38,7 +38,9 @@ public final class RoleHierarchy {
         Map<UUID, Set<UUID>> childrenByParent = new HashMap<>();
         for (RoleEntity role : roles) {
             Set<UUID> children = new HashSet<>();
-            for (RoleEntity child : role.childRoles) children.add(child.id);
+            for (RoleEntity child : role.childRoles) {
+                children.add(child.id);
+            }
             childrenByParent.put(role.id, children);
         }
         return new RoleHierarchy(childrenByParent);
@@ -56,7 +58,9 @@ public final class RoleHierarchy {
     }
 
     List<UUID> descendants(UUID root) {
-        if (!this.graph.nodes().contains(root)) return List.of();
+        if (!this.graph.nodes().contains(root)) {
+            return List.of();
+        }
         return this.reachableFrom(List.of(root))
             .stream()
             .filter(role -> !role.equals(root))
@@ -70,9 +74,8 @@ public final class RoleHierarchy {
     }
 
     private void requireAcyclic() {
-        if (Graphs.hasCycle(this.graph)) throw new RoleException(
-            RoleException.Type.BAD_REQUEST,
-            "Role hierarchy must be acyclic"
-        );
+        if (Graphs.hasCycle(this.graph)) {
+            throw new RoleException(RoleException.Type.BAD_REQUEST, "Role hierarchy must be acyclic");
+        }
     }
 }

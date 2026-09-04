@@ -42,7 +42,9 @@ class AuthorizationServerConfiguration {
                 .findForAuthentication(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
             String passwordHash = user.passwordHash();
-            if (passwordHash == null) throw new UsernameNotFoundException("User has no interactive credential");
+            if (passwordHash == null) {
+                throw new UsernameNotFoundException("User has no interactive credential");
+            }
 
             return User.withUsername(user.username())
                 .password(passwordHash)
@@ -74,7 +76,9 @@ class AuthorizationServerConfiguration {
     @Bean
     OAuth2TokenCustomizer<JwtEncodingContext> principalClaims(UserService userService) {
         return context -> {
-            if (!OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) return;
+            if (!OAuth2TokenType.ACCESS_TOKEN.equals(context.getTokenType())) {
+                return;
+            }
 
             if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
                 context.getClaims().subject(context.getRegisteredClient().getClientId());
@@ -87,7 +91,9 @@ class AuthorizationServerConfiguration {
             }
 
             var authorization = context.getAuthorization();
-            if (authorization == null) return;
+            if (authorization == null) {
+                return;
+            }
             userService.findForAuthentication(authorization.getPrincipalName()).ifPresent(user -> {
                 context.getClaims().claim("principal_type", "user");
                 context.getClaims().claim("user_id", user.id().toString());

@@ -10,6 +10,7 @@ import java.util.UUID;
 /// Stores one reflexive-transitive Group hierarchy relationship for bounded authorization resolution.
 @Entity
 @Table(name = "group_hierarchy_closure")
+@SuppressWarnings("NotNullFieldNotInitialized")
 public class GroupHierarchyClosureEntity {
 
     @EmbeddedId
@@ -50,8 +51,12 @@ public class GroupHierarchyClosureEntity {
 
         @Override
         public boolean equals(Object other) {
-            if (this == other) return true;
-            if (!(other instanceof GroupHierarchyClosureId value)) return false;
+            if (this == other) {
+                return true;
+            }
+            if (!(other instanceof GroupHierarchyClosureId value)) {
+                return false;
+            }
             return (
                 this.ancestorGroupId.equals(value.ancestorGroupId) &&
                 this.descendantGroupId.equals(value.descendantGroupId)

@@ -38,7 +38,9 @@ public abstract class ApiIntegrationTestSupport {
     /// Returns the authenticated client for the current integration-test server.
     protected final TaskmigoApiClient api() {
         TaskmigoApiClient existing = this.api;
-        if (existing != null) return existing;
+        if (existing != null) {
+            return existing;
+        }
 
         TaskmigoApiClient created = new TaskmigoApiClient(
             URI.create("http://localhost:" + this.port),

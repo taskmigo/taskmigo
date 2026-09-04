@@ -59,7 +59,9 @@ public class GroupService {
         int perPage,
         ObjectAuthorizationService.@Nullable ObjectAuthorizationPlan authorization
     ) {
-        if (authorization != null && authorization.deniesAll()) return new OffsetPage<>(List.of(), 0, 0);
+        if (authorization != null && authorization.deniesAll()) {
+            return new OffsetPage<>(List.of(), 0, 0);
+        }
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
         var groups =
             authorization == null
@@ -138,10 +140,9 @@ public class GroupService {
     @Transactional(readOnly = true)
     public void requireGroups(Collection<UUID> ids) {
         Set<UUID> requestedIds = Set.copyOf(ids);
-        if (this.groups.findAllById(requestedIds).size() != requestedIds.size()) throw new GroupException(
-            GroupException.Type.BAD_REQUEST,
-            "One or more Groups do not exist"
-        );
+        if (this.groups.findAllById(requestedIds).size() != requestedIds.size()) {
+            throw new GroupException(GroupException.Type.BAD_REQUEST, "One or more Groups do not exist");
+        }
     }
 
     @Transactional(readOnly = true)
@@ -216,7 +217,9 @@ public class GroupService {
         List<UUID> reachableGroupIds = this.groups.findDescendantGroupIds(Set.of(groupId));
 
         Set<UUID> roleIds = new HashSet<>();
-        for (GroupEntity group : this.groups.findDistinctByIdIn(reachableGroupIds)) roleIds.addAll(group.roleIds);
+        for (GroupEntity group : this.groups.findDistinctByIdIn(reachableGroupIds)) {
+            roleIds.addAll(group.roleIds);
+        }
         return this.access.effectiveRoles(roleIds);
     }
 
@@ -239,10 +242,9 @@ public class GroupService {
             .stream()
             .filter(group -> childGroupIds.contains(group.id))
             .toList();
-        if (children.size() != childGroupIds.size()) throw new GroupException(
-            GroupException.Type.BAD_REQUEST,
-            "One or more child Groups do not exist"
-        );
+        if (children.size() != childGroupIds.size()) {
+            throw new GroupException(GroupException.Type.BAD_REQUEST, "One or more child Groups do not exist");
+        }
         return children;
     }
 
@@ -262,7 +264,9 @@ public class GroupService {
     }
 
     private static GroupInfo info(GroupEntity group, Set<UUID> ancestors) {
-        if (ancestors.contains(group.id)) return new GroupInfo(group.id, group.name, group.description, List.of());
+        if (ancestors.contains(group.id)) {
+            return new GroupInfo(group.id, group.name, group.description, List.of());
+        }
         Set<UUID> nextAncestors = new HashSet<>(ancestors);
         nextAncestors.add(group.id);
         List<GroupInfo> children = group.childGroups
@@ -274,10 +278,9 @@ public class GroupService {
     }
 
     private static String required(@Nullable String value, String field) {
-        if (value == null || value.isBlank()) throw new GroupException(
-            GroupException.Type.BAD_REQUEST,
-            field + " is required"
-        );
+        if (value == null || value.isBlank()) {
+            throw new GroupException(GroupException.Type.BAD_REQUEST, field + " is required");
+        }
         return value.trim();
     }
 }

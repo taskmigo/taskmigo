@@ -10,6 +10,7 @@ import java.util.UUID;
 /// Stores one reflexive-transitive Role hierarchy relationship for bounded authorization resolution.
 @Entity
 @Table(name = "role_hierarchy_closure")
+@SuppressWarnings("NotNullFieldNotInitialized")
 public class RoleHierarchyClosureEntity {
 
     @EmbeddedId
@@ -50,8 +51,12 @@ public class RoleHierarchyClosureEntity {
 
         @Override
         public boolean equals(Object other) {
-            if (this == other) return true;
-            if (!(other instanceof RoleHierarchyClosureId value)) return false;
+            if (this == other) {
+                return true;
+            }
+            if (!(other instanceof RoleHierarchyClosureId value)) {
+                return false;
+            }
             return (
                 this.ancestorRoleId.equals(value.ancestorRoleId) && this.descendantRoleId.equals(value.descendantRoleId)
             );

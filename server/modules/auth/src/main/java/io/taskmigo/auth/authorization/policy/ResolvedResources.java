@@ -40,34 +40,35 @@ public record ResolvedResources(Map<ResourceKey, Map<String, ?>> values, Map<Res
     }
 
     private static Map<String, ?> immutableMap(Map<String, ?> values) {
-        Map<String, Object> copy = new LinkedHashMap<>();
+        Map<String, @Nullable Object> copy = new LinkedHashMap<>();
         values.forEach((key, value) -> copy.put(key, immutableValue(value)));
         return Collections.unmodifiableMap(copy);
     }
 
     private static @Nullable Object immutableValue(@Nullable Object value) {
-        if (value == null) return null;
-        if (value instanceof Map<?, ?> map) {
-            Map<String, Object> copy = new LinkedHashMap<>();
-            map.forEach((key, nested) -> {
-                if (!(key instanceof String name)) {
-                    throw new IllegalArgumentException("authorization resource map keys must be strings");
-                }
-                copy.put(name, immutableValue(nested));
-            });
-            return immutableMap(copy);
-        }
-        if (value instanceof List<?> list) {
-            return Collections.unmodifiableList(
+        return switch (value) {
+            case null -> null;
+            case Map<?, ?> map -> {
+                Map<String, @Nullable Object> copy = new LinkedHashMap<>();
+                map.forEach((key, nested) -> {
+                    if (!(key instanceof String name)) {
+                        throw new IllegalArgumentException("authorization resource map keys must be strings");
+                    }
+                    copy.put(name, immutableValue(nested));
+                });
+                yield immutableMap(copy);
+            }
+            case List<?> list -> Collections.unmodifiableList(
                 new ArrayList<>(list.stream().map(ResolvedResources::immutableValue).toList())
             );
-        }
-        if (value instanceof Set<?> set) {
-            return Set.copyOf(set.stream().map(ResolvedResources::immutableValue).toList());
-        }
-        if (value instanceof String || value instanceof Number || value instanceof Boolean || value instanceof UUID) {
-            return value;
-        }
-        throw new IllegalArgumentException("authorization resource values must be immutable approved values");
+            case Set<?> set -> Set.copyOf(set.stream().map(ResolvedResources::immutableValue).toList());
+            case String string -> string;
+            case Number number -> number;
+            case Boolean bool -> bool;
+            case UUID uuid -> uuid;
+            default -> throw new IllegalArgumentException(
+                "authorization resource values must be immutable approved values"
+            );
+        };
     }
 }

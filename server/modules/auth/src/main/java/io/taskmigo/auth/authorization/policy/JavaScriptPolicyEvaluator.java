@@ -20,9 +20,9 @@ public final class JavaScriptPolicyEvaluator {
     /// @throws AuthorizationException when evaluation fails or the result is not boolean
     public boolean evaluate(PolicyIr policy, Map<String, ?> roots) {
         Object value = this.value(policy.expression(), roots);
-        if (!(value instanceof Boolean result)) throw new AuthorizationException(
-            "Authorization policy must return a boolean"
-        );
+        if (!(value instanceof Boolean result)) {
+            throw new AuthorizationException("Authorization policy must return a boolean");
+        }
         return result;
     }
 
@@ -51,7 +51,9 @@ public final class JavaScriptPolicyEvaluator {
 
     private @Nullable Object reference(PolicyIr.Reference reference, Map<String, ?> roots) {
         Object current = roots.containsKey(reference.root()) ? roots.get(reference.root()) : UNDEFINED;
-        for (String part : reference.path()) current = propertyValue(current, part);
+        for (String part : reference.path()) {
+            current = propertyValue(current, part);
+        }
         return current;
     }
 
@@ -74,10 +76,7 @@ public final class JavaScriptPolicyEvaluator {
             case EQUAL -> strictEquals(left, right);
             case NOT_EQUAL -> !strictEquals(left, right);
             case GREATER, GREATER_OR_EQUAL, LESS, LESS_OR_EQUAL -> compare(binary.operator(), left, right);
-            case ADD -> arithmetic(binary.operator(), left, right);
-            case SUBTRACT -> arithmetic(binary.operator(), left, right);
-            case MULTIPLY -> arithmetic(binary.operator(), left, right);
-            case DIVIDE -> arithmetic(binary.operator(), left, right);
+            case ADD, SUBTRACT, MULTIPLY, DIVIDE -> arithmetic(binary.operator(), left, right);
             case AND, OR -> throw new AssertionError("logical operators are handled before operands");
         };
     }
@@ -91,22 +90,25 @@ public final class JavaScriptPolicyEvaluator {
         };
     }
 
-    private static Object propertyValue(@Nullable Object target, String property) {
-        if (target instanceof Map<?, ?> map) return map.containsKey(property) ? map.get(property) : UNDEFINED;
+    private static @Nullable Object propertyValue(@Nullable Object target, String property) {
+        if (target instanceof Map<?, ?> map) {
+            return map.containsKey(property) ? map.get(property) : UNDEFINED;
+        }
         return UNDEFINED;
     }
 
     private static boolean strictEquals(@Nullable Object left, @Nullable Object right) {
-        if (left == UNDEFINED || right == UNDEFINED) return left == right;
-        if (left == null || right == null) return left == right;
-        if (left instanceof Number leftNumber && right instanceof Number rightNumber) {
-            double leftValue = leftNumber.doubleValue();
-            double rightValue = rightNumber.doubleValue();
-            return !Double.isNaN(leftValue) && !Double.isNaN(rightValue) && leftValue == rightValue;
-        }
-        if (left instanceof String && right instanceof String) return left.equals(right);
-        if (left instanceof Boolean && right instanceof Boolean) return left.equals(right);
-        return left == right;
+        return switch (left) {
+            case null -> right == null;
+            case Number leftNumber when right instanceof Number rightNumber -> {
+                double leftValue = leftNumber.doubleValue();
+                double rightValue = rightNumber.doubleValue();
+                yield !Double.isNaN(leftValue) && !Double.isNaN(rightValue) && leftValue == rightValue;
+            }
+            case String leftString when right instanceof String rightString -> leftString.equals(rightString);
+            case Boolean leftBoolean when right instanceof Boolean rightBoolean -> leftBoolean.equals(rightBoolean);
+            default -> left == right;
+        };
     }
 
     private static boolean compare(PolicyIr.BinaryOperator operator, @Nullable Object left, @Nullable Object right) {
@@ -148,13 +150,19 @@ public final class JavaScriptPolicyEvaluator {
     }
 
     private static BigDecimal number(@Nullable Object value) {
-        if (value instanceof Number number) return BigDecimal.valueOf(number.doubleValue());
+        if (value instanceof Number number) {
+            return BigDecimal.valueOf(number.doubleValue());
+        }
         throw invalidValue("arithmetic requires numbers");
     }
 
     private boolean truthy(@Nullable Object value) {
-        if (value == null || value == UNDEFINED || Boolean.FALSE.equals(value)) return false;
-        if (value instanceof Number number) return number.doubleValue() != 0 && !Double.isNaN(number.doubleValue());
+        if (value == null || value == UNDEFINED || Boolean.FALSE.equals(value)) {
+            return false;
+        }
+        if (value instanceof Number number) {
+            return number.doubleValue() != 0 && !Double.isNaN(number.doubleValue());
+        }
         return !(value instanceof String string) || !string.isEmpty();
     }
 

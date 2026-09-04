@@ -65,17 +65,22 @@ public class EffectiveStatementResolver {
         Set<UUID> groupIds = new HashSet<>(directGroupIds);
         if (!directGroupIds.isEmpty()) {
             groupIds.addAll(this.groups.findDescendantGroupIds(directGroupIds));
-            for (GroupEntity group : this.groups.findDistinctByIdIn(groupIds)) roleIds.addAll(group.roleIds());
+            for (GroupEntity group : this.groups.findDistinctByIdIn(groupIds)) {
+                roleIds.addAll(group.roleIds());
+            }
         }
 
         Set<UUID> reachableRoleIds = new HashSet<>(roleIds);
         if (!roleIds.isEmpty()) {
             reachableRoleIds.addAll(this.roles.findDescendantRoleIds(roleIds));
-            for (RoleEntity role : this.roles.findDistinctByIdIn(reachableRoleIds))
+            for (RoleEntity role : this.roles.findDistinctByIdIn(reachableRoleIds)) {
                 statementIds.addAll(role.statementIds());
+            }
         }
 
-        if (statementIds.isEmpty()) return List.of();
+        if (statementIds.isEmpty()) {
+            return List.of();
+        }
         return this.statements
             .findAllByIdIn(statementIds)
             .stream()

@@ -81,16 +81,17 @@ public class RequestAuthorizationService {
         List<ResourceDescriptor> descriptors = new ArrayList<>();
         for (var artifact : snapshot.executableStatements()) {
             StatementInfo statement = artifact.statement();
-            if (statement.scope() != Scope.REQUEST || !artifact.matches(method, path)) continue;
-            try {
-                var module = artifact.policy();
-                if (statement.effect() == Effect.DENY && constantTrue(module.policy())) {
+            if (statement.scope() == Scope.REQUEST && artifact.matches(method, path)) {
+                try {
+                    var module = artifact.policy();
+                    if (statement.effect() == Effect.DENY && constantTrue(module.policy())) {
+                        return new RequestAuthorizationDecision(false);
+                    }
+                    descriptors.addAll(module.resources());
+                    evaluations.add(new Evaluation(statement, module));
+                } catch (RuntimeException exception) {
                     return new RequestAuthorizationDecision(false);
                 }
-                descriptors.addAll(module.resources());
-                evaluations.add(new Evaluation(statement, module));
-            } catch (RuntimeException exception) {
-                return new RequestAuthorizationDecision(false);
             }
         }
 
@@ -110,7 +111,9 @@ public class RequestAuthorizationService {
                 Map<String, ?> evaluationRoots = Collections.unmodifiableMap(withObject);
                 boolean matches = this.policyEvaluator.evaluate(evaluation.module().policy(), evaluationRoots);
                 if (matches) {
-                    if (statement.effect() == Effect.DENY) return new RequestAuthorizationDecision(false);
+                    if (statement.effect() == Effect.DENY) {
+                        return new RequestAuthorizationDecision(false);
+                    }
                     allowed = true;
                 }
             } catch (RuntimeException exception) {

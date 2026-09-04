@@ -67,10 +67,9 @@ public class RoleService {
     @Transactional(readOnly = true)
     public void requireRoles(Collection<UUID> ids) {
         List<RoleEntity> found = this.roles.findAllByIdIn(ids);
-        if (found.size() != ids.size()) throw new RoleException(
-            RoleException.Type.BAD_REQUEST,
-            "One or more Roles do not exist"
-        );
+        if (found.size() != ids.size()) {
+            throw new RoleException(RoleException.Type.BAD_REQUEST, "One or more Roles do not exist");
+        }
     }
 
     /// Resolves a Role name for bootstrap references, including persisted definitions from prior runs.
@@ -101,7 +100,9 @@ public class RoleService {
         int perPage,
         ObjectAuthorizationService.@Nullable ObjectAuthorizationPlan authorization
     ) {
-        if (authorization != null && authorization.deniesAll()) return new OffsetPage<>(List.of(), 0, 0);
+        if (authorization != null && authorization.deniesAll()) {
+            return new OffsetPage<>(List.of(), 0, 0);
+        }
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
         var roles =
             authorization == null
@@ -160,12 +161,13 @@ public class RoleService {
     @Transactional(readOnly = true)
     public List<RoleInfo> effectiveRoles(Collection<UUID> roleIds) {
         Set<UUID> requestedIds = Set.copyOf(roleIds);
-        if (requestedIds.isEmpty()) return List.of();
+        if (requestedIds.isEmpty()) {
+            return List.of();
+        }
 
-        if (this.roles.findAllByIdIn(requestedIds).size() != requestedIds.size()) throw new RoleException(
-            RoleException.Type.BAD_REQUEST,
-            "One or more Roles do not exist"
-        );
+        if (this.roles.findAllByIdIn(requestedIds).size() != requestedIds.size()) {
+            throw new RoleException(RoleException.Type.BAD_REQUEST, "One or more Roles do not exist");
+        }
 
         return this.roles
             .findDistinctByIdIn(this.roles.findDescendantRoleIds(requestedIds))
@@ -194,10 +196,9 @@ public class RoleService {
             .stream()
             .filter(role -> childRoleIds.contains(role.id))
             .toList();
-        if (children.size() != childRoleIds.size()) throw new RoleException(
-            RoleException.Type.BAD_REQUEST,
-            "One or more child Roles do not exist"
-        );
+        if (children.size() != childRoleIds.size()) {
+            throw new RoleException(RoleException.Type.BAD_REQUEST, "One or more child Roles do not exist");
+        }
         return children;
     }
 
@@ -217,7 +218,9 @@ public class RoleService {
     }
 
     private static RoleInfo info(RoleEntity role, Set<UUID> ancestors) {
-        if (ancestors.contains(role.id)) return new RoleInfo(role.id, role.name, role.description, List.of());
+        if (ancestors.contains(role.id)) {
+            return new RoleInfo(role.id, role.name, role.description, List.of());
+        }
         Set<UUID> nextAncestors = new HashSet<>(ancestors);
         nextAncestors.add(role.id);
         List<RoleInfo> children = role.childRoles
@@ -229,10 +232,9 @@ public class RoleService {
     }
 
     private static String required(@Nullable String value, String field) {
-        if (value == null || value.isBlank()) throw new RoleException(
-            RoleException.Type.BAD_REQUEST,
-            field + " is required"
-        );
+        if (value == null || value.isBlank()) {
+            throw new RoleException(RoleException.Type.BAD_REQUEST, field + " is required");
+        }
         return value.trim();
     }
 }

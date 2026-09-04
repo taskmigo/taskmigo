@@ -17,7 +17,9 @@ public record FilterAst(Expression expression) {
 
     /// Composes alternatives while removing redundant `ALL` and `NONE` branches.
     public static Expression any(Collection<? extends Expression> expressions) {
-        if (expressions.stream().anyMatch(expression -> expression instanceof All || isTrue(expression))) return all();
+        if (expressions.stream().anyMatch(expression -> expression instanceof All || isTrue(expression))) {
+            return all();
+        }
         var useful = expressions
             .stream()
             .filter(expression -> !(expression instanceof None))
@@ -25,9 +27,13 @@ public record FilterAst(Expression expression) {
             .distinct()
             .map(expression -> (Expression) expression)
             .toList();
-        if (useful.isEmpty()) return none();
+        if (useful.isEmpty()) {
+            return none();
+        }
         Expression result = useful.getFirst();
-        for (Expression expression : useful.subList(1, useful.size())) result = or(result, expression);
+        for (Expression expression : useful.subList(1, useful.size())) {
+            result = or(result, expression);
+        }
         return result;
     }
 
@@ -44,19 +50,37 @@ public record FilterAst(Expression expression) {
 
     /// Conjoins filters with null-object simplification.
     public static Expression and(Expression left, Expression right) {
-        if (isFalse(left) || isFalse(right)) return none();
-        if (left instanceof None || right instanceof None) return none();
-        if (isTrue(left)) return right;
-        if (isTrue(right)) return left;
-        if (left instanceof All) return right;
-        if (right instanceof All) return left;
+        if (isFalse(left) || isFalse(right)) {
+            return none();
+        }
+        if (left instanceof None || right instanceof None) {
+            return none();
+        }
+        if (isTrue(left)) {
+            return right;
+        }
+        if (isTrue(right)) {
+            return left;
+        }
+        if (left instanceof All) {
+            return right;
+        }
+        if (right instanceof All) {
+            return left;
+        }
         return new Binary(Operator.AND, left, right);
     }
 
     private static Expression or(Expression left, Expression right) {
-        if (left instanceof All || right instanceof All) return all();
-        if (left instanceof None) return right;
-        if (right instanceof None) return left;
+        if (left instanceof All || right instanceof All) {
+            return all();
+        }
+        if (left instanceof None) {
+            return right;
+        }
+        if (right instanceof None) {
+            return left;
+        }
         return new Binary(Operator.OR, left, right);
     }
 

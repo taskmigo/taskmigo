@@ -23,19 +23,29 @@ public final class ObjectAuthorizationContext {
         String method,
         String path
     ) {
-        if (jwt == null) return null;
+        if (jwt == null) {
+            return null;
+        }
         String principalType = jwt.getClaimAsString("principal_type");
-        if (!"user".equals(principalType) && !"service".equals(principalType)) return null;
+        if (!"user".equals(principalType) && !"service".equals(principalType)) {
+            return null;
+        }
         String userId = jwt.getClaimAsString("user_id");
-        if (userId == null) return null;
+        if (userId == null) {
+            return null;
+        }
         AuthorizationSnapshot snapshot = currentSnapshot();
-        if (snapshot == null) throw new IllegalStateException("authorization snapshot is missing for object access");
+        if (snapshot == null) {
+            throw new IllegalStateException("authorization snapshot is missing for object access");
+        }
         return authorization.plan(snapshot, method, path);
     }
 
     private static @Nullable AuthorizationSnapshot currentSnapshot() {
         RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
-        if (!(attributes instanceof ServletRequestAttributes servlet)) return null;
+        if (!(attributes instanceof ServletRequestAttributes servlet)) {
+            return null;
+        }
         Object snapshot = servlet.getRequest().getAttribute(SNAPSHOT_ATTRIBUTE);
         return snapshot instanceof AuthorizationSnapshot value ? value : null;
     }
