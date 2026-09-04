@@ -1,8 +1,8 @@
 package io.taskmigo.bootstrap;
 
 import io.taskmigo.auth.authorization.statement.Effect;
+import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementService;
-import io.taskmigo.auth.authorization.statement.TargetType;
 import io.taskmigo.auth.role.RoleAuthorizationService;
 import io.taskmigo.auth.role.RoleService;
 import io.taskmigo.auth.user.UserService;
@@ -76,10 +76,10 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
                     definition.name(),
                     definition.description(),
                     definition.effect(),
-                    definition.target().type(),
+                    definition.scope(),
                     definition.target().api().method(),
                     definition.target().api().path(),
-                    definition.conditions()
+                    definition.policy()
                 )
             );
         }
@@ -150,9 +150,16 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
         }
     }
 
-    private record Statement(String name, String description, Effect effect, Target target, List<String> conditions) {}
+    private record Statement(
+        String name,
+        String description,
+        Effect effect,
+        Scope scope,
+        Target target,
+        @Nullable String policy
+    ) {}
 
-    private record Target(TargetType type, Api api) {}
+    private record Target(Api api) {}
 
     private record Api(String method, String path) {}
 

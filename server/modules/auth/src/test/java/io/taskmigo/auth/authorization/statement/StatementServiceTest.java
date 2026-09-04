@@ -6,7 +6,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.auth.authorization.condition.AuthorizationException;
-import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,10 +42,10 @@ class StatementServiceTest {
             "users_read",
             " description ",
             Effect.ALLOW,
-            TargetType.REQUEST,
+            Scope.REQUEST,
             "GET",
             " /api/v0/users ",
-            List.of("request.path == '/api/v0/users'")
+            "export default ({ request }) => request.path === '/api/v0/users';"
         );
 
         // Assert
@@ -54,7 +53,10 @@ class StatementServiceTest {
         verify(this.statements).save(saved.capture());
         assertThat(saved.getValue().method).isEqualTo("GET");
         assertThat(saved.getValue().name).isEqualTo("users_read");
-        assertThat(saved.getValue().conditions).containsExactly("request.path == '/api/v0/users'");
+        assertThat(saved.getValue().scope).isEqualTo(Scope.REQUEST);
+        assertThat(saved.getValue().policy).isEqualTo(
+            "export default ({ request }) => request.path === '/api/v0/users';"
+        );
     }
 
     /**
@@ -70,9 +72,7 @@ class StatementServiceTest {
         when(this.statements.existsByName("invalid")).thenReturn(false);
 
         // Act + Assert
-        assertThatThrownBy(() ->
-            this.service.create("invalid", null, Effect.ALLOW, TargetType.REQUEST, "GET", "[", List.of())
-        )
+        assertThatThrownBy(() -> this.service.create("invalid", null, Effect.ALLOW, Scope.REQUEST, "GET", "[", null))
             .isInstanceOf(AuthorizationException.class)
             .hasMessageContaining("valid regular expression");
     }
@@ -92,8 +92,9 @@ class StatementServiceTest {
             "users_read",
             null,
             Effect.ALLOW,
-            new TargetInfo(TargetType.REQUEST, new ApiInfo("GET", "/api/v0/users/[0-9]+")),
-            List.of()
+            Scope.REQUEST,
+            new TargetInfo(new ApiInfo("GET", "/api/v0/users/[0-9]+")),
+            null
         );
 
         // Act
@@ -118,24 +119,16 @@ class StatementServiceTest {
     void shouldMatchEveryMethodWhenTargetMethodIsWildcard() {
         // Arrange
         when(this.statements.existsByName("users_all")).thenReturn(false);
-        UUID id = this.service.create(
-            "users_all",
-            null,
-            Effect.ALLOW,
-            TargetType.REQUEST,
-            "*",
-            "/api/v0/users",
-            List.of()
-        );
+        UUID id = this.service.create("users_all", null, Effect.ALLOW, Scope.REQUEST, "*", "/api/v0/users", null);
         StatementEntity entity = new StatementEntity(
             id,
             "users_all",
             null,
             Effect.ALLOW,
-            TargetType.REQUEST,
+            Scope.REQUEST,
             "*",
             "/api/v0/users",
-            List.of()
+            null
         );
 
         // Act

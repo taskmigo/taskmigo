@@ -1,6 +1,5 @@
 package io.taskmigo.auth.authorization.statement;
 
-import java.util.List;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
@@ -11,8 +10,9 @@ public record StatementInfo(
     String name,
     @Nullable String description,
     Effect effect,
+    Scope scope,
     TargetInfo target,
-    List<String> conditions
+    @Nullable String policy
 ) {
     /// Tests an incoming method and path using the target method and full-match path expression.
     public boolean matches(String requestMethod, String requestPath) {

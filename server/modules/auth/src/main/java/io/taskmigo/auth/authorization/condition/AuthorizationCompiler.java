@@ -1,7 +1,6 @@
 package io.taskmigo.auth.authorization.condition;
 
-import io.taskmigo.auth.authorization.statement.StatementInfo;
-import io.taskmigo.auth.authorization.statement.TargetType;
+import io.taskmigo.auth.authorization.statement.Scope;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -26,37 +25,28 @@ public class AuthorizationCompiler {
     private static final Set<String> ROOTS = Set.of("principal", "request", "object");
     private final SpelExpressionParser parser = new SpelExpressionParser();
 
-    /// Compiles all conditions on a Statement using logical AND semantics.
+    /// Compiles one legacy expression using the restricted SpEL syntax retained for the next authorization phase.
     ///
-    /// Empty conditions compile to the unconditional `true` expression. SpEL is used only for parsing; the resulting
-    /// SpEL tree is validated node-by-node and translated into the application AST without evaluating user input.
-    /// Object references are rejected for request Statements because request evaluation has no object value to bind.
+    /// SpEL is used only for parsing; the resulting SpEL tree is validated node-by-node and translated into the
+    /// application AST without evaluating user input. Object references are rejected for request Statements because
+    /// request evaluation has no object value to bind.
     ///
-    /// @param statement the validated Statement to compile
+    /// @param source the expression source to compile
+    /// @param scope the Statement scope that controls whether object references are valid
     /// @return the immutable authorization AST
     /// @throws AuthorizationException when a condition is outside the supported DSL
-    public Expression compile(StatementInfo statement) {
-        Expression result = new LiteralValue(true);
-        boolean firstCondition = true;
-        for (String source : statement.conditions()) {
-            if (source.length() > MAX_SOURCE_LENGTH) throw invalid("expression is too long");
-            if (parenthesisDepth(source) > MAX_DEPTH) throw invalid("expression nesting is too deep");
-            Expression condition;
-            try {
-                condition = this.translate(
-                    ((SpelExpression) this.parser.parseExpression(source)).getAST(),
-                    0,
-                    new Counter()
-                );
-            } catch (ParseException | ClassCastException exception) {
-                throw invalid("expression cannot be parsed");
-            }
-            if (statement.target().type() == TargetType.REQUEST && containsObject(condition)) {
-                throw invalid("object references are only valid for object Statements");
-            }
-            result = firstCondition ? condition : new Binary(BinaryOperator.AND, result, condition);
-            firstCondition = false;
+    public Expression compile(String source, Scope scope) {
+        if (source.length() > MAX_SOURCE_LENGTH) throw invalid("expression is too long");
+        if (parenthesisDepth(source) > MAX_DEPTH) throw invalid("expression nesting is too deep");
+        Expression result;
+        try {
+            result = this.translate(((SpelExpression) this.parser.parseExpression(source)).getAST(), 0, new Counter());
+        } catch (ParseException | ClassCastException exception) {
+            throw invalid("expression cannot be parsed");
         }
+        if (scope == Scope.REQUEST && containsObject(result)) throw invalid(
+            "object references are only valid for object Statements"
+        );
         return result;
     }
 

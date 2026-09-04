@@ -6,7 +6,6 @@ import io.taskmigo.rest.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.CreateStatementRequest;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.StatementApiTarget;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.StatementTarget;
-import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,8 +15,8 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
     /**
      * Verifies that the public API persists and returns the canonical Statement representation.
      *
-     * Given: a request Statement with a lowercase HTTP method and one condition.
-     * Expect: creation returns an id and listing exposes the uppercase method and original condition.
+     * Given: a request Statement with an unconditional JavaScript policy.
+     * Expect: creation returns an id and listing exposes the canonical scope, target, and policy.
      */
     @Test
     @DisplayName("creates and lists a canonical statement")
@@ -27,8 +26,9 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
             "users_read",
             "Read users",
             "allow",
-            new StatementTarget("request", new StatementApiTarget("GET", "/api/v0/users")),
-            List.of("request.path == '/api/v0/users'")
+            "request",
+            new StatementTarget(new StatementApiTarget("GET", "/api/v0/users")),
+            "export default ({ request }) => request.path === '/api/v0/users';"
         );
 
         // Act
@@ -39,7 +39,8 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
         assertThat(response)
             .contains("\"name\":\"users_read\"")
             .contains("\"method\":\"GET\"")
-            .contains("request.path == '/api/v0/users'");
+            .contains("\"scope\":\"REQUEST\"")
+            .contains("export default ({ request }) => request.path === '/api/v0/users';");
     }
 
     /**
@@ -77,8 +78,9 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
             name,
             null,
             "allow",
-            new StatementTarget("request", new StatementApiTarget("GET", "/api/v0/statements")),
-            List.of()
+            "request",
+            new StatementTarget(new StatementApiTarget("GET", "/api/v0/statements")),
+            null
         );
     }
 }

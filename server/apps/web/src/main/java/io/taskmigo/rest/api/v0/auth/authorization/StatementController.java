@@ -6,9 +6,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
 import io.taskmigo.auth.authorization.statement.ApiInfo;
 import io.taskmigo.auth.authorization.statement.Effect;
+import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.auth.authorization.statement.StatementService;
-import io.taskmigo.auth.authorization.statement.TargetType;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.rest.api.v0.support.objectauthorization.ObjectAuthorizationContext;
 import io.taskmigo.rest.api.v0.support.pagination.OffsetPageRequest;
@@ -58,10 +58,10 @@ class StatementController {
             request.name(),
             request.description(),
             request.effect(),
-            request.target().type(),
+            request.scope(),
             request.target().api().method(),
             request.target().api().path(),
-            request.conditions()
+            request.policy()
         );
         return this.responses.created(
             URI.create("/api/v0/statements/" + id),
@@ -95,9 +95,10 @@ class StatementController {
         @NotBlank @Nullable String name,
         @Nullable String description,
         @NotNull Effect effect,
+        @NotNull Scope scope,
         @NotNull Target target,
-        @Nullable List<String> conditions
+        @Nullable String policy
     ) {}
 
-    record Target(@NotNull TargetType type, @NotNull ApiInfo api) {}
+    record Target(@NotNull ApiInfo api) {}
 }

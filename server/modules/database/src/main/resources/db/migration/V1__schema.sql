@@ -70,12 +70,13 @@ CREATE TABLE statements (
     name VARCHAR(255) NOT NULL,
     description VARCHAR(1000),
     effect VARCHAR(16) NOT NULL,
-    target_type VARCHAR(16) NOT NULL,
+    scope VARCHAR(16) NOT NULL,
     method VARCHAR(16) NOT NULL,
     path VARCHAR(2000) NOT NULL,
+    policy TEXT,
     CONSTRAINT uk_statements_name UNIQUE (name),
     CONSTRAINT ck_statements_effect CHECK (effect IN ('ALLOW', 'DENY')),
-    CONSTRAINT ck_statements_target_type CHECK (target_type IN ('OBJECT', 'REQUEST'))
+    CONSTRAINT ck_statements_scope CHECK (scope IN ('OBJECT', 'REQUEST'))
 );
 
 CREATE TABLE role_statements (
@@ -91,13 +92,6 @@ CREATE TABLE user_statements (
     PRIMARY KEY (user_id, statement_id)
 );
 CREATE INDEX ix_user_statements_statement_id ON user_statements(statement_id);
-
-CREATE TABLE statement_conditions (
-    statement_id UUID NOT NULL REFERENCES statements(id) ON DELETE CASCADE,
-    condition_index INTEGER NOT NULL,
-    expression VARCHAR(2000) NOT NULL,
-    PRIMARY KEY (statement_id, condition_index)
-);
 
 CREATE TABLE oauth2_registered_client (
     id varchar(100) NOT NULL,

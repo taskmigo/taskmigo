@@ -169,8 +169,9 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
                     name,
                     null,
                     "allow",
-                    new StatementTarget("request", new StatementApiTarget("GET", "/api/v0/roles")),
-                    List.of()
+                    "request",
+                    new StatementTarget(new StatementApiTarget("GET", "/api/v0/roles")),
+                    null
                 )
             );
     }

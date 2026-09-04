@@ -3,13 +3,7 @@ package io.taskmigo.auth.authorization.condition;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.auth.authorization.statement.ApiInfo;
-import io.taskmigo.auth.authorization.statement.Effect;
-import io.taskmigo.auth.authorization.statement.StatementInfo;
-import io.taskmigo.auth.authorization.statement.TargetInfo;
-import io.taskmigo.auth.authorization.statement.TargetType;
-import java.util.List;
-import java.util.UUID;
+import io.taskmigo.auth.authorization.statement.Scope;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -27,12 +21,10 @@ class AuthorizationCompilerTest {
     @DisplayName("compiles operators with the required precedence")
     void shouldCompileOperatorsWhenExpressionUsesMultiplePrecedenceLevels() {
         // Arrange
-        StatementInfo statement = statement(
-            "request.count > 1 + 2 * 3 && request.active == true || request.path == '/users'"
-        );
+        String source = "request.count > 1 + 2 * 3 && request.active == true || request.path == '/users'";
 
         // Act
-        AuthorizationCompiler.Expression result = this.compiler.compile(statement);
+        AuthorizationCompiler.Expression result = this.compiler.compile(source, Scope.REQUEST);
 
         // Assert
         assertThat(result).isInstanceOf(AuthorizationCompiler.Binary.class);
@@ -63,22 +55,19 @@ class AuthorizationCompilerTest {
     @DisplayName("compiles supported reference roots")
     void shouldCompileReferencesWhenExpressionUsesSupportedRoots() {
         // Arrange
-        StatementInfo statement = statement(
-            "object.id == principal.id && request.path.organizationId == principal.organizationId",
-            TargetType.OBJECT
-        );
+        String source = "object.id == principal.id && request.path.organizationId == principal.organizationId";
 
         // Act
-        AuthorizationCompiler.Expression result = this.compiler.compile(statement);
+        AuthorizationCompiler.Expression result = this.compiler.compile(source, Scope.OBJECT);
 
         // Assert
         assertThat(result).isInstanceOf(AuthorizationCompiler.Binary.class);
-        AuthorizationCompiler.Binary conditions = (AuthorizationCompiler.Binary) result;
-        assertThat(conditions.operator()).isEqualTo(AuthorizationCompiler.BinaryOperator.AND);
-        assertThat(conditions.left()).isInstanceOf(AuthorizationCompiler.Binary.class);
-        AuthorizationCompiler.Binary objectComparison = (AuthorizationCompiler.Binary) conditions.left();
+        AuthorizationCompiler.Binary conjunction = (AuthorizationCompiler.Binary) result;
+        assertThat(conjunction.operator()).isEqualTo(AuthorizationCompiler.BinaryOperator.AND);
+        assertThat(conjunction.left()).isInstanceOf(AuthorizationCompiler.Binary.class);
+        AuthorizationCompiler.Binary objectComparison = (AuthorizationCompiler.Binary) conjunction.left();
         assertThat(((AuthorizationCompiler.Reference) objectComparison.left()).path()).containsExactly("id");
-        AuthorizationCompiler.Binary requestComparison = (AuthorizationCompiler.Binary) conditions.right();
+        AuthorizationCompiler.Binary requestComparison = (AuthorizationCompiler.Binary) conjunction.right();
         assertThat(((AuthorizationCompiler.Reference) requestComparison.left()).path()).containsExactly(
             "path",
             "organizationId"
@@ -86,19 +75,18 @@ class AuthorizationCompilerTest {
     }
 
     /**
-     * Verifies that an empty condition list represents an unconditional Statement.
+     * Verifies that a boolean literal can represent an unconditional authorization result.
      *
-     * Given: a Statement with no conditions.
+     * Given: a boolean literal source.
      * Expect: compilation returns a boolean true literal without requiring a placeholder expression.
      */
     @Test
-    @DisplayName("compiles empty conditions as unconditional true")
-    void shouldCompileUnconditionalExpressionWhenStatementHasNoConditions() {
+    @DisplayName("compiles a boolean literal as an unconditional result")
+    void shouldCompileUnconditionalExpressionWhenSourceIsBooleanLiteral() {
         // Arrange
-        StatementInfo statement = statement();
 
         // Act
-        AuthorizationCompiler.Expression result = this.compiler.compile(statement);
+        AuthorizationCompiler.Expression result = this.compiler.compile("true", Scope.REQUEST);
 
         // Assert
         assertThat(result).isEqualTo(new AuthorizationCompiler.LiteralValue(true));
@@ -114,10 +102,8 @@ class AuthorizationCompilerTest {
     @DisplayName("rejects object references in request statements")
     void shouldRejectObjectReferenceWhenStatementTargetsRequests() {
         // Arrange
-        StatementInfo statement = statement("object.id == principal.id");
-
         // Act + Assert
-        assertThatThrownBy(() -> this.compiler.compile(statement))
+        assertThatThrownBy(() -> this.compiler.compile("object.id == principal.id", Scope.REQUEST))
             .isInstanceOf(AuthorizationException.class)
             .hasMessageContaining("only valid for object Statements");
     }
@@ -132,10 +118,8 @@ class AuthorizationCompilerTest {
     @DisplayName("rejects unsupported method calls")
     void shouldRejectMethodCallWhenExpressionUsesUnsupportedLanguageFeature() {
         // Arrange
-        StatementInfo statement = statement("request.path.startsWith('/api')");
-
         // Act + Assert
-        assertThatThrownBy(() -> this.compiler.compile(statement))
+        assertThatThrownBy(() -> this.compiler.compile("request.path.startsWith('/api')", Scope.REQUEST))
             .isInstanceOf(AuthorizationException.class)
             .hasMessageContaining("unsupported");
     }
@@ -153,27 +137,8 @@ class AuthorizationCompilerTest {
         String expression = "(".repeat(21) + "request.value" + ")".repeat(21);
 
         // Act + Assert
-        assertThatThrownBy(() -> this.compiler.compile(statement(expression)))
+        assertThatThrownBy(() -> this.compiler.compile(expression, Scope.REQUEST))
             .isInstanceOf(AuthorizationException.class)
             .hasMessageContaining("too deep");
-    }
-
-    private static StatementInfo statement(String... conditions) {
-        return statement(List.of(conditions), TargetType.REQUEST);
-    }
-
-    private static StatementInfo statement(String condition, TargetType type) {
-        return statement(List.of(condition), type);
-    }
-
-    private static StatementInfo statement(List<String> conditions, TargetType type) {
-        return new StatementInfo(
-            UUID.randomUUID(),
-            "test.statement",
-            null,
-            Effect.ALLOW,
-            new TargetInfo(type, new ApiInfo("GET", "/api/v0/test")),
-            conditions
-        );
     }
 }

@@ -5,7 +5,6 @@ import io.taskmigo.auth.authorization.condition.AuthorizationName;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
 import io.taskmigo.foundation.OffsetPage;
 import java.util.Collection;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -34,15 +33,15 @@ public class StatementService {
         @Nullable String name,
         @Nullable String description,
         @Nullable Effect effect,
-        @Nullable TargetType targetType,
+        @Nullable Scope scope,
         @Nullable String method,
         @Nullable String path,
-        @Nullable List<String> conditions
+        @Nullable String policy
     ) {
         String validName = AuthorizationName.required(name, "name");
         if (this.statements.existsByName(validName)) throw new AuthorizationException("Statement name already exists");
         Effect validEffect = required(effect, "effect");
-        TargetType validTargetType = required(targetType, "target.type");
+        Scope validScope = required(scope, "scope");
         String validMethod = required(method, "target.api.method");
         if (
             !"*".equals(validMethod) &&
@@ -62,22 +61,10 @@ public class StatementService {
         if (validMethod.length() > 16) throw new AuthorizationException(
             "target.api.method must not exceed 16 characters"
         );
-        List<String> validConditions = conditions == null ? List.of() : List.copyOf(conditions);
-        if (validConditions.stream().anyMatch(String::isBlank)) {
-            throw new AuthorizationException("conditions must not contain blank expressions");
-        }
+        validatePolicy(policy);
         UUID id = UUID.randomUUID();
         this.statements.save(
-            new StatementEntity(
-                id,
-                validName,
-                description,
-                validEffect,
-                validTargetType,
-                validMethod,
-                validPath,
-                validConditions
-            )
+            new StatementEntity(id, validName, description, validEffect, validScope, validMethod, validPath, policy)
         );
         return id;
     }
@@ -88,18 +75,18 @@ public class StatementService {
         @Nullable String name,
         @Nullable String description,
         @Nullable Effect effect,
-        @Nullable TargetType targetType,
+        @Nullable Scope scope,
         @Nullable String method,
         @Nullable String path,
-        @Nullable List<String> conditions
+        @Nullable String policy
     ) {
         String validName = AuthorizationName.required(name, "name");
         StatementEntity existing = this.statements.findByName(validName).orElse(null);
         if (existing == null) {
-            return this.create(validName, description, effect, targetType, method, path, conditions);
+            return this.create(validName, description, effect, scope, method, path, policy);
         }
         Effect validEffect = required(effect, "effect");
-        TargetType validTargetType = required(targetType, "target.type");
+        Scope validScope = required(scope, "scope");
         String validMethod = required(method, "target.api.method");
         if (
             !"*".equals(validMethod) &&
@@ -113,17 +100,13 @@ public class StatementService {
         } catch (PatternSyntaxException exception) {
             throw new AuthorizationException("target.api.path must be a valid regular expression");
         }
-        List<String> validConditions = conditions == null ? List.of() : List.copyOf(conditions);
-        if (validConditions.stream().anyMatch(String::isBlank)) throw new AuthorizationException(
-            "conditions must not contain blank expressions"
-        );
+        validatePolicy(policy);
         existing.description = description;
         existing.effect = validEffect;
-        existing.targetType = validTargetType;
+        existing.scope = validScope;
         existing.method = validMethod;
         existing.path = validPath;
-        existing.conditions.clear();
-        existing.conditions.addAll(validConditions);
+        existing.policy = policy;
         this.statements.flush();
         return existing.id;
     }
@@ -184,5 +167,9 @@ public class StatementService {
     private static <T> T required(@Nullable T value, String field) {
         if (value == null) throw new AuthorizationException(field + " is required");
         return value;
+    }
+
+    private static void validatePolicy(@Nullable String policy) {
+        if (policy != null && policy.isBlank()) throw new AuthorizationException("policy must not be blank");
     }
 }

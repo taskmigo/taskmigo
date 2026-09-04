@@ -2,50 +2,46 @@ statements:
   - name: system_operator_request_all
     description: Allows System Operator to call every versioned API.
     effect: allow
+    scope: request
     target:
-      type: request
       api:
         method: "*"
         path: /api/v0/.*
-    conditions: []
 
   - name: system_operator_object_all
     description: Allows System Operator to read every object returned by versioned APIs.
     effect: allow
+    scope: object
     target:
-      type: object
       api:
         method: "*"
         path: /api/v0/.*
-    conditions: []
 
   - name: administrator_request_all
     description: Allows Administrator to call every versioned API.
     effect: allow
+    scope: request
     target:
-      type: request
       api:
         method: "*"
         path: /api/v0/.*
-    conditions: []
 
   - name: administrator_object_all
     description: Allows Administrator to read objects returned by versioned APIs.
     effect: allow
+    scope: object
     target:
-      type: object
       api:
         method: "*"
         path: /api/v0/.*
-    conditions: []
 
   - name: administrator_hide_system_user
     description: Prevents Administrator from seeing the system user through the users API.
     effect: deny
+    scope: object
     target:
-      type: object
       api:
         method: "*"
         path: /api/v0/users
-    conditions:
-      - object.username == 'system'
+    policy: |
+      export default ({ object }) => object.username === "system";

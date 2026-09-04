@@ -3,11 +3,7 @@ package io.taskmigo.auth.authorization.condition;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.auth.authorization.statement.ApiInfo;
-import io.taskmigo.auth.authorization.statement.Effect;
-import io.taskmigo.auth.authorization.statement.StatementInfo;
-import io.taskmigo.auth.authorization.statement.TargetInfo;
-import io.taskmigo.auth.authorization.statement.TargetType;
+import io.taskmigo.auth.authorization.statement.Scope;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,7 +24,8 @@ class AuthorizationExpressionEvaluatorTest {
     void shouldEvaluateReferencesWhenValuesMatchCondition() {
         // Arrange
         AuthorizationCompiler.Expression expression = this.compiler.compile(
-            statement("principal.id == 'user-1' && request.method == 'GET'")
+            "principal.id == 'user-1' && request.method == 'GET'",
+            Scope.REQUEST
         );
 
         // Act
@@ -50,23 +47,12 @@ class AuthorizationExpressionEvaluatorTest {
     @DisplayName("rejects non-boolean authorization results")
     void shouldRejectNonBooleanResultWhenExpressionReturnsNumber() {
         // Arrange
-        AuthorizationCompiler.Expression expression = this.compiler.compile(statement("1 + 2"));
+        AuthorizationCompiler.Expression expression = this.compiler.compile("1 + 2", Scope.REQUEST);
 
         // Act + Assert
         assertThatThrownBy(() -> this.evaluator.evaluate(expression, roots("user-1", "GET")))
             .isInstanceOf(AuthorizationException.class)
             .hasMessageContaining("not boolean");
-    }
-
-    private static StatementInfo statement(String condition) {
-        return new StatementInfo(
-            java.util.UUID.randomUUID(),
-            "test.statement",
-            null,
-            Effect.ALLOW,
-            new TargetInfo(TargetType.REQUEST, new ApiInfo("GET", "/api/v0/test")),
-            java.util.List.of(condition)
-        );
     }
 
     private static Map<String, ?> roots(String userId, String method) {

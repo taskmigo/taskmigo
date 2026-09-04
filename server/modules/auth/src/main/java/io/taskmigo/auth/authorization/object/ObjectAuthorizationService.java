@@ -4,8 +4,8 @@ import io.taskmigo.auth.authorization.condition.AuthorizationCompiler;
 import io.taskmigo.auth.authorization.condition.AuthorizationException;
 import io.taskmigo.auth.authorization.request.EffectiveStatementResolver;
 import io.taskmigo.auth.authorization.statement.Effect;
+import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
-import io.taskmigo.auth.authorization.statement.TargetType;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -24,16 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class ObjectAuthorizationService {
 
     private final EffectiveStatementResolver statements;
-    private final AuthorizationCompiler compiler;
     private final List<AuthorizationObjectQueryDialect> dialects;
 
-    ObjectAuthorizationService(
-        EffectiveStatementResolver statements,
-        AuthorizationCompiler compiler,
-        List<AuthorizationObjectQueryDialect> dialects
-    ) {
+    ObjectAuthorizationService(EffectiveStatementResolver statements, List<AuthorizationObjectQueryDialect> dialects) {
         this.statements = statements;
-        this.compiler = compiler;
         this.dialects = List.copyOf(dialects);
     }
 
@@ -56,8 +50,11 @@ public class ObjectAuthorizationService {
         List<StatementInfo> matched = new ArrayList<>();
 
         for (StatementInfo statement : this.statements.resolve(userId)) {
-            if (statement.target().type() == TargetType.OBJECT && statement.matches(method, path)) {
-                AuthorizationCompiler.Expression specialized = this.specialize(this.compiler.compile(statement), roots);
+            if (statement.scope() == Scope.OBJECT && statement.matches(method, path)) {
+                if (statement.policy() != null) throw new AuthorizationException(
+                    "Statement policy evaluation is not available yet"
+                );
+                AuthorizationCompiler.Expression specialized = new AuthorizationCompiler.LiteralValue(true);
                 matched.add(statement);
                 (statement.effect() == Effect.DENY ? denies : allows).add(specialized);
             }

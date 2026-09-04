@@ -309,8 +309,9 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
                     name,
                     null,
                     "allow",
-                    new StatementTarget("request", new StatementApiTarget("GET", "/api/v0/users")),
-                    List.of()
+                    "request",
+                    new StatementTarget(new StatementApiTarget("GET", "/api/v0/users")),
+                    null
                 )
             );
     }

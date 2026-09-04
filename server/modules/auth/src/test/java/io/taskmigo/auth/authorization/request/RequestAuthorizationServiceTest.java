@@ -4,13 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.auth.authorization.condition.AuthorizationCompiler;
-import io.taskmigo.auth.authorization.condition.AuthorizationExpressionEvaluator;
 import io.taskmigo.auth.authorization.statement.ApiInfo;
 import io.taskmigo.auth.authorization.statement.Effect;
+import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.auth.authorization.statement.TargetInfo;
-import io.taskmigo.auth.authorization.statement.TargetType;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -20,11 +18,7 @@ import org.junit.jupiter.api.Test;
 class RequestAuthorizationServiceTest {
 
     private final EffectiveStatementResolver statements = mock(EffectiveStatementResolver.class);
-    private final RequestAuthorizationService service = new RequestAuthorizationService(
-        this.statements,
-        new AuthorizationCompiler(),
-        new AuthorizationExpressionEvaluator()
-    );
+    private final RequestAuthorizationService service = new RequestAuthorizationService(this.statements);
 
     /**
      * Verifies that a matching request allow Statement grants access.
@@ -82,8 +76,9 @@ class RequestAuthorizationServiceTest {
             "statement-" + UUID.randomUUID(),
             null,
             effect,
-            new TargetInfo(TargetType.REQUEST, new ApiInfo("GET", "/api/v0/users")),
-            List.of("true")
+            Scope.REQUEST,
+            new TargetInfo(new ApiInfo("GET", "/api/v0/users")),
+            null
         );
     }
 }
