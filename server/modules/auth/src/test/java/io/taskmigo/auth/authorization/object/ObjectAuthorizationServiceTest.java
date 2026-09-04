@@ -1,10 +1,15 @@
 package io.taskmigo.auth.authorization.object;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.auth.authorization.condition.AuthorizationExpressionEvaluator;
+import io.taskmigo.auth.authorization.condition.AuthorizationException;
+import io.taskmigo.auth.authorization.filter.FilterAst;
+import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
+import io.taskmigo.auth.authorization.policy.PolicyIrPartialEvaluator;
 import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
 import io.taskmigo.auth.authorization.request.EffectiveStatementResolver;
 import io.taskmigo.auth.authorization.statement.ApiInfo;
@@ -15,6 +20,7 @@ import io.taskmigo.auth.authorization.statement.TargetInfo;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -24,63 +30,158 @@ class ObjectAuthorizationServiceTest {
     private final AuthorizationObjectQueryDialect dialect = new TestDialect();
     private final ObjectAuthorizationService service = new ObjectAuthorizationService(
         this.statements,
+        new JavaScriptPolicyCompiler(),
+        new PolicyIrPartialEvaluator(),
         List.of(this.dialect)
     );
-    private final AuthorizationExpressionEvaluator evaluator = new AuthorizationExpressionEvaluator();
 
     /**
      * Verifies that an unconditional object Statement contributes an allow predicate to the object plan.
      *
      * Given: an unconditional allow Statement targeting the queried object operation.
-     * Expect: the plan contains one matching Statement and evaluates its allow predicate as true.
+     * Expect: the plan contains one matching Statement and a true allow branch.
      */
     @Test
-    @DisplayName("specializes principal values in object predicates")
-    void shouldSpecializePrincipalWhenBuildingObjectPlan() {
+    @DisplayName("builds an unconditional object allow filter")
+    void shouldBuildUnconditionalAllowFilterWhenStatementHasNoPolicy() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        when(this.statements.resolve(userId)).thenReturn(List.of(statement(Effect.ALLOW)));
+        when(this.statements.resolve(userId)).thenReturn(List.of(statement(Effect.ALLOW, null)));
 
         // Act
         ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
             userId,
             "GET",
             "/api/v0/objects",
-            roots(userId.toString(), "GET", UUID.randomUUID())
+            roots(userId.toString(), "GET")
         );
 
         // Assert
         assertThat(plan.matchedStatements()).hasSize(1);
-        assertThat(
-            this.evaluator.evaluate(plan.predicate(), Map.of("object", Map.of("id", userId.toString())))
-        ).isTrue();
+        assertThat(plan.predicate().expression()).isEqualTo(new FilterAst.Binary(
+            FilterAst.Operator.AND,
+            new FilterAst.Literal(true),
+            new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Literal(false))
+        ));
     }
 
     /**
      * Verifies that an object deny predicate overrides an otherwise matching allow predicate.
      *
      * Given: unconditional allow and deny Statements targeting the same object operation.
-     * Expect: the combined database predicate evaluates false for the object, regardless of the allow Statement.
+     * Expect: the combined filter contains an allow-any branch and a negated deny-any branch.
      */
     @Test
-    @DisplayName("applies deny override to object predicates")
+    @DisplayName("applies deny override to object filters")
     void shouldDenyObjectWhenMatchingDenyStatementExists() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        when(this.statements.resolve(userId)).thenReturn(List.of(statement(Effect.ALLOW), statement(Effect.DENY)));
+        when(this.statements.resolve(userId)).thenReturn(List.of(
+            statement(Effect.ALLOW, null),
+            statement(Effect.DENY, null)
+        ));
 
         // Act
         ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
             userId,
             "GET",
             "/api/v0/objects",
-            roots(userId.toString(), "GET", UUID.randomUUID())
+            roots(userId.toString(), "GET")
         );
 
         // Assert
-        assertThat(
-            this.evaluator.evaluate(plan.predicate(), Map.of("object", Map.of("id", UUID.randomUUID())))
-        ).isFalse();
+        assertThat(plan.predicate().expression()).isEqualTo(new FilterAst.Binary(
+            FilterAst.Operator.AND,
+            new FilterAst.Literal(true),
+            new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Literal(true))
+        ));
+    }
+
+    /**
+     * Verifies that known principal and request values are specialized while object values remain database fields.
+     *
+     * Given: an Object policy comparing an object username with the known principal username.
+     * Expect: the plan contains an equality between the mapped object field and the principal literal.
+     */
+    @Test
+    @DisplayName("specializes known roots in object policy filters")
+    void shouldSpecializeKnownRootsWhenBuildingObjectPolicyFilter() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        String policy = "export default ({ object, principal }) => object.username === principal.username;";
+        when(this.statements.resolve(userId)).thenReturn(List.of(statement(Effect.ALLOW, policy)));
+
+        // Act
+        ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
+            userId,
+            "GET",
+            "/api/v0/objects",
+            Map.of("principal", Map.of("username", "alice"))
+        );
+
+        // Assert
+        assertThat(plan.predicate().expression()).isEqualTo(new FilterAst.Binary(
+            FilterAst.Operator.AND,
+            new FilterAst.Binary(
+                FilterAst.Operator.EQ,
+                new FilterAst.Field("username"),
+                new FilterAst.Literal("alice")
+            ),
+            new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Literal(false))
+        ));
+    }
+
+    /**
+     * Verifies that an object policy checking a field's presence becomes a database presence filter.
+     *
+     * Given: an Object policy comparing a mapped field with JavaScript undefined.
+     * Expect: the residual filter uses the Filter AST presence operator rather than a JVM row check.
+     */
+    @Test
+    @DisplayName("translates undefined object checks to presence filters")
+    void shouldTranslateUndefinedWhenBuildingObjectPolicyFilter() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        String policy = "export default ({ object }) => object.username !== undefined;";
+        when(this.statements.resolve(userId)).thenReturn(List.of(statement(Effect.ALLOW, policy)));
+
+        // Act
+        ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
+            userId,
+            "GET",
+            "/api/v0/objects",
+            Map.of()
+        );
+
+        // Assert
+        assertThat(plan.predicate().expression()).isEqualTo(new FilterAst.Binary(
+            FilterAst.Operator.AND,
+            new FilterAst.Unary(FilterAst.Operator.PRESENT, new FilterAst.Field("username")),
+            new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Literal(false))
+        ));
+    }
+
+    /**
+     * Verifies that an object expression without a supported database representation is rejected.
+     *
+     * Given: an Object policy reading a nested computed property from an object field.
+     * Expect: planning fails closed instead of evaluating each returned row in the JVM.
+     */
+    @Test
+    @DisplayName("rejects non-translatable object policies")
+    void shouldRejectPolicyWhenObjectExpressionCannotBecomeFilter() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        String policy = "export default ({ object }) => object.username.length > 2;";
+        when(this.statements.resolve(userId)).thenReturn(List.of(statement(Effect.ALLOW, policy)));
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.service.plan(
+            userId,
+            "GET",
+            "/api/v0/objects",
+            Map.of()
+        )).isInstanceOf(AuthorizationException.class).hasMessageContaining("queryable");
     }
 
     /**
@@ -96,8 +197,8 @@ class ObjectAuthorizationServiceTest {
         UUID userId = UUID.randomUUID();
         AuthorizationSnapshot snapshot = new AuthorizationSnapshot(
             userId,
-            List.of(statement(Effect.ALLOW)),
-            roots(userId.toString(), "GET", UUID.randomUUID())
+            List.of(statement(Effect.ALLOW, null)),
+            roots(userId.toString(), "GET")
         );
 
         // Act
@@ -109,10 +210,10 @@ class ObjectAuthorizationServiceTest {
 
         // Assert
         assertThat(plan.matchedStatements()).hasSize(1);
-        org.mockito.Mockito.verifyNoInteractions(this.statements);
+        verifyNoInteractions(this.statements);
     }
 
-    private static StatementInfo statement(Effect effect) {
+    private static StatementInfo statement(Effect effect, @Nullable String policy) {
         return new StatementInfo(
             UUID.randomUUID(),
             "statement-" + UUID.randomUUID(),
@@ -120,18 +221,16 @@ class ObjectAuthorizationServiceTest {
             effect,
             Scope.OBJECT,
             new TargetInfo(new ApiInfo("GET", "/api/v0/objects")),
-            null
+            policy
         );
     }
 
-    private static Map<String, ?> roots(String userId, String method, UUID objectId) {
+    private static Map<String, ?> roots(String username, String method) {
         return Map.of(
             "principal",
-            Map.of("id", userId),
+            Map.of("username", username),
             "request",
-            Map.of("method", method),
-            "object",
-            Map.of("id", objectId)
+            Map.of("method", method)
         );
     }
 
@@ -149,7 +248,7 @@ class ObjectAuthorizationServiceTest {
 
         @Override
         public Map<String, Class<?>> fields() {
-            return Map.of("id", String.class);
+            return Map.of("username", String.class);
         }
     }
 }

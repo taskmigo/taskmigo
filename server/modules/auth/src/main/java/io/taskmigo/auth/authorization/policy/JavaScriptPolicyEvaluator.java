@@ -33,9 +33,14 @@ public final class JavaScriptPolicyEvaluator {
         return this.value(expression, roots);
     }
 
+    static Object undefinedValue() {
+        return UNDEFINED;
+    }
+
     private @Nullable Object value(PolicyIr.Expression expression, Map<String, ?> roots) {
         return switch (expression) {
             case PolicyIr.Literal literal -> literal.value();
+            case PolicyIr.UndefinedValue ignored -> UNDEFINED;
             case PolicyIr.Reference reference -> this.reference(reference, roots);
             case PolicyIr.PropertyAccess property -> this.property(property, roots);
             case PolicyIr.ArrayValue array -> array.values().stream().map(item -> this.value(item, roots)).toList();

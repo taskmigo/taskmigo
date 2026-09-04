@@ -112,6 +112,7 @@ public final class JavaScriptPolicyCompiler {
         PolicyIr.Expression expression = function.getBody() instanceof Block block
             ? this.statements(childStatements(block), new HashMap<>(roots), 0, new Counter())
             : this.expression(function.getBody(), roots, 0, new Counter());
+        if (scope == Scope.OBJECT) validateObjectPolicy(expression);
         List<ResourceDescriptor> resources = resourcesFunction == null ? List.of() : this.resources(resourcesFunction);
         if (scope == Scope.REQUEST) validateObjectReferences(expression, resources);
         return new JavaScriptPolicyModule(new PolicyIr(expression), resources);
@@ -278,6 +279,7 @@ public final class JavaScriptPolicyCompiler {
     }
 
     private static PolicyIr.Expression name(Map<String, PolicyIr.Expression> environment, Name name) {
+        if (name.getIdentifier().equals("undefined")) return new PolicyIr.UndefinedValue();
         PolicyIr.Expression value = environment.get(name.getIdentifier());
         if (value == null) throw invalid("unknown variable: " + name.getIdentifier());
         return value;
@@ -410,11 +412,12 @@ public final class JavaScriptPolicyCompiler {
         };
     }
 
-    private static PolicyIr.Literal literal(KeywordLiteral keyword) {
+    private static PolicyIr.Expression literal(KeywordLiteral keyword) {
         return switch (keyword.getType()) {
             case Token.TRUE -> new PolicyIr.Literal(true);
             case Token.FALSE -> new PolicyIr.Literal(false);
             case Token.NULL -> new PolicyIr.Literal(null);
+            case Token.UNDEFINED -> new PolicyIr.UndefinedValue();
             default -> throw invalid("unsupported policy literal");
         };
     }
@@ -450,6 +453,7 @@ public final class JavaScriptPolicyCompiler {
         return switch (expression) {
             case PolicyIr.Reference reference -> reference.root().equals("object");
             case PolicyIr.Literal ignored -> false;
+            case PolicyIr.UndefinedValue ignored -> false;
             case PolicyIr.PropertyAccess property -> containsObject(property.target());
             case PolicyIr.ArrayValue array -> array.values().stream().anyMatch(JavaScriptPolicyCompiler::containsObject);
             case PolicyIr.ObjectValue object -> object.values().values().stream().anyMatch(JavaScriptPolicyCompiler::containsObject);
@@ -459,6 +463,60 @@ public final class JavaScriptPolicyCompiler {
                 || containsObject(conditional.whenTrue())
                 || containsObject(conditional.whenFalse());
         };
+    }
+
+    private static void validateObjectPolicy(PolicyIr.Expression expression) {
+        switch (expression) {
+            case PolicyIr.Literal ignored -> {}
+            case PolicyIr.UndefinedValue ignored -> {}
+            case PolicyIr.Reference reference -> {
+                if (reference.root().equals("object") && reference.path().size() != 1) throw invalid(
+                    "Object policies may only select direct queryable fields"
+                );
+            }
+            case PolicyIr.PropertyAccess property -> {
+                if (containsObject(property)) throw invalid("computed object properties are not queryable");
+                validateObjectPolicy(property.target());
+            }
+            case PolicyIr.ArrayValue array -> {
+                if (containsObject(array)) throw invalid("object-dependent collection values are not queryable");
+                array.values().forEach(JavaScriptPolicyCompiler::validateObjectPolicy);
+            }
+            case PolicyIr.ObjectValue object -> {
+                if (containsObject(object)) throw invalid("object literals are not queryable");
+                throw invalid("object literal values are not queryable");
+            }
+            case PolicyIr.Binary binary -> {
+                if (binary.operator() == PolicyIr.BinaryOperator.AND
+                    || binary.operator() == PolicyIr.BinaryOperator.OR) {
+                    validateObjectPolicy(binary.left());
+                    validateObjectPolicy(binary.right());
+                }
+                else if (containsObject(binary.left()) && containsObject(binary.right())) throw invalid(
+                    "object-to-object comparisons are not queryable"
+                );
+                else if (containsObject(binary)) {
+                    if (Set.of(
+                        PolicyIr.BinaryOperator.ADD,
+                        PolicyIr.BinaryOperator.SUBTRACT,
+                        PolicyIr.BinaryOperator.MULTIPLY,
+                        PolicyIr.BinaryOperator.DIVIDE,
+                        PolicyIr.BinaryOperator.MODULO
+                    ).contains(binary.operator())) throw invalid("object arithmetic is not queryable");
+                    validateObjectPolicy(binary.left());
+                    validateObjectPolicy(binary.right());
+                }
+            }
+            case PolicyIr.Unary unary -> {
+                if (unary.operator() != PolicyIr.UnaryOperator.NOT && containsObject(unary)) throw invalid(
+                    "object arithmetic is not queryable"
+                );
+                validateObjectPolicy(unary.operand());
+            }
+            case PolicyIr.Conditional conditional -> {
+                if (containsObject(conditional)) throw invalid("object conditionals are not queryable");
+            }
+        }
     }
 
     private static void validateObjectReferences(
@@ -474,6 +532,7 @@ public final class JavaScriptPolicyCompiler {
                 );
             }
             case PolicyIr.Literal ignored -> {}
+            case PolicyIr.UndefinedValue ignored -> {}
             case PolicyIr.PropertyAccess property -> validateObjectReferences(property.target(), resources);
             case PolicyIr.ArrayValue array -> array.values().forEach(value -> validateObjectReferences(value, resources));
             case PolicyIr.ObjectValue object -> object.values().values().forEach(value -> validateObjectReferences(value, resources));

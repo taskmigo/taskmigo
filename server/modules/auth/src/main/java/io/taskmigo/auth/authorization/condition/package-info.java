@@ -1,4 +1,4 @@
-/// Provides the authorization condition language and validation primitives.
+/// Provides authorization exceptions and validation primitives.
 @NamedInterface
 @NullMarked
 package io.taskmigo.auth.authorization.condition;

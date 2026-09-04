@@ -9,10 +9,13 @@ public record PolicyIr(Expression expression) {
 
     /// Represents one policy expression.
     public sealed interface Expression
-        permits Literal, Reference, PropertyAccess, ArrayValue, ObjectValue, Binary, Unary, Conditional {}
+        permits Literal, UndefinedValue, Reference, PropertyAccess, ArrayValue, ObjectValue, Binary, Unary, Conditional {}
 
     /// Represents a JavaScript primitive literal.
     public record Literal(@Nullable Object value) implements Expression {}
+
+    /// Represents JavaScript's missing-value sentinel.
+    public record UndefinedValue() implements Expression {}
 
     /// Represents a value under one of the approved authorization roots.
     public record Reference(String root, List<String> path) implements Expression {

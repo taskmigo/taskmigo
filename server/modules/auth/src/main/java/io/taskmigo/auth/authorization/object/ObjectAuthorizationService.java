@@ -1,7 +1,9 @@
 package io.taskmigo.auth.authorization.object;
 
-import io.taskmigo.auth.authorization.condition.AuthorizationCompiler;
 import io.taskmigo.auth.authorization.condition.AuthorizationException;
+import io.taskmigo.auth.authorization.filter.FilterAst;
+import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
+import io.taskmigo.auth.authorization.policy.PolicyIrPartialEvaluator;
 import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
 import io.taskmigo.auth.authorization.request.EffectiveStatementResolver;
 import io.taskmigo.auth.authorization.statement.Effect;
@@ -12,10 +14,11 @@ import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,24 +28,30 @@ import org.springframework.transaction.annotation.Transactional;
 public class ObjectAuthorizationService {
 
     private final EffectiveStatementResolver statements;
+    private final JavaScriptPolicyCompiler policyCompiler;
+    private final PolicyIrPartialEvaluator partialEvaluator;
     private final List<AuthorizationObjectQueryDialect> dialects;
 
-    ObjectAuthorizationService(EffectiveStatementResolver statements, List<AuthorizationObjectQueryDialect> dialects) {
+    ObjectAuthorizationService(
+        EffectiveStatementResolver statements,
+        JavaScriptPolicyCompiler policyCompiler,
+        PolicyIrPartialEvaluator partialEvaluator,
+        List<AuthorizationObjectQueryDialect> dialects
+    ) {
         this.statements = statements;
+        this.policyCompiler = policyCompiler;
+        this.partialEvaluator = partialEvaluator;
         this.dialects = List.copyOf(dialects);
     }
 
-    /// Creates an object predicate with allow-any and deny-overrides semantics.
-    ///
-    /// Principal and request references are replaced with literals before the selected resource dialect validates
-    /// the predicate. Object references remain in the returned expression for database-side translation.
+    /// Creates an object predicate after capturing the effective Statements for an operation.
     ///
     /// @param userId the User requesting access
     /// @param method the normalized HTTP method
     /// @param path the query path without a query string
-    /// @param roots the principal, request, and optional object authorization roots
+    /// @param roots the principal and request authorization roots
     /// @return a plan suitable for applying before query pagination
-    /// @throws AuthorizationException when a matching object condition is not queryable
+    /// @throws AuthorizationException when a matching object policy is not queryable
     @Transactional(readOnly = true)
     public ObjectAuthorizationPlan plan(UUID userId, String method, String path, Map<String, ?> roots) {
         return this.plan(new AuthorizationSnapshot(userId, this.statements.resolve(userId), roots), method, path);
@@ -54,30 +63,32 @@ public class ObjectAuthorizationService {
     /// @param method the normalized HTTP method
     /// @param path the query path without a query string
     /// @return a plan suitable for applying before query pagination
-    /// @throws AuthorizationException when a matching object condition is not queryable
+    /// @throws AuthorizationException when a matching object policy is not queryable
     public ObjectAuthorizationPlan plan(AuthorizationSnapshot snapshot, String method, String path) {
         AuthorizationObjectQueryDialect dialect = this.dialect(method, path);
-        List<AuthorizationCompiler.Expression> allows = new ArrayList<>();
-        List<AuthorizationCompiler.Expression> denies = new ArrayList<>();
+        List<FilterAst.Expression> allows = new ArrayList<>();
+        List<FilterAst.Expression> denies = new ArrayList<>();
         List<StatementInfo> matched = new ArrayList<>();
 
         for (StatementInfo statement : snapshot.statements()) {
             if (statement.scope() == Scope.OBJECT && statement.matches(method, path)) {
-                if (statement.policy() != null) throw new AuthorizationException(
-                    "Statement policy evaluation is not available yet"
-                );
-                AuthorizationCompiler.Expression specialized = new AuthorizationCompiler.LiteralValue(true);
+                FilterAst filter = statement.policy() == null
+                    ? new FilterAst(new FilterAst.Literal(true))
+                    : this.partialEvaluator.partial(
+                        this.policyCompiler.compile(statement.policy(), Scope.OBJECT),
+                        snapshot.roots()
+                    );
                 matched.add(statement);
-                (statement.effect() == Effect.DENY ? denies : allows).add(specialized);
+                (statement.effect() == Effect.DENY ? denies : allows).add(filter.expression());
             }
         }
 
-        AuthorizationCompiler.Expression predicate = new AuthorizationCompiler.Binary(
-            AuthorizationCompiler.BinaryOperator.AND,
+        FilterAst.Expression predicate = new FilterAst.Binary(
+            FilterAst.Operator.AND,
             or(allows),
-            new AuthorizationCompiler.Unary(AuthorizationCompiler.UnaryOperator.NOT, or(denies))
+            new FilterAst.Unary(FilterAst.Operator.NOT, or(denies))
         );
-        return new ObjectAuthorizationPlan(predicate, List.copyOf(matched), dialect.fields());
+        return new ObjectAuthorizationPlan(new FilterAst(predicate), List.copyOf(matched), dialect.fields());
     }
 
     private AuthorizationObjectQueryDialect dialect(String method, String path) {
@@ -90,49 +101,11 @@ public class ObjectAuthorizationService {
             );
     }
 
-    private AuthorizationCompiler.Expression specialize(
-        AuthorizationCompiler.Expression expression,
-        Map<String, ?> roots
-    ) {
-        return switch (expression) {
-            case AuthorizationCompiler.LiteralValue literal -> literal;
-            case AuthorizationCompiler.Reference reference when (
-                !reference.root().equals("object")
-            ) -> new AuthorizationCompiler.LiteralValue(this.resolve(reference, roots));
-            case AuthorizationCompiler.Reference reference -> reference;
-            case AuthorizationCompiler.Unary unary -> new AuthorizationCompiler.Unary(
-                unary.operator(),
-                this.specialize(unary.operand(), roots)
-            );
-            case AuthorizationCompiler.Binary binary -> new AuthorizationCompiler.Binary(
-                binary.operator(),
-                this.specialize(binary.left(), roots),
-                this.specialize(binary.right(), roots)
-            );
-        };
-    }
-
-    private Object resolve(AuthorizationCompiler.Reference reference, Map<String, ?> roots) {
-        Object current = roots.get(reference.root());
-        for (String part : reference.path()) {
-            if (!(current instanceof Map<?, ?> values) || !values.containsKey(part)) {
-                throw new AuthorizationException(
-                    "Missing authorization context value: " + reference.root() + "." + part
-                );
-            }
-            current = values.get(part);
-            if (current == null) throw new AuthorizationException(
-                "Null authorization context value: " + reference.root() + "." + part
-            );
-        }
-        return Objects.requireNonNull(current);
-    }
-
-    private static AuthorizationCompiler.Expression or(List<AuthorizationCompiler.Expression> expressions) {
-        if (expressions.isEmpty()) return new AuthorizationCompiler.LiteralValue(false);
-        AuthorizationCompiler.Expression result = expressions.getFirst();
-        for (AuthorizationCompiler.Expression expression : expressions.subList(1, expressions.size())) {
-            result = new AuthorizationCompiler.Binary(AuthorizationCompiler.BinaryOperator.OR, result, expression);
+    private static FilterAst.Expression or(List<FilterAst.Expression> expressions) {
+        if (expressions.isEmpty()) return new FilterAst.Literal(false);
+        FilterAst.Expression result = expressions.getFirst();
+        for (FilterAst.Expression expression : expressions.subList(1, expressions.size())) {
+            result = new FilterAst.Binary(FilterAst.Operator.OR, result, expression);
         }
         return result;
     }
@@ -143,132 +116,161 @@ public class ObjectAuthorizationService {
     /// @param <T> the queried entity type
     /// @return a database-side specification implementing the plan predicate
     public <T> Specification<T> specification(ObjectAuthorizationPlan plan) {
-        return (root, query, builder) -> this.predicate(plan.predicate(), root, builder, plan.fields());
+        return (root, query, builder) -> this.predicate(plan.predicate().expression(), root, builder, plan.fields());
     }
 
     private <T> Predicate predicate(
-        AuthorizationCompiler.Expression expression,
+        FilterAst.Expression expression,
         Root<T> root,
         CriteriaBuilder builder,
         Map<String, Class<?>> fields
     ) {
         return switch (expression) {
-            case AuthorizationCompiler.LiteralValue literal when literal.value() instanceof Boolean value -> value
+            case FilterAst.Literal literal when literal.value() instanceof Boolean value -> value
                 ? builder.conjunction()
                 : builder.disjunction();
-            case AuthorizationCompiler.Unary unary when (
-                unary.operator() == AuthorizationCompiler.UnaryOperator.NOT
-            ) -> builder.not(this.predicate(unary.operand(), root, builder, fields));
-            case AuthorizationCompiler.Binary binary when (
-                binary.operator() == AuthorizationCompiler.BinaryOperator.AND
-            ) -> builder.and(
+            case FilterAst.Unary unary when unary.operator() == FilterAst.Operator.NOT -> builder.not(
+                this.predicate(unary.operand(), root, builder, fields)
+            );
+            case FilterAst.Unary unary when unary.operator() == FilterAst.Operator.PRESENT -> this.present(
+                unary.operand(), root, fields
+            );
+            case FilterAst.Binary binary when binary.operator() == FilterAst.Operator.AND -> builder.and(
                 this.predicate(binary.left(), root, builder, fields),
                 this.predicate(binary.right(), root, builder, fields)
             );
-            case AuthorizationCompiler.Binary binary when (
-                binary.operator() == AuthorizationCompiler.BinaryOperator.OR
-            ) -> builder.or(
+            case FilterAst.Binary binary when binary.operator() == FilterAst.Operator.OR -> builder.or(
                 this.predicate(binary.left(), root, builder, fields),
                 this.predicate(binary.right(), root, builder, fields)
             );
-            case AuthorizationCompiler.Binary binary -> this.comparison(binary, root, builder, fields);
+            case FilterAst.Binary binary -> this.comparison(binary, root, builder, fields);
             default -> throw new AuthorizationException("Object authorization predicate is not boolean");
         };
     }
 
-    @SuppressWarnings("unchecked")
+    private <T> Predicate present(
+        FilterAst.Expression expression,
+        Root<T> root,
+        Map<String, Class<?>> fields
+    ) {
+        return this.field(expression, root, fields).isNotNull();
+    }
+
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     private <T> Predicate comparison(
-        AuthorizationCompiler.Binary binary,
+        FilterAst.Binary binary,
         Root<T> root,
         CriteriaBuilder builder,
         Map<String, Class<?>> fields
     ) {
-        Expression<?> left = value(binary.left(), binary.right(), root, builder, fields);
-        Expression<?> right = value(binary.right(), binary.left(), root, builder, fields);
-        return switch (binary.operator()) {
-            case EQUAL -> builder.equal(left, right);
-            case NOT_EQUAL -> builder.notEqual(left, right);
-            case GREATER -> builder.greaterThan(asComparable(left), asComparable(right));
-            case GREATER_OR_EQUAL -> builder.greaterThanOrEqualTo(asComparable(left), asComparable(right));
-            case LESS -> builder.lessThan(asComparable(left), asComparable(right));
-            case LESS_OR_EQUAL -> builder.lessThanOrEqualTo(asComparable(left), asComparable(right));
+        FilterAst.Field field;
+        FilterAst.Literal literal;
+        boolean fieldLeft;
+        if (binary.left() instanceof FilterAst.Field left && binary.right() instanceof FilterAst.Literal right) {
+            field = left;
+            literal = right;
+            fieldLeft = true;
+        }
+        else if (binary.right() instanceof FilterAst.Field right && binary.left() instanceof FilterAst.Literal left) {
+            field = right;
+            literal = left;
+            fieldLeft = false;
+        }
+        else throw new AuthorizationException("Object comparison requires one field and one literal");
+
+        Expression<?> fieldExpression = this.field(field, root, fields);
+        Class<?> fieldType = fieldType(field, fields);
+        if (binary.operator() == FilterAst.Operator.IN || binary.operator() == FilterAst.Operator.NIN) {
+            if (!fieldLeft || !(literal.value() instanceof Collection<?> values)) throw new AuthorizationException(
+                "Object membership comparison requires a field and a literal collection"
+            );
+            List<Object> coerced = values.stream().map(item -> coerce(item, fieldType)).toList();
+            Predicate membership = fieldExpression.in(coerced);
+            return binary.operator() == FilterAst.Operator.NIN ? builder.not(membership) : membership;
+        }
+        @Nullable Object value = coerce(literal.value(), fieldType);
+        if (binary.operator() == FilterAst.Operator.CONTAINS
+            || binary.operator() == FilterAst.Operator.STARTS_WITH
+            || binary.operator() == FilterAst.Operator.ENDS_WITH) {
+            if (!fieldLeft || !(value instanceof String text) || fields.get(field.name()) != String.class) {
+                throw new AuthorizationException("String object filter requires a String field and literal");
+            }
+            String pattern = switch (binary.operator()) {
+                case CONTAINS -> "%" + escapeLike(text) + "%";
+                case STARTS_WITH -> escapeLike(text) + "%";
+                case ENDS_WITH -> "%" + escapeLike(text);
+                default -> throw new AssertionError("not a string operator");
+            };
+            return builder.like(fieldExpression.as(String.class), builder.literal(pattern), '\\');
+        }
+        if (value == null) return switch (binary.operator()) {
+            case EQ -> fieldExpression.isNull();
+            case NE -> fieldExpression.isNotNull();
+            default -> throw new AuthorizationException("Null object values only support equality");
+        };
+
+        FilterAst.Operator operator = fieldLeft ? binary.operator() : reverse(binary.operator());
+        Expression<?> valueExpression = builder.literal(value);
+        return switch (operator) {
+            case EQ -> builder.equal(fieldExpression, valueExpression);
+            case NE -> builder.notEqual(fieldExpression, valueExpression);
+            case GT -> builder.greaterThan((Expression) fieldExpression, (Expression) valueExpression);
+            case GE -> builder.greaterThanOrEqualTo((Expression) fieldExpression, (Expression) valueExpression);
+            case LT -> builder.lessThan((Expression) fieldExpression, (Expression) valueExpression);
+            case LE -> builder.lessThanOrEqualTo((Expression) fieldExpression, (Expression) valueExpression);
             default -> throw new AuthorizationException("Unsupported object comparison operator");
         };
     }
 
-    private static Expression<? extends Number> arithmetic(
-        AuthorizationCompiler.Binary binary,
-        Root<?> root,
-        CriteriaBuilder builder,
-        Map<String, Class<?>> fields
-    ) {
-        Expression<? extends Number> left = valueNumber(binary.left(), binary.right(), root, builder, fields);
-        Expression<? extends Number> right = valueNumber(binary.right(), binary.left(), root, builder, fields);
-        return switch (binary.operator()) {
-            case ADD -> builder.sum(left, right);
-            case SUBTRACT -> builder.diff(left, right);
-            case MULTIPLY -> builder.prod(left, right);
-            case DIVIDE -> builder.quot(left, right);
-            case MODULO -> throw new AuthorizationException("Modulo is not supported by object query dialects");
-            default -> throw new AuthorizationException("Unsupported object arithmetic operator");
+    private static FilterAst.Operator reverse(FilterAst.Operator operator) {
+        return switch (operator) {
+            case GT -> FilterAst.Operator.LT;
+            case GE -> FilterAst.Operator.LE;
+            case LT -> FilterAst.Operator.GT;
+            case LE -> FilterAst.Operator.GE;
+            default -> operator;
         };
     }
 
-    private static Expression<? extends Number> valueNumber(
-        AuthorizationCompiler.Expression expression,
-        AuthorizationCompiler.Expression peer,
-        Root<?> root,
-        CriteriaBuilder builder,
+    private <T> Expression<?> field(
+        FilterAst.Expression expression,
+        Root<T> root,
         Map<String, Class<?>> fields
     ) {
-        return value(expression, peer, root, builder, fields).as(Number.class);
+        if (!(expression instanceof FilterAst.Field reference)) throw new AuthorizationException(
+            "Object filter expression is not a mapped field"
+        );
+        if (!fields.containsKey(reference.name())) throw new AuthorizationException(
+            "Object field is not queryable: " + reference.name()
+        );
+        return root.get(reference.name());
     }
 
-    private static Expression<?> value(
-        AuthorizationCompiler.Expression expression,
-        AuthorizationCompiler.Expression peer,
-        Root<?> root,
-        CriteriaBuilder builder,
-        Map<String, Class<?>> fields
-    ) {
-        return switch (expression) {
-            case AuthorizationCompiler.Reference reference -> root.get(objectField(reference, fields));
-            case AuthorizationCompiler.LiteralValue literal -> builder.literal(coerce(literal.value(), peer, fields));
-            case AuthorizationCompiler.Binary binary -> arithmetic(binary, root, builder, fields);
-            case AuthorizationCompiler.Unary unary when (
-                unary.operator() == AuthorizationCompiler.UnaryOperator.PLUS
-            ) -> value(unary.operand(), peer, root, builder, fields);
-            case AuthorizationCompiler.Unary unary when (
-                unary.operator() == AuthorizationCompiler.UnaryOperator.MINUS
-            ) -> builder.neg(value(unary.operand(), peer, root, builder, fields).as(Number.class));
-            default -> throw new AuthorizationException("Unsupported object authorization value");
-        };
+    private static Class<?> fieldType(FilterAst.Field field, Map<String, Class<?>> fields) {
+        Class<?> type = fields.get(field.name());
+        if (type == null) throw new AuthorizationException("Object field is not queryable: " + field.name());
+        return type;
     }
 
-    private static String objectField(AuthorizationCompiler.Reference reference, Map<String, Class<?>> fields) {
-        if (!reference.root().equals("object") || reference.path().size() != 1) {
-            throw new AuthorizationException("Only direct object fields can be queried");
-        }
-        String field = reference.path().getFirst();
-        if (!fields.containsKey(field)) throw new AuthorizationException("Object field is not queryable: " + field);
-        return field;
-    }
-
-    private static Object coerce(Object value, AuthorizationCompiler.Expression peer, Map<String, Class<?>> fields) {
-        if (!(peer instanceof AuthorizationCompiler.Reference reference)) return value;
-        Class<?> type = fields.get(objectField(reference, fields));
-        if (type == null || type.isInstance(value)) return value;
+    private static @Nullable Object coerce(@Nullable Object value, Class<?> type) {
+        if (value == null || type.isInstance(value)) return value;
         if (type == UUID.class && value instanceof String text) return UUID.fromString(text);
+        if (value instanceof Number number) {
+            if (type == Integer.class || type == int.class) return number.intValue();
+            if (type == Long.class || type == long.class) return number.longValue();
+            if (type == Double.class || type == double.class) return number.doubleValue();
+            if (type == Float.class || type == float.class) return number.floatValue();
+        }
         throw new AuthorizationException("Object authorization value has incompatible type");
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    private static Expression<? extends Comparable> asComparable(Expression<?> expression) {
-        return (Expression) expression;
+    private static String escapeLike(String value) {
+        return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     }
 
+    /// Describes the residual database filter and Statements that produced it.
     public record ObjectAuthorizationPlan(
-        AuthorizationCompiler.Expression predicate,
+        FilterAst predicate,
         List<StatementInfo> matchedStatements,
         Map<String, Class<?>> fields
     ) {
