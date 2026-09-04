@@ -54,14 +54,14 @@ class JavaScriptPolicyEvaluatorTest {
     /**
      * Verifies that a policy result must be a JavaScript boolean.
      *
-     * Given: a compiled policy returning a numeric expression.
+     * Given: a compiled policy IR containing a numeric expression.
      * Expect: evaluation fails closed with an authorization exception instead of coercing the number.
      */
     @Test
     @DisplayName("rejects non-boolean policy results")
     void shouldRejectPolicyResultWhenExpressionReturnsNumber() {
         // Arrange
-        PolicyIr policy = this.compiler.compile("export default ({ request }) => request.count + 1;", Scope.REQUEST);
+        PolicyIr policy = new PolicyIr(new PolicyIr.Literal(1));
 
         // Act + Assert
         assertThatThrownBy(() -> this.evaluator.evaluate(policy, Map.of("request", Map.of("count", 1))))

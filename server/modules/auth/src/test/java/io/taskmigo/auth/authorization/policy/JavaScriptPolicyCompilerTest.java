@@ -67,6 +67,55 @@ class JavaScriptPolicyCompilerTest {
     }
 
     /**
+     * Verifies that compilation proves every reachable default-policy result is a boolean.
+     *
+     * Given: policies returning no value, a string, null, or falling through an if statement.
+     * Expect: each policy is rejected before it can be activated.
+     */
+    @Test
+    @DisplayName("rejects policies with reachable non-boolean results")
+    void shouldRejectPolicyWhenReachableResultIsNotBoolean() {
+        // Arrange
+        String noValue = "export default () => {};";
+        String stringValue = "export default () => 'allow';";
+        String nullValue = "export default () => null;";
+        String fallThrough = "export default ({ principal }) => { if (principal.admin) { return true; } };";
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.compiler.compile(noValue, Scope.REQUEST))
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("boolean");
+        assertThatThrownBy(() -> this.compiler.compile(stringValue, Scope.REQUEST))
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("boolean");
+        assertThatThrownBy(() -> this.compiler.compile(nullValue, Scope.REQUEST))
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("boolean");
+        assertThatThrownBy(() -> this.compiler.compile(fallThrough, Scope.REQUEST))
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("every path");
+    }
+
+    /**
+     * Verifies that compile-time boolean expressions become direct constant policy IR.
+     *
+     * Given: a policy whose logical expression contains only constant operands.
+     * Expect: the compiled expression is the boolean literal true.
+     */
+    @Test
+    @DisplayName("folds constant boolean policy expressions")
+    void shouldFoldConstantPolicyWhenExpressionHasNoAuthorizationReferences() {
+        // Arrange
+        String source = "export default () => true && (false || true);";
+
+        // Act
+        PolicyIr policy = this.compiler.compile(source, Scope.REQUEST);
+
+        // Assert
+        assertThat(policy.expression()).isEqualTo(new PolicyIr.Literal(true));
+    }
+
+    /**
      * Verifies that unsupported JavaScript calls cannot enter the policy IR.
      *
      * Given: a policy attempting to call an arbitrary method on the request root.

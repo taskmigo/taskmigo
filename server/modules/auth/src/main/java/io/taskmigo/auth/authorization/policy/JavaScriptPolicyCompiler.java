@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import org.jspecify.annotations.Nullable;
 import org.mozilla.javascript.CompilerEnvirons;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.Node;
@@ -49,6 +50,7 @@ public final class JavaScriptPolicyCompiler {
     private static final int MAX_DEPTH = 40;
     private static final int MAX_NODES = 500;
     private static final Set<String> ROOTS = Set.of("request", "principal", "object");
+    private static final JavaScriptPolicyEvaluator EVALUATOR = new JavaScriptPolicyEvaluator();
     private final ConcurrentMap<CacheKey, JavaScriptPolicyModule> cache = new ConcurrentHashMap<>();
 
     /// Compiles and caches a policy for an immutable Statement scope.
@@ -113,6 +115,8 @@ public final class JavaScriptPolicyCompiler {
             function.getBody() instanceof Block block
                 ? this.statements(childStatements(block), new HashMap<>(roots), 0, new Counter())
                 : this.expression(function.getBody(), roots, 0, new Counter());
+        expression = fold(expression);
+        validateBooleanResult(expression);
         if (scope == Scope.OBJECT) validateObjectPolicy(expression);
         List<ResourceDescriptor> resources = resourcesFunction == null ? List.of() : this.resources(resourcesFunction);
         if (scope == Scope.REQUEST) validateObjectReferences(expression, resources);
@@ -205,6 +209,7 @@ public final class JavaScriptPolicyCompiler {
         Counter counter
     ) {
         if (index >= statements.size()) throw invalid("policy function must return a boolean on every path");
+        counter.consume();
         AstNode statement = statements.get(index);
         if (statement instanceof VariableDeclaration declaration) {
             if (!declaration.isConst()) throw invalid("only const declarations are supported");
@@ -260,8 +265,7 @@ public final class JavaScriptPolicyCompiler {
         Counter counter
     ) {
         if (depth > MAX_DEPTH) throw invalid("policy nesting is too deep");
-        counter.nodes++;
-        if (counter.nodes > MAX_NODES) throw invalid("policy contains too many nodes");
+            counter.consume();
         return switch (node) {
             case ParenthesizedExpression parenthesized -> this.expression(
                 parenthesized.getExpression(),
@@ -484,6 +488,155 @@ public final class JavaScriptPolicyCompiler {
         };
     }
 
+    private static boolean containsReference(PolicyIr.Expression expression) {
+        return switch (expression) {
+            case PolicyIr.Literal ignored -> false;
+            case PolicyIr.UndefinedValue ignored -> false;
+            case PolicyIr.Reference ignored -> true;
+            case PolicyIr.PropertyAccess property -> containsReference(property.target());
+            case PolicyIr.ArrayValue array -> array.values().stream().anyMatch(
+                JavaScriptPolicyCompiler::containsReference
+            );
+            case PolicyIr.ObjectValue object -> object.values().values().stream().anyMatch(
+                JavaScriptPolicyCompiler::containsReference
+            );
+            case PolicyIr.Binary binary -> containsReference(binary.left()) || containsReference(binary.right());
+            case PolicyIr.Unary unary -> containsReference(unary.operand());
+            case PolicyIr.Conditional conditional -> containsReference(conditional.condition()) ||
+                containsReference(conditional.whenTrue()) ||
+                containsReference(conditional.whenFalse());
+        };
+    }
+
+    private static PolicyIr.Expression fold(PolicyIr.Expression expression) {
+        return switch (expression) {
+            case PolicyIr.Literal literal -> literal;
+            case PolicyIr.UndefinedValue undefined -> undefined;
+            case PolicyIr.Reference reference -> reference;
+            case PolicyIr.PropertyAccess property -> foldConstant(
+                new PolicyIr.PropertyAccess(fold(property.target()), property.property())
+            );
+            case PolicyIr.ArrayValue array -> new PolicyIr.ArrayValue(
+                array.values().stream().map(JavaScriptPolicyCompiler::fold).toList()
+            );
+            case PolicyIr.ObjectValue object -> new PolicyIr.ObjectValue(
+                object.values().entrySet().stream().collect(
+                    java.util.stream.Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> fold(entry.getValue()),
+                        (first, second) -> first,
+                        LinkedHashMap::new
+                    )
+                )
+            );
+            case PolicyIr.Binary binary -> foldBinary(binary);
+            case PolicyIr.Unary unary -> foldConstant(new PolicyIr.Unary(unary.operator(), fold(unary.operand())));
+            case PolicyIr.Conditional conditional -> foldConditional(conditional);
+        };
+    }
+
+    private static PolicyIr.Expression foldBinary(PolicyIr.Binary binary) {
+        PolicyIr.Expression left = fold(binary.left());
+        if (binary.operator() == PolicyIr.BinaryOperator.AND && left instanceof PolicyIr.Literal literal) {
+            return truthy(literal.value()) ? fold(binary.right()) : literal;
+        }
+        if (binary.operator() == PolicyIr.BinaryOperator.OR && left instanceof PolicyIr.Literal literal) {
+            return truthy(literal.value()) ? literal : fold(binary.right());
+        }
+        return foldConstant(new PolicyIr.Binary(binary.operator(), left, fold(binary.right())));
+    }
+
+    private static PolicyIr.Expression foldConditional(PolicyIr.Conditional conditional) {
+        PolicyIr.Expression condition = fold(conditional.condition());
+        if (condition instanceof PolicyIr.Literal literal) {
+            return truthy(literal.value()) ? fold(conditional.whenTrue()) : fold(conditional.whenFalse());
+        }
+        return foldConstant(
+            new PolicyIr.Conditional(condition, fold(conditional.whenTrue()), fold(conditional.whenFalse()))
+        );
+    }
+
+    private static PolicyIr.Expression foldConstant(PolicyIr.Expression expression) {
+        if (containsReference(expression)) return expression;
+        @Nullable
+        Object value;
+        try {
+            value = EVALUATOR.evaluateValue(expression, Map.of());
+        } catch (RuntimeException ignored) {
+            return expression;
+        }
+        if (value == JavaScriptPolicyEvaluator.undefinedValue()) return new PolicyIr.UndefinedValue();
+        if (value == null || value instanceof String || value instanceof Number || value instanceof Boolean) {
+            return new PolicyIr.Literal(value);
+        }
+        return expression;
+    }
+
+    private static void validateBooleanResult(PolicyIr.Expression expression) {
+        if (resultType(expression) != ResultType.BOOLEAN) throw invalid(
+            "policy must return a boolean on every reachable path"
+        );
+    }
+
+    private static ResultType resultType(PolicyIr.Expression expression) {
+        return switch (expression) {
+            case PolicyIr.Literal literal -> literalType(literal.value());
+            case PolicyIr.UndefinedValue ignored -> ResultType.UNDEFINED;
+            case PolicyIr.Reference ignored -> ResultType.UNKNOWN;
+            case PolicyIr.PropertyAccess property -> {
+                ResultType target = resultType(property.target());
+                yield property.property().equals("length") &&
+                    (target == ResultType.STRING || target == ResultType.ARRAY)
+                    ? ResultType.NUMBER
+                    : ResultType.UNKNOWN;
+            }
+            case PolicyIr.ArrayValue ignored -> ResultType.ARRAY;
+            case PolicyIr.ObjectValue ignored -> ResultType.OBJECT;
+            case PolicyIr.Binary binary -> switch (binary.operator()) {
+                case OR, AND ->
+                    resultType(binary.left()) == ResultType.BOOLEAN && resultType(binary.right()) == ResultType.BOOLEAN
+                        ? ResultType.BOOLEAN
+                        : ResultType.UNKNOWN;
+                case EQUAL, NOT_EQUAL, GREATER, GREATER_OR_EQUAL, LESS, LESS_OR_EQUAL, IN, CONTAINS, STARTS_WITH,
+                    ENDS_WITH ->
+                    ResultType.BOOLEAN;
+                case ADD ->
+                    resultType(binary.left()) == ResultType.STRING || resultType(binary.right()) == ResultType.STRING
+                        ? ResultType.STRING
+                        : resultType(binary.left()) == ResultType.NUMBER &&
+                        resultType(binary.right()) == ResultType.NUMBER
+                        ? ResultType.NUMBER
+                        : ResultType.UNKNOWN;
+                case SUBTRACT, MULTIPLY, DIVIDE, MODULO ->
+                    resultType(binary.left()) == ResultType.NUMBER && resultType(binary.right()) == ResultType.NUMBER
+                        ? ResultType.NUMBER
+                        : ResultType.UNKNOWN;
+            };
+            case PolicyIr.Unary unary -> unary.operator() == PolicyIr.UnaryOperator.NOT
+                ? ResultType.BOOLEAN
+                : ResultType.NUMBER;
+            case PolicyIr.Conditional conditional ->
+                resultType(conditional.whenTrue()) == ResultType.BOOLEAN &&
+                    resultType(conditional.whenFalse()) == ResultType.BOOLEAN
+                ? ResultType.BOOLEAN
+                : ResultType.UNKNOWN;
+        };
+    }
+
+    private static ResultType literalType(@Nullable Object value) {
+        if (value instanceof Boolean) return ResultType.BOOLEAN;
+        if (value instanceof Number) return ResultType.NUMBER;
+        if (value instanceof String) return ResultType.STRING;
+        return value == null ? ResultType.NULL : ResultType.UNKNOWN;
+    }
+
+    private static boolean truthy(@Nullable Object value) {
+        if (value == null || value == JavaScriptPolicyEvaluator.undefinedValue()) return false;
+        if (value instanceof Boolean bool) return bool;
+        if (value instanceof Number number) return number.doubleValue() != 0 && !Double.isNaN(number.doubleValue());
+        return !(value instanceof String string) || !string.isEmpty();
+    }
+
     private static void validateObjectPolicy(PolicyIr.Expression expression) {
         switch (expression) {
             case PolicyIr.Literal ignored -> {
@@ -680,5 +833,21 @@ public final class JavaScriptPolicyCompiler {
     private static final class Counter {
 
         private int nodes;
+
+        private void consume() {
+            this.nodes++;
+            if (this.nodes > MAX_NODES) throw invalid("policy contains too many nodes");
+        }
+    }
+
+    private enum ResultType {
+        BOOLEAN,
+        NUMBER,
+        STRING,
+        NULL,
+        UNDEFINED,
+        ARRAY,
+        OBJECT,
+        UNKNOWN,
     }
 }

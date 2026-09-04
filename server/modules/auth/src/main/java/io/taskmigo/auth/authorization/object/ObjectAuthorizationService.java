@@ -3,6 +3,7 @@ package io.taskmigo.auth.authorization.object;
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.filter.FilterAst;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
+import io.taskmigo.auth.authorization.policy.JavaScriptPolicyModule;
 import io.taskmigo.auth.authorization.policy.PolicyIrPartialEvaluator;
 import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
 import io.taskmigo.auth.authorization.request.EffectiveStatementResolver;
@@ -15,6 +16,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -54,7 +56,17 @@ public class ObjectAuthorizationService {
     /// @throws AuthorizationException when a matching object policy is not queryable
     @Transactional(readOnly = true)
     public ObjectAuthorizationPlan plan(UUID userId, String method, String path, Map<String, ?> roots) {
-        return this.plan(new AuthorizationSnapshot(userId, this.statements.resolve(userId), roots), method, path);
+        List<StatementInfo> effectiveStatements = this.statements.resolve(userId);
+        Map<UUID, JavaScriptPolicyModule> compiledPolicies = new LinkedHashMap<>();
+        for (StatementInfo statement : effectiveStatements) compiledPolicies.put(
+            statement.id(),
+            this.policyCompiler.compileModule(statement.policy(), statement.scope())
+        );
+        return this.plan(
+            new AuthorizationSnapshot(userId, effectiveStatements, compiledPolicies, roots),
+            method,
+            path
+        );
     }
 
     /// Builds an object plan from the effective Statements already captured for an operation.
@@ -73,7 +85,7 @@ public class ObjectAuthorizationService {
         for (StatementInfo statement : snapshot.statements()) {
             if (statement.scope() == Scope.OBJECT && statement.matches(method, path)) {
                 FilterAst filter = this.partialEvaluator.partial(
-                    this.policyCompiler.compile(statement.policy(), Scope.OBJECT),
+                    snapshot.compiledPolicy(statement).policy(),
                     snapshot.roots()
                 );
                 matched.add(statement);

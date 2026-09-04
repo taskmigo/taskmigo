@@ -4,6 +4,7 @@ import io.taskmigo.auth.authorization.policy.AuthorizationResourceRegistry;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyEvaluator;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyModule;
+import io.taskmigo.auth.authorization.policy.PolicyIr;
 import io.taskmigo.auth.authorization.policy.ResolvedResources;
 import io.taskmigo.auth.authorization.policy.ResourceDescriptor;
 import io.taskmigo.auth.authorization.statement.Effect;
@@ -45,7 +46,13 @@ public class RequestAuthorizationService {
     /// @param roots the approved principal and request values for the operation
     /// @return an immutable authorization snapshot
     public AuthorizationSnapshot snapshot(UUID userId, Map<String, ?> roots) {
-        return new AuthorizationSnapshot(userId, this.statements.resolve(userId), roots);
+        List<StatementInfo> effectiveStatements = this.statements.resolve(userId);
+        Map<UUID, JavaScriptPolicyModule> compiledPolicies = new LinkedHashMap<>();
+        for (StatementInfo statement : effectiveStatements) compiledPolicies.put(
+            statement.id(),
+            this.policyCompiler.compileModule(statement.policy(), statement.scope())
+        );
+        return new AuthorizationSnapshot(userId, effectiveStatements, compiledPolicies, roots);
     }
 
     /// Returns whether a user is allowed to perform an HTTP request.
@@ -60,7 +67,11 @@ public class RequestAuthorizationService {
     /// @return the transport-neutral authorization decision
     @Transactional(readOnly = true)
     public RequestAuthorizationDecision authorize(UUID userId, String method, String path, Map<String, ?> roots) {
-        return this.authorize(this.snapshot(userId, roots), method, path);
+        try {
+            return this.authorize(this.snapshot(userId, roots), method, path);
+        } catch (RuntimeException exception) {
+            return new RequestAuthorizationDecision(false);
+        }
     }
 
     /// Evaluates a request using an already established authorization snapshot.
@@ -77,7 +88,10 @@ public class RequestAuthorizationService {
         for (StatementInfo statement : snapshot.statements()) {
             if (statement.scope() != Scope.REQUEST || !statement.matches(method, path)) continue;
             try {
-                JavaScriptPolicyModule module = this.policyCompiler.compileModule(statement.policy(), Scope.REQUEST);
+                JavaScriptPolicyModule module = snapshot.compiledPolicy(statement);
+                if (statement.effect() == Effect.DENY && constantTrue(module.policy())) {
+                    return new RequestAuthorizationDecision(false);
+                }
                 descriptors.addAll(module.resources());
                 evaluations.add(new Evaluation(statement, module));
             } catch (RuntimeException exception) {
@@ -109,6 +123,10 @@ public class RequestAuthorizationService {
             }
         }
         return new RequestAuthorizationDecision(allowed);
+    }
+
+    private static boolean constantTrue(PolicyIr policy) {
+        return policy.expression() instanceof PolicyIr.Literal literal && Boolean.TRUE.equals(literal.value());
     }
 
     private record Evaluation(StatementInfo statement, JavaScriptPolicyModule module) {}

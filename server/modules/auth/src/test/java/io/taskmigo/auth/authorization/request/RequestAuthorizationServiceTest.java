@@ -263,6 +263,65 @@ class RequestAuthorizationServiceTest {
         org.mockito.Mockito.verifyNoInteractions(this.statements);
     }
 
+    /**
+     * Verifies that a matching constant-true deny ends authorization before resource resolution or later policy work.
+     *
+     * Given: an allow policy that selects a resource followed by a constant-true deny policy for the same request.
+     * Expect: authorization is denied and the resource adapter is never called.
+     */
+    @Test
+    @DisplayName("short-circuits a request on a constant deny policy")
+    void shouldDenyRequestImmediatelyWhenMatchingDenyPolicyIsConstantTrue() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        AtomicInteger calls = new AtomicInteger();
+        AuthorizationResourceAdapter users = new AuthorizationResourceAdapter() {
+            @Override
+            public String type() {
+                return "user";
+            }
+
+            @Override
+            public Map<String, Map<String, ?>> resolve(Collection<String> keys) {
+                calls.incrementAndGet();
+                return Map.of();
+            }
+        };
+        JavaScriptPolicyEvaluator evaluator = new JavaScriptPolicyEvaluator();
+        RequestAuthorizationService service = new RequestAuthorizationService(
+            this.statements,
+            new JavaScriptPolicyCompiler(),
+            evaluator,
+            new AuthorizationResourceRegistry(evaluator, List.of(users))
+        );
+        when(this.statements.resolve(userId)).thenReturn(
+            List.of(
+                statement(
+                    Effect.ALLOW,
+                    """
+                    export function resources({ request }) {
+                      return { user: resource("user", request.path.userId) };
+                    }
+                    export default () => true;
+                    """
+                ),
+                statement(Effect.DENY, "export default () => true;")
+            )
+        );
+
+        // Act
+        RequestAuthorizationDecision result = service.authorize(
+            userId,
+            "GET",
+            "/api/v0/users",
+            Map.of("request", Map.of("path", Map.of("userId", "target-user")))
+        );
+
+        // Assert
+        assertThat(result.allowed()).isFalse();
+        assertThat(calls).hasValue(0);
+    }
+
     private static StatementInfo statement(Effect effect) {
         return statement(effect, "export default () => true;");
     }
