@@ -235,6 +235,31 @@ class RequestAuthorizationServiceTest {
         assertThat(calls).hasValue(1);
     }
 
+    /**
+     * Verifies that request evaluation uses the effective Statements already captured in an authorization snapshot.
+     *
+     * Given: an allow snapshot followed by a changed resolver that would no longer grant access.
+     * Expect: the request remains allowed and the resolver is not consulted again.
+     */
+    @Test
+    @DisplayName("reuses the authorization snapshot during request evaluation")
+    void shouldReuseAuthorizationSnapshotWhenRequestStateChanges() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        AuthorizationSnapshot snapshot = new AuthorizationSnapshot(
+            userId,
+            List.of(statement(Effect.ALLOW)),
+            Map.of("request", Map.of("method", "GET"))
+        );
+
+        // Act
+        RequestAuthorizationDecision result = this.service.authorize(snapshot, "GET", "/api/v0/users");
+
+        // Assert
+        assertThat(result.allowed()).isTrue();
+        org.mockito.Mockito.verifyNoInteractions(this.statements);
+    }
+
     private static StatementInfo statement(Effect effect) {
         return statement(effect, null);
     }

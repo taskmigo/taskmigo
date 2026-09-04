@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.auth.authorization.condition.AuthorizationExpressionEvaluator;
+import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
 import io.taskmigo.auth.authorization.request.EffectiveStatementResolver;
 import io.taskmigo.auth.authorization.statement.ApiInfo;
 import io.taskmigo.auth.authorization.statement.Effect;
@@ -80,6 +81,35 @@ class ObjectAuthorizationServiceTest {
         assertThat(
             this.evaluator.evaluate(plan.predicate(), Map.of("object", Map.of("id", UUID.randomUUID())))
         ).isFalse();
+    }
+
+    /**
+     * Verifies that object planning consumes effective Statements from the supplied snapshot.
+     *
+     * Given: an allow snapshot and a resolver with no configured follow-up result.
+     * Expect: the object plan contains the snapshot Statement without resolving authorization state again.
+     */
+    @Test
+    @DisplayName("reuses the authorization snapshot during object planning")
+    void shouldReuseAuthorizationSnapshotWhenBuildingObjectPlan() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        AuthorizationSnapshot snapshot = new AuthorizationSnapshot(
+            userId,
+            List.of(statement(Effect.ALLOW)),
+            roots(userId.toString(), "GET", UUID.randomUUID())
+        );
+
+        // Act
+        ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
+            snapshot,
+            "GET",
+            "/api/v0/objects"
+        );
+
+        // Assert
+        assertThat(plan.matchedStatements()).hasSize(1);
+        org.mockito.Mockito.verifyNoInteractions(this.statements);
     }
 
     private static StatementInfo statement(Effect effect) {

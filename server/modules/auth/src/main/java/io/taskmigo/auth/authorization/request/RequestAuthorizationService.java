@@ -40,6 +40,15 @@ public class RequestAuthorizationService {
         this.resources = resources;
     }
 
+    /// Creates the one authorization snapshot used by a request operation.
+    ///
+    /// @param userId the user whose effective authorization state is captured
+    /// @param roots the approved principal and request values for the operation
+    /// @return an immutable authorization snapshot
+    public AuthorizationSnapshot snapshot(UUID userId, Map<String, ?> roots) {
+        return new AuthorizationSnapshot(userId, this.statements.resolve(userId), roots);
+    }
+
     /// Returns whether a user is allowed to perform an HTTP request.
     ///
     /// Matching allow Statements grant access, while a matching deny Statement always overrides an allow. A policy
@@ -52,10 +61,21 @@ public class RequestAuthorizationService {
     /// @return the transport-neutral authorization decision
     @Transactional(readOnly = true)
     public RequestAuthorizationDecision authorize(UUID userId, String method, String path, Map<String, ?> roots) {
-        Map<String, ?> approvedRoots = Map.copyOf(roots);
+        return this.authorize(this.snapshot(userId, roots), method, path);
+    }
+
+    /// Evaluates a request using an already established authorization snapshot.
+    ///
+    /// @param snapshot the immutable authorization state for this operation
+    /// @param method the HTTP method of the request
+    /// @param path the request path without a query string
+    /// @return the transport-neutral authorization decision
+    @Transactional(readOnly = true)
+    public RequestAuthorizationDecision authorize(AuthorizationSnapshot snapshot, String method, String path) {
+        Map<String, ?> approvedRoots = snapshot.roots();
         List<Evaluation> evaluations = new ArrayList<>();
         List<ResourceDescriptor> descriptors = new ArrayList<>();
-        for (StatementInfo statement : this.statements.resolve(userId)) {
+        for (StatementInfo statement : snapshot.statements()) {
             if (statement.scope() != Scope.REQUEST || !statement.matches(method, path)) continue;
             try {
                 JavaScriptPolicyModule module = statement.policy() == null

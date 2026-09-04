@@ -2,6 +2,7 @@ package io.taskmigo.auth.authorization.object;
 
 import io.taskmigo.auth.authorization.condition.AuthorizationCompiler;
 import io.taskmigo.auth.authorization.condition.AuthorizationException;
+import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
 import io.taskmigo.auth.authorization.request.EffectiveStatementResolver;
 import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
@@ -44,12 +45,23 @@ public class ObjectAuthorizationService {
     /// @throws AuthorizationException when a matching object condition is not queryable
     @Transactional(readOnly = true)
     public ObjectAuthorizationPlan plan(UUID userId, String method, String path, Map<String, ?> roots) {
+        return this.plan(new AuthorizationSnapshot(userId, this.statements.resolve(userId), roots), method, path);
+    }
+
+    /// Builds an object plan from the effective Statements already captured for an operation.
+    ///
+    /// @param snapshot the immutable authorization state established for the operation
+    /// @param method the normalized HTTP method
+    /// @param path the query path without a query string
+    /// @return a plan suitable for applying before query pagination
+    /// @throws AuthorizationException when a matching object condition is not queryable
+    public ObjectAuthorizationPlan plan(AuthorizationSnapshot snapshot, String method, String path) {
         AuthorizationObjectQueryDialect dialect = this.dialect(method, path);
         List<AuthorizationCompiler.Expression> allows = new ArrayList<>();
         List<AuthorizationCompiler.Expression> denies = new ArrayList<>();
         List<StatementInfo> matched = new ArrayList<>();
 
-        for (StatementInfo statement : this.statements.resolve(userId)) {
+        for (StatementInfo statement : snapshot.statements()) {
             if (statement.scope() == Scope.OBJECT && statement.matches(method, path)) {
                 if (statement.policy() != null) throw new AuthorizationException(
                     "Statement policy evaluation is not available yet"
