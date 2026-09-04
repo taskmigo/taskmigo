@@ -491,7 +491,6 @@ public final class JavaScriptPolicyCompiler {
         if (containsReference(expression)) {
             return expression;
         }
-        @Nullable
         Object value;
         try {
             value = EVALUATOR.evaluateValue(expression, Map.of());

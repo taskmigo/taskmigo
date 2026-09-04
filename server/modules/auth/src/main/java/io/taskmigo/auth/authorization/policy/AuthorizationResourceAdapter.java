@@ -2,8 +2,6 @@ package io.taskmigo.auth.authorization.policy;
 
 import java.util.Collection;
 import java.util.Map;
-import org.jspecify.annotations.NonNull;
-
 /// Resolves one resource type into immutable values suitable for policy evaluation.
 public interface AuthorizationResourceAdapter {
     /// Returns the resource type handled by this adapter.
@@ -15,5 +13,5 @@ public interface AuthorizationResourceAdapter {
     ///
     /// @param keys resource keys, deduplicated by the registry
     /// @return values keyed by their canonical resource key
-    Map<String, Map<String, ?>> resolve(@NonNull Collection<String> keys);
+    Map<String, Map<String, ?>> resolve(Collection<String> keys);
 }
