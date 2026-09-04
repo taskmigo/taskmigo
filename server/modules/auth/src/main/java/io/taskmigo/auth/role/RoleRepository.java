@@ -15,12 +15,16 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface RoleRepository extends JpaRepository<RoleEntity, UUID>, JpaSpecificationExecutor<RoleEntity> {
     Optional<RoleEntity> findByName(String name);
+
     List<RoleEntity> findAllByIdIn(Collection<UUID> ids);
 
-    Page<RoleEntity> findAllBy(Pageable pageable);
+    @EntityGraph(attributePaths = "statementIds")
+    List<RoleEntity> findDistinctByIdIn(Collection<UUID> ids);
 
-    @EntityGraph(attributePaths = "childRoles")
-    List<RoleEntity> findAllByOrderByIdAsc();
+    @EntityGraph(attributePaths = "statementIds")
+    List<RoleEntity> findDistinctByParentRoles_IdIn(Collection<UUID> parentIds);
+
+    Page<RoleEntity> findAllBy(Pageable pageable);
 
     @SuppressWarnings("checkstyle:SpringDataQuery")
     @Lock(LockModeType.PESSIMISTIC_WRITE)

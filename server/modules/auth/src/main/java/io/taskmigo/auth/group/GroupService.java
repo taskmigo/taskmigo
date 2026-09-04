@@ -141,7 +141,7 @@ public class GroupService {
     @Transactional(readOnly = true)
     public List<UUID> groupsForUser(UUID userId) {
         return this.groups
-            .findAllByMemberIdsContains(userId)
+            .findDistinctByMemberIdsContains(userId)
             .stream()
             .map(group -> group.id)
             .toList();
