@@ -44,6 +44,35 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     /**
+     * Verifies that the public API accepts a Statement without a policy and preserves its unconditional form.
+     *
+     * Given: a valid request Statement whose policy is omitted.
+     * Expect: creation succeeds and the listed canonical Statement has a null policy.
+     */
+    @Test
+    @DisplayName("creates an unconditional statement when policy is omitted")
+    void shouldCreateUnconditionalStatementWhenPolicyIsOmitted() {
+        // Arrange
+        CreateStatementRequest request = new CreateStatementRequest(
+            "users_all",
+            null,
+            "allow",
+            "request",
+            new StatementTarget(new StatementApiTarget("GET", "/api/v0/users")),
+            null
+        );
+
+        // Act
+        this.api().statements().create(request);
+        String response = this.findStatement("users_all");
+
+        // Assert
+        assertThat(response)
+            .contains("\"scope\":\"REQUEST\"")
+            .contains("\"policy\":null");
+    }
+
+    /**
      * Verifies that the Statement collection uses the shared offset pagination contract.
      *
      * Given: two newly created Statements and a request for page 2 with one item per page.

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
@@ -64,6 +65,28 @@ class StatementServiceTest {
         assertThat(saved.getValue().policy).isEqualTo(
             "export default ({ request }) => request.path === '/api/v0/users';"
         );
+    }
+
+    /**
+     * Verifies that an omitted policy is persisted as a valid unconditional Statement.
+     *
+     * Given: a valid request Statement without a policy source.
+     * Expect: the saved entity has a null policy and policy compilation is not invoked.
+     */
+    @Test
+    @DisplayName("persists an unconditional statement when policy is omitted")
+    void shouldPersistUnconditionalStatementWhenPolicyIsOmitted() {
+        // Arrange
+        when(this.statements.existsByName("users_all")).thenReturn(false);
+        ArgumentCaptor<StatementEntity> saved = ArgumentCaptor.forClass(StatementEntity.class);
+
+        // Act
+        this.service.create("users_all", null, Effect.ALLOW, Scope.REQUEST, "GET", "/api/v0/users", null);
+
+        // Assert
+        verify(this.statements).save(saved.capture());
+        assertThat(saved.getValue().policy).isNull();
+        verifyNoInteractions(this.policyCompiler);
     }
 
     /**

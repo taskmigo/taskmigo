@@ -74,7 +74,7 @@ public class ObjectAuthorizationService {
             if (statement.scope() == Scope.OBJECT && statement.matches(method, path)) {
                 FilterAst filter =
                     statement.policy() == null
-                        ? new FilterAst(new FilterAst.Literal(true))
+                        ? new FilterAst(new FilterAst.All())
                         : this.partialEvaluator.partial(
                               this.policyCompiler.compile(statement.policy(), Scope.OBJECT),
                               snapshot.roots()
@@ -103,7 +103,7 @@ public class ObjectAuthorizationService {
     }
 
     private static FilterAst.Expression or(List<FilterAst.Expression> expressions) {
-        if (expressions.isEmpty()) return new FilterAst.Literal(false);
+        if (expressions.isEmpty()) return new FilterAst.None();
         FilterAst.Expression result = expressions.getFirst();
         for (FilterAst.Expression expression : expressions.subList(1, expressions.size())) {
             result = new FilterAst.Binary(FilterAst.Operator.OR, result, expression);
@@ -127,6 +127,8 @@ public class ObjectAuthorizationService {
         Map<String, Class<?>> fields
     ) {
         return switch (expression) {
+            case FilterAst.All ignored -> builder.conjunction();
+            case FilterAst.None ignored -> builder.disjunction();
             case FilterAst.Literal literal when literal.value() instanceof Boolean value -> value
                 ? builder.conjunction()
                 : builder.disjunction();

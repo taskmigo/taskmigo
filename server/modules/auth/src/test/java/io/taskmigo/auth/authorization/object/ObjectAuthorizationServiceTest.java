@@ -61,8 +61,8 @@ class ObjectAuthorizationServiceTest {
         assertThat(plan.predicate().expression()).isEqualTo(
             new FilterAst.Binary(
                 FilterAst.Operator.AND,
-                new FilterAst.Literal(true),
-                new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Literal(false))
+                new FilterAst.All(),
+                new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.None())
             )
         );
     }
@@ -94,8 +94,8 @@ class ObjectAuthorizationServiceTest {
         assertThat(plan.predicate().expression()).isEqualTo(
             new FilterAst.Binary(
                 FilterAst.Operator.AND,
-                new FilterAst.Literal(true),
-                new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Literal(true))
+                new FilterAst.All(),
+                new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.All())
             )
         );
     }
@@ -131,7 +131,7 @@ class ObjectAuthorizationServiceTest {
                     new FilterAst.Field("username"),
                     new FilterAst.Literal("alice")
                 ),
-                new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Literal(false))
+                new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.None())
             )
         );
     }
@@ -163,7 +163,7 @@ class ObjectAuthorizationServiceTest {
             new FilterAst.Binary(
                 FilterAst.Operator.AND,
                 new FilterAst.Unary(FilterAst.Operator.PRESENT, new FilterAst.Field("username")),
-                new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Literal(false))
+                new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.None())
             )
         );
     }
