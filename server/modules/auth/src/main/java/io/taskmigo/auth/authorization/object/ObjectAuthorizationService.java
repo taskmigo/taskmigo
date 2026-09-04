@@ -58,15 +58,12 @@ public class ObjectAuthorizationService {
     public ObjectAuthorizationPlan plan(UUID userId, String method, String path, Map<String, ?> roots) {
         List<StatementInfo> effectiveStatements = this.statements.resolve(userId);
         Map<UUID, JavaScriptPolicyModule> compiledPolicies = new LinkedHashMap<>();
-        for (StatementInfo statement : effectiveStatements) compiledPolicies.put(
-            statement.id(),
-            this.policyCompiler.compileModule(statement.policy(), statement.scope())
-        );
-        return this.plan(
-            new AuthorizationSnapshot(userId, effectiveStatements, compiledPolicies, roots),
-            method,
-            path
-        );
+        for (StatementInfo statement : effectiveStatements)
+            compiledPolicies.put(
+                statement.id(),
+                this.policyCompiler.compileModule(statement.policy(), statement.scope())
+            );
+        return this.plan(new AuthorizationSnapshot(userId, effectiveStatements, compiledPolicies, roots), method, path);
     }
 
     /// Builds an object plan from the effective Statements already captured for an operation.

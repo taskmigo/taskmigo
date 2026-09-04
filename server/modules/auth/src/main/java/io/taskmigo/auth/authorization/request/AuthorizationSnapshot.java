@@ -28,9 +28,10 @@ public record AuthorizationSnapshot(
         statements = List.copyOf(statements);
         compiledPolicies = Map.copyOf(compiledPolicies);
         Map<UUID, JavaScriptPolicyModule> policies = compiledPolicies;
-        if (policies.size() != statements.size() || statements.stream().anyMatch(
-            statement -> !policies.containsKey(statement.id())
-        )) throw new IllegalArgumentException("authorization snapshot must compile every effective Statement");
+        if (
+            policies.size() != statements.size() ||
+            statements.stream().anyMatch(statement -> !policies.containsKey(statement.id()))
+        ) throw new IllegalArgumentException("authorization snapshot must compile every effective Statement");
         roots = immutableMap(roots);
     }
 
@@ -44,10 +45,8 @@ public record AuthorizationSnapshot(
     private static Map<UUID, JavaScriptPolicyModule> compile(List<StatementInfo> statements) {
         JavaScriptPolicyCompiler compiler = new JavaScriptPolicyCompiler();
         Map<UUID, JavaScriptPolicyModule> compiled = new LinkedHashMap<>();
-        for (StatementInfo statement : statements) compiled.put(
-            statement.id(),
-            compiler.compileModule(statement.policy(), statement.scope())
-        );
+        for (StatementInfo statement : statements)
+            compiled.put(statement.id(), compiler.compileModule(statement.policy(), statement.scope()));
         return compiled;
     }
 

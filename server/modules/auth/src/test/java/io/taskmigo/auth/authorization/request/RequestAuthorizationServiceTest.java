@@ -201,12 +201,7 @@ class RequestAuthorizationServiceTest {
             public Map<String, Map<String, ?>> resolve(Collection<String> keys) {
                 calls.incrementAndGet();
                 assertThat(keys).containsExactlyInAnyOrder("target-user", "owner-user");
-                return Map.of(
-                    "target-user",
-                    Map.of("username", "alice"),
-                    "owner-user",
-                    Map.of("username", "bob")
-                );
+                return Map.of("target-user", Map.of("username", "alice"), "owner-user", Map.of("username", "bob"));
             }
         };
         JavaScriptPolicyEvaluator evaluator = new JavaScriptPolicyEvaluator();
@@ -239,10 +234,7 @@ class RequestAuthorizationServiceTest {
             userId,
             "GET",
             "/api/v0/users",
-            Map.of(
-                "request",
-                Map.of("path", Map.of("userId", "target-user", "ownerId", "owner-user"))
-            )
+            Map.of("request", Map.of("path", Map.of("userId", "target-user", "ownerId", "owner-user")))
         );
 
         // Assert

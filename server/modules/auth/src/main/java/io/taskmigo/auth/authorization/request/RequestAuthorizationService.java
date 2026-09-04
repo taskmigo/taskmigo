@@ -48,10 +48,11 @@ public class RequestAuthorizationService {
     public AuthorizationSnapshot snapshot(UUID userId, Map<String, ?> roots) {
         List<StatementInfo> effectiveStatements = this.statements.resolve(userId);
         Map<UUID, JavaScriptPolicyModule> compiledPolicies = new LinkedHashMap<>();
-        for (StatementInfo statement : effectiveStatements) compiledPolicies.put(
-            statement.id(),
-            this.policyCompiler.compileModule(statement.policy(), statement.scope())
-        );
+        for (StatementInfo statement : effectiveStatements)
+            compiledPolicies.put(
+                statement.id(),
+                this.policyCompiler.compileModule(statement.policy(), statement.scope())
+            );
         return new AuthorizationSnapshot(userId, effectiveStatements, compiledPolicies, roots);
     }
 

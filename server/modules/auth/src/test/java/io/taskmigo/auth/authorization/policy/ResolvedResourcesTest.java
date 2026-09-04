@@ -53,10 +53,9 @@ class ResolvedResourcesTest {
         ResourceKey key = new ResourceKey("project", "project-1");
 
         // Act + Assert
-        assertThatThrownBy(() -> new ResolvedResources(
-            Map.of(key, Map.of("entity", UUID.randomUUID().toString().getBytes())),
-            Map.of()
-        ))
+        assertThatThrownBy(() ->
+            new ResolvedResources(Map.of(key, Map.of("entity", UUID.randomUUID().toString().getBytes())), Map.of())
+        )
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("immutable approved values");
     }

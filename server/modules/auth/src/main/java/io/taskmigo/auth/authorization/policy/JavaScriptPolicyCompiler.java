@@ -265,7 +265,7 @@ public final class JavaScriptPolicyCompiler {
         Counter counter
     ) {
         if (depth > MAX_DEPTH) throw invalid("policy nesting is too deep");
-            counter.consume();
+        counter.consume();
         return switch (node) {
             case ParenthesizedExpression parenthesized -> this.expression(
                 parenthesized.getExpression(),
@@ -494,12 +494,15 @@ public final class JavaScriptPolicyCompiler {
             case PolicyIr.UndefinedValue ignored -> false;
             case PolicyIr.Reference ignored -> true;
             case PolicyIr.PropertyAccess property -> containsReference(property.target());
-            case PolicyIr.ArrayValue array -> array.values().stream().anyMatch(
-                JavaScriptPolicyCompiler::containsReference
-            );
-            case PolicyIr.ObjectValue object -> object.values().values().stream().anyMatch(
-                JavaScriptPolicyCompiler::containsReference
-            );
+            case PolicyIr.ArrayValue array -> array
+                .values()
+                .stream()
+                .anyMatch(JavaScriptPolicyCompiler::containsReference);
+            case PolicyIr.ObjectValue object -> object
+                .values()
+                .values()
+                .stream()
+                .anyMatch(JavaScriptPolicyCompiler::containsReference);
             case PolicyIr.Binary binary -> containsReference(binary.left()) || containsReference(binary.right());
             case PolicyIr.Unary unary -> containsReference(unary.operand());
             case PolicyIr.Conditional conditional -> containsReference(conditional.condition()) ||
@@ -520,14 +523,18 @@ public final class JavaScriptPolicyCompiler {
                 array.values().stream().map(JavaScriptPolicyCompiler::fold).toList()
             );
             case PolicyIr.ObjectValue object -> new PolicyIr.ObjectValue(
-                object.values().entrySet().stream().collect(
-                    java.util.stream.Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> fold(entry.getValue()),
-                        (first, second) -> first,
-                        LinkedHashMap::new
+                object
+                    .values()
+                    .entrySet()
+                    .stream()
+                    .collect(
+                        java.util.stream.Collectors.toMap(
+                            Map.Entry::getKey,
+                            entry -> fold(entry.getValue()),
+                            (first, second) -> first,
+                            LinkedHashMap::new
+                        )
                     )
-                )
             );
             case PolicyIr.Binary binary -> foldBinary(binary);
             case PolicyIr.Unary unary -> foldConstant(new PolicyIr.Unary(unary.operator(), fold(unary.operand())));
@@ -586,38 +593,44 @@ public final class JavaScriptPolicyCompiler {
             case PolicyIr.PropertyAccess property -> {
                 ResultType target = resultType(property.target());
                 yield property.property().equals("length") &&
-                    (target == ResultType.STRING || target == ResultType.ARRAY)
+                (target == ResultType.STRING || target == ResultType.ARRAY)
                     ? ResultType.NUMBER
                     : ResultType.UNKNOWN;
             }
             case PolicyIr.ArrayValue ignored -> ResultType.ARRAY;
             case PolicyIr.ObjectValue ignored -> ResultType.OBJECT;
             case PolicyIr.Binary binary -> switch (binary.operator()) {
-                case OR, AND ->
-                    resultType(binary.left()) == ResultType.BOOLEAN && resultType(binary.right()) == ResultType.BOOLEAN
-                        ? ResultType.BOOLEAN
-                        : ResultType.UNKNOWN;
-                case EQUAL, NOT_EQUAL, GREATER, GREATER_OR_EQUAL, LESS, LESS_OR_EQUAL, IN, CONTAINS, STARTS_WITH,
-                    ENDS_WITH ->
-                    ResultType.BOOLEAN;
-                case ADD ->
-                    resultType(binary.left()) == ResultType.STRING || resultType(binary.right()) == ResultType.STRING
-                        ? ResultType.STRING
-                        : resultType(binary.left()) == ResultType.NUMBER &&
-                        resultType(binary.right()) == ResultType.NUMBER
-                        ? ResultType.NUMBER
-                        : ResultType.UNKNOWN;
-                case SUBTRACT, MULTIPLY, DIVIDE, MODULO ->
-                    resultType(binary.left()) == ResultType.NUMBER && resultType(binary.right()) == ResultType.NUMBER
-                        ? ResultType.NUMBER
-                        : ResultType.UNKNOWN;
+                case OR, AND -> resultType(binary.left()) == ResultType.BOOLEAN &&
+                resultType(binary.right()) == ResultType.BOOLEAN
+                    ? ResultType.BOOLEAN
+                    : ResultType.UNKNOWN;
+                case
+                    EQUAL,
+                    NOT_EQUAL,
+                    GREATER,
+                    GREATER_OR_EQUAL,
+                    LESS,
+                    LESS_OR_EQUAL,
+                    IN,
+                    CONTAINS,
+                    STARTS_WITH,
+                    ENDS_WITH -> ResultType.BOOLEAN;
+                case ADD -> resultType(binary.left()) == ResultType.STRING ||
+                resultType(binary.right()) == ResultType.STRING
+                    ? ResultType.STRING
+                    : resultType(binary.left()) == ResultType.NUMBER && resultType(binary.right()) == ResultType.NUMBER
+                      ? ResultType.NUMBER
+                      : ResultType.UNKNOWN;
+                case SUBTRACT, MULTIPLY, DIVIDE, MODULO -> resultType(binary.left()) == ResultType.NUMBER &&
+                resultType(binary.right()) == ResultType.NUMBER
+                    ? ResultType.NUMBER
+                    : ResultType.UNKNOWN;
             };
             case PolicyIr.Unary unary -> unary.operator() == PolicyIr.UnaryOperator.NOT
                 ? ResultType.BOOLEAN
                 : ResultType.NUMBER;
-            case PolicyIr.Conditional conditional ->
-                resultType(conditional.whenTrue()) == ResultType.BOOLEAN &&
-                    resultType(conditional.whenFalse()) == ResultType.BOOLEAN
+            case PolicyIr.Conditional conditional -> resultType(conditional.whenTrue()) == ResultType.BOOLEAN &&
+            resultType(conditional.whenFalse()) == ResultType.BOOLEAN
                 ? ResultType.BOOLEAN
                 : ResultType.UNKNOWN;
         };

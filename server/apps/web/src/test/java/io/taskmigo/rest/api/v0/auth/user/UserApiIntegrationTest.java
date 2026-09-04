@@ -99,14 +99,16 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
     void shouldResolveUserResourcesWithoutNPlusOneQueries() {
         // Arrange
         List<UUID> userIds = new ArrayList<>();
-        IntStream.range(0, 8).forEach(index -> userIds.add(
-            this.users.create(
-                "resource-query-user-" + UUID.randomUUID(),
-                Set.of("resource-query-" + UUID.randomUUID() + "@example.com"),
-                "Resource",
-                "User"
+        IntStream.range(0, 8).forEach(index ->
+            userIds.add(
+                this.users.create(
+                    "resource-query-user-" + UUID.randomUUID(),
+                    Set.of("resource-query-" + UUID.randomUUID() + "@example.com"),
+                    "Resource",
+                    "User"
+                )
             )
-        ));
+        );
         this.statistics.clear();
 
         // Act

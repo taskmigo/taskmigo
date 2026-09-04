@@ -47,8 +47,9 @@ class RequestAuthorizationManagerTest {
         AuthorizationSnapshot snapshot = new AuthorizationSnapshot(userId, List.of(), Map.of());
         RequestAuthorizationService authorization = mock(RequestAuthorizationService.class);
         when(authorization.snapshot(eq(userId), any())).thenReturn(snapshot);
-        when(authorization.authorize(snapshot, "GET", "/api/v0/users/target/statements"))
-            .thenReturn(new RequestAuthorizationDecision(true));
+        when(authorization.authorize(snapshot, "GET", "/api/v0/users/target/statements")).thenReturn(
+            new RequestAuthorizationDecision(true)
+        );
         Jwt jwt = Jwt.withTokenValue("token")
             .header("alg", "none")
             .claim("principal_type", "user")
@@ -94,8 +95,9 @@ class RequestAuthorizationManagerTest {
         AuthorizationSnapshot snapshot = new AuthorizationSnapshot(userId, List.of(), Map.of());
         RequestAuthorizationService authorization = mock(RequestAuthorizationService.class);
         when(authorization.snapshot(eq(userId), any())).thenReturn(snapshot);
-        when(authorization.authorize(snapshot, "GET", "/api/v0/users"))
-            .thenReturn(new RequestAuthorizationDecision(false));
+        when(authorization.authorize(snapshot, "GET", "/api/v0/users")).thenReturn(
+            new RequestAuthorizationDecision(false)
+        );
         Jwt jwt = Jwt.withTokenValue("token")
             .header("alg", "none")
             .claim("principal_type", "user")
