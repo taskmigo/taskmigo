@@ -36,15 +36,25 @@ public final class UserAuthorizationResourceAdapter implements AuthorizationReso
         }
         Map<String, Map<String, ?>> result = new LinkedHashMap<>();
         for (UserEntity user : this.users.findAllById(identifiers.values())) {
-            result.put(user.id.toString(), Map.of(
-                "id", user.id.toString(),
-                "username", user.username,
-                "firstName", user.firstName,
-                "lastName", user.lastName,
-                "emails", user.emails.stream().sorted().toList(),
-                "displayName", user.displayName(),
-                "status", user.status.name()
-            ));
+            result.put(
+                user.id.toString(),
+                Map.of(
+                    "id",
+                    user.id.toString(),
+                    "username",
+                    user.username,
+                    "firstName",
+                    user.firstName,
+                    "lastName",
+                    user.lastName,
+                    "emails",
+                    user.emails.stream().sorted().toList(),
+                    "displayName",
+                    user.displayName(),
+                    "status",
+                    user.status.name()
+                )
+            );
         }
         return Map.copyOf(result);
     }

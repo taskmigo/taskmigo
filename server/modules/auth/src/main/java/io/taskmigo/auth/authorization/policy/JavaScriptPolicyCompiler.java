@@ -109,9 +109,10 @@ public final class JavaScriptPolicyCompiler {
         if (policyDeclarations.size() != 1) throw invalid("module must contain only one default export");
         FunctionNode function = function(policyDeclarations.getFirst(), "default export");
         Map<String, PolicyIr.Expression> roots = parameters(function, true);
-        PolicyIr.Expression expression = function.getBody() instanceof Block block
-            ? this.statements(childStatements(block), new HashMap<>(roots), 0, new Counter())
-            : this.expression(function.getBody(), roots, 0, new Counter());
+        PolicyIr.Expression expression =
+            function.getBody() instanceof Block block
+                ? this.statements(childStatements(block), new HashMap<>(roots), 0, new Counter())
+                : this.expression(function.getBody(), roots, 0, new Counter());
         if (scope == Scope.OBJECT) validateObjectPolicy(expression);
         List<ResourceDescriptor> resources = resourcesFunction == null ? List.of() : this.resources(resourcesFunction);
         if (scope == Scope.REQUEST) validateObjectReferences(expression, resources);
@@ -119,7 +120,8 @@ public final class JavaScriptPolicyCompiler {
     }
 
     private static FunctionNode function(AstNode declaration, String kind) {
-        AstNode expression = declaration instanceof ExpressionStatement statement ? statement.getExpression() : declaration;
+        AstNode expression =
+            declaration instanceof ExpressionStatement statement ? statement.getExpression() : declaration;
         if (!(expression instanceof FunctionNode function)) throw invalid(kind + " must be a function");
         if (function.isGenerator() || function.hasRestParameter() || function.getParams().size() > 1) throw invalid(
             "policy function must have zero or one non-rest parameter"
@@ -140,12 +142,14 @@ public final class JavaScriptPolicyCompiler {
                 property.isGetterMethod() ||
                 property.isSetterMethod() ||
                 property.isMethod()
-            ) throw invalid(
-                "policy parameter must use simple root destructuring"
-            );
+            ) throw invalid("policy parameter must use simple root destructuring");
             String key = propertyName(property.getKey());
-            if ((!allowObject && key.equals("object")) || !ROOTS.contains(key)
-                || !(property.getValue() instanceof Name value) || !key.equals(value.getIdentifier())) {
+            if (
+                (!allowObject && key.equals("object")) ||
+                !ROOTS.contains(key) ||
+                !(property.getValue() instanceof Name value) ||
+                !key.equals(value.getIdentifier())
+            ) {
                 throw invalid("policy parameter contains an unsupported root");
             }
             if (roots.put(key, new PolicyIr.Reference(key, List.of())) != null) throw invalid(
@@ -162,9 +166,9 @@ public final class JavaScriptPolicyCompiler {
         if (statements.size() != 1 || !(statements.getFirst() instanceof ReturnStatement result)) throw invalid(
             "resources export must return one object literal"
         );
-        if (result.getReturnValue() == null || !(result.getReturnValue() instanceof ObjectLiteral object)) throw invalid(
-            "resources export must return one object literal"
-        );
+        if (
+            result.getReturnValue() == null || !(result.getReturnValue() instanceof ObjectLiteral object)
+        ) throw invalid("resources export must return one object literal");
         List<ResourceDescriptor> descriptors = new ArrayList<>();
         for (AbstractObjectProperty element : object.getElements()) {
             if (
@@ -174,13 +178,15 @@ public final class JavaScriptPolicyCompiler {
                 property.isMethod()
             ) throw invalid("resource declarations must contain simple properties");
             String name = propertyName(property.getKey());
-            if (!(property.getValue() instanceof FunctionCall call) || !(call.getTarget() instanceof Name intrinsic)
-                || !intrinsic.getIdentifier().equals("resource") || call.getArguments().size() != 2) throw invalid(
-                "resource declarations must call resource(type, key)"
-            );
-            if (!(call.getArguments().getFirst() instanceof StringLiteral type) || type.getValue().isBlank()) throw invalid(
-                "resource type must be a nonblank string"
-            );
+            if (
+                !(property.getValue() instanceof FunctionCall call) ||
+                !(call.getTarget() instanceof Name intrinsic) ||
+                !intrinsic.getIdentifier().equals("resource") ||
+                call.getArguments().size() != 2
+            ) throw invalid("resource declarations must call resource(type, key)");
+            if (
+                !(call.getArguments().getFirst() instanceof StringLiteral type) || type.getValue().isBlank()
+            ) throw invalid("resource type must be a nonblank string");
             PolicyIr.Expression key = this.expression(call.getArguments().get(1), roots, 0, new Counter());
             if (containsObject(key)) throw invalid("resource keys cannot depend on object resources");
             if (descriptors.stream().anyMatch(existing -> existing.name().equals(name))) throw invalid(
@@ -222,9 +228,10 @@ public final class JavaScriptPolicyCompiler {
             PolicyIr.Expression condition = this.expression(conditional.getCondition(), environment, 0, counter);
             List<AstNode> continuation = statements.subList(index + 1, statements.size());
             PolicyIr.Expression whenTrue = this.branch(conditional.getThenPart(), continuation, environment, counter);
-            PolicyIr.Expression whenFalse = conditional.getElsePart() == null
-                ? this.statements(continuation, new HashMap<>(environment), 0, counter)
-                : this.branch(conditional.getElsePart(), continuation, environment, counter);
+            PolicyIr.Expression whenFalse =
+                conditional.getElsePart() == null
+                    ? this.statements(continuation, new HashMap<>(environment), 0, counter)
+                    : this.branch(conditional.getElsePart(), continuation, environment, counter);
             return new PolicyIr.Conditional(condition, whenTrue, whenFalse);
         }
         throw invalid("unsupported policy statement: " + statement.getClass().getSimpleName());
@@ -238,7 +245,9 @@ public final class JavaScriptPolicyCompiler {
     ) {
         List<AstNode> branchStatements = new ArrayList<>();
         if (branch instanceof Block block) branchStatements.addAll(childStatements(block));
-        else if (branch instanceof org.mozilla.javascript.ast.Scope scope) branchStatements.addAll(childStatements(scope));
+        else if (branch instanceof org.mozilla.javascript.ast.Scope scope) branchStatements.addAll(
+            childStatements(scope)
+        );
         else branchStatements.add(branch);
         branchStatements.addAll(continuation);
         return this.statements(branchStatements, new HashMap<>(environment), 0, counter);
@@ -254,7 +263,12 @@ public final class JavaScriptPolicyCompiler {
         counter.nodes++;
         if (counter.nodes > MAX_NODES) throw invalid("policy contains too many nodes");
         return switch (node) {
-            case ParenthesizedExpression parenthesized -> this.expression(parenthesized.getExpression(), environment, depth + 1, counter);
+            case ParenthesizedExpression parenthesized -> this.expression(
+                parenthesized.getExpression(),
+                environment,
+                depth + 1,
+                counter
+            );
             case Name name -> name(environment, name);
             case StringLiteral string -> new PolicyIr.Literal(string.getValue());
             case NumberLiteral number -> new PolicyIr.Literal(number.getNumber());
@@ -341,13 +355,11 @@ public final class JavaScriptPolicyCompiler {
                 property.isGetterMethod() ||
                 property.isSetterMethod() ||
                 property.isMethod()
-            ) throw invalid(
-                "object literals must contain simple properties"
-            );
+            ) throw invalid("object literals must contain simple properties");
             String name = propertyName(property.getKey());
-            if (values.put(name, this.expression(property.getValue(), environment, depth + 1, counter)) != null) throw invalid(
-                "object literals cannot contain duplicate properties"
-            );
+            if (
+                values.put(name, this.expression(property.getValue(), environment, depth + 1, counter)) != null
+            ) throw invalid("object literals cannot contain duplicate properties");
         }
         return new PolicyIr.ObjectValue(values);
     }
@@ -455,20 +467,29 @@ public final class JavaScriptPolicyCompiler {
             case PolicyIr.Literal ignored -> false;
             case PolicyIr.UndefinedValue ignored -> false;
             case PolicyIr.PropertyAccess property -> containsObject(property.target());
-            case PolicyIr.ArrayValue array -> array.values().stream().anyMatch(JavaScriptPolicyCompiler::containsObject);
-            case PolicyIr.ObjectValue object -> object.values().values().stream().anyMatch(JavaScriptPolicyCompiler::containsObject);
+            case PolicyIr.ArrayValue array -> array
+                .values()
+                .stream()
+                .anyMatch(JavaScriptPolicyCompiler::containsObject);
+            case PolicyIr.ObjectValue object -> object
+                .values()
+                .values()
+                .stream()
+                .anyMatch(JavaScriptPolicyCompiler::containsObject);
             case PolicyIr.Binary binary -> containsObject(binary.left()) || containsObject(binary.right());
             case PolicyIr.Unary unary -> containsObject(unary.operand());
-            case PolicyIr.Conditional conditional -> containsObject(conditional.condition())
-                || containsObject(conditional.whenTrue())
-                || containsObject(conditional.whenFalse());
+            case PolicyIr.Conditional conditional -> containsObject(conditional.condition()) ||
+                containsObject(conditional.whenTrue()) ||
+                containsObject(conditional.whenFalse());
         };
     }
 
     private static void validateObjectPolicy(PolicyIr.Expression expression) {
         switch (expression) {
-            case PolicyIr.Literal ignored -> {}
-            case PolicyIr.UndefinedValue ignored -> {}
+            case PolicyIr.Literal ignored -> {
+            }
+            case PolicyIr.UndefinedValue ignored -> {
+            }
             case PolicyIr.Reference reference -> {
                 if (reference.root().equals("object") && reference.path().size() != 1) throw invalid(
                     "Object policies may only select direct queryable fields"
@@ -487,22 +508,24 @@ public final class JavaScriptPolicyCompiler {
                 throw invalid("object literal values are not queryable");
             }
             case PolicyIr.Binary binary -> {
-                if (binary.operator() == PolicyIr.BinaryOperator.AND
-                    || binary.operator() == PolicyIr.BinaryOperator.OR) {
+                if (
+                    binary.operator() == PolicyIr.BinaryOperator.AND || binary.operator() == PolicyIr.BinaryOperator.OR
+                ) {
                     validateObjectPolicy(binary.left());
                     validateObjectPolicy(binary.right());
-                }
-                else if (containsObject(binary.left()) && containsObject(binary.right())) throw invalid(
+                } else if (containsObject(binary.left()) && containsObject(binary.right())) throw invalid(
                     "object-to-object comparisons are not queryable"
                 );
                 else if (containsObject(binary)) {
-                    if (Set.of(
-                        PolicyIr.BinaryOperator.ADD,
-                        PolicyIr.BinaryOperator.SUBTRACT,
-                        PolicyIr.BinaryOperator.MULTIPLY,
-                        PolicyIr.BinaryOperator.DIVIDE,
-                        PolicyIr.BinaryOperator.MODULO
-                    ).contains(binary.operator())) throw invalid("object arithmetic is not queryable");
+                    if (
+                        Set.of(
+                            PolicyIr.BinaryOperator.ADD,
+                            PolicyIr.BinaryOperator.SUBTRACT,
+                            PolicyIr.BinaryOperator.MULTIPLY,
+                            PolicyIr.BinaryOperator.DIVIDE,
+                            PolicyIr.BinaryOperator.MODULO
+                        ).contains(binary.operator())
+                    ) throw invalid("object arithmetic is not queryable");
                     validateObjectPolicy(binary.left());
                     validateObjectPolicy(binary.right());
                 }
@@ -519,23 +542,30 @@ public final class JavaScriptPolicyCompiler {
         }
     }
 
-    private static void validateObjectReferences(
-        PolicyIr.Expression expression,
-        List<ResourceDescriptor> resources
-    ) {
-        Set<String> names = resources.stream().map(ResourceDescriptor::name).collect(java.util.stream.Collectors.toSet());
+    private static void validateObjectReferences(PolicyIr.Expression expression, List<ResourceDescriptor> resources) {
+        Set<String> names = resources
+            .stream()
+            .map(ResourceDescriptor::name)
+            .collect(java.util.stream.Collectors.toSet());
         switch (expression) {
             case PolicyIr.Reference reference -> {
-                if (reference.root().equals("object")
-                    && (reference.path().isEmpty() || !names.contains(reference.path().getFirst()))) throw invalid(
-                    "object references must select a declared request resource"
-                );
+                if (
+                    reference.root().equals("object") &&
+                    (reference.path().isEmpty() || !names.contains(reference.path().getFirst()))
+                ) throw invalid("object references must select a declared request resource");
             }
-            case PolicyIr.Literal ignored -> {}
-            case PolicyIr.UndefinedValue ignored -> {}
+            case PolicyIr.Literal ignored -> {
+            }
+            case PolicyIr.UndefinedValue ignored -> {
+            }
             case PolicyIr.PropertyAccess property -> validateObjectReferences(property.target(), resources);
-            case PolicyIr.ArrayValue array -> array.values().forEach(value -> validateObjectReferences(value, resources));
-            case PolicyIr.ObjectValue object -> object.values().values().forEach(value -> validateObjectReferences(value, resources));
+            case PolicyIr.ArrayValue array -> array
+                .values()
+                .forEach(value -> validateObjectReferences(value, resources));
+            case PolicyIr.ObjectValue object -> object
+                .values()
+                .values()
+                .forEach(value -> validateObjectReferences(value, resources));
             case PolicyIr.Binary binary -> {
                 validateObjectReferences(binary.left(), resources);
                 validateObjectReferences(binary.right(), resources);
@@ -553,7 +583,7 @@ public final class JavaScriptPolicyCompiler {
         StringBuilder sanitized = new StringBuilder(source.length());
         int defaults = 0;
         int namedResources = 0;
-        for (int index = 0; index < source.length();) {
+        for (int index = 0; index < source.length(); ) {
             char current = source.charAt(index);
             if (current == '/' && index + 1 < source.length() && source.charAt(index + 1) == '/') {
                 int end = source.indexOf('\n', index + 2);
@@ -616,10 +646,12 @@ public final class JavaScriptPolicyCompiler {
     }
 
     private static boolean wordAt(String source, int index, String expected) {
-        return source.startsWith(expected, index)
-            && (index + expected.length() == source.length()
-                || !Character.isJavaIdentifierPart(source.charAt(index + expected.length())))
-            && (index == 0 || !Character.isJavaIdentifierPart(source.charAt(index - 1)));
+        return (
+            source.startsWith(expected, index) &&
+            (index + expected.length() == source.length() ||
+                !Character.isJavaIdentifierPart(source.charAt(index + expected.length()))) &&
+            (index == 0 || !Character.isJavaIdentifierPart(source.charAt(index - 1)))
+        );
     }
 
     private static int skipTrivia(String source, int index) {

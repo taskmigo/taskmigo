@@ -26,13 +26,11 @@ public final class AuthorizationResourceRegistry {
         List<AuthorizationResourceAdapter> adapters
     ) {
         this.evaluator = evaluator;
-        this.adapters = adapters.stream().collect(Collectors.toUnmodifiableMap(
-            AuthorizationResourceAdapter::type,
-            Function.identity(),
-            (first, second) -> {
+        this.adapters = adapters.stream().collect(
+            Collectors.toUnmodifiableMap(AuthorizationResourceAdapter::type, Function.identity(), (first, second) -> {
                 throw new IllegalStateException("duplicate authorization resource adapter");
-            }
-        ));
+            })
+        );
     }
 
     /// Resolves resource descriptors without allowing policy code to access persistence directly.
@@ -57,11 +55,10 @@ public final class AuthorizationResourceRegistry {
         }
 
         Map<ResourceKey, Map<String, ?>> resolved = new HashMap<>();
-        Map<String, List<ResourceKey>> byType = uniqueKeys.values().stream().collect(Collectors.groupingBy(
-            ResourceKey::type,
-            LinkedHashMap::new,
-            Collectors.toList()
-        ));
+        Map<String, List<ResourceKey>> byType = uniqueKeys
+            .values()
+            .stream()
+            .collect(Collectors.groupingBy(ResourceKey::type, LinkedHashMap::new, Collectors.toList()));
         for (Map.Entry<String, List<ResourceKey>> entry : byType.entrySet()) {
             AuthorizationResourceAdapter adapter = this.adapters.get(entry.getKey());
             if (adapter == null) throw invalid("no authorization resource adapter for type " + entry.getKey());

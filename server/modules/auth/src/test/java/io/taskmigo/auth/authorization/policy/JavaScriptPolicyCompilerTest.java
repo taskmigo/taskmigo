@@ -26,15 +26,15 @@ class JavaScriptPolicyCompilerTest {
     void shouldCompilePolicyWhenSupportedJavaScriptSemanticsAreUsed() {
         // Arrange
         String source = """
-            export default ({ request, principal }) => {
-              const methods = ["GET", "POST"];
-              if (methods.includes(request.method) && request.path.startsWith("/api/")) {
-                return principal.enabled === true;
-              } else {
-                return false;
-              }
-            };
-            """;
+        export default ({ request, principal }) => {
+          const methods = ["GET", "POST"];
+          if (methods.includes(request.method) && request.path.startsWith("/api/")) {
+            return principal.enabled === true;
+          } else {
+            return false;
+          }
+        };
+        """;
 
         // Act
         PolicyIr policy = this.compiler.compile(source, Scope.REQUEST);
@@ -114,30 +114,29 @@ class JavaScriptPolicyCompilerTest {
     void shouldCompileResourcesWhenRequestPolicySelectsNamedObjects() {
         // Arrange
         String source = """
-            export function resources({ request, principal }) {
-              return { user: resource("user", request.path.userId) };
-            }
-            export default ({ object }) => object.user.username === "alice";
-            """;
+        export function resources({ request, principal }) {
+          return { user: resource("user", request.path.userId) };
+        }
+        export default ({ object }) => object.user.username === "alice";
+        """;
 
         // Act
         JavaScriptPolicyModule module = this.compiler.compileModule(source, Scope.REQUEST);
 
         // Assert
-        assertThat(module.resources()).singleElement().satisfies(resource -> {
-            assertThat(resource.name()).isEqualTo("user");
-            assertThat(resource.type()).isEqualTo("user");
-            assertThat(resource.key()).isEqualTo(new PolicyIr.Reference("request", java.util.List.of("path", "userId")));
-        });
+        assertThat(module.resources())
+            .singleElement()
+            .satisfies(resource -> {
+                assertThat(resource.name()).isEqualTo("user");
+                assertThat(resource.type()).isEqualTo("user");
+                assertThat(resource.key()).isEqualTo(
+                    new PolicyIr.Reference("request", java.util.List.of("path", "userId"))
+                );
+            });
         assertThat(module.policy()).isNotNull();
     }
 
     private static Map<String, ?> roots(String method, String path, boolean enabled) {
-        return Map.of(
-            "request",
-            Map.of("method", method, "path", path),
-            "principal",
-            Map.of("enabled", enabled)
-        );
+        return Map.of("request", Map.of("method", method, "path", path), "principal", Map.of("enabled", enabled));
     }
 }

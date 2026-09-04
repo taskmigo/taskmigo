@@ -29,7 +29,8 @@ public final class JavaScriptPolicyEvaluator {
         return result;
     }
 
-    @Nullable Object evaluateValue(PolicyIr.Expression expression, Map<String, ?> roots) {
+    @Nullable
+    Object evaluateValue(PolicyIr.Expression expression, Map<String, ?> roots) {
         return this.value(expression, roots);
     }
 
@@ -43,7 +44,11 @@ public final class JavaScriptPolicyEvaluator {
             case PolicyIr.UndefinedValue ignored -> UNDEFINED;
             case PolicyIr.Reference reference -> this.reference(reference, roots);
             case PolicyIr.PropertyAccess property -> this.property(property, roots);
-            case PolicyIr.ArrayValue array -> array.values().stream().map(item -> this.value(item, roots)).toList();
+            case PolicyIr.ArrayValue array -> array
+                .values()
+                .stream()
+                .map(item -> this.value(item, roots))
+                .toList();
             case PolicyIr.ObjectValue object -> this.object(object, roots);
             case PolicyIr.Binary binary -> this.binary(binary, roots);
             case PolicyIr.Unary unary -> this.unary(unary, roots);
@@ -200,9 +205,7 @@ public final class JavaScriptPolicyEvaluator {
         if (!(left instanceof String text) || !(right instanceof String searched)) throw invalidValue(
             operator.name().toLowerCase() + " requires strings"
         );
-        return operator == PolicyIr.BinaryOperator.STARTS_WITH
-            ? text.startsWith(searched)
-            : text.endsWith(searched);
+        return operator == PolicyIr.BinaryOperator.STARTS_WITH ? text.startsWith(searched) : text.endsWith(searched);
     }
 
     private static BigDecimal number(@Nullable Object value) {

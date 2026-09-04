@@ -50,11 +50,7 @@ public class EffectiveStatementResolver {
     /// @param userId the User whose effective authorization Statements are required
     /// @return every effective Statement exactly once
     /// @throws UserException if the User does not exist
-    @Transactional(
-        readOnly = true,
-        isolation = Isolation.REPEATABLE_READ,
-        propagation = Propagation.REQUIRES_NEW
-    )
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ, propagation = Propagation.REQUIRES_NEW)
     public List<StatementInfo> resolve(UUID userId) {
         UserEntity user = this.users
             .findById(userId)
@@ -62,11 +58,7 @@ public class EffectiveStatementResolver {
         Set<UUID> statementIds = new HashSet<>(user.statementIds());
         Set<UUID> roleIds = new HashSet<>(user.roleIds());
         List<GroupEntity> directGroups = this.groups.findDistinctByMemberIdsContains(user.id());
-        List<UUID> groupFrontier = directGroups
-            .stream()
-            .map(GroupEntity::id)
-            .sorted()
-            .toList();
+        List<UUID> groupFrontier = directGroups.stream().map(GroupEntity::id).sorted().toList();
         Set<UUID> visitedGroups = new HashSet<>();
         boolean firstGroupBatch = true;
         while (!groupFrontier.isEmpty()) {

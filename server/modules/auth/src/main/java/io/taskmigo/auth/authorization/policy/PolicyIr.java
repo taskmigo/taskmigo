@@ -6,10 +6,18 @@ import org.jspecify.annotations.Nullable;
 
 /// Represents the immutable, parser-independent form of a compiled authorization policy.
 public record PolicyIr(Expression expression) {
-
     /// Represents one policy expression.
     public sealed interface Expression
-        permits Literal, UndefinedValue, Reference, PropertyAccess, ArrayValue, ObjectValue, Binary, Unary, Conditional {}
+        permits
+            Literal,
+            UndefinedValue,
+            Reference,
+            PropertyAccess,
+            ArrayValue,
+            ObjectValue,
+            Binary,
+            Unary,
+            Conditional {}
 
     /// Represents a JavaScript primitive literal.
     public record Literal(@Nullable Object value) implements Expression {}

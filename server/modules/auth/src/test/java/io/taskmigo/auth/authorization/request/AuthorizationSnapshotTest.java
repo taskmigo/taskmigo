@@ -28,11 +28,7 @@ class AuthorizationSnapshotTest {
         request.put("method", methods);
         Map<String, Object> roots = new HashMap<>();
         roots.put("request", request);
-        AuthorizationSnapshot snapshot = new AuthorizationSnapshot(
-            UUID.randomUUID(),
-            List.<StatementInfo>of(),
-            roots
-        );
+        AuthorizationSnapshot snapshot = new AuthorizationSnapshot(UUID.randomUUID(), List.<StatementInfo>of(), roots);
 
         // Act
         methods.add("POST");

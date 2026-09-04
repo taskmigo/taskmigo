@@ -36,16 +36,27 @@ public final class PolicyIrPartialEvaluator {
             case PolicyIr.Reference reference when reference.root().equals("object") -> reference;
             case PolicyIr.Reference reference -> new PolicyIr.Literal(resolve(reference, roots));
             case PolicyIr.PropertyAccess property -> this.specializeProperty(property, roots);
-            case PolicyIr.ArrayValue array -> new PolicyIr.ArrayValue(array.values().stream()
-                .map(value -> this.specialize(value, roots))
-                .toList());
-            case PolicyIr.ObjectValue object -> new PolicyIr.ObjectValue(object.values().entrySet().stream()
-                .collect(java.util.stream.Collectors.toMap(
-                    Map.Entry::getKey,
-                    entry -> this.specialize(entry.getValue(), roots),
-                    (first, second) -> first,
-                    LinkedHashMap::new
-                )));
+            case PolicyIr.ArrayValue array -> new PolicyIr.ArrayValue(
+                array
+                    .values()
+                    .stream()
+                    .map(value -> this.specialize(value, roots))
+                    .toList()
+            );
+            case PolicyIr.ObjectValue object -> new PolicyIr.ObjectValue(
+                object
+                    .values()
+                    .entrySet()
+                    .stream()
+                    .collect(
+                        java.util.stream.Collectors.toMap(
+                            Map.Entry::getKey,
+                            entry -> this.specialize(entry.getValue(), roots),
+                            (first, second) -> first,
+                            LinkedHashMap::new
+                        )
+                    )
+            );
             case PolicyIr.Binary binary -> this.specializeBinary(binary, roots);
             case PolicyIr.Unary unary -> this.specializeUnary(unary, roots);
             case PolicyIr.Conditional conditional -> {
@@ -67,7 +78,9 @@ public final class PolicyIrPartialEvaluator {
     private PolicyIr.Expression specializeProperty(PolicyIr.PropertyAccess property, Map<String, ?> roots) {
         PolicyIr.Expression target = this.specialize(property.target(), roots);
         Object value = constantValue(new PolicyIr.PropertyAccess(target, property.property()));
-        return value == UNKNOWN ? new PolicyIr.PropertyAccess(target, property.property()) : new PolicyIr.Literal(value);
+        return value == UNKNOWN
+            ? new PolicyIr.PropertyAccess(target, property.property())
+            : new PolicyIr.Literal(value);
     }
 
     private PolicyIr.Expression specializeBinary(PolicyIr.Binary binary, Map<String, ?> roots) {
@@ -98,18 +111,16 @@ public final class PolicyIrPartialEvaluator {
             case PolicyIr.UndefinedValue ignored -> throw invalid("undefined is not a database filter value");
             case PolicyIr.Reference reference -> objectField(reference);
             case PolicyIr.PropertyAccess ignored -> throw invalid("computed properties are not queryable");
-            case PolicyIr.ArrayValue array -> new FilterAst.Literal(array.values().stream()
-                .map(PolicyIrPartialEvaluator::constantRequired)
-                .toList());
+            case PolicyIr.ArrayValue array -> new FilterAst.Literal(
+                array.values().stream().map(PolicyIrPartialEvaluator::constantRequired).toList()
+            );
             case PolicyIr.ObjectValue ignored -> throw invalid("object literals are not queryable");
             case PolicyIr.Binary binary -> binary(binary);
-            case PolicyIr.Unary unary when unary.operator() == PolicyIr.UnaryOperator.NOT
-                && unary.operand() instanceof PolicyIr.Binary binary
-                && binary.operator() == PolicyIr.BinaryOperator.IN -> new FilterAst.Binary(
-                    FilterAst.Operator.NIN,
-                    this.filter(binary.left()),
-                    this.filter(binary.right())
-                );
+            case PolicyIr.Unary unary when (
+                unary.operator() == PolicyIr.UnaryOperator.NOT &&
+                unary.operand() instanceof PolicyIr.Binary binary &&
+                binary.operator() == PolicyIr.BinaryOperator.IN
+            ) -> new FilterAst.Binary(FilterAst.Operator.NIN, this.filter(binary.left()), this.filter(binary.right()));
             case PolicyIr.Unary unary when unary.operator() == PolicyIr.UnaryOperator.NOT -> new FilterAst.Unary(
                 FilterAst.Operator.NOT,
                 this.filter(unary.operand())
@@ -120,15 +131,15 @@ public final class PolicyIrPartialEvaluator {
     }
 
     private FilterAst.Expression binary(PolicyIr.Binary binary) {
-        if (binary.operator() == PolicyIr.BinaryOperator.CONTAINS
-            && binary.left() instanceof PolicyIr.ArrayValue array
-            && binary.right() instanceof PolicyIr.Reference reference) {
+        if (
+            binary.operator() == PolicyIr.BinaryOperator.CONTAINS &&
+            binary.left() instanceof PolicyIr.ArrayValue array &&
+            binary.right() instanceof PolicyIr.Reference reference
+        ) {
             return new FilterAst.Binary(
                 FilterAst.Operator.IN,
                 objectField(reference),
-                new FilterAst.Literal(array.values().stream()
-                    .map(PolicyIrPartialEvaluator::constantRequired)
-                    .toList())
+                new FilterAst.Literal(array.values().stream().map(PolicyIrPartialEvaluator::constantRequired).toList())
             );
         }
         FilterAst.Operator operator = switch (binary.operator()) {
@@ -144,12 +155,13 @@ public final class PolicyIrPartialEvaluator {
             case CONTAINS -> FilterAst.Operator.CONTAINS;
             case STARTS_WITH -> FilterAst.Operator.STARTS_WITH;
             case ENDS_WITH -> FilterAst.Operator.ENDS_WITH;
-            case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO -> throw invalid(
-                "arithmetic residuals are not queryable"
-            );
+            case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO -> throw invalid("arithmetic residuals are not queryable");
         };
-        if ((operator == FilterAst.Operator.EQ || operator == FilterAst.Operator.NE)
-            && isUndefined(binary.right()) && binary.left() instanceof PolicyIr.Reference reference) {
+        if (
+            (operator == FilterAst.Operator.EQ || operator == FilterAst.Operator.NE) &&
+            isUndefined(binary.right()) &&
+            binary.left() instanceof PolicyIr.Reference reference
+        ) {
             FilterAst.Expression field = objectField(reference);
             return operator == FilterAst.Operator.EQ
                 ? new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Unary(FilterAst.Operator.PRESENT, field))
@@ -173,7 +185,8 @@ public final class PolicyIrPartialEvaluator {
         if (!roots.containsKey(reference.root())) throw invalid(
             "missing authorization context value: " + reference.root()
         );
-        @Nullable Object current = roots.get(reference.root());
+        @Nullable
+        Object current = roots.get(reference.root());
         for (String part : reference.path()) {
             if (!(current instanceof Map<?, ?> values) || !values.containsKey(part)) throw invalid(
                 "missing authorization context value: " + reference.root() + "." + part
@@ -192,9 +205,7 @@ public final class PolicyIrPartialEvaluator {
     }
 
     private static @Nullable Object constantValue(PolicyIr.Expression expression) {
-        return containsReference(expression)
-            ? UNKNOWN
-            : EVALUATOR.evaluateValue(expression, Map.of());
+        return containsReference(expression) ? UNKNOWN : EVALUATOR.evaluateValue(expression, Map.of());
     }
 
     private static boolean containsReference(PolicyIr.Expression expression) {
@@ -203,14 +214,20 @@ public final class PolicyIrPartialEvaluator {
             case PolicyIr.UndefinedValue ignored -> false;
             case PolicyIr.Reference ignored -> true;
             case PolicyIr.PropertyAccess property -> containsReference(property.target());
-            case PolicyIr.ArrayValue array -> array.values().stream().anyMatch(PolicyIrPartialEvaluator::containsReference);
-            case PolicyIr.ObjectValue object -> object.values().values().stream()
+            case PolicyIr.ArrayValue array -> array
+                .values()
+                .stream()
+                .anyMatch(PolicyIrPartialEvaluator::containsReference);
+            case PolicyIr.ObjectValue object -> object
+                .values()
+                .values()
+                .stream()
                 .anyMatch(PolicyIrPartialEvaluator::containsReference);
             case PolicyIr.Binary binary -> containsReference(binary.left()) || containsReference(binary.right());
             case PolicyIr.Unary unary -> containsReference(unary.operand());
-            case PolicyIr.Conditional conditional -> containsReference(conditional.condition())
-                || containsReference(conditional.whenTrue())
-                || containsReference(conditional.whenFalse());
+            case PolicyIr.Conditional conditional -> containsReference(conditional.condition()) ||
+                containsReference(conditional.whenTrue()) ||
+                containsReference(conditional.whenFalse());
         };
     }
 

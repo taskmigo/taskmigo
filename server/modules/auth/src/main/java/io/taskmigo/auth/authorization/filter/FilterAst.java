@@ -5,7 +5,6 @@ import org.jspecify.annotations.Nullable;
 
 /// Represents a parser-independent database filter used by authorization and future query filtering.
 public record FilterAst(Expression expression) {
-
     /// Represents one filter expression.
     public sealed interface Expression permits Literal, Field, Binary, Unary {}
 

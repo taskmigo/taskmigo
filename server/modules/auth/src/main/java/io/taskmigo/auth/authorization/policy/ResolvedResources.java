@@ -5,11 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 /// Holds the bounded resource lookups performed for one authorization decision.
-public record ResolvedResources(
-    Map<ResourceKey, Map<String, ?>> values,
-    Map<ResourceDescriptor, ResourceKey> keys
-) {
-
+public record ResolvedResources(Map<ResourceKey, Map<String, ?>> values, Map<ResourceDescriptor, ResourceKey> keys) {
     /// Creates an immutable resolution result.
     public ResolvedResources {
         values = Map.copyOf(values);

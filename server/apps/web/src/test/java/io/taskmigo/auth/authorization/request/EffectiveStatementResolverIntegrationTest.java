@@ -53,11 +53,7 @@ class EffectiveStatementResolverIntegrationTest extends ApiIntegrationTestSuppor
     void shouldKeepQueryCountBoundedWhenUnrelatedRolesAreAdded() {
         // Arrange
         List<UUID> statementIds = this.createStatements(500);
-        UUID roleId = this.roleAssignments.reconcile(
-            "performance-role-" + UUID.randomUUID(),
-            null,
-            statementIds
-        );
+        UUID roleId = this.roleAssignments.reconcile("performance-role-" + UUID.randomUUID(), null, statementIds);
         UUID userId = this.users.create(
             "performance-user-" + UUID.randomUUID(),
             Set.of("performance-" + UUID.randomUUID() + "@example.com"),

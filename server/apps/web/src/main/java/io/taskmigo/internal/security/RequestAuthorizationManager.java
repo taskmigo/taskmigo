@@ -59,14 +59,18 @@ final class RequestAuthorizationManager implements AuthorizationManager<RequestA
                 )
             );
             Object currentSnapshot = context.getRequest().getAttribute(ObjectAuthorizationContext.SNAPSHOT_ATTRIBUTE);
-            AuthorizationSnapshot snapshot = currentSnapshot instanceof AuthorizationSnapshot existing
-                    && existing.userId().equals(id)
-                ? existing
-                : this.authorization.snapshot(id, roots);
+            AuthorizationSnapshot snapshot =
+                currentSnapshot instanceof AuthorizationSnapshot existing && existing.userId().equals(id)
+                    ? existing
+                    : this.authorization.snapshot(id, roots);
             context.getRequest().setAttribute(ObjectAuthorizationContext.SNAPSHOT_ATTRIBUTE, snapshot);
             return new AuthorizationDecision(
                 this.authorization
-                    .authorize(snapshot, context.getRequest().getMethod(), context.getRequest().getRequestURI().split("\\?", 2)[0])
+                    .authorize(
+                        snapshot,
+                        context.getRequest().getMethod(),
+                        context.getRequest().getRequestURI().split("\\?", 2)[0]
+                    )
                     .allowed()
             );
         } catch (RuntimeException exception) {

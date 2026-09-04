@@ -93,10 +93,9 @@ class RequestAuthorizationServiceTest {
     void shouldEvaluateRequestPolicyWhenMatchingAllowStatementExists() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        when(this.statements.resolve(userId)).thenReturn(List.of(statement(
-            Effect.ALLOW,
-            "export default ({ request }) => request.method === 'GET';"
-        )));
+        when(this.statements.resolve(userId)).thenReturn(
+            List.of(statement(Effect.ALLOW, "export default ({ request }) => request.method === 'GET';"))
+        );
 
         // Act
         RequestAuthorizationDecision getResult = this.service.authorize(
@@ -128,10 +127,12 @@ class RequestAuthorizationServiceTest {
     void shouldApplyDenyOverrideWhenDenyPolicyReturnsTrue() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        when(this.statements.resolve(userId)).thenReturn(List.of(
-            statement(Effect.ALLOW, "export default ({ request }) => request.method === 'GET';"),
-            statement(Effect.DENY, "export default ({ principal }) => principal.blocked === true;")
-        ));
+        when(this.statements.resolve(userId)).thenReturn(
+            List.of(
+                statement(Effect.ALLOW, "export default ({ request }) => request.method === 'GET';"),
+                statement(Effect.DENY, "export default ({ principal }) => principal.blocked === true;")
+            )
+        );
 
         // Act
         RequestAuthorizationDecision blocked = this.service.authorize(
@@ -163,10 +164,9 @@ class RequestAuthorizationServiceTest {
     void shouldDenyRequestWhenPolicyEvaluationFails() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        when(this.statements.resolve(userId)).thenReturn(List.of(statement(
-            Effect.ALLOW,
-            "export default ({ request }) => request.method === ;"
-        )));
+        when(this.statements.resolve(userId)).thenReturn(
+            List.of(statement(Effect.ALLOW, "export default ({ request }) => request.method === ;"))
+        );
 
         // Act
         RequestAuthorizationDecision result = this.service.authorize(
@@ -212,15 +212,19 @@ class RequestAuthorizationServiceTest {
             evaluator,
             new AuthorizationResourceRegistry(evaluator, List.of(users))
         );
-        when(this.statements.resolve(userId)).thenReturn(List.of(statement(
-            Effect.ALLOW,
-            """
-            export function resources({ request }) {
-              return { user: resource("user", request.path.userId) };
-            }
-            export default ({ object }) => object.user.username === "alice";
-            """
-        )));
+        when(this.statements.resolve(userId)).thenReturn(
+            List.of(
+                statement(
+                    Effect.ALLOW,
+                    """
+                    export function resources({ request }) {
+                      return { user: resource("user", request.path.userId) };
+                    }
+                    export default ({ object }) => object.user.username === "alice";
+                    """
+                )
+            )
+        );
 
         // Act
         RequestAuthorizationDecision result = service.authorize(

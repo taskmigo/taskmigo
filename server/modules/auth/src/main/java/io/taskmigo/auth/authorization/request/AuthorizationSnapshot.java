@@ -11,7 +11,6 @@ import java.util.UUID;
 
 /// Captures the immutable authorization state used throughout one request or authorization operation.
 public record AuthorizationSnapshot(UUID userId, List<StatementInfo> statements, Map<String, ?> roots) {
-
     /// Creates a snapshot with immutable effective Statements and authorization input values.
     public AuthorizationSnapshot {
         statements = List.copyOf(statements);
@@ -35,10 +34,12 @@ public record AuthorizationSnapshot(UUID userId, List<StatementInfo> statements,
             });
             return immutableMap(stringMap);
         }
-        if (value instanceof List<?> list) return Collections.unmodifiableList(new ArrayList<>(list.stream()
-            .map(AuthorizationSnapshot::immutableValue)
-            .toList()));
-        if (value instanceof Set<?> set) return Set.copyOf(set.stream().map(AuthorizationSnapshot::immutableValue).toList());
+        if (value instanceof List<?> list) return Collections.unmodifiableList(
+            new ArrayList<>(list.stream().map(AuthorizationSnapshot::immutableValue).toList())
+        );
+        if (value instanceof Set<?> set) return Set.copyOf(
+            set.stream().map(AuthorizationSnapshot::immutableValue).toList()
+        );
         if (value instanceof String || value instanceof Number || value instanceof Boolean || value instanceof UUID) {
             return value;
         }

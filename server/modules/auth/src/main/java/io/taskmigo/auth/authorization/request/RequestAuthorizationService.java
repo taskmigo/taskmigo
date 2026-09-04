@@ -78,9 +78,10 @@ public class RequestAuthorizationService {
         for (StatementInfo statement : snapshot.statements()) {
             if (statement.scope() != Scope.REQUEST || !statement.matches(method, path)) continue;
             try {
-                JavaScriptPolicyModule module = statement.policy() == null
-                    ? null
-                    : this.policyCompiler.compileModule(statement.policy(), Scope.REQUEST);
+                JavaScriptPolicyModule module =
+                    statement.policy() == null
+                        ? null
+                        : this.policyCompiler.compileModule(statement.policy(), Scope.REQUEST);
                 if (module != null) descriptors.addAll(module.resources());
                 evaluations.add(new Evaluation(statement, module));
             } catch (RuntimeException exception) {
@@ -105,10 +106,9 @@ public class RequestAuthorizationService {
                     withObject.put("object", resolved.objectValues(evaluation.module().resources()));
                     evaluationRoots = Collections.unmodifiableMap(withObject);
                 }
-                boolean matches = evaluation.module() == null || this.policyEvaluator.evaluate(
-                    evaluation.module().policy(),
-                    evaluationRoots
-                );
+                boolean matches =
+                    evaluation.module() == null ||
+                    this.policyEvaluator.evaluate(evaluation.module().policy(), evaluationRoots);
                 if (matches) {
                     if (statement.effect() == Effect.DENY) return new RequestAuthorizationDecision(false);
                     allowed = true;

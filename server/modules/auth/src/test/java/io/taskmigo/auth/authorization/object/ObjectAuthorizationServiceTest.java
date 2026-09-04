@@ -58,11 +58,13 @@ class ObjectAuthorizationServiceTest {
 
         // Assert
         assertThat(plan.matchedStatements()).hasSize(1);
-        assertThat(plan.predicate().expression()).isEqualTo(new FilterAst.Binary(
-            FilterAst.Operator.AND,
-            new FilterAst.Literal(true),
-            new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Literal(false))
-        ));
+        assertThat(plan.predicate().expression()).isEqualTo(
+            new FilterAst.Binary(
+                FilterAst.Operator.AND,
+                new FilterAst.Literal(true),
+                new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Literal(false))
+            )
+        );
     }
 
     /**
@@ -76,10 +78,9 @@ class ObjectAuthorizationServiceTest {
     void shouldDenyObjectWhenMatchingDenyStatementExists() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        when(this.statements.resolve(userId)).thenReturn(List.of(
-            statement(Effect.ALLOW, null),
-            statement(Effect.DENY, null)
-        ));
+        when(this.statements.resolve(userId)).thenReturn(
+            List.of(statement(Effect.ALLOW, null), statement(Effect.DENY, null))
+        );
 
         // Act
         ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
@@ -90,11 +91,13 @@ class ObjectAuthorizationServiceTest {
         );
 
         // Assert
-        assertThat(plan.predicate().expression()).isEqualTo(new FilterAst.Binary(
-            FilterAst.Operator.AND,
-            new FilterAst.Literal(true),
-            new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Literal(true))
-        ));
+        assertThat(plan.predicate().expression()).isEqualTo(
+            new FilterAst.Binary(
+                FilterAst.Operator.AND,
+                new FilterAst.Literal(true),
+                new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Literal(true))
+            )
+        );
     }
 
     /**
@@ -120,15 +123,17 @@ class ObjectAuthorizationServiceTest {
         );
 
         // Assert
-        assertThat(plan.predicate().expression()).isEqualTo(new FilterAst.Binary(
-            FilterAst.Operator.AND,
+        assertThat(plan.predicate().expression()).isEqualTo(
             new FilterAst.Binary(
-                FilterAst.Operator.EQ,
-                new FilterAst.Field("username"),
-                new FilterAst.Literal("alice")
-            ),
-            new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Literal(false))
-        ));
+                FilterAst.Operator.AND,
+                new FilterAst.Binary(
+                    FilterAst.Operator.EQ,
+                    new FilterAst.Field("username"),
+                    new FilterAst.Literal("alice")
+                ),
+                new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Literal(false))
+            )
+        );
     }
 
     /**
@@ -154,11 +159,13 @@ class ObjectAuthorizationServiceTest {
         );
 
         // Assert
-        assertThat(plan.predicate().expression()).isEqualTo(new FilterAst.Binary(
-            FilterAst.Operator.AND,
-            new FilterAst.Unary(FilterAst.Operator.PRESENT, new FilterAst.Field("username")),
-            new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Literal(false))
-        ));
+        assertThat(plan.predicate().expression()).isEqualTo(
+            new FilterAst.Binary(
+                FilterAst.Operator.AND,
+                new FilterAst.Unary(FilterAst.Operator.PRESENT, new FilterAst.Field("username")),
+                new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Literal(false))
+            )
+        );
     }
 
     /**
@@ -176,12 +183,9 @@ class ObjectAuthorizationServiceTest {
         when(this.statements.resolve(userId)).thenReturn(List.of(statement(Effect.ALLOW, policy)));
 
         // Act + Assert
-        assertThatThrownBy(() -> this.service.plan(
-            userId,
-            "GET",
-            "/api/v0/objects",
-            Map.of()
-        )).isInstanceOf(AuthorizationException.class).hasMessageContaining("queryable");
+        assertThatThrownBy(() -> this.service.plan(userId, "GET", "/api/v0/objects", Map.of()))
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("queryable");
     }
 
     /**
@@ -202,11 +206,7 @@ class ObjectAuthorizationServiceTest {
         );
 
         // Act
-        ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
-            snapshot,
-            "GET",
-            "/api/v0/objects"
-        );
+        ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(snapshot, "GET", "/api/v0/objects");
 
         // Assert
         assertThat(plan.matchedStatements()).hasSize(1);
@@ -226,12 +226,7 @@ class ObjectAuthorizationServiceTest {
     }
 
     private static Map<String, ?> roots(String username, String method) {
-        return Map.of(
-            "principal",
-            Map.of("username", username),
-            "request",
-            Map.of("method", method)
-        );
+        return Map.of("principal", Map.of("username", username), "request", Map.of("method", method));
     }
 
     private static final class TestDialect implements AuthorizationObjectQueryDialect {

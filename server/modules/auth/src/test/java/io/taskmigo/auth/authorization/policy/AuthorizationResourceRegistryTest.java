@@ -52,7 +52,8 @@ class AuthorizationResourceRegistryTest {
 
         // Assert
         assertThat(calls).hasValue(1);
-        assertThat(resolved.objectValues(List.of(first, second))).containsOnlyKeys("user", "owner")
+        assertThat(resolved.objectValues(List.of(first, second)))
+            .containsOnlyKeys("user", "owner")
             .containsEntry("user", Map.of("username", "alice"))
             .containsEntry("owner", Map.of("username", "alice"));
     }
@@ -68,11 +69,7 @@ class AuthorizationResourceRegistryTest {
     void shouldRejectResourceResolutionWhenAdapterIsMissing() {
         // Arrange
         AuthorizationResourceRegistry registry = new AuthorizationResourceRegistry(this.evaluator, List.of());
-        ResourceDescriptor descriptor = new ResourceDescriptor(
-            "project",
-            "project",
-            new PolicyIr.Literal("project-1")
-        );
+        ResourceDescriptor descriptor = new ResourceDescriptor("project", "project", new PolicyIr.Literal("project-1"));
 
         // Act + Assert
         assertThatThrownBy(() -> registry.resolve(List.of(descriptor), Map.of()))

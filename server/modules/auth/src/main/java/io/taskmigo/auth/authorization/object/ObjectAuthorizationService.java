@@ -72,12 +72,13 @@ public class ObjectAuthorizationService {
 
         for (StatementInfo statement : snapshot.statements()) {
             if (statement.scope() == Scope.OBJECT && statement.matches(method, path)) {
-                FilterAst filter = statement.policy() == null
-                    ? new FilterAst(new FilterAst.Literal(true))
-                    : this.partialEvaluator.partial(
-                        this.policyCompiler.compile(statement.policy(), Scope.OBJECT),
-                        snapshot.roots()
-                    );
+                FilterAst filter =
+                    statement.policy() == null
+                        ? new FilterAst(new FilterAst.Literal(true))
+                        : this.partialEvaluator.partial(
+                              this.policyCompiler.compile(statement.policy(), Scope.OBJECT),
+                              snapshot.roots()
+                          );
                 matched.add(statement);
                 (statement.effect() == Effect.DENY ? denies : allows).add(filter.expression());
             }
@@ -133,7 +134,9 @@ public class ObjectAuthorizationService {
                 this.predicate(unary.operand(), root, builder, fields)
             );
             case FilterAst.Unary unary when unary.operator() == FilterAst.Operator.PRESENT -> this.present(
-                unary.operand(), root, fields
+                unary.operand(),
+                root,
+                fields
             );
             case FilterAst.Binary binary when binary.operator() == FilterAst.Operator.AND -> builder.and(
                 this.predicate(binary.left(), root, builder, fields),
@@ -148,11 +151,7 @@ public class ObjectAuthorizationService {
         };
     }
 
-    private <T> Predicate present(
-        FilterAst.Expression expression,
-        Root<T> root,
-        Map<String, Class<?>> fields
-    ) {
+    private <T> Predicate present(FilterAst.Expression expression, Root<T> root, Map<String, Class<?>> fields) {
         return this.field(expression, root, fields).isNotNull();
     }
 
@@ -170,13 +169,11 @@ public class ObjectAuthorizationService {
             field = left;
             literal = right;
             fieldLeft = true;
-        }
-        else if (binary.right() instanceof FilterAst.Field right && binary.left() instanceof FilterAst.Literal left) {
+        } else if (binary.right() instanceof FilterAst.Field right && binary.left() instanceof FilterAst.Literal left) {
             field = right;
             literal = left;
             fieldLeft = false;
-        }
-        else throw new AuthorizationException("Object comparison requires one field and one literal");
+        } else throw new AuthorizationException("Object comparison requires one field and one literal");
 
         Expression<?> fieldExpression = this.field(field, root, fields);
         Class<?> fieldType = fieldType(field, fields);
@@ -184,14 +181,20 @@ public class ObjectAuthorizationService {
             if (!fieldLeft || !(literal.value() instanceof Collection<?> values)) throw new AuthorizationException(
                 "Object membership comparison requires a field and a literal collection"
             );
-            List<Object> coerced = values.stream().map(item -> coerce(item, fieldType)).toList();
+            List<Object> coerced = values
+                .stream()
+                .map(item -> coerce(item, fieldType))
+                .toList();
             Predicate membership = fieldExpression.in(coerced);
             return binary.operator() == FilterAst.Operator.NIN ? builder.not(membership) : membership;
         }
-        @Nullable Object value = coerce(literal.value(), fieldType);
-        if (binary.operator() == FilterAst.Operator.CONTAINS
-            || binary.operator() == FilterAst.Operator.STARTS_WITH
-            || binary.operator() == FilterAst.Operator.ENDS_WITH) {
+        @Nullable
+        Object value = coerce(literal.value(), fieldType);
+        if (
+            binary.operator() == FilterAst.Operator.CONTAINS ||
+            binary.operator() == FilterAst.Operator.STARTS_WITH ||
+            binary.operator() == FilterAst.Operator.ENDS_WITH
+        ) {
             if (!fieldLeft || !(value instanceof String text) || fields.get(field.name()) != String.class) {
                 throw new AuthorizationException("String object filter requires a String field and literal");
             }
@@ -232,11 +235,7 @@ public class ObjectAuthorizationService {
         };
     }
 
-    private <T> Expression<?> field(
-        FilterAst.Expression expression,
-        Root<T> root,
-        Map<String, Class<?>> fields
-    ) {
+    private <T> Expression<?> field(FilterAst.Expression expression, Root<T> root, Map<String, Class<?>> fields) {
         if (!(expression instanceof FilterAst.Field reference)) throw new AuthorizationException(
             "Object filter expression is not a mapped field"
         );

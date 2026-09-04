@@ -1,4 +1,5 @@
 # Software Requirements Specification (IEEE 830)
+
 ## JavaScript Authorization Policies and Shared Query Filtering
 
 **Status:** Draft for implementation  
@@ -29,11 +30,11 @@ This SRS covers:
 
 ## Project-specific terms
 
-| Term | Meaning |
-| --- | --- |
-| Policy IR | Taskmigo-owned compiled representation of JavaScript policy semantics. |
-| Filter AST | Taskmigo-owned representation of database predicates. |
-| Filter Schema | Resource-specific mapping of filter fields to persistence. |
+| Term                   | Meaning                                                                                                                            |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Policy IR              | Taskmigo-owned compiled representation of JavaScript policy semantics.                                                             |
+| Filter AST             | Taskmigo-owned representation of database predicates.                                                                              |
+| Filter Schema          | Resource-specific mapping of filter fields to persistence.                                                                         |
 | Authorization Snapshot | Immutable authorization state resolved once for one request/operation and reused by all authorization decisions in that operation. |
 
 References:
@@ -547,15 +548,15 @@ Database remains the source of truth. Future compiled-policy caching SHALL use i
 
 # 7. Verification and Acceptance
 
-| Phase | Required verification |
-| --- | --- |
-| 1 | Statement API, persistence, bootstrap, schema, and tests use only `scope` + `policy`. |
-| 2 | Complete supported JavaScript Request Authorization; one immutable snapshot per operation; no SpEL Request execution path. |
-| 3 | Persisted Request resources work for single/multiple resources with bounded query count and no N+1. |
-| 4 | Request/Object Authorization use the same operation snapshot; Object Authorization executes DB-side before pagination; no second Statement resolution or memory fallback. |
-| 5 | Snapshot resolution is DB-first and bounded, including ~500 matching Statements. |
-| 6 | TBD before implementation. |
-| 7 | Legacy artifacts removed, built-ins migrated, docs current, quality gates pass. |
+| Phase | Required verification                                                                                                                                                     |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Statement API, persistence, bootstrap, schema, and tests use only `scope` + `policy`.                                                                                     |
+| 2     | Complete supported JavaScript Request Authorization; one immutable snapshot per operation; no SpEL Request execution path.                                                |
+| 3     | Persisted Request resources work for single/multiple resources with bounded query count and no N+1.                                                                       |
+| 4     | Request/Object Authorization use the same operation snapshot; Object Authorization executes DB-side before pagination; no second Statement resolution or memory fallback. |
+| 5     | Snapshot resolution is DB-first and bounded, including ~500 matching Statements.                                                                                          |
+| 6     | TBD before implementation.                                                                                                                                                |
+| 7     | Legacy artifacts removed, built-ins migrated, docs current, quality gates pass.                                                                                           |
 
 Additional snapshot verification SHALL cover:
 

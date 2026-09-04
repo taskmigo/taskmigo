@@ -84,15 +84,19 @@ class StatementServiceTest {
         );
 
         // Act + Assert
-        assertThatThrownBy(() -> activation.create(
-            "invalid_policy",
-            null,
-            Effect.ALLOW,
-            Scope.REQUEST,
-            "GET",
-            "/api/v0/users",
-            "export default ({ request }) => request.method === ;"
-        )).isInstanceOf(AuthorizationException.class).hasMessageContaining("cannot be parsed");
+        assertThatThrownBy(() ->
+            activation.create(
+                "invalid_policy",
+                null,
+                Effect.ALLOW,
+                Scope.REQUEST,
+                "GET",
+                "/api/v0/users",
+                "export default ({ request }) => request.method === ;"
+            )
+        )
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("cannot be parsed");
         verify(this.statements, never()).save(org.mockito.ArgumentMatchers.any(StatementEntity.class));
     }
 
