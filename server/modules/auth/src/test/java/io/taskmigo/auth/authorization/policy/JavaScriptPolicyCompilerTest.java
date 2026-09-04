@@ -103,6 +103,35 @@ class JavaScriptPolicyCompilerTest {
         assertThat(this.compiler.compile(source, Scope.OBJECT)).isNotNull();
     }
 
+    /**
+     * Verifies that a request module can declare named resources and consume the resolved object root.
+     *
+     * Given: a resources export selecting a user by a request path variable and a policy reading that user.
+     * Expect: both declarations compile into one immutable module with the named descriptor preserved.
+     */
+    @Test
+    @DisplayName("compiles request resources and object references")
+    void shouldCompileResourcesWhenRequestPolicySelectsNamedObjects() {
+        // Arrange
+        String source = """
+            export function resources({ request, principal }) {
+              return { user: resource("user", request.path.userId) };
+            }
+            export default ({ object }) => object.user.username === "alice";
+            """;
+
+        // Act
+        JavaScriptPolicyModule module = this.compiler.compileModule(source, Scope.REQUEST);
+
+        // Assert
+        assertThat(module.resources()).singleElement().satisfies(resource -> {
+            assertThat(resource.name()).isEqualTo("user");
+            assertThat(resource.type()).isEqualTo("user");
+            assertThat(resource.key()).isEqualTo(new PolicyIr.Reference("request", java.util.List.of("path", "userId")));
+        });
+        assertThat(module.policy()).isNotNull();
+    }
+
     private static Map<String, ?> roots(String method, String path, boolean enabled) {
         return Map.of(
             "request",

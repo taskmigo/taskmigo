@@ -51,7 +51,9 @@ final class RequestAuthorizationManager implements AuthorizationManager<RequestA
                     "method",
                     context.getRequest().getMethod(),
                     "path",
-                    context.getRequest().getRequestURI().split("\\?", 2)[0]
+                    context.getRequest().getRequestURI().split("\\?", 2)[0],
+                    "pathVariables",
+                    Map.copyOf(context.getVariables())
                 )
             );
             return new AuthorizationDecision(

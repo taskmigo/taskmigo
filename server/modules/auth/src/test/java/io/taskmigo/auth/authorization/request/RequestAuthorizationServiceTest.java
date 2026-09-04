@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.taskmigo.auth.authorization.policy.AuthorizationResourceAdapter;
+import io.taskmigo.auth.authorization.policy.AuthorizationResourceRegistry;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyEvaluator;
 import io.taskmigo.auth.authorization.statement.ApiInfo;
@@ -11,9 +13,11 @@ import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.auth.authorization.statement.TargetInfo;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,7 +28,8 @@ class RequestAuthorizationServiceTest {
     private final RequestAuthorizationService service = new RequestAuthorizationService(
         this.statements,
         new JavaScriptPolicyCompiler(),
-        new JavaScriptPolicyEvaluator()
+        new JavaScriptPolicyEvaluator(),
+        new AuthorizationResourceRegistry(new JavaScriptPolicyEvaluator(), List.of())
     );
 
     /**
@@ -173,6 +178,61 @@ class RequestAuthorizationServiceTest {
 
         // Assert
         assertThat(result.allowed()).isFalse();
+    }
+
+    /**
+     * Verifies that a request policy is evaluated against explicitly selected persisted resource values.
+     *
+     * Given: a request policy selecting a user by path variable and a batched adapter returning that user.
+     * Expect: the policy can read the resolved user while the adapter is called only once.
+     */
+    @Test
+    @DisplayName("evaluates request policy against resolved resources")
+    void shouldEvaluateResolvedResourceWhenRequestPolicySelectsUser() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        AtomicInteger calls = new AtomicInteger();
+        AuthorizationResourceAdapter users = new AuthorizationResourceAdapter() {
+            @Override
+            public String type() {
+                return "user";
+            }
+
+            @Override
+            public Map<String, Map<String, ?>> resolve(Collection<String> keys) {
+                calls.incrementAndGet();
+                assertThat(keys).containsExactly("target-user");
+                return Map.of("target-user", Map.of("username", "alice"));
+            }
+        };
+        JavaScriptPolicyEvaluator evaluator = new JavaScriptPolicyEvaluator();
+        RequestAuthorizationService service = new RequestAuthorizationService(
+            this.statements,
+            new JavaScriptPolicyCompiler(),
+            evaluator,
+            new AuthorizationResourceRegistry(evaluator, List.of(users))
+        );
+        when(this.statements.resolve(userId)).thenReturn(List.of(statement(
+            Effect.ALLOW,
+            """
+            export function resources({ request }) {
+              return { user: resource("user", request.path.userId) };
+            }
+            export default ({ object }) => object.user.username === "alice";
+            """
+        )));
+
+        // Act
+        RequestAuthorizationDecision result = service.authorize(
+            userId,
+            "GET",
+            "/api/v0/users",
+            Map.of("request", Map.of("path", Map.of("userId", "target-user")))
+        );
+
+        // Assert
+        assertThat(result.allowed()).isTrue();
+        assertThat(calls).hasValue(1);
     }
 
     private static StatementInfo statement(Effect effect) {

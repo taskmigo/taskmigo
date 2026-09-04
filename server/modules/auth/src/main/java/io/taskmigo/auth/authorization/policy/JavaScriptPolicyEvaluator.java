@@ -29,6 +29,10 @@ public final class JavaScriptPolicyEvaluator {
         return result;
     }
 
+    @Nullable Object evaluateValue(PolicyIr.Expression expression, Map<String, ?> roots) {
+        return this.value(expression, roots);
+    }
+
     private @Nullable Object value(PolicyIr.Expression expression, Map<String, ?> roots) {
         return switch (expression) {
             case PolicyIr.Literal literal -> literal.value();

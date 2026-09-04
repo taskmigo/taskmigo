@@ -16,7 +16,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/// Manages canonical authorization Statements without applying them to requests yet.
+/// Manages canonical authorization Statements and validates their compiled policy modules.
 @Service
 public class StatementService {
 
