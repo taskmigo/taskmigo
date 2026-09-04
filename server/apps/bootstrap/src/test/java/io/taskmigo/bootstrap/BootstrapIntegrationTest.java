@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
+import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.auth.authorization.statement.StatementService;
 import io.taskmigo.auth.oauth.InternalClientMetadata;
@@ -158,6 +159,42 @@ class BootstrapIntegrationTest {
         assertThat(statements).extracting(StatementInfo::name).contains("system_operator_request_all");
         assertThat(roles).extracting(RoleInfo::name).contains("System Operator");
         assertThat(this.users.roleIds(system.id())).hasSize(1);
+    }
+
+    /**
+     * Verifies that every managed bootstrap Statement uses the final JavaScript policy contract.
+     *
+     * Given: the five Statements declared in the managed bootstrap authorization bundle.
+     * Expect: every definition is persisted with a canonical scope and a non-blank default-exported policy.
+     */
+    @Test
+    @DisplayName("persists JavaScript policies for every built-in statement")
+    void shouldPersistJavaScriptPoliciesWhenBootstrapRuns() {
+        // Arrange
+        Map<String, Scope> builtInScopes = Map.of(
+            "system_operator_request_all",
+            Scope.REQUEST,
+            "system_operator_object_all",
+            Scope.OBJECT,
+            "administrator_request_all",
+            Scope.REQUEST,
+            "administrator_object_all",
+            Scope.OBJECT,
+            "administrator_hide_system_user",
+            Scope.OBJECT
+        );
+
+        // Act
+        var persistedStatements = this.statements.list(1, 100).items();
+
+        // Assert
+        assertThat(persistedStatements)
+            .filteredOn(statement -> builtInScopes.containsKey(statement.name()))
+            .hasSize(builtInScopes.size())
+            .allSatisfy(statement -> {
+                assertThat(statement.scope()).isEqualTo(builtInScopes.get(statement.name()));
+                assertThat(statement.policy()).isNotBlank().startsWith("export default");
+            });
     }
 
     /**

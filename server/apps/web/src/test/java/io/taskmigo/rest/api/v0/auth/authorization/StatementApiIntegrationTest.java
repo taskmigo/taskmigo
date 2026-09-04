@@ -33,7 +33,7 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
 
         // Act
         this.api().statements().create(request);
-        String response = this.api().get("/api/v0/statements?page=1&pageSize=100");
+        String response = this.findStatement("users_read");
 
         // Assert
         assertThat(response)
@@ -82,5 +82,13 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
             new StatementTarget(new StatementApiTarget("GET", "/api/v0/statements")),
             null
         );
+    }
+
+    private String findStatement(String name) {
+        for (int page = 1; page <= 100; page++) {
+            String response = this.api().get("/api/v0/statements?page=" + page + "&pageSize=100");
+            if (response.contains("\"name\":\"" + name + "\"")) return response;
+        }
+        throw new AssertionError("Statement was not found in the paginated collection: " + name);
     }
 }

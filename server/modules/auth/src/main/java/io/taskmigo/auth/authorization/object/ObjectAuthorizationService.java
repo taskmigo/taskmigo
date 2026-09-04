@@ -1,6 +1,6 @@
 package io.taskmigo.auth.authorization.object;
 
-import io.taskmigo.auth.authorization.condition.AuthorizationException;
+import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.filter.FilterAst;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import io.taskmigo.auth.authorization.policy.PolicyIrPartialEvaluator;

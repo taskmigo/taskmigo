@@ -7,7 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.auth.authorization.condition.AuthorizationException;
+import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import java.util.UUID;

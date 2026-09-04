@@ -1,6 +1,6 @@
 package io.taskmigo.auth.authorization.policy;
 
-import io.taskmigo.auth.authorization.condition.AuthorizationException;
+import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.statement.Scope;
 import java.util.ArrayList;
 import java.util.HashMap;

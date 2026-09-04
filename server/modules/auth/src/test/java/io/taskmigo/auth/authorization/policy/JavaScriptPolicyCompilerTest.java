@@ -3,7 +3,7 @@ package io.taskmigo.auth.authorization.policy;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.auth.authorization.condition.AuthorizationException;
+import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.statement.Scope;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;

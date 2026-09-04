@@ -1,6 +1,6 @@
 package io.taskmigo.auth.authorization.policy;
 
-import io.taskmigo.auth.authorization.condition.AuthorizationException;
+import io.taskmigo.auth.authorization.AuthorizationException;
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.LinkedHashMap;

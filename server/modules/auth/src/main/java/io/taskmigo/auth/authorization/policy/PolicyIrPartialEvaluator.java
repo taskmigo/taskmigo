@@ -1,6 +1,6 @@
 package io.taskmigo.auth.authorization.policy;
 
-import io.taskmigo.auth.authorization.condition.AuthorizationException;
+import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.filter.FilterAst;
 import java.util.LinkedHashMap;
 import java.util.Map;

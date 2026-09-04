@@ -1,4 +1,4 @@
-package io.taskmigo.auth.authorization.condition;
+package io.taskmigo.auth.authorization;
 
 import io.taskmigo.foundation.DomainException;
 import io.taskmigo.foundation.DomainFailureType;

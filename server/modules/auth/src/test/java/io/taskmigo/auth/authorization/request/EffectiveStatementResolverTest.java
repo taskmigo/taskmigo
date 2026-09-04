@@ -126,11 +126,10 @@ class EffectiveStatementResolverTest {
         when(this.groups.findDistinctByMemberIdsContains(USER_ID)).thenReturn(List.of());
         when(this.roles.findDistinctByIdIn(List.of(DIRECT_ROLE_ID))).thenReturn(List.of(role));
         when(this.roles.findDistinctByParentRoles_IdIn(List.of(DIRECT_ROLE_ID))).thenReturn(List.of());
-        when(this.statements.findAllByIdIn(anyCollection())).thenReturn(
-            IntStream.range(0, 500)
-                .mapToObj(index -> statement(id(index), "statement-" + index))
-                .toList()
-        );
+        List<StatementEntity> resolvedStatements = IntStream.range(0, 500)
+            .mapToObj(index -> statement(id(index), "statement-" + index))
+            .toList();
+        when(this.statements.findAllByIdIn(anyCollection())).thenReturn(resolvedStatements);
 
         // Act
         List<StatementInfo> result = this.resolver.resolve(USER_ID);

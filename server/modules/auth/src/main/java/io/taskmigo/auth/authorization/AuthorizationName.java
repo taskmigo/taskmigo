@@ -1,4 +1,4 @@
-package io.taskmigo.auth.authorization.condition;
+package io.taskmigo.auth.authorization;
 
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;

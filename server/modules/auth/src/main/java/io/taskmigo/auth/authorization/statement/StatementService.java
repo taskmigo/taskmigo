@@ -1,7 +1,7 @@
 package io.taskmigo.auth.authorization.statement;
 
-import io.taskmigo.auth.authorization.condition.AuthorizationException;
-import io.taskmigo.auth.authorization.condition.AuthorizationName;
+import io.taskmigo.auth.authorization.AuthorizationException;
+import io.taskmigo.auth.authorization.AuthorizationName;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import io.taskmigo.foundation.OffsetPage;

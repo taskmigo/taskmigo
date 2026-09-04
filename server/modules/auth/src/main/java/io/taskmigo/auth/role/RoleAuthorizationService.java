@@ -1,6 +1,6 @@
 package io.taskmigo.auth.role;
 
-import io.taskmigo.auth.authorization.condition.AuthorizationName;
+import io.taskmigo.auth.authorization.AuthorizationName;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;

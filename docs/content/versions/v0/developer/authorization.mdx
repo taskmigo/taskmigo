@@ -1,0 +1,77 @@
+---
+title: Authorization
+description: Statement policies, authorization snapshots, and database-side object filtering.
+---
+
+Taskmigo authorization is built from persisted Statements assigned directly to Users or through Roles and Groups. A
+Statement selects an HTTP method and path, declares a `request` or `object` scope, and carries an `allow` or `deny`
+effect.
+
+## Statement policies
+
+The canonical Statement shape is:
+
+```yaml
+name: users_read
+description: Read users
+effect: allow
+scope: request
+target:
+  api:
+    method: GET
+    path: /api/v0/users
+policy: |
+  export default ({ request, principal }) => {
+    return request.method === "GET" && principal.status === "ACTIVE";
+  };
+```
+
+`policy` is optional. When it is absent, the Statement matches unconditionally after its HTTP target matches. When it
+is present, Taskmigo parses and compiles the module into immutable Policy IR when the Statement is activated. Policy
+source is never executed as general-purpose JavaScript.
+
+Policies may use only the approved `request`, `principal`, and `object` roots and the supported JavaScript semantics
+defined by the authorization specification. Unsupported syntax, resource access, or non-boolean results fail closed.
+
+The `effect` belongs to the Statement metadata. A policy returns only a boolean and never returns `allow` or `deny`.
+
+## Request authorization
+
+Request authorization resolves one immutable Authorization Snapshot for the operation. The snapshot contains the
+effective Statement revisions and approved principal/request values used by all authorization decisions in that
+operation. Request authorization and object authorization reuse the same snapshot; neither performs a second Statement
+resolution.
+
+Decision order is:
+
+1. Deny when any matching deny Statement evaluates to `true`.
+2. Otherwise allow when any matching allow Statement evaluates to `true`.
+3. Otherwise deny by default.
+
+Request policies may select persisted resources explicitly with a named `resources` export. Resource descriptors are
+declarative; adapters resolve them in bounded, deduplicated batches outside policy code. Policies do not receive
+repositories, entities, framework internals, or other host APIs.
+
+## Object authorization
+
+Object Statements are partially evaluated with `request` and `principal` known while `object.*` remains symbolic.
+The residual expression is a parser-independent Filter AST. A resource-owned Filter Schema maps its fields and
+operators to JPA Criteria/Specifications, and the resulting authorization predicate is applied in the database before
+pagination.
+
+Visibility is composed as:
+
+```text
+ANY(allow filters) AND NOT ANY(deny filters)
+```
+
+Policies that cannot be represented by the resource Filter Schema are rejected. Taskmigo does not fetch unrestricted
+business rows and authorize them one at a time in the JVM.
+
+## Resolution and consistency
+
+Effective Statement resolution is database-first and bounded. It follows direct and inherited User, Group, and Role
+assignments without loading unrelated authorization graphs into JVM memory or issuing N+1 queries.
+
+Authorization changes committed after a snapshot is created do not affect the current operation. A later operation
+creates a new snapshot and observes the new effective authorization state.

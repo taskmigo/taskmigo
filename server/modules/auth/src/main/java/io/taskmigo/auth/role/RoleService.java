@@ -1,6 +1,6 @@
 package io.taskmigo.auth.role;
 
-import io.taskmigo.auth.authorization.condition.AuthorizationName;
+import io.taskmigo.auth.authorization.AuthorizationName;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
 import io.taskmigo.foundation.OffsetPage;
 import java.util.Collection;

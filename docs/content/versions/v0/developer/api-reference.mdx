@@ -53,11 +53,11 @@ usable as an SDK without depending on the web application.
 
 ### Drop-in module contract
 
-Adding a feature module to the web application must not require feature-specific Spring wiring. For a module such as
-`modules/project`, the expected application change is only the dependency:
+Adding a feature module to the web application must not require feature-specific Spring wiring. For a feature module such as
+`modules/auth`, the expected application change is only the dependency:
 
 ```kotlin
-implementation(project(":modules:project"))
+implementation(project(":modules:auth"))
 ```
 
 `TaskmigoApplication` is rooted at `io.taskmigo`, so Spring Boot component scanning discovers Spring-managed components from
