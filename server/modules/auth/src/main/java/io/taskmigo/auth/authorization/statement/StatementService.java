@@ -3,6 +3,7 @@ package io.taskmigo.auth.authorization.statement;
 import io.taskmigo.auth.authorization.condition.AuthorizationException;
 import io.taskmigo.auth.authorization.condition.AuthorizationName;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
+import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import io.taskmigo.foundation.OffsetPage;
 import java.util.Collection;
 import java.util.Set;
@@ -21,10 +22,16 @@ public class StatementService {
 
     private final StatementRepository statements;
     private final ObjectAuthorizationService objectAuthorization;
+    private final JavaScriptPolicyCompiler policyCompiler;
 
-    StatementService(StatementRepository statements, ObjectAuthorizationService objectAuthorization) {
+    StatementService(
+        StatementRepository statements,
+        ObjectAuthorizationService objectAuthorization,
+        JavaScriptPolicyCompiler policyCompiler
+    ) {
         this.statements = statements;
         this.objectAuthorization = objectAuthorization;
+        this.policyCompiler = policyCompiler;
     }
 
     /// Validates and persists a Statement with a server-assigned stable identifier.
@@ -61,7 +68,7 @@ public class StatementService {
         if (validMethod.length() > 16) throw new AuthorizationException(
             "target.api.method must not exceed 16 characters"
         );
-        validatePolicy(policy);
+        validatePolicy(policy, validScope);
         UUID id = UUID.randomUUID();
         this.statements.save(
             new StatementEntity(id, validName, description, validEffect, validScope, validMethod, validPath, policy)
@@ -100,7 +107,7 @@ public class StatementService {
         } catch (PatternSyntaxException exception) {
             throw new AuthorizationException("target.api.path must be a valid regular expression");
         }
-        validatePolicy(policy);
+        validatePolicy(policy, validScope);
         existing.description = description;
         existing.effect = validEffect;
         existing.scope = validScope;
@@ -169,7 +176,8 @@ public class StatementService {
         return value;
     }
 
-    private static void validatePolicy(@Nullable String policy) {
+    private void validatePolicy(@Nullable String policy, Scope scope) {
         if (policy != null && policy.isBlank()) throw new AuthorizationException("policy must not be blank");
+        if (policy != null) this.policyCompiler.compile(policy, scope);
     }
 }

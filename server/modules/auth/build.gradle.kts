@@ -11,6 +11,7 @@ dependencies {
 
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.jackson.databind)
+    implementation(libs.rhino)
     implementation(libs.spring.boot.core.starter)
     implementation(libs.spring.boot.starter.oauth2.authorization.server)
     implementation(libs.spring.boot.starter.oauth2.resource.server)

@@ -9,6 +9,7 @@ jspecify = "1.0.1"
 checkstyle = "14.1.0"
 spotless = "8.10.1"
 guava = "33.7.1-jre"
+rhino = "1.9.1"
 
 [libraries]
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
@@ -36,6 +37,7 @@ spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-te
 flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
 guava-bom = { module = "com.google.guava:guava-bom", version.ref = "guava" }
 guava = { module = "com.google.guava:guava" }
+rhino = { module = "org.mozilla:rhino", version.ref = "rhino" }
 postgresql-driver = { module = "org.postgresql:postgresql" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter" }
 testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }

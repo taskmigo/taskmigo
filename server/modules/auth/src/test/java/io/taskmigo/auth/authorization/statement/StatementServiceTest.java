@@ -2,10 +2,14 @@ package io.taskmigo.auth.authorization.statement;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.auth.authorization.condition.AuthorizationException;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
+import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,6 +24,9 @@ class StatementServiceTest {
 
     @Mock
     private StatementRepository statements;
+
+    @Mock
+    private JavaScriptPolicyCompiler policyCompiler;
 
     @InjectMocks
     private StatementService service;
@@ -57,6 +64,36 @@ class StatementServiceTest {
         assertThat(saved.getValue().policy).isEqualTo(
             "export default ({ request }) => request.path === '/api/v0/users';"
         );
+    }
+
+    /**
+     * Verifies that policy syntax is compiled during Statement activation rather than deferred to request handling.
+     *
+     * Given: a new request Statement containing malformed JavaScript policy source.
+     * Expect: activation fails and the malformed Statement is never persisted.
+     */
+    @Test
+    @DisplayName("rejects malformed policy before saving a statement")
+    void shouldRejectStatementWhenPolicyCannotBeCompiled() {
+        // Arrange
+        when(this.statements.existsByName("invalid_policy")).thenReturn(false);
+        StatementService activation = new StatementService(
+            this.statements,
+            mock(ObjectAuthorizationService.class),
+            new JavaScriptPolicyCompiler()
+        );
+
+        // Act + Assert
+        assertThatThrownBy(() -> activation.create(
+            "invalid_policy",
+            null,
+            Effect.ALLOW,
+            Scope.REQUEST,
+            "GET",
+            "/api/v0/users",
+            "export default ({ request }) => request.method === ;"
+        )).isInstanceOf(AuthorizationException.class).hasMessageContaining("cannot be parsed");
+        verify(this.statements, never()).save(org.mockito.ArgumentMatchers.any(StatementEntity.class));
     }
 
     /**

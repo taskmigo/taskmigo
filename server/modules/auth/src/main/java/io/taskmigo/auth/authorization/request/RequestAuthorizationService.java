@@ -1,6 +1,7 @@
 package io.taskmigo.auth.authorization.request;
 
-import io.taskmigo.auth.authorization.condition.AuthorizationException;
+import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
+import io.taskmigo.auth.authorization.policy.JavaScriptPolicyEvaluator;
 import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
@@ -14,15 +15,23 @@ import org.springframework.transaction.annotation.Transactional;
 public class RequestAuthorizationService {
 
     private final EffectiveStatementResolver statements;
+    private final JavaScriptPolicyCompiler policyCompiler;
+    private final JavaScriptPolicyEvaluator policyEvaluator;
 
-    RequestAuthorizationService(EffectiveStatementResolver statements) {
+    RequestAuthorizationService(
+        EffectiveStatementResolver statements,
+        JavaScriptPolicyCompiler policyCompiler,
+        JavaScriptPolicyEvaluator policyEvaluator
+    ) {
         this.statements = statements;
+        this.policyCompiler = policyCompiler;
+        this.policyEvaluator = policyEvaluator;
     }
 
     /// Returns whether a user is allowed to perform an HTTP request.
     ///
-    /// Matching unconditional allow Statements grant access, while a matching deny Statement always overrides an
-    /// allow. JavaScript policies are activated in the subsequent authorization phase.
+    /// Matching allow Statements grant access, while a matching deny Statement always overrides an allow. A policy
+    /// failure returns a denied decision.
     ///
     /// @param userId the user whose effective Statements are evaluated
     /// @param method the HTTP method of the request
@@ -34,11 +43,18 @@ public class RequestAuthorizationService {
         boolean allowed = false;
         for (StatementInfo statement : this.statements.resolve(userId)) {
             if (statement.scope() == Scope.REQUEST && statement.matches(method, path)) {
-                if (statement.policy() != null) throw new AuthorizationException(
-                    "Statement policy evaluation is not available yet"
-                );
-                if (statement.effect() == Effect.DENY) return new RequestAuthorizationDecision(false);
-                allowed = true;
+                try {
+                    boolean matches = statement.policy() == null || this.policyEvaluator.evaluate(
+                        this.policyCompiler.compile(statement.policy(), Scope.REQUEST),
+                        roots
+                    );
+                    if (matches) {
+                        if (statement.effect() == Effect.DENY) return new RequestAuthorizationDecision(false);
+                        allowed = true;
+                    }
+                } catch (RuntimeException exception) {
+                    return new RequestAuthorizationDecision(false);
+                }
             }
         }
         return new RequestAuthorizationDecision(allowed);
