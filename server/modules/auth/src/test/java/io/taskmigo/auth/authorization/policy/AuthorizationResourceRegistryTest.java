@@ -7,6 +7,7 @@ import io.taskmigo.auth.authorization.AuthorizationException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -59,6 +60,50 @@ class AuthorizationResourceRegistryTest {
     }
 
     /**
+     * Verifies that multiple named resources of multiple types use one bounded batch per resource type.
+     *
+     * Given: two user resources and one project resource selected by one authorization operation.
+     * Expect: each adapter is called once with all of its keys and every policy name receives its resolved value.
+     */
+    @Test
+    @DisplayName("batches multiple named resources by type")
+    void shouldBatchMultipleNamedResourcesWhenSeveralTypesAreSelected() {
+        // Arrange
+        AtomicInteger userCalls = new AtomicInteger();
+        AtomicInteger projectCalls = new AtomicInteger();
+        AuthorizationResourceAdapter users = adapter(
+            "user",
+            userCalls,
+            Map.of("user-1", Map.of("username", "alice"), "user-2", Map.of("username", "bob")),
+            Set.of("user-1", "user-2")
+        );
+        AuthorizationResourceAdapter projects = adapter(
+            "project",
+            projectCalls,
+            Map.of("project-1", Map.of("ownerId", "user-1")),
+            Set.of("project-1")
+        );
+        AuthorizationResourceRegistry registry = new AuthorizationResourceRegistry(
+            this.evaluator,
+            List.of(users, projects)
+        );
+        ResourceDescriptor firstUser = new ResourceDescriptor("requester", "user", new PolicyIr.Literal("user-1"));
+        ResourceDescriptor secondUser = new ResourceDescriptor("owner", "user", new PolicyIr.Literal("user-2"));
+        ResourceDescriptor project = new ResourceDescriptor("project", "project", new PolicyIr.Literal("project-1"));
+
+        // Act
+        ResolvedResources resolved = registry.resolve(List.of(firstUser, secondUser, project), Map.of());
+
+        // Assert
+        assertThat(userCalls).hasValue(1);
+        assertThat(projectCalls).hasValue(1);
+        assertThat(resolved.objectValues(List.of(firstUser, secondUser, project)))
+            .containsEntry("requester", Map.of("username", "alice"))
+            .containsEntry("owner", Map.of("username", "bob"))
+            .containsEntry("project", Map.of("ownerId", "user-1"));
+    }
+
+    /**
      * Verifies that resource resolution fails closed when a selected resource type has no adapter.
      *
      * Given: a descriptor for an unregistered resource type.
@@ -75,5 +120,26 @@ class AuthorizationResourceRegistryTest {
         assertThatThrownBy(() -> registry.resolve(List.of(descriptor), Map.of()))
             .isInstanceOf(AuthorizationException.class)
             .hasMessageContaining("no authorization resource adapter");
+    }
+
+    private static AuthorizationResourceAdapter adapter(
+        String type,
+        AtomicInteger calls,
+        Map<String, Map<String, ?>> values,
+        Set<String> expectedKeys
+    ) {
+        return new AuthorizationResourceAdapter() {
+            @Override
+            public String type() {
+                return type;
+            }
+
+            @Override
+            public Map<String, Map<String, ?>> resolve(Collection<String> keys) {
+                calls.incrementAndGet();
+                assertThat(keys).containsExactlyInAnyOrderElementsOf(expectedKeys);
+                return values;
+            }
+        };
     }
 }

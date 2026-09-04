@@ -7,10 +7,11 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /// Resolves user authorization resources in one repository batch without exposing UserEntity instances.
 @Service
-public final class UserAuthorizationResourceAdapter implements AuthorizationResourceAdapter {
+public class UserAuthorizationResourceAdapter implements AuthorizationResourceAdapter {
 
     private final UserRepository users;
 
@@ -25,6 +26,7 @@ public final class UserAuthorizationResourceAdapter implements AuthorizationReso
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Map<String, Map<String, ?>> resolve(Collection<String> keys) {
         Map<String, UUID> identifiers = new LinkedHashMap<>();
         for (String key : keys) {
@@ -35,7 +37,7 @@ public final class UserAuthorizationResourceAdapter implements AuthorizationReso
             }
         }
         Map<String, Map<String, ?>> result = new LinkedHashMap<>();
-        for (UserEntity user : this.users.findAllById(identifiers.values())) {
+        for (UserEntity user : this.users.findAllByIdIn(identifiers.values())) {
             result.put(
                 user.id.toString(),
                 Map.of(

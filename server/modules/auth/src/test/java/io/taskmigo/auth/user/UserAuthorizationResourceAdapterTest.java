@@ -34,13 +34,13 @@ class UserAuthorizationResourceAdapterTest {
         UUID secondId = UUID.randomUUID();
         UserEntity first = new UserEntity(firstId, "alice", Set.of("alice@example.com"), Set.of(), "Alice", "A");
         UserEntity second = new UserEntity(secondId, "bob", Set.of("bob@example.com"), Set.of(), "Bob", "B");
-        when(this.users.findAllById(any())).thenReturn(List.of(first, second));
+        when(this.users.findAllByIdIn(any())).thenReturn(List.of(first, second));
 
         // Act
         Map<String, Map<String, ?>> result = this.adapter.resolve(List.of(firstId.toString(), secondId.toString()));
 
         // Assert
-        verify(this.users, times(1)).findAllById(any());
+        verify(this.users, times(1)).findAllByIdIn(any());
         assertThat(result).containsOnlyKeys(firstId.toString(), secondId.toString());
         assertThat(Objects.requireNonNull(result.get(firstId.toString())).get("username")).isEqualTo("alice");
         assertThat(Objects.requireNonNull(result.get(secondId.toString())).get("username")).isEqualTo("bob");

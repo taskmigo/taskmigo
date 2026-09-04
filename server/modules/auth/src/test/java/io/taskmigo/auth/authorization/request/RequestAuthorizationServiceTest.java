@@ -182,8 +182,8 @@ class RequestAuthorizationServiceTest {
     /**
      * Verifies that a request policy is evaluated against explicitly selected persisted resource values.
      *
-     * Given: a request policy selecting a user by path variable and a batched adapter returning that user.
-     * Expect: the policy can read the resolved user while the adapter is called only once.
+     * Given: a request policy selecting two users by path variables and a batched adapter returning both users.
+     * Expect: the policy can read both resolved names while the adapter is called only once.
      */
     @Test
     @DisplayName("evaluates request policy against resolved resources")
@@ -200,8 +200,13 @@ class RequestAuthorizationServiceTest {
             @Override
             public Map<String, Map<String, ?>> resolve(Collection<String> keys) {
                 calls.incrementAndGet();
-                assertThat(keys).containsExactly("target-user");
-                return Map.of("target-user", Map.of("username", "alice"));
+                assertThat(keys).containsExactlyInAnyOrder("target-user", "owner-user");
+                return Map.of(
+                    "target-user",
+                    Map.of("username", "alice"),
+                    "owner-user",
+                    Map.of("username", "bob")
+                );
             }
         };
         JavaScriptPolicyEvaluator evaluator = new JavaScriptPolicyEvaluator();
@@ -217,9 +222,13 @@ class RequestAuthorizationServiceTest {
                     Effect.ALLOW,
                     """
                     export function resources({ request }) {
-                      return { user: resource("user", request.path.userId) };
+                      return {
+                        user: resource("user", request.path.userId),
+                        owner: resource("user", request.path.ownerId),
+                      };
                     }
-                    export default ({ object }) => object.user.username === "alice";
+                    export default ({ object }) => object.user.username === "alice"
+                      && object.owner.username === "bob";
                     """
                 )
             )
@@ -230,7 +239,10 @@ class RequestAuthorizationServiceTest {
             userId,
             "GET",
             "/api/v0/users",
-            Map.of("request", Map.of("path", Map.of("userId", "target-user")))
+            Map.of(
+                "request",
+                Map.of("path", Map.of("userId", "target-user", "ownerId", "owner-user"))
+            )
         );
 
         // Assert
