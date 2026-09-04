@@ -1,5 +1,4 @@
 # Software Requirements Specification (IEEE 830)
-
 ## JavaScript Authorization Policies and Shared Query Filtering
 
 **Status:** Draft for implementation  
@@ -7,8 +6,7 @@
 **Baseline commit:** `b7570226eb6f7258ed6a3e75a7f8dcab4ae93392`  
 **Related:** #37, #54  
 **Compatibility:** v0; breaking changes are allowed.
-
-> Requirements are based on the implementation on `next`. Prior discussion and experimental implementations are not baseline behavior.
+**Version:** 1.0.0-alpha.1
 
 ---
 
@@ -21,6 +19,7 @@ This SRS covers:
 - Statement schema/API migration;
 - JavaScript policy compilation;
 - Request Authorization;
+- per-operation Authorization Snapshot consistency;
 - request-time resource resolution;
 - Object Authorization partial evaluation;
 - shared Filter AST / Filter Schema;
@@ -30,11 +29,12 @@ This SRS covers:
 
 ## Project-specific terms
 
-| Term          | Meaning                                                                |
-| ------------- | ---------------------------------------------------------------------- |
-| Policy IR     | Taskmigo-owned compiled representation of JavaScript policy semantics. |
-| Filter AST    | Taskmigo-owned representation of database predicates.                  |
-| Filter Schema | Resource-specific mapping of filter fields to persistence.             |
+| Term | Meaning |
+| --- | --- |
+| Policy IR | Taskmigo-owned compiled representation of JavaScript policy semantics. |
+| Filter AST | Taskmigo-owned representation of database predicates. |
+| Filter Schema | Resource-specific mapping of filter fields to persistence. |
+| Authorization Snapshot | Immutable authorization state resolved once for one request/operation and reused by all authorization decisions in that operation. |
 
 References:
 
@@ -196,7 +196,49 @@ For Object Authorization, `object.*` SHALL remain symbolic during partial evalua
 
 Policy SHALL NOT receive framework internals, JPA entities, repositories, filesystem/network/process access, or arbitrary host APIs.
 
-## 3.5 Request-Time Resources
+## 3.5 Authorization Snapshot
+
+### FR-SNAPSHOT-001
+
+Taskmigo SHALL resolve exactly one immutable Authorization Snapshot for each request/authorization operation.
+
+### FR-SNAPSHOT-002
+
+The snapshot SHALL contain the effective authorization state required by that operation, including the effective Statement revisions and principal authorization attributes used by policy evaluation.
+
+### FR-SNAPSHOT-003
+
+Request Authorization, Request resource authorization, and Object Authorization executed within the same operation SHALL use the same Authorization Snapshot.
+
+Authorization components SHALL NOT independently re-resolve effective Statements after the snapshot has been established.
+
+### FR-SNAPSHOT-004
+
+Authorization-state changes committed after the snapshot has been established SHALL NOT affect the current operation.
+
+The next request/authorization operation SHALL resolve a new snapshot and observe the then-current authorization state.
+
+Example semantics:
+
+```text
+t0 request A starts -> snapshot S1 -> ALLOW
+t1 authorization state changes -> future state is DENY
+t2 request A continues -> still uses S1
+t3 request A ends
+t4 request B starts -> snapshot S2 -> DENY
+```
+
+### FR-SNAPSHOT-005
+
+The same semantics SHALL apply to long-running operations: an operation authorized by its initial snapshot remains governed by that snapshot until the operation ends.
+
+Taskmigo SHALL NOT introduce mid-operation epoch checks, authorization leases, periodic revalidation, or authorization checkpoints as part of this SRS.
+
+### FR-SNAPSHOT-006
+
+Snapshot creation SHALL produce a coherent effective authorization state. If resolution requires multiple database reads, the implementation SHALL prevent the snapshot from mixing incompatible authorization states from concurrent changes.
+
+## 3.6 Request-Time Resources
 
 ### FR-RES-001
 
@@ -223,7 +265,7 @@ Protected object identity SHALL be selected explicitly by policy. Taskmigo SHALL
 
 Resource resolution SHALL be bounded, deduplicated, and free of N+1 behavior. Compatible lookups SHALL support batching.
 
-## 3.6 Request Authorization
+## 3.7 Request Authorization
 
 ### FR-REQ-001
 
@@ -243,7 +285,7 @@ ELSE DENY
 
 Compilation, resource-resolution, or evaluation failure SHALL fail closed.
 
-## 3.7 Object Authorization
+## 3.8 Object Authorization
 
 ### FR-OBJ-001
 
@@ -269,7 +311,11 @@ Object visibility semantics SHALL remain:
 ANY(allow filters) AND NOT ANY(deny filters)
 ```
 
-## 3.8 Filter AST / Filter Schema
+### FR-OBJ-006
+
+Object Authorization SHALL consume the Authorization Snapshot already established for the operation and SHALL NOT resolve a second effective Statement set.
+
+## 3.9 Filter AST / Filter Schema
 
 ### FR-FILTER-001
 
@@ -299,7 +345,7 @@ Filter Schema SHALL own field/type/relationship persistence mappings used to com
 
 Policy/user values SHALL be parameter-bound and SHALL NOT be concatenated into SQL.
 
-## 3.9 Effective Statement Resolution
+## 3.10 Effective Statement Resolution
 
 ### PERF-STMT-001
 
@@ -368,11 +414,13 @@ Complete JavaScript-backed Request Authorization:
 - activation-time policy compilation/validation;
 - Policy IR evaluator;
 - compiler diagnostics and complexity limits;
+- one immutable Authorization Snapshot per request/operation;
+- coherent effective authorization-state resolution for the snapshot;
 - Request Authorization fully migrated from restricted SpEL;
-- default-deny, deny-overrides, unconditional-policy, and fail-closed behavior;
+- default-deny, deny-overrides, unconditional-policy, snapshot consistency, and fail-closed behavior;
 - remove obsolete SpEL Request Authorization implementation.
 
-**Done:** every supported Request policy is authored in JavaScript and evaluated through Policy IR; Request Authorization has no legacy condition execution path.
+**Done:** every supported Request policy is authored in JavaScript and evaluated through Policy IR using one immutable Authorization Snapshot; Request Authorization has no legacy condition execution path.
 
 ## Phase 3 — Request Authorization Resources
 
@@ -385,7 +433,7 @@ Complete persisted-resource support for Request Authorization:
 - route/path-variable input;
 - single and multiple named resources;
 - bounded/deduplicated/batched resolution;
-- Request policy evaluation against resolved `object` values;
+- Request policy evaluation against resolved `object` values using the operation Authorization Snapshot;
 - error semantics and query-count/N+1 verification.
 
 **Done:** Request Authorization can use explicitly selected persisted resources without repository access from policy code and without N+1 behavior.
@@ -394,6 +442,7 @@ Complete persisted-resource support for Request Authorization:
 
 Complete JavaScript-backed Object Authorization for the supported Filter Schema:
 
+- consume the existing operation Authorization Snapshot;
 - Policy IR partial evaluation;
 - known `request`/`principal` specialization;
 - symbolic `object.*` handling;
@@ -408,7 +457,7 @@ Complete JavaScript-backed Object Authorization for the supported Filter Schema:
 - migrate all current built-in Object authorization behavior from legacy conditions;
 - remove obsolete Object condition translation path.
 
-**Done:** all supported Object Authorization uses JavaScript Policy IR -> Filter AST -> database predicate, with no legacy condition path and no JVM row filtering.
+**Done:** all supported Object Authorization uses the same operation snapshot and executes JavaScript Policy IR -> Filter AST -> database predicate, with no second Statement resolution, legacy condition path, or JVM row filtering.
 
 ## Phase 5 — Effective Statement Resolution Performance
 
@@ -419,11 +468,12 @@ Complete DB-first effective Statement resolution:
 - deduplicate Statements database-side or through bounded result processing;
 - prevent N+1 queries;
 - preserve current User/Group/Role inheritance semantics;
+- preserve coherent Authorization Snapshot creation;
 - verify unrelated graph growth does not increase query count;
 - verify approximately 500 matching effective Statements;
 - add regression/performance tests.
 
-**Done:** authorization resolution no longer loads unrelated Groups/Roles into JVM memory and satisfies the bounded-query requirements.
+**Done:** Authorization Snapshot resolution no longer loads unrelated Groups/Roles into JVM memory and satisfies the bounded-query requirements.
 
 ## Phase 6 — Advanced Filtering and Relationships — TBD
 
@@ -448,6 +498,7 @@ Complete migration and removal of legacy authorization artifacts:
 - document Statement policy contract;
 - document supported JavaScript semantics;
 - document Request resources;
+- document Authorization Snapshot semantics;
 - document Object Authorization / Filter Schema contract;
 - document DB-first and ACL-before-pagination invariants;
 - pass all server quality gates.
@@ -457,8 +508,6 @@ Complete migration and removal of legacy authorization artifacts:
 ---
 
 # 6. Deferred Features
-
-These requirements are retained but are not assigned to the active implementation phases above.
 
 ## `filterBy` query filtering
 
@@ -490,22 +539,31 @@ AND authorization predicate
 
 before pagination.
 
-## Multi-instance / compiled-policy cache hardening
+## Compiled-policy cache hardening
 
-Database remains the source of truth. Future compiled-policy caching SHALL use immutable Statement revision/version/hash identity and SHALL NOT make correctness depend on distributed cache invalidation.
+Database remains the source of truth. Future compiled-policy caching SHALL use immutable Statement revision/version/hash identity and SHALL NOT alter the per-operation Authorization Snapshot semantics.
 
 ---
 
 # 7. Verification and Acceptance
 
-| Phase | Required verification                                                                                  |
-| ----- | ------------------------------------------------------------------------------------------------------ |
-| 1     | Statement API, persistence, bootstrap, schema, and tests use only `scope` + `policy`.                  |
-| 2     | Complete supported JavaScript Request Authorization; no SpEL Request execution path.                   |
-| 3     | Persisted Request resources work for single/multiple resources with bounded query count and no N+1.    |
-| 4     | Complete supported Object Authorization executes DB-side before pagination; no legacy/memory fallback. |
-| 5     | Effective Statement resolution is DB-first and bounded, including ~500 matching Statements.            |
-| 6     | TBD before implementation.                                                                             |
-| 7     | Legacy artifacts removed, built-ins migrated, docs current, quality gates pass.                        |
+| Phase | Required verification |
+| --- | --- |
+| 1 | Statement API, persistence, bootstrap, schema, and tests use only `scope` + `policy`. |
+| 2 | Complete supported JavaScript Request Authorization; one immutable snapshot per operation; no SpEL Request execution path. |
+| 3 | Persisted Request resources work for single/multiple resources with bounded query count and no N+1. |
+| 4 | Request/Object Authorization use the same operation snapshot; Object Authorization executes DB-side before pagination; no second Statement resolution or memory fallback. |
+| 5 | Snapshot resolution is DB-first and bounded, including ~500 matching Statements. |
+| 6 | TBD before implementation. |
+| 7 | Legacy artifacts removed, built-ins migrated, docs current, quality gates pass. |
+
+Additional snapshot verification SHALL cover:
+
+```text
+request A establishes S1 and is allowed
+authorization state changes while request A is running
+request A continues using S1
+request B establishes S2 and observes the new authorization state
+```
 
 The SRS is satisfied when all scheduled phases and their acceptance criteria are complete.
