@@ -2,9 +2,6 @@ package io.taskmigo.auth.authorization.policy;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
 import java.math.BigDecimal;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
@@ -44,12 +41,6 @@ public final class JavaScriptPolicyEvaluator {
             case PolicyIr.UndefinedValue ignored -> UNDEFINED;
             case PolicyIr.Reference reference -> this.reference(reference, roots);
             case PolicyIr.PropertyAccess property -> this.property(property, roots);
-            case PolicyIr.ArrayValue array -> array
-                .values()
-                .stream()
-                .map(item -> this.value(item, roots))
-                .toList();
-            case PolicyIr.ObjectValue object -> this.object(object, roots);
             case PolicyIr.Binary binary -> this.binary(binary, roots);
             case PolicyIr.Unary unary -> this.unary(unary, roots);
             case PolicyIr.Conditional conditional -> this.truthy(this.value(conditional.condition(), roots))
@@ -68,12 +59,6 @@ public final class JavaScriptPolicyEvaluator {
         return propertyValue(this.value(property.target(), roots), property.property());
     }
 
-    private Map<String, @Nullable Object> object(PolicyIr.ObjectValue object, Map<String, ?> roots) {
-        Map<String, @Nullable Object> values = new LinkedHashMap<>();
-        object.values().forEach((key, value) -> values.put(key, this.value(value, roots)));
-        return Collections.unmodifiableMap(values);
-    }
-
     private @Nullable Object binary(PolicyIr.Binary binary, Map<String, ?> roots) {
         if (binary.operator() == PolicyIr.BinaryOperator.AND) {
             Object left = this.value(binary.left(), roots);
@@ -89,15 +74,10 @@ public final class JavaScriptPolicyEvaluator {
             case EQUAL -> strictEquals(left, right);
             case NOT_EQUAL -> !strictEquals(left, right);
             case GREATER, GREATER_OR_EQUAL, LESS, LESS_OR_EQUAL -> compare(binary.operator(), left, right);
-            case ADD -> add(left, right);
+            case ADD -> arithmetic(binary.operator(), left, right);
             case SUBTRACT -> arithmetic(binary.operator(), left, right);
             case MULTIPLY -> arithmetic(binary.operator(), left, right);
             case DIVIDE -> arithmetic(binary.operator(), left, right);
-            case MODULO -> arithmetic(binary.operator(), left, right);
-            case IN -> containsProperty(right, left);
-            case CONTAINS -> contains(left, right);
-            case STARTS_WITH -> stringPredicate(binary.operator(), left, right);
-            case ENDS_WITH -> stringPredicate(binary.operator(), left, right);
             case AND, OR -> throw new AssertionError("logical operators are handled before operands");
         };
     }
@@ -113,16 +93,6 @@ public final class JavaScriptPolicyEvaluator {
 
     private static Object propertyValue(@Nullable Object target, String property) {
         if (target instanceof Map<?, ?> map) return map.containsKey(property) ? map.get(property) : UNDEFINED;
-        if (target instanceof List<?> list && property.equals("length")) return (double) list.size();
-        if (target instanceof List<?> list && property.matches("0|[1-9][0-9]*")) {
-            int index = Integer.parseInt(property);
-            return index < list.size() ? list.get(index) : UNDEFINED;
-        }
-        if (target instanceof String string && property.equals("length")) return (double) string.length();
-        if (target instanceof String string && property.matches("0|[1-9][0-9]*")) {
-            int index = Integer.parseInt(property);
-            return index < string.length() ? String.valueOf(string.charAt(index)) : UNDEFINED;
-        }
         return UNDEFINED;
     }
 
@@ -165,58 +135,21 @@ public final class JavaScriptPolicyEvaluator {
         };
     }
 
-    private static Object add(@Nullable Object left, @Nullable Object right) {
-        if (left instanceof String || right instanceof String) return stringify(left) + stringify(right);
-        return number(left).doubleValue() + number(right).doubleValue();
-    }
-
     private static double arithmetic(PolicyIr.BinaryOperator operator, @Nullable Object left, @Nullable Object right) {
         double leftValue = number(left).doubleValue();
         double rightValue = number(right).doubleValue();
         return switch (operator) {
+            case ADD -> leftValue + rightValue;
             case SUBTRACT -> leftValue - rightValue;
             case MULTIPLY -> leftValue * rightValue;
             case DIVIDE -> leftValue / rightValue;
-            case MODULO -> leftValue % rightValue;
             default -> throw new AssertionError("not an arithmetic operator");
         };
-    }
-
-    private static boolean containsProperty(@Nullable Object container, @Nullable Object property) {
-        if (container instanceof Map<?, ?> map) return map.containsKey(property);
-        if (container instanceof List<?> list && property instanceof Number number) {
-            int index = number.intValue();
-            return index >= 0 && index < list.size();
-        }
-        throw invalidValue("in requires an object or array");
-    }
-
-    private static boolean contains(@Nullable Object value, @Nullable Object searched) {
-        if (value instanceof List<?> list) return list.stream().anyMatch(item -> strictEquals(item, searched));
-        if (value instanceof String string && searched instanceof String text) return string.contains(text);
-        throw invalidValue("includes requires an array or string");
-    }
-
-    private static boolean stringPredicate(
-        PolicyIr.BinaryOperator operator,
-        @Nullable Object left,
-        @Nullable Object right
-    ) {
-        if (!(left instanceof String text) || !(right instanceof String searched)) throw invalidValue(
-            operator.name().toLowerCase() + " requires strings"
-        );
-        return operator == PolicyIr.BinaryOperator.STARTS_WITH ? text.startsWith(searched) : text.endsWith(searched);
     }
 
     private static BigDecimal number(@Nullable Object value) {
         if (value instanceof Number number) return BigDecimal.valueOf(number.doubleValue());
         throw invalidValue("arithmetic requires numbers");
-    }
-
-    private static String stringify(@Nullable Object value) {
-        if (value == null) return "null";
-        if (value == UNDEFINED) return "undefined";
-        return String.valueOf(value);
     }
 
     private boolean truthy(@Nullable Object value) {

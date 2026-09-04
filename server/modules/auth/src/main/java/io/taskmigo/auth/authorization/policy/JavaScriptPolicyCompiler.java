@@ -4,12 +4,9 @@ import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.statement.Scope;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import org.jspecify.annotations.Nullable;
 import org.mozilla.javascript.CompilerEnvirons;
 import org.mozilla.javascript.Context;
@@ -17,12 +14,9 @@ import org.mozilla.javascript.Node;
 import org.mozilla.javascript.Parser;
 import org.mozilla.javascript.Token;
 import org.mozilla.javascript.ast.AbstractObjectProperty;
-import org.mozilla.javascript.ast.ArrayLiteral;
 import org.mozilla.javascript.ast.AstNode;
 import org.mozilla.javascript.ast.AstRoot;
 import org.mozilla.javascript.ast.Block;
-import org.mozilla.javascript.ast.ConditionalExpression;
-import org.mozilla.javascript.ast.ElementGet;
 import org.mozilla.javascript.ast.ExpressionStatement;
 import org.mozilla.javascript.ast.FunctionCall;
 import org.mozilla.javascript.ast.FunctionNode;
@@ -51,9 +45,8 @@ public final class JavaScriptPolicyCompiler {
     private static final int MAX_NODES = 500;
     private static final Set<String> ROOTS = Set.of("request", "principal", "object");
     private static final JavaScriptPolicyEvaluator EVALUATOR = new JavaScriptPolicyEvaluator();
-    private final ConcurrentMap<CacheKey, JavaScriptPolicyModule> cache = new ConcurrentHashMap<>();
 
-    /// Compiles and caches a policy for an immutable Statement scope.
+    /// Compiles a policy for an immutable Statement scope.
     ///
     /// The source is parsed as ECMAScript syntax and never executed.
     ///
@@ -65,7 +58,7 @@ public final class JavaScriptPolicyCompiler {
         return this.compileModule(source, scope).policy();
     }
 
-    /// Compiles and caches a policy module, including its declarative request resources.
+    /// Compiles a policy module, including its declarative request resources.
     ///
     /// Request resources are descriptors only at activation time. Their keys are evaluated and resolved by the
     /// request authorization service, after the approved request and principal roots are available.
@@ -75,8 +68,7 @@ public final class JavaScriptPolicyCompiler {
     /// @return the immutable compiled policy module
     /// @throws AuthorizationException when the module or one of its expressions is unsupported
     public JavaScriptPolicyModule compileModule(String source, Scope scope) {
-        CacheKey key = new CacheKey(source, scope);
-        return this.cache.computeIfAbsent(key, ignored -> this.compileUncached(source, scope));
+        return this.compileUncached(source, scope);
     }
 
     private JavaScriptPolicyModule compileUncached(String source, Scope scope) {
@@ -116,7 +108,6 @@ public final class JavaScriptPolicyCompiler {
                 ? this.statements(childStatements(block), new HashMap<>(roots), 0, new Counter())
                 : this.expression(function.getBody(), roots, 0, new Counter());
         expression = fold(expression);
-        validateBooleanResult(expression);
         if (scope == Scope.OBJECT) validateObjectPolicy(expression);
         List<ResourceDescriptor> resources = resourcesFunction == null ? List.of() : this.resources(resourcesFunction);
         if (scope == Scope.REQUEST) validateObjectReferences(expression, resources);
@@ -208,7 +199,7 @@ public final class JavaScriptPolicyCompiler {
         int index,
         Counter counter
     ) {
-        if (index >= statements.size()) throw invalid("policy function must return a boolean on every path");
+        if (index >= statements.size()) return new PolicyIr.UndefinedValue();
         counter.consume();
         AstNode statement = statements.get(index);
         if (statement instanceof VariableDeclaration declaration) {
@@ -278,15 +269,6 @@ public final class JavaScriptPolicyCompiler {
             case NumberLiteral number -> new PolicyIr.Literal(number.getNumber());
             case KeywordLiteral keyword -> literal(keyword);
             case PropertyGet property -> this.property(property, environment, depth, counter);
-            case ElementGet element -> this.element(element, environment, depth, counter);
-            case ArrayLiteral array -> this.array(array, environment, depth, counter);
-            case ObjectLiteral object -> this.object(object, environment, depth, counter);
-            case FunctionCall call -> this.call(call, environment, depth, counter);
-            case ConditionalExpression conditional -> new PolicyIr.Conditional(
-                this.expression(conditional.getTestExpression(), environment, depth + 1, counter),
-                this.expression(conditional.getTrueExpression(), environment, depth + 1, counter),
-                this.expression(conditional.getFalseExpression(), environment, depth + 1, counter)
-            );
             case UnaryExpression unary -> new PolicyIr.Unary(
                 unary(unary),
                 this.expression(unary.getOperand(), environment, depth + 1, counter)
@@ -318,77 +300,6 @@ public final class JavaScriptPolicyCompiler {
         return new PolicyIr.PropertyAccess(target, name);
     }
 
-    private PolicyIr.Expression element(
-        ElementGet element,
-        Map<String, PolicyIr.Expression> environment,
-        int depth,
-        Counter counter
-    ) {
-        String property = switch (element.getElement()) {
-            case StringLiteral string -> string.getValue();
-            case NumberLiteral number -> number.getValue();
-            default -> throw invalid("computed property access must use a static key");
-        };
-        return new PolicyIr.PropertyAccess(
-            this.expression(element.getTarget(), environment, depth + 1, counter),
-            property
-        );
-    }
-
-    private PolicyIr.Expression array(
-        ArrayLiteral array,
-        Map<String, PolicyIr.Expression> environment,
-        int depth,
-        Counter counter
-    ) {
-        List<PolicyIr.Expression> values = new ArrayList<>();
-        for (AstNode value : array.getElements()) values.add(this.expression(value, environment, depth + 1, counter));
-        return new PolicyIr.ArrayValue(values);
-    }
-
-    private PolicyIr.Expression object(
-        ObjectLiteral object,
-        Map<String, PolicyIr.Expression> environment,
-        int depth,
-        Counter counter
-    ) {
-        Map<String, PolicyIr.Expression> values = new LinkedHashMap<>();
-        for (AbstractObjectProperty element : object.getElements()) {
-            if (
-                !(element instanceof ObjectProperty property) ||
-                property.isGetterMethod() ||
-                property.isSetterMethod() ||
-                property.isMethod()
-            ) throw invalid("object literals must contain simple properties");
-            String name = propertyName(property.getKey());
-            if (
-                values.put(name, this.expression(property.getValue(), environment, depth + 1, counter)) != null
-            ) throw invalid("object literals cannot contain duplicate properties");
-        }
-        return new PolicyIr.ObjectValue(values);
-    }
-
-    private PolicyIr.Expression call(
-        FunctionCall call,
-        Map<String, PolicyIr.Expression> environment,
-        int depth,
-        Counter counter
-    ) {
-        if (!(call.getTarget() instanceof PropertyGet property)) throw invalid(
-            "only selected one-argument string and membership predicates are supported"
-        );
-        if (call.getArguments().size() != 1) throw invalid("policy predicates require one argument");
-        PolicyIr.Expression target = this.expression(property.getTarget(), environment, depth + 1, counter);
-        PolicyIr.Expression argument = this.expression(call.getArguments().getFirst(), environment, depth + 1, counter);
-        PolicyIr.BinaryOperator operator = switch (property.getProperty().getIdentifier()) {
-            case "includes" -> PolicyIr.BinaryOperator.CONTAINS;
-            case "startsWith" -> PolicyIr.BinaryOperator.STARTS_WITH;
-            case "endsWith" -> PolicyIr.BinaryOperator.ENDS_WITH;
-            default -> throw invalid("unsupported policy predicate");
-        };
-        return new PolicyIr.Binary(operator, target, argument);
-    }
-
     private PolicyIr.Expression binary(
         InfixExpression infix,
         Map<String, PolicyIr.Expression> environment,
@@ -408,8 +319,6 @@ public final class JavaScriptPolicyCompiler {
             case Token.SUB -> PolicyIr.BinaryOperator.SUBTRACT;
             case Token.MUL -> PolicyIr.BinaryOperator.MULTIPLY;
             case Token.DIV -> PolicyIr.BinaryOperator.DIVIDE;
-            case Token.MOD -> PolicyIr.BinaryOperator.MODULO;
-            case Token.IN -> PolicyIr.BinaryOperator.IN;
             default -> throw invalid("unsupported policy operator");
         };
         return new PolicyIr.Binary(
@@ -471,15 +380,6 @@ public final class JavaScriptPolicyCompiler {
             case PolicyIr.Literal ignored -> false;
             case PolicyIr.UndefinedValue ignored -> false;
             case PolicyIr.PropertyAccess property -> containsObject(property.target());
-            case PolicyIr.ArrayValue array -> array
-                .values()
-                .stream()
-                .anyMatch(JavaScriptPolicyCompiler::containsObject);
-            case PolicyIr.ObjectValue object -> object
-                .values()
-                .values()
-                .stream()
-                .anyMatch(JavaScriptPolicyCompiler::containsObject);
             case PolicyIr.Binary binary -> containsObject(binary.left()) || containsObject(binary.right());
             case PolicyIr.Unary unary -> containsObject(unary.operand());
             case PolicyIr.Conditional conditional -> containsObject(conditional.condition()) ||
@@ -494,15 +394,6 @@ public final class JavaScriptPolicyCompiler {
             case PolicyIr.UndefinedValue ignored -> false;
             case PolicyIr.Reference ignored -> true;
             case PolicyIr.PropertyAccess property -> containsReference(property.target());
-            case PolicyIr.ArrayValue array -> array
-                .values()
-                .stream()
-                .anyMatch(JavaScriptPolicyCompiler::containsReference);
-            case PolicyIr.ObjectValue object -> object
-                .values()
-                .values()
-                .stream()
-                .anyMatch(JavaScriptPolicyCompiler::containsReference);
             case PolicyIr.Binary binary -> containsReference(binary.left()) || containsReference(binary.right());
             case PolicyIr.Unary unary -> containsReference(unary.operand());
             case PolicyIr.Conditional conditional -> containsReference(conditional.condition()) ||
@@ -518,23 +409,6 @@ public final class JavaScriptPolicyCompiler {
             case PolicyIr.Reference reference -> reference;
             case PolicyIr.PropertyAccess property -> foldConstant(
                 new PolicyIr.PropertyAccess(fold(property.target()), property.property())
-            );
-            case PolicyIr.ArrayValue array -> new PolicyIr.ArrayValue(
-                array.values().stream().map(JavaScriptPolicyCompiler::fold).toList()
-            );
-            case PolicyIr.ObjectValue object -> new PolicyIr.ObjectValue(
-                object
-                    .values()
-                    .entrySet()
-                    .stream()
-                    .collect(
-                        java.util.stream.Collectors.toMap(
-                            Map.Entry::getKey,
-                            entry -> fold(entry.getValue()),
-                            (first, second) -> first,
-                            LinkedHashMap::new
-                        )
-                    )
             );
             case PolicyIr.Binary binary -> foldBinary(binary);
             case PolicyIr.Unary unary -> foldConstant(new PolicyIr.Unary(unary.operator(), fold(unary.operand())));
@@ -579,70 +453,6 @@ public final class JavaScriptPolicyCompiler {
         return expression;
     }
 
-    private static void validateBooleanResult(PolicyIr.Expression expression) {
-        if (resultType(expression) != ResultType.BOOLEAN) throw invalid(
-            "policy must return a boolean on every reachable path"
-        );
-    }
-
-    private static ResultType resultType(PolicyIr.Expression expression) {
-        return switch (expression) {
-            case PolicyIr.Literal literal -> literalType(literal.value());
-            case PolicyIr.UndefinedValue ignored -> ResultType.UNDEFINED;
-            case PolicyIr.Reference ignored -> ResultType.UNKNOWN;
-            case PolicyIr.PropertyAccess property -> {
-                ResultType target = resultType(property.target());
-                yield property.property().equals("length") &&
-                (target == ResultType.STRING || target == ResultType.ARRAY)
-                    ? ResultType.NUMBER
-                    : ResultType.UNKNOWN;
-            }
-            case PolicyIr.ArrayValue ignored -> ResultType.ARRAY;
-            case PolicyIr.ObjectValue ignored -> ResultType.OBJECT;
-            case PolicyIr.Binary binary -> switch (binary.operator()) {
-                case OR, AND -> resultType(binary.left()) == ResultType.BOOLEAN &&
-                resultType(binary.right()) == ResultType.BOOLEAN
-                    ? ResultType.BOOLEAN
-                    : ResultType.UNKNOWN;
-                case
-                    EQUAL,
-                    NOT_EQUAL,
-                    GREATER,
-                    GREATER_OR_EQUAL,
-                    LESS,
-                    LESS_OR_EQUAL,
-                    IN,
-                    CONTAINS,
-                    STARTS_WITH,
-                    ENDS_WITH -> ResultType.BOOLEAN;
-                case ADD -> resultType(binary.left()) == ResultType.STRING ||
-                resultType(binary.right()) == ResultType.STRING
-                    ? ResultType.STRING
-                    : resultType(binary.left()) == ResultType.NUMBER && resultType(binary.right()) == ResultType.NUMBER
-                      ? ResultType.NUMBER
-                      : ResultType.UNKNOWN;
-                case SUBTRACT, MULTIPLY, DIVIDE, MODULO -> resultType(binary.left()) == ResultType.NUMBER &&
-                resultType(binary.right()) == ResultType.NUMBER
-                    ? ResultType.NUMBER
-                    : ResultType.UNKNOWN;
-            };
-            case PolicyIr.Unary unary -> unary.operator() == PolicyIr.UnaryOperator.NOT
-                ? ResultType.BOOLEAN
-                : ResultType.NUMBER;
-            case PolicyIr.Conditional conditional -> resultType(conditional.whenTrue()) == ResultType.BOOLEAN &&
-            resultType(conditional.whenFalse()) == ResultType.BOOLEAN
-                ? ResultType.BOOLEAN
-                : ResultType.UNKNOWN;
-        };
-    }
-
-    private static ResultType literalType(@Nullable Object value) {
-        if (value instanceof Boolean) return ResultType.BOOLEAN;
-        if (value instanceof Number) return ResultType.NUMBER;
-        if (value instanceof String) return ResultType.STRING;
-        return value == null ? ResultType.NULL : ResultType.UNKNOWN;
-    }
-
     private static boolean truthy(@Nullable Object value) {
         if (value == null || value == JavaScriptPolicyEvaluator.undefinedValue()) return false;
         if (value instanceof Boolean bool) return bool;
@@ -665,14 +475,6 @@ public final class JavaScriptPolicyCompiler {
                 if (containsObject(property)) throw invalid("computed object properties are not queryable");
                 validateObjectPolicy(property.target());
             }
-            case PolicyIr.ArrayValue array -> {
-                if (containsObject(array)) throw invalid("object-dependent collection values are not queryable");
-                array.values().forEach(JavaScriptPolicyCompiler::validateObjectPolicy);
-            }
-            case PolicyIr.ObjectValue object -> {
-                if (containsObject(object)) throw invalid("object literals are not queryable");
-                throw invalid("object literal values are not queryable");
-            }
             case PolicyIr.Binary binary -> {
                 if (
                     binary.operator() == PolicyIr.BinaryOperator.AND || binary.operator() == PolicyIr.BinaryOperator.OR
@@ -683,15 +485,6 @@ public final class JavaScriptPolicyCompiler {
                     "object-to-object comparisons are not queryable"
                 );
                 else if (containsObject(binary)) {
-                    if (
-                        Set.of(
-                            PolicyIr.BinaryOperator.ADD,
-                            PolicyIr.BinaryOperator.SUBTRACT,
-                            PolicyIr.BinaryOperator.MULTIPLY,
-                            PolicyIr.BinaryOperator.DIVIDE,
-                            PolicyIr.BinaryOperator.MODULO
-                        ).contains(binary.operator())
-                    ) throw invalid("object arithmetic is not queryable");
                     validateObjectPolicy(binary.left());
                     validateObjectPolicy(binary.right());
                 }
@@ -703,7 +496,9 @@ public final class JavaScriptPolicyCompiler {
                 validateObjectPolicy(unary.operand());
             }
             case PolicyIr.Conditional conditional -> {
-                if (containsObject(conditional)) throw invalid("object conditionals are not queryable");
+                validateObjectPolicy(conditional.condition());
+                validateObjectPolicy(conditional.whenTrue());
+                validateObjectPolicy(conditional.whenFalse());
             }
         }
     }
@@ -725,13 +520,6 @@ public final class JavaScriptPolicyCompiler {
             case PolicyIr.UndefinedValue ignored -> {
             }
             case PolicyIr.PropertyAccess property -> validateObjectReferences(property.target(), resources);
-            case PolicyIr.ArrayValue array -> array
-                .values()
-                .forEach(value -> validateObjectReferences(value, resources));
-            case PolicyIr.ObjectValue object -> object
-                .values()
-                .values()
-                .forEach(value -> validateObjectReferences(value, resources));
             case PolicyIr.Binary binary -> {
                 validateObjectReferences(binary.left(), resources);
                 validateObjectReferences(binary.right(), resources);
@@ -839,8 +627,6 @@ public final class JavaScriptPolicyCompiler {
         return new AuthorizationException("Invalid JavaScript authorization policy: " + message);
     }
 
-    private record CacheKey(String source, Scope scope) {}
-
     private record ModuleSource(String source, int namedResources) {}
 
     private static final class Counter {
@@ -851,16 +637,5 @@ public final class JavaScriptPolicyCompiler {
             this.nodes++;
             if (this.nodes > MAX_NODES) throw invalid("policy contains too many nodes");
         }
-    }
-
-    private enum ResultType {
-        BOOLEAN,
-        NUMBER,
-        STRING,
-        NULL,
-        UNDEFINED,
-        ARRAY,
-        OBJECT,
-        UNKNOWN,
     }
 }

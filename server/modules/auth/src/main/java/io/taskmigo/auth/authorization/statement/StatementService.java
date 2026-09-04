@@ -6,6 +6,7 @@ import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import io.taskmigo.foundation.OffsetPage;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -142,6 +143,7 @@ public class StatementService {
         int perPage,
         ObjectAuthorizationService.@Nullable ObjectAuthorizationPlan authorization
     ) {
+        if (authorization != null && authorization.deniesAll()) return new OffsetPage<>(List.of(), 0, 0);
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
         var result =
             authorization == null

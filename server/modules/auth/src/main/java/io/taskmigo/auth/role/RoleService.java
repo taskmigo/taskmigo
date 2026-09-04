@@ -1,13 +1,13 @@
 package io.taskmigo.auth.role;
 
 import io.taskmigo.auth.authorization.AuthorizationName;
+import io.taskmigo.auth.authorization.HierarchyClosureWriter;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
 import io.taskmigo.foundation.OffsetPage;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -21,10 +21,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class RoleService {
 
     private final RoleRepository roles;
+    private final HierarchyClosureWriter closureWriter;
     private final ObjectAuthorizationService objectAuthorization;
 
-    RoleService(RoleRepository roles, ObjectAuthorizationService objectAuthorization) {
+    RoleService(
+        RoleRepository roles,
+        HierarchyClosureWriter closureWriter,
+        ObjectAuthorizationService objectAuthorization
+    ) {
         this.roles = roles;
+        this.closureWriter = closureWriter;
         this.objectAuthorization = objectAuthorization;
     }
 
@@ -45,13 +51,16 @@ public class RoleService {
     ) {
         UUID id = UUID.randomUUID();
         Set<UUID> requestedChildIds = childRoleIds == null ? Set.of() : Set.copyOf(childRoleIds);
-        List<RoleEntity> allRoles = this.roles.findAllForUpdate();
+        List<RoleEntity> allRoles = new ArrayList<>(this.roles.findAllForUpdate());
         List<RoleEntity> children = requireChildRoles(requestedChildIds, allRoles);
         RoleHierarchy.from(allRoles).replacingChildren(id, requestedChildIds);
 
         RoleEntity role = new RoleEntity(id, AuthorizationName.requiredRole(name, "name"), description);
         role.childRoles.addAll(children);
         this.roles.save(role);
+        allRoles.add(role);
+        this.roles.flush();
+        this.refreshClosure(allRoles);
         return id;
     }
 
@@ -92,6 +101,7 @@ public class RoleService {
         int perPage,
         ObjectAuthorizationService.@Nullable ObjectAuthorizationPlan authorization
     ) {
+        if (authorization != null && authorization.deniesAll()) return new OffsetPage<>(List.of(), 0, 0);
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
         var roles =
             authorization == null
@@ -114,7 +124,7 @@ public class RoleService {
     @Transactional
     public void setChildRoles(UUID parentRoleId, Collection<UUID> childRoleIds) {
         Set<UUID> requestedIds = Set.copyOf(childRoleIds);
-        List<RoleEntity> allRoles = this.roles.findAllForUpdate();
+        List<RoleEntity> allRoles = new ArrayList<>(this.roles.findAllForUpdate());
         RoleEntity parent = entity(parentRoleId, allRoles);
         List<RoleEntity> children = requireChildRoles(requestedIds, allRoles);
 
@@ -122,6 +132,7 @@ public class RoleService {
         parent.childRoles.clear();
         parent.childRoles.addAll(children);
         this.roles.flush();
+        this.refreshClosure(allRoles);
     }
 
     /// Resolves every transitive descendant of a Role once, in deterministic id order.
@@ -151,18 +162,15 @@ public class RoleService {
         Set<UUID> requestedIds = Set.copyOf(roleIds);
         if (requestedIds.isEmpty()) return List.of();
 
-        List<RoleEntity> allRoles = this.roles.findAll();
-        Map<UUID, RoleEntity> rolesById = new HashMap<>();
-        for (RoleEntity role : allRoles) rolesById.put(role.id, role);
-        if (!rolesById.keySet().containsAll(requestedIds)) throw new RoleException(
+        if (this.roles.findAllByIdIn(requestedIds).size() != requestedIds.size()) throw new RoleException(
             RoleException.Type.BAD_REQUEST,
             "One or more Roles do not exist"
         );
 
-        return RoleHierarchy.from(allRoles)
-            .reachableFrom(requestedIds)
+        return this.roles
+            .findDistinctByIdIn(this.roles.findDescendantRoleIds(requestedIds))
             .stream()
-            .map(rolesById::get)
+            .sorted((left, right) -> left.id.compareTo(right.id))
             .map(RoleService::info)
             .toList();
     }
@@ -191,6 +199,17 @@ public class RoleService {
             "One or more child Roles do not exist"
         );
         return children;
+    }
+
+    private void refreshClosure(Collection<RoleEntity> allRoles) {
+        RoleHierarchy hierarchy = RoleHierarchy.from(allRoles);
+        this.closureWriter.replace(
+            allRoles,
+            RoleEntity::id,
+            roleId -> hierarchy.reachableFrom(Set.of(roleId)),
+            RoleHierarchyClosureEntity::new,
+            RoleHierarchyClosureEntity.class
+        );
     }
 
     private static RoleInfo info(RoleEntity role) {

@@ -7,8 +7,7 @@ statements:
       api:
         method: "*"
         path: /api/v0/.*
-    policy: |
-      export default () => true;
+    policy: export default () => true;
 
   - name: system_operator_object_all
     description: Allows System Operator to read every object returned by versioned APIs.
@@ -18,8 +17,7 @@ statements:
       api:
         method: "*"
         path: /api/v0/.*
-    policy: |
-      export default () => true;
+    policy: export default () => true;
 
   - name: administrator_request_all
     description: Allows Administrator to call every versioned API.
@@ -29,8 +27,7 @@ statements:
       api:
         method: "*"
         path: /api/v0/.*
-    policy: |
-      export default () => true;
+    policy: export default () => true;
 
   - name: administrator_object_all
     description: Allows Administrator to read objects returned by versioned APIs.
@@ -40,8 +37,7 @@ statements:
       api:
         method: "*"
         path: /api/v0/.*
-    policy: |
-      export default () => true;
+    policy: export default () => true;
 
   - name: administrator_hide_system_user
     description: Prevents Administrator from seeing the system user through the users API.
@@ -52,4 +48,6 @@ statements:
         method: "*"
         path: /api/v0/users
     policy: |
-      export default ({ object }) => object.username === "system";
+      export default ({ object }) => {
+        return object.username === "system";
+      }

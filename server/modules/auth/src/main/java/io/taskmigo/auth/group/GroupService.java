@@ -1,16 +1,15 @@
 package io.taskmigo.auth.group;
 
+import io.taskmigo.auth.authorization.HierarchyClosureWriter;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
 import io.taskmigo.auth.role.RoleInfo;
 import io.taskmigo.auth.role.RoleService;
 import io.taskmigo.auth.user.UserService;
 import io.taskmigo.foundation.OffsetPage;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -24,17 +23,20 @@ import org.springframework.transaction.annotation.Transactional;
 public class GroupService {
 
     private final GroupRepository groups;
+    private final HierarchyClosureWriter closureWriter;
     private final UserService users;
     private final RoleService access;
     private final ObjectAuthorizationService objectAuthorization;
 
     GroupService(
         GroupRepository groups,
+        HierarchyClosureWriter closureWriter,
         UserService users,
         RoleService access,
         ObjectAuthorizationService objectAuthorization
     ) {
         this.groups = groups;
+        this.closureWriter = closureWriter;
         this.users = users;
         this.access = access;
         this.objectAuthorization = objectAuthorization;
@@ -57,6 +59,7 @@ public class GroupService {
         int perPage,
         ObjectAuthorizationService.@Nullable ObjectAuthorizationPlan authorization
     ) {
+        if (authorization != null && authorization.deniesAll()) return new OffsetPage<>(List.of(), 0, 0);
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
         var groups =
             authorization == null
@@ -94,7 +97,7 @@ public class GroupService {
         UUID id = UUID.randomUUID();
         Set<UUID> requestedChildIds = childGroupIds == null ? Set.of() : Set.copyOf(childGroupIds);
         Set<UUID> requestedRoleIds = roleIds == null ? Set.of() : Set.copyOf(roleIds);
-        List<GroupEntity> allGroups = this.groups.findAllForUpdate();
+        List<GroupEntity> allGroups = new ArrayList<>(this.groups.findAllForUpdate());
         List<GroupEntity> children = requireChildGroups(requestedChildIds, allGroups);
         GroupHierarchy.from(allGroups).replacingChildren(id, requestedChildIds);
         this.access.requireRoles(requestedRoleIds);
@@ -103,6 +106,9 @@ public class GroupService {
         group.childGroups.addAll(children);
         group.roleIds.addAll(requestedRoleIds);
         this.groups.save(group);
+        allGroups.add(group);
+        this.groups.flush();
+        this.refreshClosure(allGroups);
         return id;
     }
 
@@ -178,6 +184,7 @@ public class GroupService {
         parent.childGroups.clear();
         parent.childGroups.addAll(children);
         this.groups.flush();
+        this.refreshClosure(allGroups);
     }
 
     /// Replaces the Roles directly included by a Group.
@@ -205,15 +212,11 @@ public class GroupService {
     /// @return all effective Roles for the Group
     @Transactional(readOnly = true)
     public List<RoleInfo> effectiveRoles(UUID groupId) {
-        GroupEntity root = this.entity(groupId);
-        List<GroupEntity> allGroups = this.groups.findAll();
-        Map<UUID, GroupEntity> groupsById = new HashMap<>();
-        for (GroupEntity group : allGroups) groupsById.put(group.id, group);
+        this.entity(groupId);
+        List<UUID> reachableGroupIds = this.groups.findDescendantGroupIds(Set.of(groupId));
 
         Set<UUID> roleIds = new HashSet<>();
-        for (UUID reachableGroupId : GroupHierarchy.from(allGroups).reachableFrom(root.id)) {
-            roleIds.addAll(Objects.requireNonNull(groupsById.get(reachableGroupId)).roleIds);
-        }
+        for (GroupEntity group : this.groups.findDistinctByIdIn(reachableGroupIds)) roleIds.addAll(group.roleIds);
         return this.access.effectiveRoles(roleIds);
     }
 
@@ -241,6 +244,17 @@ public class GroupService {
             "One or more child Groups do not exist"
         );
         return children;
+    }
+
+    private void refreshClosure(Collection<GroupEntity> allGroups) {
+        GroupHierarchy hierarchy = GroupHierarchy.from(allGroups);
+        this.closureWriter.replace(
+            allGroups,
+            GroupEntity::id,
+            groupId -> hierarchy.reachableFrom(Set.of(groupId)),
+            GroupHierarchyClosureEntity::new,
+            GroupHierarchyClosureEntity.class
+        );
     }
 
     private static GroupInfo info(GroupEntity group) {

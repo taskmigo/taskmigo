@@ -2,6 +2,8 @@ package io.taskmigo.auth.authorization.request;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.auth.authorization.policy.AuthorizationResourceAdapter;
@@ -26,9 +28,9 @@ class RequestAuthorizationServiceTest {
     private final EffectiveStatementResolver statements = mock(EffectiveStatementResolver.class);
     private final RequestAuthorizationService service = new RequestAuthorizationService(
         this.statements,
-        new JavaScriptPolicyCompiler(),
         new JavaScriptPolicyEvaluator(),
-        new AuthorizationResourceRegistry(new JavaScriptPolicyEvaluator(), List.of())
+        new AuthorizationResourceRegistry(new JavaScriptPolicyEvaluator(), List.of()),
+        new StatementArtifactFactory(new JavaScriptPolicyCompiler())
     );
 
     /**
@@ -207,9 +209,9 @@ class RequestAuthorizationServiceTest {
         JavaScriptPolicyEvaluator evaluator = new JavaScriptPolicyEvaluator();
         RequestAuthorizationService service = new RequestAuthorizationService(
             this.statements,
-            new JavaScriptPolicyCompiler(),
             evaluator,
-            new AuthorizationResourceRegistry(evaluator, List.of(users))
+            new AuthorizationResourceRegistry(evaluator, List.of(users)),
+            new StatementArtifactFactory(new JavaScriptPolicyCompiler())
         );
         when(this.statements.resolve(userId)).thenReturn(
             List.of(
@@ -268,6 +270,27 @@ class RequestAuthorizationServiceTest {
     }
 
     /**
+     * Verifies that each new authorization operation loads its effective Statements from the resolver.
+     *
+     * Given: two independent authorization calls for the same user.
+     * Expect: the resolver is queried once per call, so committed authorization changes cannot be hidden by a cross-request cache.
+     */
+    @Test
+    @DisplayName("loads effective statements for every authorization operation")
+    void shouldResolveEffectiveStatementsForEveryAuthorizationOperation() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        when(this.statements.resolve(userId)).thenReturn(List.of(statement(Effect.ALLOW)));
+
+        // Act
+        this.service.authorize(userId, "GET", "/api/v0/users", Map.of());
+        this.service.authorize(userId, "GET", "/api/v0/users", Map.of());
+
+        // Assert
+        verify(this.statements, times(2)).resolve(userId);
+    }
+
+    /**
      * Verifies that a matching constant-true deny ends authorization before resource resolution or later policy work.
      *
      * Given: an allow policy that selects a resource followed by a constant-true deny policy for the same request.
@@ -294,9 +317,9 @@ class RequestAuthorizationServiceTest {
         JavaScriptPolicyEvaluator evaluator = new JavaScriptPolicyEvaluator();
         RequestAuthorizationService service = new RequestAuthorizationService(
             this.statements,
-            new JavaScriptPolicyCompiler(),
             evaluator,
-            new AuthorizationResourceRegistry(evaluator, List.of(users))
+            new AuthorizationResourceRegistry(evaluator, List.of(users)),
+            new StatementArtifactFactory(new JavaScriptPolicyCompiler())
         );
         when(this.statements.resolve(userId)).thenReturn(
             List.of(

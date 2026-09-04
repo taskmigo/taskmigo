@@ -41,6 +41,7 @@ public final class AuthorizationResourceRegistry {
     /// @throws AuthorizationException when a descriptor is invalid or cannot be resolved
     public ResolvedResources resolve(Collection<ResourceDescriptor> descriptors, Map<String, ?> roots) {
         if (descriptors.size() > MAX_RESOURCES) throw invalid("request selects too many resources");
+        if (descriptors.isEmpty()) return ResolvedResources.EMPTY;
 
         Map<ResourceDescriptor, ResourceKey> descriptorKeys = new LinkedHashMap<>();
         Map<ResourceKey, ResourceKey> uniqueKeys = new LinkedHashMap<>();

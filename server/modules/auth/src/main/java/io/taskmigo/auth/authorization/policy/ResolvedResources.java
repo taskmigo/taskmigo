@@ -11,6 +11,9 @@ import org.jspecify.annotations.Nullable;
 
 /// Holds the bounded resource lookups performed for one authorization decision.
 public record ResolvedResources(Map<ResourceKey, Map<String, ?>> values, Map<ResourceDescriptor, ResourceKey> keys) {
+    /// Represents the immutable result for a policy that selects no resources.
+    public static final ResolvedResources EMPTY = new ResolvedResources(Map.of(), Map.of());
+
     /// Creates an immutable resolution result.
     public ResolvedResources {
         Map<ResourceKey, Map<String, ?>> immutableValues = new LinkedHashMap<>();
@@ -42,7 +45,8 @@ public record ResolvedResources(Map<ResourceKey, Map<String, ?>> values, Map<Res
         return Collections.unmodifiableMap(copy);
     }
 
-    private static Object immutableValue(@Nullable Object value) {
+    private static @Nullable Object immutableValue(@Nullable Object value) {
+        if (value == null) return null;
         if (value instanceof Map<?, ?> map) {
             Map<String, Object> copy = new LinkedHashMap<>();
             map.forEach((key, nested) -> {

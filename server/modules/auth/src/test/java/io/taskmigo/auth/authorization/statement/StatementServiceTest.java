@@ -10,6 +10,8 @@ import static org.mockito.Mockito.when;
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
+import io.taskmigo.auth.authorization.request.StatementArtifactFactory;
+import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
@@ -169,9 +171,10 @@ class StatementServiceTest {
         );
 
         // Act
-        boolean exactMatch = statement.matches("GET", "/api/v0/users/42?active=true");
-        boolean suffixMatch = statement.matches("GET", "/api/v0/users/42/extra");
-        boolean lowercaseMethodMatch = statement.matches("get", "/api/v0/users/42");
+        StatementExecutionArtifact executable = executable(statement);
+        boolean exactMatch = executable.matches("GET", "/api/v0/users/42?active=true");
+        boolean suffixMatch = executable.matches("GET", "/api/v0/users/42/extra");
+        boolean lowercaseMethodMatch = executable.matches("get", "/api/v0/users/42");
 
         // Assert
         assertThat(exactMatch).isTrue();
@@ -211,8 +214,9 @@ class StatementServiceTest {
         );
 
         // Act
-        boolean getMatches = entity.info().matches("GET", "/api/v0/users");
-        boolean deleteMatches = entity.info().matches("DELETE", "/api/v0/users");
+        StatementExecutionArtifact executable = executable(entity.info());
+        boolean getMatches = executable.matches("GET", "/api/v0/users");
+        boolean deleteMatches = executable.matches("DELETE", "/api/v0/users");
 
         // Assert
         assertThat(getMatches).isTrue();
@@ -221,5 +225,9 @@ class StatementServiceTest {
 
     private UUID create(String name, @Nullable String policy) {
         return this.service.create(name, null, Effect.ALLOW, Scope.REQUEST, "GET", "/api/v0/users", policy);
+    }
+
+    private static StatementExecutionArtifact executable(StatementInfo statement) {
+        return new StatementArtifactFactory(new JavaScriptPolicyCompiler()).build(List.of(statement)).getFirst();
     }
 }

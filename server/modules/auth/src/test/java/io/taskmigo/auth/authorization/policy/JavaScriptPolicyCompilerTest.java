@@ -17,8 +17,7 @@ class JavaScriptPolicyCompilerTest {
     /**
      * Verifies that a default-exported JavaScript arrow function is translated to parser-independent policy IR.
      *
-     * Given: a request policy containing root destructuring, a const declaration, an if/else, an array membership
-     * predicate, and a string predicate.
+     * Given: a request policy containing root destructuring, a const declaration, an if/else, and strict comparisons.
      * Expect: the compiled policy evaluates using supplied maps without executing JavaScript source.
      */
     @Test
@@ -27,8 +26,8 @@ class JavaScriptPolicyCompilerTest {
         // Arrange
         String source = """
         export default ({ request, principal }) => {
-          const methods = ["GET", "POST"];
-          if (methods.includes(request.method) && request.path.startsWith("/api/")) {
+          const expectedMethod = "GET";
+          if (request.method === expectedMethod && request.path === "/api/v0/users") {
             return principal.enabled === true;
           } else {
             return false;
@@ -67,10 +66,10 @@ class JavaScriptPolicyCompilerTest {
     }
 
     /**
-     * Verifies that compilation proves every reachable default-policy result is a boolean.
+     * Verifies that compilation preserves values whose runtime type depends on authorization input.
      *
      * Given: policies returning no value, a string, null, or falling through an if statement.
-     * Expect: each policy is rejected before it can be activated.
+     * Expect: each policy compiles, and runtime evaluation rejects its non-boolean result.
      */
     @Test
     @DisplayName("rejects policies with reachable non-boolean results")
@@ -82,18 +81,10 @@ class JavaScriptPolicyCompilerTest {
         String fallThrough = "export default ({ principal }) => { if (principal.admin) { return true; } };";
 
         // Act + Assert
-        assertThatThrownBy(() -> this.compiler.compile(noValue, Scope.REQUEST))
-            .isInstanceOf(AuthorizationException.class)
-            .hasMessageContaining("boolean");
-        assertThatThrownBy(() -> this.compiler.compile(stringValue, Scope.REQUEST))
-            .isInstanceOf(AuthorizationException.class)
-            .hasMessageContaining("boolean");
-        assertThatThrownBy(() -> this.compiler.compile(nullValue, Scope.REQUEST))
-            .isInstanceOf(AuthorizationException.class)
-            .hasMessageContaining("boolean");
-        assertThatThrownBy(() -> this.compiler.compile(fallThrough, Scope.REQUEST))
-            .isInstanceOf(AuthorizationException.class)
-            .hasMessageContaining("every path");
+        assertNonBoolean(noValue);
+        assertNonBoolean(stringValue);
+        assertNonBoolean(nullValue);
+        assertNonBoolean(fallThrough);
     }
 
     /**
@@ -130,7 +121,33 @@ class JavaScriptPolicyCompilerTest {
         // Act + Assert
         assertThatThrownBy(() -> this.compiler.compile(source, Scope.REQUEST))
             .isInstanceOf(AuthorizationException.class)
-            .hasMessageContaining("unsupported policy predicate");
+            .hasMessageContaining("unsupported policy expression");
+    }
+
+    /**
+     * Verifies that syntax outside the SRS policy subset is rejected structurally.
+     *
+     * Given: policies using arrays, object literals, computed properties, ternaries, membership, or string helpers.
+     * Expect: each policy is rejected by the compiler before authorization can execute it.
+     */
+    @Test
+    @DisplayName("rejects policy syntax outside the authorization subset")
+    void shouldRejectPolicyWhenUnsupportedSubsetSyntaxIsUsed() {
+        // Arrange
+        String array = "export default () => [true];";
+        String object = "export default () => ({ allowed: true });";
+        String computed = "export default ({ request }) => request['method'] === 'GET';";
+        String ternary = "export default ({ request }) => request.method === 'GET' ? true : false;";
+        String membership = "export default ({ request }) => request.method in request;";
+        String helper = "export default ({ request }) => request.path.startsWith('/api');";
+
+        // Act + Assert
+        assertUnsupported(array);
+        assertUnsupported(object);
+        assertUnsupported(computed);
+        assertUnsupported(ternary);
+        assertUnsupported(membership);
+        assertUnsupported(helper);
     }
 
     /**
@@ -187,5 +204,18 @@ class JavaScriptPolicyCompilerTest {
 
     private static Map<String, ?> roots(String method, String path, boolean enabled) {
         return Map.of("request", Map.of("method", method, "path", path), "principal", Map.of("enabled", enabled));
+    }
+
+    private void assertNonBoolean(String source) {
+        PolicyIr policy = this.compiler.compile(source, Scope.REQUEST);
+        assertThatThrownBy(() -> this.evaluator.evaluate(policy, Map.of("principal", Map.of("admin", false))))
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("boolean");
+    }
+
+    private void assertUnsupported(String source) {
+        assertThatThrownBy(() -> this.compiler.compile(source, Scope.REQUEST)).isInstanceOf(
+            AuthorizationException.class
+        );
     }
 }

@@ -2,6 +2,7 @@ package io.taskmigo.auth.authorization.request;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -78,15 +79,12 @@ class EffectiveStatementResolverTest {
         when(user.roleIds()).thenReturn(Set.of(DIRECT_ROLE_ID));
         when(user.statementIds()).thenReturn(Set.of(DIRECT_STATEMENT_ID));
         when(this.groups.findDistinctByMemberIdsContains(USER_ID)).thenReturn(List.of(group));
-        when(this.groups.findDistinctByParentGroups_IdIn(List.of(GROUP_ID))).thenReturn(List.of(childGroup));
-        when(this.groups.findDistinctByParentGroups_IdIn(List.of(CHILD_GROUP_ID))).thenReturn(List.of());
-        when(this.roles.findDistinctByIdIn(List.of(DIRECT_ROLE_ID, GROUP_ROLE_ID))).thenReturn(
-            List.of(directRole, groupRole)
+        when(this.groups.findDescendantGroupIds(List.of(GROUP_ID))).thenReturn(List.of(GROUP_ID, CHILD_GROUP_ID));
+        when(this.groups.findDistinctByIdIn(anyCollection())).thenReturn(List.of(group, childGroup));
+        when(this.roles.findDescendantRoleIds(anyCollection())).thenReturn(
+            List.of(DIRECT_ROLE_ID, GROUP_ROLE_ID, CHILD_ROLE_ID)
         );
-        when(this.roles.findDistinctByParentRoles_IdIn(List.of(DIRECT_ROLE_ID, GROUP_ROLE_ID))).thenReturn(
-            List.of(childRole)
-        );
-        when(this.roles.findDistinctByParentRoles_IdIn(List.of(CHILD_ROLE_ID))).thenReturn(List.of());
+        when(this.roles.findDistinctByIdIn(anyCollection())).thenReturn(List.of(directRole, groupRole, childRole));
         StatementEntity directStatement = statement(DIRECT_STATEMENT_ID, "direct");
         StatementEntity sharedStatement = statement(SHARED_STATEMENT_ID, "shared");
         StatementEntity inheritedStatement = statement(INHERITED_STATEMENT_ID, "inherited");
@@ -124,8 +122,8 @@ class EffectiveStatementResolverTest {
         when(user.roleIds()).thenReturn(Set.of(DIRECT_ROLE_ID));
         when(user.statementIds()).thenReturn(Set.of());
         when(this.groups.findDistinctByMemberIdsContains(USER_ID)).thenReturn(List.of());
-        when(this.roles.findDistinctByIdIn(List.of(DIRECT_ROLE_ID))).thenReturn(List.of(role));
-        when(this.roles.findDistinctByParentRoles_IdIn(List.of(DIRECT_ROLE_ID))).thenReturn(List.of());
+        when(this.roles.findDistinctByIdIn(anyCollection())).thenReturn(List.of(role));
+        when(this.roles.findDescendantRoleIds(anyCollection())).thenReturn(List.of(DIRECT_ROLE_ID));
         List<StatementEntity> resolvedStatements = IntStream.range(0, 500)
             .mapToObj(index -> statement(id(index), "statement-" + index))
             .toList();
@@ -142,14 +140,14 @@ class EffectiveStatementResolverTest {
 
     private static GroupEntity group(UUID id, Collection<UUID> roleIds) {
         GroupEntity group = mock(GroupEntity.class);
-        when(group.id()).thenReturn(id);
+        lenient().when(group.id()).thenReturn(id);
         when(group.roleIds()).thenReturn(Set.copyOf(roleIds));
         return group;
     }
 
     private static RoleEntity role(UUID id, Collection<UUID> statementIds) {
         RoleEntity role = mock(RoleEntity.class);
-        when(role.id()).thenReturn(id);
+        lenient().when(role.id()).thenReturn(id);
         when(role.statementIds()).thenReturn(Set.copyOf(statementIds));
         return role;
     }

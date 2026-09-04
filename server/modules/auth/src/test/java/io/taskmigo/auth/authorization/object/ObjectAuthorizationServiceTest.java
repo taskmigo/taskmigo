@@ -2,16 +2,11 @@ package io.taskmigo.auth.authorization.object;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.filter.FilterAst;
-import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import io.taskmigo.auth.authorization.policy.PolicyIrPartialEvaluator;
 import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
-import io.taskmigo.auth.authorization.request.EffectiveStatementResolver;
 import io.taskmigo.auth.authorization.statement.ApiInfo;
 import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
@@ -25,11 +20,8 @@ import org.junit.jupiter.api.Test;
 
 class ObjectAuthorizationServiceTest {
 
-    private final EffectiveStatementResolver statements = mock(EffectiveStatementResolver.class);
     private final AuthorizationObjectQueryDialect dialect = new TestDialect();
     private final ObjectAuthorizationService service = new ObjectAuthorizationService(
-        this.statements,
-        new JavaScriptPolicyCompiler(),
         new PolicyIrPartialEvaluator(),
         List.of(this.dialect)
     );
@@ -45,27 +37,40 @@ class ObjectAuthorizationServiceTest {
     void shouldBuildConstantTrueAllowFilterWhenStatementPolicyIsTrue() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        when(this.statements.resolve(userId)).thenReturn(
-            List.of(statement(Effect.ALLOW, "export default () => true;"))
-        );
-
         // Act
         ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
-            userId,
+            snapshot(userId, Map.of(), statement(Effect.ALLOW, "export default () => true;")),
             "GET",
-            "/api/v0/objects",
-            roots(userId.toString(), "GET")
+            "/api/v0/objects"
         );
 
         // Assert
         assertThat(plan.matchedStatements()).hasSize(1);
-        assertThat(plan.predicate().expression()).isEqualTo(
-            new FilterAst.Binary(
-                FilterAst.Operator.AND,
-                new FilterAst.Literal(true),
-                new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.None())
+        assertThat(plan.predicate().expression()).isEqualTo(new FilterAst.All());
+    }
+
+    /**
+     * Verifies that an Object policy whose final value is not boolean is rejected during planning.
+     *
+     * Given: an allow Statement returning a numeric literal.
+     * Expect: object authorization fails before a non-predicate plan can reach a repository query.
+     */
+    @Test
+    @DisplayName("rejects a non-boolean object decision")
+    void shouldRejectNonBooleanWhenBuildingObjectPolicyFilter() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+
+        // Act + Assert
+        assertThatThrownBy(() ->
+            this.service.plan(
+                snapshot(userId, Map.of(), statement(Effect.ALLOW, "export default () => 1;")),
+                "GET",
+                "/api/v0/objects"
             )
-        );
+        )
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("boolean");
     }
 
     /**
@@ -79,29 +84,20 @@ class ObjectAuthorizationServiceTest {
     void shouldDenyObjectWhenMatchingDenyStatementExists() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        when(this.statements.resolve(userId)).thenReturn(
-            List.of(
-                statement(Effect.ALLOW, "export default () => true;"),
-                statement(Effect.DENY, "export default () => true;")
-            )
-        );
-
         // Act
         ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
-            userId,
+            snapshot(
+                userId,
+                Map.of(),
+                statement(Effect.ALLOW, "export default () => true;"),
+                statement(Effect.DENY, "export default () => true;")
+            ),
             "GET",
-            "/api/v0/objects",
-            roots(userId.toString(), "GET")
+            "/api/v0/objects"
         );
 
         // Assert
-        assertThat(plan.predicate().expression()).isEqualTo(
-            new FilterAst.Binary(
-                FilterAst.Operator.AND,
-                new FilterAst.Literal(true),
-                new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.Literal(true))
-            )
-        );
+        assertThat(plan.predicate().expression()).isEqualTo(new FilterAst.None());
     }
 
     /**
@@ -116,60 +112,37 @@ class ObjectAuthorizationServiceTest {
         // Arrange
         UUID userId = UUID.randomUUID();
         String policy = "export default ({ object, principal }) => object.username === principal.username;";
-        when(this.statements.resolve(userId)).thenReturn(List.of(statement(Effect.ALLOW, policy)));
-
         // Act
         ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
-            userId,
+            snapshot(userId, Map.of("principal", Map.of("username", "alice")), statement(Effect.ALLOW, policy)),
             "GET",
-            "/api/v0/objects",
-            Map.of("principal", Map.of("username", "alice"))
+            "/api/v0/objects"
         );
 
         // Assert
         assertThat(plan.predicate().expression()).isEqualTo(
-            new FilterAst.Binary(
-                FilterAst.Operator.AND,
-                new FilterAst.Binary(
-                    FilterAst.Operator.EQ,
-                    new FilterAst.Field("username"),
-                    new FilterAst.Literal("alice")
-                ),
-                new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.None())
-            )
+            new FilterAst.Binary(FilterAst.Operator.EQ, new FilterAst.Field("username"), new FilterAst.Literal("alice"))
         );
     }
 
     /**
-     * Verifies that an object policy checking a field's presence becomes a database presence filter.
+     * Verifies that an object policy with an undefined residual is rejected.
      *
      * Given: an Object policy comparing a mapped field with JavaScript undefined.
-     * Expect: the residual filter uses the Filter AST presence operator rather than a JVM row check.
+     * Expect: planning fails closed because the Filter AST has no presence operator.
      */
     @Test
-    @DisplayName("translates undefined object checks to presence filters")
-    void shouldTranslateUndefinedWhenBuildingObjectPolicyFilter() {
+    @DisplayName("rejects undefined object residuals")
+    void shouldRejectUndefinedWhenBuildingObjectPolicyFilter() {
         // Arrange
         UUID userId = UUID.randomUUID();
         String policy = "export default ({ object }) => object.username !== undefined;";
-        when(this.statements.resolve(userId)).thenReturn(List.of(statement(Effect.ALLOW, policy)));
-
-        // Act
-        ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
-            userId,
-            "GET",
-            "/api/v0/objects",
-            Map.of()
-        );
-
-        // Assert
-        assertThat(plan.predicate().expression()).isEqualTo(
-            new FilterAst.Binary(
-                FilterAst.Operator.AND,
-                new FilterAst.Unary(FilterAst.Operator.PRESENT, new FilterAst.Field("username")),
-                new FilterAst.Unary(FilterAst.Operator.NOT, new FilterAst.None())
-            )
-        );
+        // Act + Assert
+        assertThatThrownBy(() ->
+            this.service.plan(snapshot(userId, Map.of(), statement(Effect.ALLOW, policy)), "GET", "/api/v0/objects")
+        )
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("undefined");
     }
 
     /**
@@ -184,12 +157,68 @@ class ObjectAuthorizationServiceTest {
         // Arrange
         UUID userId = UUID.randomUUID();
         String policy = "export default ({ object }) => object.username.length > 2;";
-        when(this.statements.resolve(userId)).thenReturn(List.of(statement(Effect.ALLOW, policy)));
-
         // Act + Assert
-        assertThatThrownBy(() -> this.service.plan(userId, "GET", "/api/v0/objects", Map.of()))
+        assertThatThrownBy(() ->
+            this.service.plan(snapshot(userId, Map.of(), statement(Effect.ALLOW, policy)), "GET", "/api/v0/objects")
+        )
             .isInstanceOf(AuthorizationException.class)
             .hasMessageContaining("queryable");
+    }
+
+    /**
+     * Verifies that a nullable Object comparison becomes a database null predicate.
+     *
+     * Given: an Object policy comparing the mapped description field with JavaScript null.
+     * Expect: the residual Filter AST keeps the null literal and equality operator for JPA translation.
+     */
+    @Test
+    @DisplayName("translates null object comparisons")
+    void shouldTranslateNullWhenBuildingObjectPolicyFilter() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        String policy = "export default ({ object }) => object.description === null;";
+
+        // Act
+        ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
+            snapshot(userId, Map.of(), statement(Effect.ALLOW, policy)),
+            "GET",
+            "/api/v0/objects"
+        );
+
+        // Assert
+        assertThat(plan.predicate().expression()).isEqualTo(
+            new FilterAst.Binary(FilterAst.Operator.EQ, new FilterAst.Field("description"), new FilterAst.Literal(null))
+        );
+    }
+
+    /**
+     * Verifies that known values and numeric Object fields remain in a database-side arithmetic residual.
+     *
+     * Given: an Object policy requiring `object.age + 1` to exceed a known principal threshold.
+     * Expect: the plan contains ADD and GT nodes and does not require per-row JVM evaluation.
+     */
+    @Test
+    @DisplayName("translates numeric object arithmetic")
+    void shouldTranslateArithmeticWhenObjectPolicyUsesNumericField() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        String policy = "export default ({ object, principal }) => object.age + 1 > principal.minimum;";
+
+        // Act
+        ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
+            snapshot(userId, Map.of("principal", Map.of("minimum", 18)), statement(Effect.ALLOW, policy)),
+            "GET",
+            "/api/v0/objects"
+        );
+
+        // Assert
+        assertThat(plan.predicate().expression()).isEqualTo(
+            new FilterAst.Binary(
+                FilterAst.Operator.GT,
+                new FilterAst.Binary(FilterAst.Operator.ADD, new FilterAst.Field("age"), new FilterAst.Literal(1.0)),
+                new FilterAst.Literal(18)
+            )
+        );
     }
 
     /**
@@ -206,7 +235,7 @@ class ObjectAuthorizationServiceTest {
         AuthorizationSnapshot snapshot = new AuthorizationSnapshot(
             userId,
             List.of(statement(Effect.ALLOW, "export default () => true;")),
-            roots(userId.toString(), "GET")
+            Map.of()
         );
 
         // Act
@@ -214,7 +243,6 @@ class ObjectAuthorizationServiceTest {
 
         // Assert
         assertThat(plan.matchedStatements()).hasSize(1);
-        verifyNoInteractions(this.statements);
     }
 
     private static StatementInfo statement(Effect effect, String policy) {
@@ -227,10 +255,6 @@ class ObjectAuthorizationServiceTest {
             new TargetInfo(new ApiInfo("GET", "/api/v0/objects")),
             policy
         );
-    }
-
-    private static Map<String, ?> roots(String username, String method) {
-        return Map.of("principal", Map.of("username", username), "request", Map.of("method", method));
     }
 
     private static final class TestDialect implements AuthorizationObjectQueryDialect {
@@ -247,7 +271,11 @@ class ObjectAuthorizationServiceTest {
 
         @Override
         public Map<String, Class<?>> fields() {
-            return Map.of("username", String.class);
+            return Map.of("username", String.class, "description", String.class, "age", Integer.class);
         }
+    }
+
+    private static AuthorizationSnapshot snapshot(UUID userId, Map<String, ?> roots, StatementInfo... statements) {
+        return new AuthorizationSnapshot(userId, List.of(statements), roots);
     }
 }

@@ -1,7 +1,6 @@
 package io.taskmigo.auth.authorization.request;
 
 import io.taskmigo.auth.authorization.policy.AuthorizationResourceRegistry;
-import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyEvaluator;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyModule;
 import io.taskmigo.auth.authorization.policy.PolicyIr;
@@ -24,20 +23,20 @@ import org.springframework.transaction.annotation.Transactional;
 public class RequestAuthorizationService {
 
     private final EffectiveStatementResolver statements;
-    private final JavaScriptPolicyCompiler policyCompiler;
     private final JavaScriptPolicyEvaluator policyEvaluator;
     private final AuthorizationResourceRegistry resources;
+    private final StatementArtifactFactory artifacts;
 
     RequestAuthorizationService(
         EffectiveStatementResolver statements,
-        JavaScriptPolicyCompiler policyCompiler,
         JavaScriptPolicyEvaluator policyEvaluator,
-        AuthorizationResourceRegistry resources
+        AuthorizationResourceRegistry resources,
+        StatementArtifactFactory artifacts
     ) {
         this.statements = statements;
-        this.policyCompiler = policyCompiler;
         this.policyEvaluator = policyEvaluator;
         this.resources = resources;
+        this.artifacts = artifacts;
     }
 
     /// Creates the one authorization snapshot used by a request operation.
@@ -47,13 +46,7 @@ public class RequestAuthorizationService {
     /// @return an immutable authorization snapshot
     public AuthorizationSnapshot snapshot(UUID userId, Map<String, ?> roots) {
         List<StatementInfo> effectiveStatements = this.statements.resolve(userId);
-        Map<UUID, JavaScriptPolicyModule> compiledPolicies = new LinkedHashMap<>();
-        for (StatementInfo statement : effectiveStatements)
-            compiledPolicies.put(
-                statement.id(),
-                this.policyCompiler.compileModule(statement.policy(), statement.scope())
-            );
-        return new AuthorizationSnapshot(userId, effectiveStatements, compiledPolicies, roots);
+        return new AuthorizationSnapshot(userId, effectiveStatements, this.artifacts.build(effectiveStatements), roots);
     }
 
     /// Returns whether a user is allowed to perform an HTTP request.
@@ -86,10 +79,11 @@ public class RequestAuthorizationService {
         Map<String, ?> approvedRoots = snapshot.roots();
         List<Evaluation> evaluations = new ArrayList<>();
         List<ResourceDescriptor> descriptors = new ArrayList<>();
-        for (StatementInfo statement : snapshot.statements()) {
-            if (statement.scope() != Scope.REQUEST || !statement.matches(method, path)) continue;
+        for (var artifact : snapshot.executableStatements()) {
+            StatementInfo statement = artifact.statement();
+            if (statement.scope() != Scope.REQUEST || !artifact.matches(method, path)) continue;
             try {
-                JavaScriptPolicyModule module = snapshot.compiledPolicy(statement);
+                var module = artifact.policy();
                 if (statement.effect() == Effect.DENY && constantTrue(module.policy())) {
                     return new RequestAuthorizationDecision(false);
                 }

@@ -128,6 +128,7 @@ public class UserService {
         int perPage,
         ObjectAuthorizationService.@Nullable ObjectAuthorizationPlan authorization
     ) {
+        if (authorization != null && authorization.deniesAll()) return new OffsetPage<>(java.util.List.of(), 0, 0);
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
         var result =
             authorization == null

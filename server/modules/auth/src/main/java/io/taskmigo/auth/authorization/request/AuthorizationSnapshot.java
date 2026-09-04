@@ -2,52 +2,48 @@ package io.taskmigo.auth.authorization.request;
 
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyModule;
+import io.taskmigo.auth.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 
 /// Captures the immutable authorization state used throughout one request or authorization operation.
 public record AuthorizationSnapshot(
     UUID userId,
     List<StatementInfo> statements,
-    Map<UUID, JavaScriptPolicyModule> compiledPolicies,
+    List<StatementExecutionArtifact> executableStatements,
     Map<String, ?> roots
 ) {
-    /// Creates a snapshot and compiles its effective Statements once for the operation.
+    /// Creates a snapshot and derives executable Statements from the supplied database-loaded rows.
     public AuthorizationSnapshot(UUID userId, List<StatementInfo> statements, Map<String, ?> roots) {
-        this(userId, statements, compile(statements), roots);
+        this(userId, statements, new StatementArtifactFactory(new JavaScriptPolicyCompiler()).build(statements), roots);
     }
 
-    /// Creates a snapshot with immutable effective Statements, compiled policies, and authorization input values.
+    /// Creates a snapshot with immutable executable Statements and authorization input values.
     public AuthorizationSnapshot {
-        statements = List.copyOf(statements);
-        compiledPolicies = Map.copyOf(compiledPolicies);
-        Map<UUID, JavaScriptPolicyModule> policies = compiledPolicies;
+        List<StatementInfo> effectiveStatements = List.copyOf(statements);
+        statements = effectiveStatements;
+        executableStatements = List.copyOf(executableStatements);
         if (
-            policies.size() != statements.size() ||
-            statements.stream().anyMatch(statement -> !policies.containsKey(statement.id()))
-        ) throw new IllegalArgumentException("authorization snapshot must compile every effective Statement");
+            executableStatements.size() != statements.size() ||
+            executableStatements.stream().anyMatch(artifact -> !effectiveStatements.contains(artifact.statement()))
+        ) throw new IllegalArgumentException("authorization snapshot artifacts do not match effective Statements");
         roots = immutableMap(roots);
     }
 
     /// Returns the compiled policy module associated with an effective Statement.
     public JavaScriptPolicyModule compiledPolicy(StatementInfo statement) {
-        JavaScriptPolicyModule compiled = this.compiledPolicies.get(statement.id());
-        if (compiled == null) throw new IllegalArgumentException("authorization snapshot is missing a compiled policy");
-        return compiled;
-    }
-
-    private static Map<UUID, JavaScriptPolicyModule> compile(List<StatementInfo> statements) {
-        JavaScriptPolicyCompiler compiler = new JavaScriptPolicyCompiler();
-        Map<UUID, JavaScriptPolicyModule> compiled = new LinkedHashMap<>();
-        for (StatementInfo statement : statements)
-            compiled.put(statement.id(), compiler.compileModule(statement.policy(), statement.scope()));
-        return compiled;
+        return this.executableStatements
+            .stream()
+            .filter(artifact -> artifact.statement().id().equals(statement.id()))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("authorization snapshot is missing a compiled policy"))
+            .policy();
     }
 
     private static Map<String, ?> immutableMap(Map<String, ?> values) {
@@ -56,7 +52,8 @@ public record AuthorizationSnapshot(
         return Collections.unmodifiableMap(copy);
     }
 
-    private static Object immutableValue(Object value) {
+    private static @Nullable Object immutableValue(@Nullable Object value) {
+        if (value == null) return null;
         if (value instanceof Map<?, ?> map) {
             Map<String, Object> stringMap = new LinkedHashMap<>();
             map.forEach((key, nested) -> {
@@ -68,7 +65,7 @@ public record AuthorizationSnapshot(
             return immutableMap(stringMap);
         }
         if (value instanceof List<?> list) return Collections.unmodifiableList(
-            new ArrayList<>(list.stream().map(AuthorizationSnapshot::immutableValue).toList())
+            list.stream().map(AuthorizationSnapshot::immutableValue).toList()
         );
         if (value instanceof Set<?> set) return Set.copyOf(
             set.stream().map(AuthorizationSnapshot::immutableValue).toList()

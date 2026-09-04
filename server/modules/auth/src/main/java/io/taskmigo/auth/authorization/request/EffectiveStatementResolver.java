@@ -10,7 +10,6 @@ import io.taskmigo.auth.role.RoleRepository;
 import io.taskmigo.auth.user.UserEntity;
 import io.taskmigo.auth.user.UserException;
 import io.taskmigo.auth.user.UserRepository;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -57,41 +56,23 @@ public class EffectiveStatementResolver {
             .orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"));
         Set<UUID> statementIds = new HashSet<>(user.statementIds());
         Set<UUID> roleIds = new HashSet<>(user.roleIds());
-        List<GroupEntity> directGroups = this.groups.findDistinctByMemberIdsContains(user.id());
-        List<UUID> groupFrontier = directGroups.stream().map(GroupEntity::id).sorted().toList();
-        Set<UUID> visitedGroups = new HashSet<>();
-        boolean firstGroupBatch = true;
-        while (!groupFrontier.isEmpty()) {
-            List<GroupEntity> currentGroups = firstGroupBatch
-                ? directGroups
-                : this.groups.findDistinctByParentGroups_IdIn(groupFrontier);
-            firstGroupBatch = false;
-            List<UUID> nextGroupFrontier = new ArrayList<>();
-            for (GroupEntity group : currentGroups) {
-                if (visitedGroups.add(group.id())) {
-                    roleIds.addAll(group.roleIds());
-                    nextGroupFrontier.add(group.id());
-                }
-            }
-            groupFrontier = nextGroupFrontier.stream().sorted().toList();
+        List<UUID> directGroupIds = this.groups
+            .findDistinctByMemberIdsContains(user.id())
+            .stream()
+            .map(GroupEntity::id)
+            .sorted()
+            .toList();
+        Set<UUID> groupIds = new HashSet<>(directGroupIds);
+        if (!directGroupIds.isEmpty()) {
+            groupIds.addAll(this.groups.findDescendantGroupIds(directGroupIds));
+            for (GroupEntity group : this.groups.findDistinctByIdIn(groupIds)) roleIds.addAll(group.roleIds());
         }
 
-        List<UUID> roleFrontier = roleIds.stream().sorted().toList();
-        Set<UUID> visitedRoles = new HashSet<>();
-        boolean firstRoleBatch = true;
-        while (!roleFrontier.isEmpty()) {
-            List<RoleEntity> currentRoles = firstRoleBatch
-                ? this.roles.findDistinctByIdIn(roleFrontier)
-                : this.roles.findDistinctByParentRoles_IdIn(roleFrontier);
-            firstRoleBatch = false;
-            List<UUID> nextRoleFrontier = new ArrayList<>();
-            for (RoleEntity role : currentRoles) {
-                if (visitedRoles.add(role.id())) {
-                    statementIds.addAll(role.statementIds());
-                    nextRoleFrontier.add(role.id());
-                }
-            }
-            roleFrontier = nextRoleFrontier.stream().sorted().toList();
+        Set<UUID> reachableRoleIds = new HashSet<>(roleIds);
+        if (!roleIds.isEmpty()) {
+            reachableRoleIds.addAll(this.roles.findDescendantRoleIds(roleIds));
+            for (RoleEntity role : this.roles.findDistinctByIdIn(reachableRoleIds))
+                statementIds.addAll(role.statementIds());
         }
 
         if (statementIds.isEmpty()) return List.of();

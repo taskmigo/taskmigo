@@ -15,10 +15,9 @@ class JavaScriptPolicyEvaluatorTest {
     private final JavaScriptPolicyEvaluator evaluator = new JavaScriptPolicyEvaluator();
 
     /**
-     * Verifies that JavaScript logical, comparison, arithmetic, array, and string semantics are evaluated by the IR.
+     * Verifies that the restricted policy subset evaluates logical, comparison, and numeric arithmetic semantics.
      *
-     * Given: a compiled policy using const values, strict comparisons, arithmetic, includes, startsWith, and
-     * endsWith.
+     * Given: a compiled policy using const values, strict comparisons, and numeric arithmetic.
      * Expect: the evaluator returns true for matching request data and false for a non-matching path.
      */
     @Test
@@ -29,8 +28,7 @@ class JavaScriptPolicyEvaluatorTest {
             """
             export default ({ request }) => {
               const expected = 40 + 2;
-              return request.count === expected && request.path.includes("/v0/")
-                && request.path.endsWith("users");
+              return request.count === expected && request.path === "/api/v0/users";
             };
             """,
             Scope.REQUEST

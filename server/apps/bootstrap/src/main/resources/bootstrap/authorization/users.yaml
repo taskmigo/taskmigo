@@ -6,3 +6,11 @@ users:
     roles:
       - System Operator
     statements: []
+
+  - username: admin
+    email: []
+    firstName: Admin
+    lastName: User
+    roles:
+      - Administrator
+    statements: []
