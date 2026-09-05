@@ -17,7 +17,10 @@ Briefly explain the core problem and high-level strategy (1–3 sentences).
 
 List meaningful architectural, functional, or structural modifications.
 - Start every bullet point with a capital letter.
-- Group related modifications together if there are many files.
+- Structural organization:
+  - If changes span multiple domains or are extensive, group related items using nested bullets or bold topic headings to improve readability.
+  - If changes are few or straightforward, a simple flat list is preferred.
+- FORBIDDEN (AI): Do NOT output long, unorganized flat lists when items can be logically grouped by feature, layer, or component.
 - FORBIDDEN (AI): Do NOT include Git lifecycle operations (e.g., "Rebase onto branch", "Merge main", "Resolve merge conflicts").
 - FORBIDDEN (AI): Do NOT list automated formatting noise (e.g., "Fix trailing whitespace", "Add missing semicolon", "Update lockfile").
 - FORBIDDEN (AI): Do NOT list temporary developer actions (e.g., "Add console.log for debugging", "Temporarily disable test").
