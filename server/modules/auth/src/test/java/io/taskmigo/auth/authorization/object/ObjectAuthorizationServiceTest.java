@@ -119,11 +119,7 @@ class ObjectAuthorizationServiceTest {
         );
 
         // Act
-        ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
-            snapshot,
-            "GET",
-            "/api/v0/objects"
-        );
+        ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(snapshot, "GET", "/api/v0/objects");
 
         // Assert
         assertThat(plan.predicate().expression()).isEqualTo(new FilterAst.None());

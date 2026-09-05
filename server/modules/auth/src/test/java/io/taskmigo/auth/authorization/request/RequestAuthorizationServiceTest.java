@@ -261,10 +261,7 @@ class RequestAuthorizationServiceTest {
         // Arrange
         UUID userId = UUID.randomUUID();
         when(this.statements.resolve(userId)).thenReturn(
-            List.of(
-                statement(Effect.ALLOW),
-                statement(Effect.DENY, "export default () => true;")
-            )
+            List.of(statement(Effect.ALLOW), statement(Effect.DENY, "export default () => true;"))
         );
 
         // Act

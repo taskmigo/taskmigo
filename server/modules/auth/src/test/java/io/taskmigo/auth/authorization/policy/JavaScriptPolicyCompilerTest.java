@@ -190,8 +190,9 @@ class JavaScriptPolicyCompilerTest {
         // Act + Assert
         assertUnsupported(resources);
         assertUnsupported(intrinsic);
-        assertThatThrownBy(() -> this.compiler.compile(resources, Scope.OBJECT))
-            .isInstanceOf(AuthorizationException.class);
+        assertThatThrownBy(() -> this.compiler.compile(resources, Scope.OBJECT)).isInstanceOf(
+            AuthorizationException.class
+        );
     }
 
     /**
