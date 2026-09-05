@@ -20,6 +20,10 @@ Instructions for AI agents and automated contributors working in this repository
 
 - `java-javadoc` (`.agents/skills/java-javadoc/SKILL.md`): write and review Java Javadoc using Markdown documentation comments (JEP 467). Use it when adding, writing, fixing, or reviewing Javadoc, documenting Java classes, methods, or fields, or generating public Java APIs that should include documentation comments.
 
+## Specifications
+
+- The authoritative Taskmigo specifications are maintained in the [`taskmigo/specification`](https://github.com/taskmigo/specification) repository. Consult that repository when work depends on or changes specified product or system behavior.
+
 ## Working changes
 
 - Keep changes focused and preserve unrelated work.
