@@ -3,7 +3,6 @@ package io.taskmigo.auth.authorization.request;
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import io.taskmigo.auth.authorization.policy.PolicyIr;
-import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import java.nio.charset.StandardCharsets;
@@ -11,10 +10,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -37,15 +34,13 @@ public final class StatementArtifactFactory {
 
     /// Derives executable Statements from the exact rows returned by the current authorization resolution.
     public List<StatementExecutionArtifact> build(Collection<StatementInfo> statements) {
-        Map<PolicyKey, PolicyIr> policies = new HashMap<>();
-        Map<String, Pattern> pathMatchers = new HashMap<>();
-        List<StatementExecutionArtifact> result = new ArrayList<>(statements.size());
+        List<StatementExecutionArtifact> result = new ArrayList<>();
         for (StatementInfo statement : statements) {
             String fingerprint = fingerprint(statement);
             CachedArtifacts cached = this.derived.compute(statement.id(), (ignored, current) ->
                 current != null && current.fingerprint().equals(fingerprint)
                     ? current
-                    : new CachedArtifacts(fingerprint, this.compile(statement, policies, pathMatchers))
+                    : new CachedArtifacts(fingerprint, this.compile(statement))
             );
             result.add(
                 new StatementExecutionArtifact(statement, cached.artifacts().policy(), cached.artifacts().pathMatcher())
@@ -54,23 +49,12 @@ public final class StatementArtifactFactory {
         return List.copyOf(result);
     }
 
-    private DerivedArtifacts compile(
-        StatementInfo statement,
-        Map<PolicyKey, PolicyIr> policies,
-        Map<String, Pattern> pathMatchers
-    ) {
-        PolicyKey policyKey = new PolicyKey(statement.policy(), statement.scope());
-        PolicyIr policy = policies.computeIfAbsent(policyKey, ignored ->
-            this.compiler.compile(statement.policy(), statement.scope())
-        );
-        String path = statement.target().api().path();
-        Pattern pathMatcher = pathMatchers.computeIfAbsent(path, StatementArtifactFactory::compilePath);
-        return new DerivedArtifacts(policy, pathMatcher);
-    }
-
-    private static Pattern compilePath(String path) {
+    private DerivedArtifacts compile(StatementInfo statement) {
         try {
-            return Pattern.compile(path);
+            return new DerivedArtifacts(
+                this.compiler.compile(statement.policy(), statement.scope()),
+                Pattern.compile(statement.target().api().path())
+            );
         } catch (PatternSyntaxException exception) {
             throw new AuthorizationException("Statement target path is not a valid regular expression");
         }
@@ -105,8 +89,6 @@ public final class StatementArtifactFactory {
     }
 
     private record CachedArtifacts(String fingerprint, DerivedArtifacts artifacts) {}
-
-    private record PolicyKey(String source, Scope scope) {}
 
     private record DerivedArtifacts(PolicyIr policy, Pattern pathMatcher) {}
 }
