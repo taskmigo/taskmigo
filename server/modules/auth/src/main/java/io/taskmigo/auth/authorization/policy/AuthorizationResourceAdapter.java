@@ -13,5 +13,6 @@ public interface AuthorizationResourceAdapter {
     ///
     /// @param keys resource keys, deduplicated by the registry
     /// @return values keyed by their canonical resource key
+    @SuppressWarnings("NullableProblems")
     Map<String, Map<String, ?>> resolve(Collection<String> keys);
 }
