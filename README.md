@@ -2,11 +2,7 @@
 
 Taskmigo is an open-source project management platform and a modern alternative to Redmine.
 
-This repository is the main development home for Taskmigo. It contains the application source, deployment resources, tests, and documentation.
-
-## Documentation
-
-Project documentation is maintained in [`docs/`](docs/). Use it for product documentation, development guides, architecture, deployment, and other detailed project information.
+This repository is the main development home for Taskmigo. It contains the application source, deployment resources, and tests.
 
 ## Contributing
 
@@ -22,7 +18,6 @@ Taskmigo is developed as a monorepo. The main areas are:
 
 - [`client/`](client/) — Client application.
 - [`server/`](server/) — Server applications and shared server code.
-- [`docs/`](docs/) — Project documentation.
 - [`helm/`](helm/) and [`deploy/`](deploy/) — Deployment resources.
 - [`e2e/`](e2e/) — End-to-end tests.
 

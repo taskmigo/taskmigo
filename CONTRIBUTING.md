@@ -6,14 +6,11 @@ This file defines repository-wide contribution requirements. A more specific `CO
 
 - Java 26
 - Node.js 24 for repository formatting
-- Node.js 26 for documentation
 - Docker for PostgreSQL integration tests
 
-Install the root and documentation dependencies before running their checks:
+Install the root dependencies before running repository checks:
 
 ```bash
-npm ci
-cd docs
 npm ci
 ```
 
@@ -53,16 +50,6 @@ cd server
 
 The server build includes Checkstyle for production and test sources. Qodana runs in GitHub Actions when server files
 change.
-
-Documentation:
-
-```bash
-cd docs
-npm run lint:check
-npm run format:check
-npm run types:check
-npm run build
-```
 
 Dockerfiles are checked by Hadolint in GitHub Actions when a Dockerfile changes.
 
