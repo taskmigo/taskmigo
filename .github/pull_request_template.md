@@ -11,6 +11,17 @@ Briefly explain the core problem and high-level strategy (1–3 sentences).
 
 -->
 
+## Specification
+
+<!--
+
+Link the Taskmigo specification implemented by this pull request.
+- Prefer a direct link to the applicable specification under https://github.com/taskmigo/specification/tree/next/specification.
+- If multiple specifications apply, list each one separately.
+- Write `N/A` only when the change is not implementing or modifying behavior defined by a specification.
+
+-->
+
 ## Changes
 
 <!--
@@ -59,6 +70,7 @@ Explicitly highlight any potential side effects or breaking contracts.
   - [ ] Starts with a capital letter (e.g., `"Add OAuth2 login flow for core authentication"`)
   - [ ] Summarizes only the main changes (omits minor fixes or side tasks)
 - [ ] The pull request is focused and contains no unrelated changes.
+- [ ] The applicable Taskmigo specification is linked above, or `N/A` is justified.
 - [ ] Tests and documentation are updated where applicable.
 - [ ] The change follows the contribution guidelines.
 - [ ] All required pipeline checks pass.
