@@ -2,6 +2,7 @@ package io.taskmigo.auth.authorization.policy;
 
 import java.util.Collection;
 import java.util.Map;
+
 /// Resolves one resource type into immutable values suitable for policy evaluation.
 public interface AuthorizationResourceAdapter {
     /// Returns the resource type handled by this adapter.
