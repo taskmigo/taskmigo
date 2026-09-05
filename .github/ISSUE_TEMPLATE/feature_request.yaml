@@ -1,0 +1,179 @@
+name: Feature request
+description: Propose a feature using an IEEE 830-inspired software requirements structure.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the requested capability as a software requirement rather than an implementation task.
+
+        This template adapts the IEEE 830 SRS structure for feature-level requests. Keep requirements specific, testable, and implementation-neutral where possible.
+
+  - type: textarea
+    id: purpose
+    attributes:
+      label: Purpose
+      description: What problem should this feature solve, and why is it needed?
+      placeholder: Describe the problem, user need, or business need.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Define what the feature includes and explicitly excludes.
+      placeholder: |
+        In scope:
+        - ...
+
+        Out of scope:
+        - ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: stakeholders
+    attributes:
+      label: Stakeholders and users
+      description: Identify the users, roles, systems, or teams affected by this feature.
+      placeholder: |
+        - Primary user: ...
+        - Other stakeholders: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: product_perspective
+    attributes:
+      label: Product perspective
+      description: Explain how this feature fits into the existing product and which existing capabilities it relates to.
+      placeholder: Describe relevant existing behavior, workflows, or boundaries.
+    validations:
+      required: true
+
+  - type: textarea
+    id: functional_requirements
+    attributes:
+      label: Functional requirements
+      description: List observable system behaviors. Use uniquely identifiable requirements when possible.
+      placeholder: |
+        - FR-1: The system shall ...
+        - FR-2: The system shall ...
+        - FR-3: The system shall ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: external_interfaces
+    attributes:
+      label: External interface requirements
+      description: Describe required user, API, software, hardware, or communication interfaces. Write N/A when none apply.
+      placeholder: |
+        User interface:
+        - ...
+
+        API / software interfaces:
+        - ...
+
+        Communication interfaces:
+        - ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: data_requirements
+    attributes:
+      label: Data requirements
+      description: Describe data inputs, outputs, persistence, retention, consistency, or migration requirements. Write N/A when none apply.
+      placeholder: |
+        - Data created or modified: ...
+        - Persistence requirements: ...
+        - Migration or compatibility requirements: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: performance
+    attributes:
+      label: Performance requirements
+      description: Specify measurable latency, throughput, scale, resource, or capacity requirements. Write N/A when none apply.
+      placeholder: |
+        - Expected scale: ...
+        - Latency target: ...
+        - Throughput target: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Design constraints
+      description: List mandatory technical, regulatory, compatibility, platform, security, or operational constraints.
+      placeholder: |
+        - Must ...
+        - Must not ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: quality_attributes
+    attributes:
+      label: Software quality attributes
+      description: Define applicable non-functional requirements such as security, reliability, availability, maintainability, usability, portability, or observability.
+      placeholder: |
+        Security:
+        - ...
+
+        Reliability / availability:
+        - ...
+
+        Maintainability / operability:
+        - ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: assumptions_dependencies
+    attributes:
+      label: Assumptions and dependencies
+      description: Record assumptions, prerequisites, external dependencies, and conditions that may affect the requirement.
+      placeholder: |
+        Assumptions:
+        - ...
+
+        Dependencies:
+        - ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance criteria
+      description: Define verifiable conditions that demonstrate the feature satisfies the requirements.
+      placeholder: |
+        - [ ] AC-1: Given ..., when ..., then ...
+        - [ ] AC-2: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: traceability
+    attributes:
+      label: Traceability
+      description: Link related requirements, issues, decisions, documentation, or dependencies. Write N/A when none exist.
+      placeholder: |
+        - Related issue: #...
+        - Related requirement: ...
+        - Related documentation: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional context
+      description: Add examples, diagrams, screenshots, alternatives considered, or other information useful for review.
+    validations:
+      required: false
