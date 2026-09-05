@@ -3,6 +3,7 @@ package io.taskmigo.rest.support.objectauthorization;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.taskmigo.auth.authorization.request.AuthorizationOperation;
 import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -20,20 +21,21 @@ class AuthorizationOperationArgumentResolverTest {
     private final AuthorizationOperationArgumentResolver resolver = new AuthorizationOperationArgumentResolver();
 
     /**
-     * Verifies that MVC resolves the request attribute into an operation carrying the original immutable snapshot.
+     * Verifies that MVC resolves the request attribute into the operation established by security.
      *
-     * Given: an HTTP request with a transported snapshot, method `GET`, and a query string.
-     * Expect: the resolved operation retains the same snapshot and exposes the method and path without the query.
+     * Given: an HTTP request with a transported operation containing a snapshot, method `GET`, and path `/api/v0/users`.
+     * Expect: argument resolution returns the exact transported operation and snapshot.
      */
     @Test
-    @DisplayName("resolves an authorization operation from the request snapshot")
+    @DisplayName("resolves an authorization operation from the request attribute")
     void shouldResolveOperationWhenRequestContainsAuthorizationSnapshot() throws Exception {
         // Arrange
-        AuthorizationSnapshot snapshot = new AuthorizationSnapshot(UUID.randomUUID(), List.of(), Map.of());
+        AuthorizationSnapshot snapshot = snapshot();
+        AuthorizationOperation transported = new AuthorizationOperation(snapshot, "GET", "/api/v0/users");
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setMethod("GET");
-        request.setRequestURI("/api/v0/users?ignored=true");
-        request.setAttribute(AuthorizationOperation.SNAPSHOT_ATTRIBUTE, snapshot);
+        request.setRequestURI("/api/v0/users");
+        request.setAttribute(AuthorizationOperation.ATTRIBUTE, transported);
 
         // Act
         AuthorizationOperation operation = this.resolver.resolveArgument(
@@ -44,6 +46,7 @@ class AuthorizationOperationArgumentResolverTest {
         );
 
         // Assert
+        assertThat(operation).isSameAs(transported);
         assertThat(operation.snapshot()).isSameAs(snapshot);
         assertThat(operation.method()).isEqualTo("GET");
         assertThat(operation.path()).isEqualTo("/api/v0/users");
@@ -52,7 +55,7 @@ class AuthorizationOperationArgumentResolverTest {
     /**
      * Verifies that a controller cannot proceed with object authorization when Spring Security did not establish a snapshot.
      *
-     * Given: an HTTP request without the authorization snapshot request attribute.
+     * Given: an HTTP request without the authorization operation request attribute.
      * Expect: argument resolution fails with an explicit missing-snapshot error.
      */
     @Test
@@ -71,7 +74,7 @@ class AuthorizationOperationArgumentResolverTest {
             )
         )
             .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("snapshot");
+            .hasMessageContaining("operation");
     }
 
     /**
@@ -105,4 +108,8 @@ class AuthorizationOperationArgumentResolverTest {
     private static void authorizationEndpoint(AuthorizationOperation ignored) {}
 
     private static void unrelatedEndpoint(String ignored) {}
+
+    private static AuthorizationSnapshot snapshot() {
+        return new AuthorizationSnapshot(UUID.randomUUID(), List.of(), List.of(), Map.of());
+    }
 }

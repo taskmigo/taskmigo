@@ -5,8 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.filter.FilterAst;
+import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import io.taskmigo.auth.authorization.policy.PolicyIrPartialEvaluator;
 import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
+import io.taskmigo.auth.authorization.request.StatementArtifactFactory;
 import io.taskmigo.auth.authorization.statement.ApiInfo;
 import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
@@ -278,10 +280,10 @@ class ObjectAuthorizationServiceTest {
     void shouldReuseAuthorizationSnapshotWhenBuildingObjectPlan() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        AuthorizationSnapshot snapshot = new AuthorizationSnapshot(
+        AuthorizationSnapshot snapshot = snapshot(
             userId,
-            List.of(statement(Effect.ALLOW, "export default () => true;")),
-            Map.of()
+            Map.of(),
+            statement(Effect.ALLOW, "export default () => true;")
         );
 
         // Act
@@ -322,6 +324,12 @@ class ObjectAuthorizationServiceTest {
     }
 
     private static AuthorizationSnapshot snapshot(UUID userId, Map<String, ?> roots, StatementInfo... statements) {
-        return new AuthorizationSnapshot(userId, List.of(statements), roots);
+        List<StatementInfo> effectiveStatements = List.of(statements);
+        return new AuthorizationSnapshot(
+            userId,
+            effectiveStatements,
+            new StatementArtifactFactory(new JavaScriptPolicyCompiler()).build(effectiveStatements),
+            roots
+        );
     }
 }

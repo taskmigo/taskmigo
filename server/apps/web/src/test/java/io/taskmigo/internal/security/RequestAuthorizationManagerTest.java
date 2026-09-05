@@ -7,10 +7,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.taskmigo.auth.authorization.request.AuthorizationOperation;
 import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
 import io.taskmigo.auth.authorization.request.RequestAuthorizationDecision;
 import io.taskmigo.auth.authorization.request.RequestAuthorizationService;
-import io.taskmigo.rest.support.objectauthorization.AuthorizationOperation;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
@@ -29,10 +29,10 @@ import org.springframework.security.web.access.intercept.RequestAuthorizationCon
 class RequestAuthorizationManagerTest {
 
     /**
-     * Verifies that request policy roots expose the normalized request path and named route variables.
+     * Verifies that security transports the complete authorization operation together with named route variables.
      *
      * Given: a versioned API request with a matched `userId` path variable and a valid user JWT.
-     * Expect: the snapshot receives the normalized path and immutable `request.pathVariables.userId` input.
+     * Expect: the operation contains the normalized target and the snapshot receives immutable `request.pathVariables.userId` input.
      */
     @Test
     @DisplayName("passes named route variables to request authorization")
@@ -41,11 +41,11 @@ class RequestAuthorizationManagerTest {
         UUID userId = UUID.randomUUID();
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getMethod()).thenReturn("GET");
-        when(request.getRequestURI()).thenReturn("/api/v0/users/target/statements?ignored=true");
+        when(request.getRequestURI()).thenReturn("/api/v0/users/target/statements");
         RequestAuthorizationContext context = mock(RequestAuthorizationContext.class);
         when(context.getRequest()).thenReturn(request);
         when(context.getVariables()).thenReturn(Map.of("userId", "target"));
-        AuthorizationSnapshot snapshot = new AuthorizationSnapshot(userId, List.of(), Map.of());
+        AuthorizationSnapshot snapshot = snapshot(userId);
         RequestAuthorizationService authorization = mock(RequestAuthorizationService.class);
         when(authorization.snapshot(eq(userId), any())).thenReturn(snapshot);
         when(authorization.authorize(snapshot, "GET", "/api/v0/users/target/statements")).thenReturn(
@@ -76,7 +76,11 @@ class RequestAuthorizationManagerTest {
         softly.assertThat(requestRoot.get("path")).isEqualTo("/api/v0/users/target/statements");
         softly.assertThat(requestRoot.get("pathVariables")).isEqualTo(Map.of("userId", "target"));
         softly.assertAll();
-        verify(request).setAttribute(AuthorizationOperation.SNAPSHOT_ATTRIBUTE, snapshot);
+        ArgumentCaptor<AuthorizationOperation> operation = ArgumentCaptor.forClass(AuthorizationOperation.class);
+        verify(request).setAttribute(eq(AuthorizationOperation.ATTRIBUTE), operation.capture());
+        assertThat(operation.getValue()).isEqualTo(
+            new AuthorizationOperation(snapshot, "GET", "/api/v0/users/target/statements")
+        );
     }
 
     /**
@@ -94,7 +98,7 @@ class RequestAuthorizationManagerTest {
         when(request.getMethod()).thenReturn("GET");
         when(request.getRequestURI()).thenReturn("/api/v0/users");
         RequestAuthorizationContext context = new RequestAuthorizationContext(request, Map.of());
-        AuthorizationSnapshot snapshot = new AuthorizationSnapshot(userId, List.of(), Map.of());
+        AuthorizationSnapshot snapshot = snapshot(userId);
         RequestAuthorizationService authorization = mock(RequestAuthorizationService.class);
         when(authorization.snapshot(eq(userId), any())).thenReturn(snapshot);
         when(authorization.authorize(snapshot, "GET", "/api/v0/users")).thenReturn(
@@ -116,5 +120,52 @@ class RequestAuthorizationManagerTest {
 
         // Assert
         assertThat(decision.isGranted()).isFalse();
+    }
+
+    /**
+     * Verifies that security reuses the complete operation already transported on the request.
+     *
+     * Given: a request carrying an operation for a snapshot and target different from the raw request target.
+     * Expect: authorization uses the transported operation and does not resolve or replace the snapshot.
+     */
+    @Test
+    @DisplayName("reuses an authorization operation already on the request")
+    void shouldReuseAuthorizationOperationWhenRequestAlreadyContainsOne() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        when(request.getMethod()).thenReturn("GET");
+        when(request.getRequestURI()).thenReturn("/api/v0/users");
+        AuthorizationSnapshot snapshot = snapshot(userId);
+        AuthorizationOperation operation = new AuthorizationOperation(snapshot, "POST", "/api/v0/roles");
+        when(request.getAttribute(AuthorizationOperation.ATTRIBUTE)).thenReturn(operation);
+        RequestAuthorizationContext context = new RequestAuthorizationContext(request, Map.of());
+        RequestAuthorizationService authorization = mock(RequestAuthorizationService.class);
+        when(authorization.authorize(snapshot, "POST", "/api/v0/roles")).thenReturn(
+            new RequestAuthorizationDecision(true)
+        );
+        Jwt jwt = Jwt.withTokenValue("token")
+            .header("alg", "none")
+            .claim("principal_type", "user")
+            .claim("user_id", userId.toString())
+            .build();
+        JwtAuthenticationToken authentication = new JwtAuthenticationToken(
+            jwt,
+            List.of(new SimpleGrantedAuthority("SCOPE_taskmigo.api"))
+        );
+        RequestAuthorizationManager manager = new RequestAuthorizationManager(authorization);
+
+        // Act
+        AuthorizationDecision decision = manager.authorize(() -> authentication, context);
+
+        // Assert
+        assertThat(decision.isGranted()).isTrue();
+        verify(authorization).authorize(snapshot, "POST", "/api/v0/roles");
+        org.mockito.Mockito.verify(authorization, org.mockito.Mockito.never()).snapshot(any(), any());
+        org.mockito.Mockito.verify(request, org.mockito.Mockito.never()).setAttribute(any(), any());
+    }
+
+    private static AuthorizationSnapshot snapshot(UUID userId) {
+        return new AuthorizationSnapshot(userId, List.of(), List.of(), Map.of());
     }
 }

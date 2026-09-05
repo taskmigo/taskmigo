@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
@@ -24,7 +25,7 @@ import org.springframework.stereotype.Service;
 public final class StatementArtifactFactory {
 
     private final JavaScriptPolicyCompiler compiler;
-    private final ConcurrentMap<String, DerivedArtifacts> derived = new ConcurrentHashMap<>();
+    private final ConcurrentMap<UUID, CachedArtifacts> derived = new ConcurrentHashMap<>();
 
     /// Creates a factory whose cache contains only compiled policy and matcher derivatives.
     public StatementArtifactFactory(JavaScriptPolicyCompiler compiler) {
@@ -36,8 +37,14 @@ public final class StatementArtifactFactory {
         List<StatementExecutionArtifact> result = new ArrayList<>();
         for (StatementInfo statement : statements) {
             String fingerprint = fingerprint(statement);
-            DerivedArtifacts artifacts = this.derived.computeIfAbsent(fingerprint, ignored -> this.compile(statement));
-            result.add(new StatementExecutionArtifact(statement, artifacts.policy(), artifacts.pathMatcher()));
+            CachedArtifacts cached = this.derived.compute(statement.id(), (ignored, current) ->
+                current != null && current.fingerprint().equals(fingerprint)
+                    ? current
+                    : new CachedArtifacts(fingerprint, this.compile(statement))
+            );
+            result.add(
+                new StatementExecutionArtifact(statement, cached.artifacts().policy(), cached.artifacts().pathMatcher())
+            );
         }
         return List.copyOf(result);
     }
@@ -80,6 +87,8 @@ public final class StatementArtifactFactory {
         String encoded = value.toString();
         state.append(encoded.length()).append(':').append(encoded);
     }
+
+    private record CachedArtifacts(String fingerprint, DerivedArtifacts artifacts) {}
 
     private record DerivedArtifacts(PolicyIr policy, Pattern pathMatcher) {}
 }

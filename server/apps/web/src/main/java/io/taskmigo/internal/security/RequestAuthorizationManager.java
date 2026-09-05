@@ -1,12 +1,16 @@
 package io.taskmigo.internal.security;
 
+import io.taskmigo.auth.authorization.AuthorizationException;
+import io.taskmigo.auth.authorization.request.AuthorizationOperation;
 import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
 import io.taskmigo.auth.authorization.request.RequestAuthorizationService;
-import io.taskmigo.rest.support.objectauthorization.AuthorizationOperation;
+import io.taskmigo.auth.user.UserException;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.core.Authentication;
@@ -19,6 +23,8 @@ import org.springframework.stereotype.Component;
 /// Applies effective request Statements before a versioned API controller is invoked.
 @Component
 final class RequestAuthorizationManager implements AuthorizationManager<RequestAuthorizationContext> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(RequestAuthorizationManager.class);
 
     private final RequestAuthorizationService authorization;
 
@@ -53,37 +59,37 @@ final class RequestAuthorizationManager implements AuthorizationManager<RequestA
             return new AuthorizationDecision(false);
         }
 
+        UUID id;
         try {
-            UUID id = UUID.fromString(userId);
+            id = UUID.fromString(userId);
+        } catch (IllegalArgumentException exception) {
+            return new AuthorizationDecision(false);
+        }
+        try {
+            String method = context.getRequest().getMethod();
+            String path = context.getRequest().getRequestURI();
             Map<String, ?> roots = Map.of(
                 "principal",
                 Map.of("id", userId, "username", principalUsername(jwt, current)),
                 "request",
-                Map.of(
-                    "method",
-                    context.getRequest().getMethod(),
-                    "path",
-                    context.getRequest().getRequestURI().split("\\?", 2)[0],
-                    "pathVariables",
-                    Map.copyOf(context.getVariables())
-                )
+                Map.of("method", method, "path", path, "pathVariables", Map.copyOf(context.getVariables()))
             );
-            Object currentSnapshot = context.getRequest().getAttribute(AuthorizationOperation.SNAPSHOT_ATTRIBUTE);
-            AuthorizationSnapshot snapshot =
-                currentSnapshot instanceof AuthorizationSnapshot existing && existing.userId().equals(id)
-                    ? existing
-                    : this.authorization.snapshot(id, roots);
-            context.getRequest().setAttribute(AuthorizationOperation.SNAPSHOT_ATTRIBUTE, snapshot);
+            Object currentOperation = context.getRequest().getAttribute(AuthorizationOperation.ATTRIBUTE);
+            AuthorizationOperation operation;
+            if (
+                currentOperation instanceof AuthorizationOperation existing && existing.snapshot().userId().equals(id)
+            ) {
+                operation = existing;
+            } else {
+                AuthorizationSnapshot snapshot = this.authorization.snapshot(id, roots);
+                operation = new AuthorizationOperation(snapshot, method, path);
+                context.getRequest().setAttribute(AuthorizationOperation.ATTRIBUTE, operation);
+            }
             return new AuthorizationDecision(
-                this.authorization
-                    .authorize(
-                        snapshot,
-                        context.getRequest().getMethod(),
-                        context.getRequest().getRequestURI().split("\\?", 2)[0]
-                    )
-                    .allowed()
+                this.authorization.authorize(operation.snapshot(), operation.method(), operation.path()).allowed()
             );
-        } catch (RuntimeException exception) {
+        } catch (AuthorizationException | UserException exception) {
+            LOGGER.warn("Request authorization failed closed for principal {}", userId, exception);
             return new AuthorizationDecision(false);
         }
     }

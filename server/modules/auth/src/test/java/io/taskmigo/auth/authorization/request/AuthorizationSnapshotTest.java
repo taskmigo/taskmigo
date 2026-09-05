@@ -2,6 +2,7 @@ package io.taskmigo.auth.authorization.request;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,7 +29,13 @@ class AuthorizationSnapshotTest {
         request.put("method", methods);
         Map<String, Object> roots = new HashMap<>();
         roots.put("request", request);
-        AuthorizationSnapshot snapshot = new AuthorizationSnapshot(UUID.randomUUID(), List.<StatementInfo>of(), roots);
+        List<StatementInfo> statements = List.of();
+        AuthorizationSnapshot snapshot = new AuthorizationSnapshot(
+            UUID.randomUUID(),
+            statements,
+            new StatementArtifactFactory(new JavaScriptPolicyCompiler()).build(statements),
+            roots
+        );
 
         // Act
         methods.add("POST");

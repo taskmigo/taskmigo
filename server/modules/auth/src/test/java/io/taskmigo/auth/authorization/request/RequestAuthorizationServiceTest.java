@@ -1,6 +1,7 @@
 package io.taskmigo.auth.authorization.request;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -177,6 +178,25 @@ class RequestAuthorizationServiceTest {
     }
 
     /**
+     * Verifies that infrastructure failures are not disguised as an ordinary authorization denial.
+     *
+     * Given: an effective-statement resolver that fails with an unexpected runtime exception.
+     * Expect: the exception propagates to the caller instead of being converted to a denied decision.
+     */
+    @Test
+    @DisplayName("propagates unexpected authorization infrastructure failures")
+    void shouldPropagateInfrastructureFailureWhenStatementResolutionFailsUnexpectedly() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        when(this.statements.resolve(userId)).thenThrow(new IllegalStateException("database unavailable"));
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.service.authorize(userId, "GET", "/api/v0/users", Map.of()))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("database unavailable");
+    }
+
+    /**
      * Verifies that Request policies use the supplied path variables without loading business resources.
      *
      * Given: a Request policy comparing a route variable with a constant.
@@ -214,9 +234,11 @@ class RequestAuthorizationServiceTest {
     void shouldReuseAuthorizationSnapshotWhenRequestStateChanges() {
         // Arrange
         UUID userId = UUID.randomUUID();
+        List<StatementInfo> statements = List.of(statement(Effect.ALLOW));
         AuthorizationSnapshot snapshot = new AuthorizationSnapshot(
             userId,
-            List.of(statement(Effect.ALLOW)),
+            statements,
+            new StatementArtifactFactory(new JavaScriptPolicyCompiler()).build(statements),
             Map.of("request", Map.of("method", "GET"))
         );
 

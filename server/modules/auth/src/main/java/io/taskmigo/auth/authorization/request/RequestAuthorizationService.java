@@ -1,16 +1,17 @@
 package io.taskmigo.auth.authorization.request;
 
+import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyEvaluator;
 import io.taskmigo.auth.authorization.policy.PolicyIr;
 import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
+import io.taskmigo.auth.user.UserException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /// Evaluates request-targeted authorization Statements independently of the web security framework.
 @Service
@@ -50,11 +51,10 @@ public class RequestAuthorizationService {
     /// @param path the request path without a query string
     /// @param roots the principal and request values exposed to authorization policies
     /// @return the transport-neutral authorization decision
-    @Transactional(readOnly = true)
     public RequestAuthorizationDecision authorize(UUID userId, String method, String path, Map<String, ?> roots) {
         try {
             return this.authorize(this.snapshot(userId, roots), method, path);
-        } catch (RuntimeException exception) {
+        } catch (AuthorizationException | UserException exception) {
             return new RequestAuthorizationDecision(false);
         }
     }
@@ -65,7 +65,6 @@ public class RequestAuthorizationService {
     /// @param method the HTTP method of the request
     /// @param path the request path without a query string
     /// @return the transport-neutral authorization decision
-    @Transactional(readOnly = true)
     public RequestAuthorizationDecision authorize(AuthorizationSnapshot snapshot, String method, String path) {
         Map<String, ?> approvedRoots = snapshot.roots();
         List<Evaluation> evaluations = new ArrayList<>();
@@ -77,7 +76,7 @@ public class RequestAuthorizationService {
                         return new RequestAuthorizationDecision(false);
                     }
                     evaluations.add(new Evaluation(statement, artifact.policy()));
-                } catch (RuntimeException exception) {
+                } catch (AuthorizationException exception) {
                     return new RequestAuthorizationDecision(false);
                 }
             }
@@ -94,7 +93,7 @@ public class RequestAuthorizationService {
                     }
                     allowed = true;
                 }
-            } catch (RuntimeException exception) {
+            } catch (AuthorizationException exception) {
                 return new RequestAuthorizationDecision(false);
             }
         }

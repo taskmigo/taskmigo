@@ -1,6 +1,5 @@
 package io.taskmigo.auth.authorization.request;
 
-import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import io.taskmigo.auth.authorization.policy.PolicyIr;
 import io.taskmigo.auth.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
@@ -19,11 +18,6 @@ public record AuthorizationSnapshot(
     List<StatementExecutionArtifact> executableStatements,
     Map<String, ?> roots
 ) {
-    /// Creates a snapshot and derives executable Statements from the supplied database-loaded rows.
-    public AuthorizationSnapshot(UUID userId, List<StatementInfo> statements, Map<String, ?> roots) {
-        this(userId, statements, new StatementArtifactFactory(new JavaScriptPolicyCompiler()).build(statements), roots);
-    }
-
     /// Creates a snapshot with immutable executable Statements and authorization input values.
     public AuthorizationSnapshot {
         List<StatementInfo> effectiveStatements = List.copyOf(statements);
