@@ -2,7 +2,7 @@ package io.taskmigo.internal.security;
 
 import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
 import io.taskmigo.auth.authorization.request.RequestAuthorizationService;
-import io.taskmigo.rest.api.v0.support.objectauthorization.ObjectAuthorizationContext;
+import io.taskmigo.rest.support.objectauthorization.AuthorizationOperation;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -68,12 +68,12 @@ final class RequestAuthorizationManager implements AuthorizationManager<RequestA
                     Map.copyOf(context.getVariables())
                 )
             );
-            Object currentSnapshot = context.getRequest().getAttribute(ObjectAuthorizationContext.SNAPSHOT_ATTRIBUTE);
+            Object currentSnapshot = context.getRequest().getAttribute(AuthorizationOperation.SNAPSHOT_ATTRIBUTE);
             AuthorizationSnapshot snapshot =
                 currentSnapshot instanceof AuthorizationSnapshot existing && existing.userId().equals(id)
                     ? existing
                     : this.authorization.snapshot(id, roots);
-            context.getRequest().setAttribute(ObjectAuthorizationContext.SNAPSHOT_ATTRIBUTE, snapshot);
+            context.getRequest().setAttribute(AuthorizationOperation.SNAPSHOT_ATTRIBUTE, snapshot);
             return new AuthorizationDecision(
                 this.authorization
                     .authorize(

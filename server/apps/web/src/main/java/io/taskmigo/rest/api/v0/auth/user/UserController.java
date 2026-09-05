@@ -10,10 +10,10 @@ import io.taskmigo.auth.role.RoleService;
 import io.taskmigo.auth.user.UserInfo;
 import io.taskmigo.auth.user.UserService;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.rest.api.v0.support.objectauthorization.ObjectAuthorizationContext;
 import io.taskmigo.rest.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.rest.api.v0.support.response.ApiResponse;
 import io.taskmigo.rest.api.v0.support.response.ApiResponseFactory;
+import io.taskmigo.rest.support.objectauthorization.AuthorizationOperation;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -25,8 +25,6 @@ import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -68,12 +66,12 @@ class UserController {
     @Operation(summary = "List users")
     ResponseEntity<ApiResponse<List<UserInfo>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
-        @AuthenticationPrincipal @Nullable Jwt jwt
+        AuthorizationOperation authorization
     ) {
         OffsetPage<UserInfo> users = this.users.list(
             pagination.page(),
             pagination.pageSize(),
-            ObjectAuthorizationContext.plan(this.objectAuthorization, jwt, "GET", "/api/v0/users")
+            this.objectAuthorization.plan(authorization.snapshot(), authorization.method(), authorization.path())
         );
         return this.responses.ok(
             users.items(),

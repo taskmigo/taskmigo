@@ -1,6 +1,6 @@
 package io.taskmigo.internal.security;
 
-import io.taskmigo.rest.api.v0.support.objectauthorization.ObjectAuthorizationContext;
+import io.taskmigo.rest.support.objectauthorization.AuthorizationOperation;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,7 +19,7 @@ final class AuthorizationSnapshotCleanupFilter extends OncePerRequestFilter {
         try {
             filterChain.doFilter(request, response);
         } finally {
-            request.removeAttribute(ObjectAuthorizationContext.SNAPSHOT_ATTRIBUTE);
+            request.removeAttribute(AuthorizationOperation.SNAPSHOT_ATTRIBUTE);
         }
     }
 }

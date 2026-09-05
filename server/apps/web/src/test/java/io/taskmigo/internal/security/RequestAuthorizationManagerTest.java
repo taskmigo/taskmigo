@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
 import io.taskmigo.auth.authorization.request.RequestAuthorizationDecision;
 import io.taskmigo.auth.authorization.request.RequestAuthorizationService;
+import io.taskmigo.rest.support.objectauthorization.AuthorizationOperation;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +76,7 @@ class RequestAuthorizationManagerTest {
         softly.assertThat(requestRoot.get("path")).isEqualTo("/api/v0/users/target/statements");
         softly.assertThat(requestRoot.get("pathVariables")).isEqualTo(Map.of("userId", "target"));
         softly.assertAll();
+        verify(request).setAttribute(AuthorizationOperation.SNAPSHOT_ATTRIBUTE, snapshot);
     }
 
     /**
