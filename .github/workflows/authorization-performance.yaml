@@ -1,0 +1,133 @@
+name: Authorization performance
+
+on:
+  pull_request:
+
+concurrency:
+  group: authorization-performance-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: JMH statement-artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Java
+        uses: actions/setup-java@v5.7.0
+        with:
+          distribution: temurin
+          java-version: "26"
+          cache: gradle
+          cache-dependency-path: |
+            server/**/*.gradle*
+            server/gradle/libs.versions.toml
+
+      - name: Run JMH benchmark
+        timeout-minutes: 10
+        env:
+          JMH_TEST_NAME: statement-artifact
+          JMH_BENCHMARK_PATTERN: .*StatementArtifactFactoryBenchmark.*
+          JMH_STATEMENT_COUNT: "500"
+          JMH_FORKS: "2"
+          JMH_WARMUP_ITERATIONS: "3"
+          JMH_WARMUP_TIME: 1s
+          JMH_MEASUREMENT_ITERATIONS: "4"
+          JMH_MEASUREMENT_TIME: 1s
+          JMH_PROFILER: gc
+          JMH_RESULTS_FILE: ${{ runner.temp }}/jmh-results.json
+          JMH_HUMAN_OUTPUT_FILE: ${{ runner.temp }}/jmh-report.txt
+          JMH_LOG_FILE: ${{ runner.temp }}/jmh.log
+        run: |
+          set -euo pipefail
+          profiler_args=()
+          if [[ -n "$JMH_PROFILER" && "$JMH_PROFILER" != "none" ]]; then
+            profiler_args=(-prof "$JMH_PROFILER")
+          fi
+
+          echo "JMH performance test: $JMH_TEST_NAME"
+          echo "JMH benchmark pattern: $JMH_BENCHMARK_PATTERN"
+          echo "JMH statement count: $JMH_STATEMENT_COUNT"
+          echo "JMH forks: $JMH_FORKS"
+          echo "JMH warmup iterations: $JMH_WARMUP_ITERATIONS"
+          echo "JMH warmup time: $JMH_WARMUP_TIME"
+          echo "JMH measurement iterations: $JMH_MEASUREMENT_ITERATIONS"
+          echo "JMH measurement time: $JMH_MEASUREMENT_TIME"
+          echo "JMH profiler: $JMH_PROFILER"
+          ./gradlew :modules:auth:jmhJar --no-daemon --console=plain
+          jmh_jar=$(find modules/auth/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)
+          java -jar "$jmh_jar" "$JMH_BENCHMARK_PATTERN" \
+            -bm avgt \
+            -tu ms \
+            -t 1 \
+            -f "$JMH_FORKS" \
+            -wi "$JMH_WARMUP_ITERATIONS" \
+            -w "$JMH_WARMUP_TIME" \
+            -i "$JMH_MEASUREMENT_ITERATIONS" \
+            -r "$JMH_MEASUREMENT_TIME" \
+            -foe true \
+            "${profiler_args[@]}" \
+            -p testName="$JMH_TEST_NAME" \
+            -p statementCount="$JMH_STATEMENT_COUNT" \
+            -p scopeName=REQUEST,OBJECT \
+            -p policyType=SIMPLE,COMPLEX \
+            -rf JSON \
+            -rff "$JMH_RESULTS_FILE" \
+            -o "$JMH_HUMAN_OUTPUT_FILE" \
+            2>&1 | tee "$JMH_LOG_FILE"
+
+      - name: Publish JMH report
+        if: ${{ always() }}
+        env:
+          JMH_TEST_NAME: statement-artifact
+          JMH_BENCHMARK_PATTERN: .*StatementArtifactFactoryBenchmark.*
+          JMH_STATEMENT_COUNT: "500"
+          JMH_FORKS: "2"
+          JMH_WARMUP_ITERATIONS: "3"
+          JMH_WARMUP_TIME: 1s
+          JMH_MEASUREMENT_ITERATIONS: "4"
+          JMH_MEASUREMENT_TIME: 1s
+          JMH_PROFILER: none
+          JMH_HUMAN_OUTPUT_FILE: ${{ runner.temp }}/jmh-report.txt
+        run: |
+          {
+            echo "## $JMH_TEST_NAME"
+            echo
+            echo "Benchmark pattern: $JMH_BENCHMARK_PATTERN"
+            echo "Statements: $JMH_STATEMENT_COUNT"
+            echo "Forks: $JMH_FORKS"
+            echo "Warmup iterations: $JMH_WARMUP_ITERATIONS"
+            echo "Warmup time: $JMH_WARMUP_TIME"
+            echo "Measurement iterations: $JMH_MEASUREMENT_ITERATIONS"
+            echo "Measurement time: $JMH_MEASUREMENT_TIME"
+            echo "Profiler: $JMH_PROFILER"
+            if [[ -s "$JMH_HUMAN_OUTPUT_FILE" ]]; then
+              echo
+              echo '```text'
+              cat "$JMH_HUMAN_OUTPUT_FILE"
+              echo '```'
+            else
+              echo
+              echo "JMH human-readable output was not produced. Inspect the uploaded log."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload benchmark report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: authorization-performance-statement-artifact
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/jmh-results.json
+            ${{ runner.temp }}/jmh-report.txt
+            ${{ runner.temp }}/jmh.log
