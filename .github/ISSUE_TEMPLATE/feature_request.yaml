@@ -1,115 +1,121 @@
 name: Feature request
-description: Propose a feature using an IEEE 830-inspired software requirements structure.
+description: Specify a feature request using the IEEE 830 software requirements structure.
 title: "[Feature]: "
 body:
   - type: markdown
     attributes:
       value: |
-        Describe the requested capability as a software requirement rather than an implementation task.
+        Specify the requested feature as software requirements using the IEEE 830 SRS structure.
 
-        This template adapts the IEEE 830 SRS structure for feature-level requests. Keep requirements specific, testable, and implementation-neutral where possible.
+        Requirements should be correct, unambiguous, complete, consistent, ranked where relevant, verifiable, modifiable, and traceable. Describe required behavior rather than implementation unless an implementation constraint is itself a requirement.
+
+  - type: markdown
+    attributes:
+      value: |
+        ## 1. Introduction
 
   - type: textarea
     id: purpose
     attributes:
-      label: Purpose
-      description: What problem should this feature solve, and why is it needed?
-      placeholder: Describe the problem, user need, or business need.
+      label: 1.1 Purpose
+      description: Identify the feature whose requirements are specified and the intended audience for this specification.
+      placeholder: Describe the purpose of this feature request and who should use this specification.
     validations:
       required: true
 
   - type: textarea
     id: scope
     attributes:
-      label: Scope
-      description: Define what the feature includes and explicitly excludes.
+      label: 1.2 Scope
+      description: Identify the requested feature, explain what it will and will not do, and describe relevant objectives or benefits.
       placeholder: |
+        Feature:
+        - ...
+
         In scope:
         - ...
 
         Out of scope:
         - ...
+
+        Objectives / benefits:
+        - ...
     validations:
       required: true
 
   - type: textarea
-    id: stakeholders
+    id: definitions
     attributes:
-      label: Stakeholders and users
-      description: Identify the users, roles, systems, or teams affected by this feature.
+      label: 1.3 Definitions, acronyms, and abbreviations
+      description: Define terms, acronyms, and abbreviations needed to interpret the requirements. Write N/A when none are needed.
       placeholder: |
-        - Primary user: ...
-        - Other stakeholders: ...
+        - Term: Definition
+        - Acronym: Meaning
     validations:
       required: true
+
+  - type: textarea
+    id: references
+    attributes:
+      label: 1.4 References
+      description: List referenced issues, specifications, standards, documents, APIs, or other sources. Write N/A when none apply.
+      placeholder: |
+        - #123
+        - Documentation: ...
+        - Standard: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: overview
+    attributes:
+      label: 1.5 Overview
+      description: Summarize how the remainder of this feature specification is organized and any context needed to read it.
+      placeholder: Briefly summarize the requirement areas covered below.
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ## 2. Overall description
 
   - type: textarea
     id: product_perspective
     attributes:
-      label: Product perspective
-      description: Explain how this feature fits into the existing product and which existing capabilities it relates to.
-      placeholder: Describe relevant existing behavior, workflows, or boundaries.
+      label: 2.1 Product perspective
+      description: Describe how this feature relates to the existing product, system boundaries, and related capabilities.
+      placeholder: Describe the feature in the context of the existing system and its boundaries.
     validations:
       required: true
 
   - type: textarea
-    id: functional_requirements
+    id: product_functions
     attributes:
-      label: Functional requirements
-      description: List observable system behaviors. Use uniquely identifiable requirements when possible.
+      label: 2.2 Product functions
+      description: Summarize the major functions the feature must provide. Keep this section high level; detailed requirements belong in section 3.
       placeholder: |
-        - FR-1: The system shall ...
-        - FR-2: The system shall ...
-        - FR-3: The system shall ...
+        - The feature provides ...
+        - The feature allows ...
     validations:
       required: true
 
   - type: textarea
-    id: external_interfaces
+    id: user_characteristics
     attributes:
-      label: External interface requirements
-      description: Describe required user, API, software, hardware, or communication interfaces. Write N/A when none apply.
+      label: 2.3 User characteristics
+      description: Describe the general characteristics of users or actors that affect the requirements, such as roles, experience, permissions, or operating context.
       placeholder: |
-        User interface:
-        - ...
-
-        API / software interfaces:
-        - ...
-
-        Communication interfaces:
-        - ...
+        - User / actor: ...
+        - Relevant characteristics: ...
     validations:
       required: true
 
   - type: textarea
-    id: data_requirements
+    id: general_constraints
     attributes:
-      label: Data requirements
-      description: Describe data inputs, outputs, persistence, retention, consistency, or migration requirements. Write N/A when none apply.
-      placeholder: |
-        - Data created or modified: ...
-        - Persistence requirements: ...
-        - Migration or compatibility requirements: ...
-    validations:
-      required: true
-
-  - type: textarea
-    id: performance
-    attributes:
-      label: Performance requirements
-      description: Specify measurable latency, throughput, scale, resource, or capacity requirements. Write N/A when none apply.
-      placeholder: |
-        - Expected scale: ...
-        - Latency target: ...
-        - Throughput target: ...
-    validations:
-      required: true
-
-  - type: textarea
-    id: constraints
-    attributes:
-      label: Design constraints
-      description: List mandatory technical, regulatory, compatibility, platform, security, or operational constraints.
+      label: 2.4 Constraints
+      description: List general constraints that limit the feature, such as policies, standards, platform restrictions, compatibility, security, regulatory, or operational constraints.
       placeholder: |
         - Must ...
         - Must not ...
@@ -117,27 +123,10 @@ body:
       required: true
 
   - type: textarea
-    id: quality_attributes
-    attributes:
-      label: Software quality attributes
-      description: Define applicable non-functional requirements such as security, reliability, availability, maintainability, usability, portability, or observability.
-      placeholder: |
-        Security:
-        - ...
-
-        Reliability / availability:
-        - ...
-
-        Maintainability / operability:
-        - ...
-    validations:
-      required: true
-
-  - type: textarea
     id: assumptions_dependencies
     attributes:
-      label: Assumptions and dependencies
-      description: Record assumptions, prerequisites, external dependencies, and conditions that may affect the requirement.
+      label: 2.5 Assumptions and dependencies
+      description: List assumptions and external dependencies that may affect the requirements.
       placeholder: |
         Assumptions:
         - ...
@@ -148,32 +137,130 @@ body:
       required: true
 
   - type: textarea
-    id: acceptance_criteria
+    id: apportioning
     attributes:
-      label: Acceptance criteria
-      description: Define verifiable conditions that demonstrate the feature satisfies the requirements.
+      label: 2.6 Apportioning of requirements
+      description: Identify requirements that may be deferred to future versions or intentionally excluded from the initial delivery. Write N/A when all requirements belong to the initial delivery.
       placeholder: |
-        - [ ] AC-1: Given ..., when ..., then ...
-        - [ ] AC-2: ...
+        Initial delivery:
+        - ...
+
+        Deferred:
+        - ...
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ## 3. Specific requirements
+
+  - type: textarea
+    id: external_interfaces
+    attributes:
+      label: 3.1 External interface requirements
+      description: Specify all applicable user, hardware, software, and communication interfaces. Write N/A for interface categories that do not apply.
+      placeholder: |
+        User interfaces:
+        - UI-1: The system shall ...
+
+        Hardware interfaces:
+        - N/A
+
+        Software interfaces:
+        - SI-1: The system shall ...
+
+        Communication interfaces:
+        - CI-1: The system shall ...
     validations:
       required: true
 
   - type: textarea
-    id: traceability
+    id: functions
     attributes:
-      label: Traceability
-      description: Link related requirements, issues, decisions, documentation, or dependencies. Write N/A when none exist.
+      label: 3.2 Functions
+      description: Specify detailed functional requirements as observable system behavior. Give each requirement a stable identifier and use "shall" for mandatory requirements.
       placeholder: |
-        - Related issue: #...
-        - Related requirement: ...
-        - Related documentation: ...
+        - FR-1: The system shall ...
+        - FR-2: When ..., the system shall ...
+        - FR-3: If ..., the system shall ...
     validations:
       required: true
 
   - type: textarea
-    id: additional_context
+    id: performance_requirements
     attributes:
-      label: Additional context
-      description: Add examples, diagrams, screenshots, alternatives considered, or other information useful for review.
+      label: 3.3 Performance requirements
+      description: Specify measurable static or dynamic performance requirements such as capacity, latency, throughput, concurrency, or resource limits. Write N/A when none apply.
+      placeholder: |
+        - PR-1: The system shall support ...
+        - PR-2: The operation shall complete within ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logical_database_requirements
+    attributes:
+      label: 3.4 Logical database requirements
+      description: Specify logical data requirements such as information content, relationships, integrity, retention, consistency, and access requirements. Write N/A when none apply.
+      placeholder: |
+        - DB-1: The system shall store ...
+        - DB-2: ... shall be unique within ...
+        - DB-3: The system shall preserve ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: design_constraints
+    attributes:
+      label: 3.5 Design constraints
+      description: Specify constraints imposed on the implementation, including standards compliance, required platforms, protocols, languages, compatibility, or mandated architectural decisions. Write N/A when none apply.
+      placeholder: |
+        Standards compliance:
+        - DC-1: ...
+
+        Other design constraints:
+        - DC-2: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: software_system_attributes
+    attributes:
+      label: 3.6 Software system attributes
+      description: Specify applicable quality requirements such as reliability, availability, security, maintainability, portability, usability, safety, and observability. Requirements should be measurable where possible.
+      placeholder: |
+        Reliability:
+        - QA-1: ...
+
+        Availability:
+        - QA-2: ...
+
+        Security:
+        - QA-3: ...
+
+        Maintainability:
+        - QA-4: ...
+
+        Portability / usability / other attributes:
+        - QA-5: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: other_requirements
+    attributes:
+      label: 3.7 Other requirements
+      description: Specify requirements that do not fit the preceding IEEE 830 categories. Write N/A when there are none.
+      placeholder: |
+        - OR-1: The system shall ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: appendices
+    attributes:
+      label: Appendices
+      description: Add supporting information such as diagrams, examples, data models, scenarios, or analysis that helps interpret the requirements. Optional.
     validations:
       required: false
