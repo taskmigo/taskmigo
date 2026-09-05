@@ -79,7 +79,7 @@ public final class JavaScriptPolicyCompiler {
             function.getBody() instanceof Block block
                 ? this.statements(childStatements(block), new HashMap<>(roots), 0, new Counter())
                 : this.expression(function.getBody(), roots, 0, new Counter());
-        expression = fold(expression).expression();
+        expression = fold(expression, new FoldState());
         if (scope == Scope.OBJECT) {
             validateObjectPolicy(expression);
         }
@@ -377,69 +377,70 @@ public final class JavaScriptPolicyCompiler {
         };
     }
 
-    private static FoldedExpression fold(PolicyIr.Expression expression) {
+    private static PolicyIr.Expression fold(PolicyIr.Expression expression, FoldState state) {
         return switch (expression) {
-            case PolicyIr.Literal literal -> new FoldedExpression(literal, false);
-            case PolicyIr.UndefinedValue undefined -> new FoldedExpression(undefined, false);
-            case PolicyIr.Reference reference -> new FoldedExpression(reference, true);
+            case PolicyIr.Literal literal -> {
+                state.containsReference = false;
+                yield literal;
+            }
+            case PolicyIr.UndefinedValue undefined -> {
+                state.containsReference = false;
+                yield undefined;
+            }
+            case PolicyIr.Reference reference -> {
+                state.containsReference = true;
+                yield reference;
+            }
             case PolicyIr.PropertyAccess property -> {
-                FoldedExpression target = fold(property.target());
-                PolicyIr.Expression folded = foldConstant(
-                    new PolicyIr.PropertyAccess(target.expression(), property.property()),
-                    target.containsReference()
-                );
-                yield new FoldedExpression(folded, target.containsReference());
+                PolicyIr.Expression target = fold(property.target(), state);
+                boolean containsReference = state.containsReference;
+                yield foldConstant(new PolicyIr.PropertyAccess(target, property.property()), containsReference);
             }
-            case PolicyIr.Binary binary -> foldBinary(binary);
+            case PolicyIr.Binary binary -> foldBinary(binary, state);
             case PolicyIr.Unary unary -> {
-                FoldedExpression operand = fold(unary.operand());
-                yield new FoldedExpression(
-                    foldConstant(
-                        new PolicyIr.Unary(unary.operator(), operand.expression()),
-                        operand.containsReference()
-                    ),
-                    operand.containsReference()
-                );
+                PolicyIr.Expression operand = fold(unary.operand(), state);
+                boolean containsReference = state.containsReference;
+                yield foldConstant(new PolicyIr.Unary(unary.operator(), operand), containsReference);
             }
-            case PolicyIr.Conditional conditional -> foldConditional(conditional);
+            case PolicyIr.Conditional conditional -> foldConditional(conditional, state);
         };
     }
 
-    private static FoldedExpression foldBinary(PolicyIr.Binary binary) {
-        FoldedExpression left = fold(binary.left());
-        if (binary.operator() == PolicyIr.BinaryOperator.AND && left.expression() instanceof PolicyIr.Literal literal) {
-            return truthy(literal.value()) ? fold(binary.right()) : left;
+    private static PolicyIr.Expression foldBinary(PolicyIr.Binary binary, FoldState state) {
+        PolicyIr.Expression left = fold(binary.left(), state);
+        boolean leftContainsReference = state.containsReference;
+        if (binary.operator() == PolicyIr.BinaryOperator.AND && left instanceof PolicyIr.Literal literal) {
+            return truthy(literal.value()) ? fold(binary.right(), state) : left;
         }
-        if (binary.operator() == PolicyIr.BinaryOperator.OR && left.expression() instanceof PolicyIr.Literal literal) {
-            return truthy(literal.value()) ? left : fold(binary.right());
+        if (binary.operator() == PolicyIr.BinaryOperator.OR && left instanceof PolicyIr.Literal literal) {
+            return truthy(literal.value()) ? left : fold(binary.right(), state);
         }
-        FoldedExpression right = fold(binary.right());
-        boolean containsReference = left.containsReference() || right.containsReference();
-        return new FoldedExpression(
-            foldConstant(
-                new PolicyIr.Binary(binary.operator(), left.expression(), right.expression()),
-                containsReference
-            ),
+        PolicyIr.Expression right = fold(binary.right(), state);
+        boolean containsReference = leftContainsReference || state.containsReference;
+        PolicyIr.Expression folded = foldConstant(
+            new PolicyIr.Binary(binary.operator(), left, right),
             containsReference
         );
+        state.containsReference = containsReference;
+        return folded;
     }
 
-    private static FoldedExpression foldConditional(PolicyIr.Conditional conditional) {
-        FoldedExpression condition = fold(conditional.condition());
-        if (condition.expression() instanceof PolicyIr.Literal literal) {
-            return truthy(literal.value()) ? fold(conditional.whenTrue()) : fold(conditional.whenFalse());
+    private static PolicyIr.Expression foldConditional(PolicyIr.Conditional conditional, FoldState state) {
+        PolicyIr.Expression condition = fold(conditional.condition(), state);
+        boolean conditionContainsReference = state.containsReference;
+        if (condition instanceof PolicyIr.Literal literal) {
+            return truthy(literal.value()) ? fold(conditional.whenTrue(), state) : fold(conditional.whenFalse(), state);
         }
-        FoldedExpression whenTrue = fold(conditional.whenTrue());
-        FoldedExpression whenFalse = fold(conditional.whenFalse());
-        boolean containsReference =
-            condition.containsReference() || whenTrue.containsReference() || whenFalse.containsReference();
-        return new FoldedExpression(
-            foldConstant(
-                new PolicyIr.Conditional(condition.expression(), whenTrue.expression(), whenFalse.expression()),
-                containsReference
-            ),
+        PolicyIr.Expression whenTrue = fold(conditional.whenTrue(), state);
+        boolean whenTrueContainsReference = state.containsReference;
+        PolicyIr.Expression whenFalse = fold(conditional.whenFalse(), state);
+        boolean containsReference = conditionContainsReference || whenTrueContainsReference || state.containsReference;
+        PolicyIr.Expression folded = foldConstant(
+            new PolicyIr.Conditional(condition, whenTrue, whenFalse),
             containsReference
         );
+        state.containsReference = containsReference;
+        return folded;
     }
 
     private static PolicyIr.Expression foldConstant(PolicyIr.Expression expression, boolean containsReference) {
@@ -627,7 +628,10 @@ public final class JavaScriptPolicyCompiler {
 
     private record StatementSequence(List<AstNode> statements, @Nullable StatementSequence continuation) {}
 
-    private record FoldedExpression(PolicyIr.Expression expression, boolean containsReference) {}
+    private static final class FoldState {
+
+        private boolean containsReference;
+    }
 
     private static final class Counter {
 
