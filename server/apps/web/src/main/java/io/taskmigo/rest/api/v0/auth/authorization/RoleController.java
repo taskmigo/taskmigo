@@ -4,12 +4,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
+import io.taskmigo.auth.authorization.request.AuthorizationOperation;
 import io.taskmigo.auth.authorization.statement.StatementService;
 import io.taskmigo.auth.role.RoleAuthorizationService;
 import io.taskmigo.auth.role.RoleInfo;
 import io.taskmigo.auth.role.RoleService;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.rest.api.v0.support.objectauthorization.ObjectAuthorizationContext;
 import io.taskmigo.rest.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.rest.api.v0.support.response.ApiResponse;
 import io.taskmigo.rest.api.v0.support.response.ApiResponseFactory;
@@ -23,8 +23,6 @@ import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -76,12 +74,12 @@ class RoleController {
     @Operation(summary = "List roles")
     ResponseEntity<ApiResponse<List<RoleInfo>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
-        @AuthenticationPrincipal @Nullable Jwt jwt
+        AuthorizationOperation authorization
     ) {
         OffsetPage<RoleInfo> roles = this.access.listRoles(
             pagination.page(),
             pagination.pageSize(),
-            ObjectAuthorizationContext.plan(this.objectAuthorization, jwt, "GET", "/api/v0/roles")
+            this.objectAuthorization.plan(authorization.snapshot(), authorization.method(), authorization.path())
         );
         return this.responses.ok(
             roles.items(),

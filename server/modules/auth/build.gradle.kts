@@ -1,5 +1,6 @@
 plugins {
     `java-library`
+    alias(libs.plugins.jmh)
 }
 
 description = "Authentication and authorization"
@@ -19,4 +20,8 @@ dependencies {
     implementation(libs.guava)
 
     testImplementation(libs.spring.boot.starter.test)
+}
+
+jmh {
+    jmhVersion = "1.37"
 }

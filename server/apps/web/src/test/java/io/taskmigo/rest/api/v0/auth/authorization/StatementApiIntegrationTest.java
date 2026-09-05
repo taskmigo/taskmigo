@@ -71,6 +71,42 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     /**
+     * Verifies that the public Statement API rejects the removed business-resource policy contract.
+     *
+     * Given: Statements containing a named resources export or a resource intrinsic.
+     * Expect: both requests fail with a bad-request response before either Statement is persisted.
+     */
+    @Test
+    @DisplayName("rejects removed resource policy constructs")
+    void shouldRejectStatementWhenPolicyUsesRemovedResourceConstructs() {
+        // Arrange
+        CreateStatementRequest resources = new CreateStatementRequest(
+            "removed-resources-" + UUID.randomUUID(),
+            null,
+            "allow",
+            "request",
+            new StatementTarget(new StatementApiTarget("GET", "/api/v0/users")),
+            "export function resources() { return {}; } export default () => true;"
+        );
+        CreateStatementRequest intrinsic = new CreateStatementRequest(
+            "removed-intrinsic-" + UUID.randomUUID(),
+            null,
+            "allow",
+            "request",
+            new StatementTarget(new StatementApiTarget("GET", "/api/v0/users")),
+            "export default () => resource('user', 'id');"
+        );
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.api().statements().create(resources))
+            .isInstanceOf(HttpClientErrorException.BadRequest.class)
+            .hasMessageContaining("policy");
+        assertThatThrownBy(() -> this.api().statements().create(intrinsic))
+            .isInstanceOf(HttpClientErrorException.BadRequest.class)
+            .hasMessageContaining("policy");
+    }
+
+    /**
      * Verifies that the Statement collection uses the shared offset pagination contract.
      *
      * Given: two newly created Statements and a request for page 2 with one item per page.

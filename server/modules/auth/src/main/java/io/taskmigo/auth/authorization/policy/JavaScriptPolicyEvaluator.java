@@ -76,7 +76,7 @@ public final class JavaScriptPolicyEvaluator {
             case EQUAL -> strictEquals(left, right);
             case NOT_EQUAL -> !strictEquals(left, right);
             case GREATER, GREATER_OR_EQUAL, LESS, LESS_OR_EQUAL -> compare(binary.operator(), left, right);
-            case ADD, SUBTRACT, MULTIPLY, DIVIDE -> arithmetic(binary.operator(), left, right);
+            case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO -> arithmetic(binary.operator(), left, right);
             case AND, OR -> throw new AssertionError("logical operators are handled before operands");
         };
     }
@@ -145,6 +145,7 @@ public final class JavaScriptPolicyEvaluator {
             case SUBTRACT -> leftValue - rightValue;
             case MULTIPLY -> leftValue * rightValue;
             case DIVIDE -> leftValue / rightValue;
+            case MODULO -> leftValue % rightValue;
             default -> throw new AssertionError("not an arithmetic operator");
         };
     }

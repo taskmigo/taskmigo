@@ -18,7 +18,6 @@ import org.mozilla.javascript.ast.AstNode;
 import org.mozilla.javascript.ast.AstRoot;
 import org.mozilla.javascript.ast.Block;
 import org.mozilla.javascript.ast.ExpressionStatement;
-import org.mozilla.javascript.ast.FunctionCall;
 import org.mozilla.javascript.ast.FunctionNode;
 import org.mozilla.javascript.ast.IfStatement;
 import org.mozilla.javascript.ast.InfixExpression;
@@ -55,71 +54,36 @@ public final class JavaScriptPolicyCompiler {
     /// @return the immutable, parser-independent policy representation
     /// @throws AuthorizationException when the module or one of its expressions is unsupported
     public PolicyIr compile(String source, Scope scope) {
-        return this.compileModule(source, scope).policy();
-    }
-
-    /// Compiles a policy module, including its declarative request resources.
-    ///
-    /// Request resources are descriptors only at activation time. Their keys are evaluated and resolved by the
-    /// request authorization service, after the approved request and principal roots are available.
-    ///
-    /// @param source the JavaScript module containing a default policy and optional named resources export
-    /// @param scope the Statement scope in which the policy will run
-    /// @return the immutable compiled policy module
-    /// @throws AuthorizationException when the module or one of its expressions is unsupported
-    public JavaScriptPolicyModule compileModule(String source, Scope scope) {
         return this.compileUncached(source, scope);
     }
 
-    private JavaScriptPolicyModule compileUncached(String source, Scope scope) {
+    private PolicyIr compileUncached(String source, Scope scope) {
         if (source.length() > MAX_SOURCE_LENGTH) {
             throw invalid("policy is too long");
         }
-        ModuleSource module = sanitizeModule(source);
+        String sanitized = sanitizeModule(source);
         AstRoot root;
         try {
             var environment = new CompilerEnvirons();
             environment.setLanguageVersion(Context.VERSION_ES6);
-            root = new Parser(environment).parse(module.source(), "authorization-policy.js", 1);
+            root = new Parser(environment).parse(sanitized, "authorization-policy.js", 1);
         } catch (RuntimeException exception) {
             throw invalid("policy cannot be parsed");
         }
-        FunctionNode resourcesFunction = null;
-        List<AstNode> policyDeclarations = new ArrayList<>();
-        for (AstNode declaration : root.getStatements()) {
-            if (declaration instanceof FunctionNode function && function.getName().equals("resources")) {
-                if (module.namedResources() != 1 || resourcesFunction != null) {
-                    throw invalid("module must contain only one resources export");
-                }
-                resourcesFunction = function;
-            } else {
-                policyDeclarations.add(declaration);
-            }
-        }
-        if (module.namedResources() == 1 && resourcesFunction == null) {
-            throw invalid("resources export must be a named function");
-        }
-        if (scope != Scope.REQUEST && module.namedResources() > 0) {
-            throw invalid("resources export is only valid for request Statements");
-        }
-        if (policyDeclarations.size() != 1) {
+        if (root.getStatements().size() != 1) {
             throw invalid("module must contain only one default export");
         }
-        FunctionNode function = function(policyDeclarations.getFirst(), "default export");
-        Map<String, PolicyIr.Expression> roots = parameters(function, true);
+        FunctionNode function = function(root.getStatements().getFirst(), "default export");
+        Map<String, PolicyIr.Expression> roots = parameters(function, scope == Scope.OBJECT);
         PolicyIr.Expression expression =
             function.getBody() instanceof Block block
                 ? this.statements(childStatements(block), new HashMap<>(roots), 0, new Counter())
                 : this.expression(function.getBody(), roots, 0, new Counter());
-        expression = fold(expression);
+        expression = fold(expression, new FoldState());
         if (scope == Scope.OBJECT) {
             validateObjectPolicy(expression);
         }
-        List<ResourceDescriptor> resources = resourcesFunction == null ? List.of() : this.resources(resourcesFunction);
-        if (scope == Scope.REQUEST) {
-            validateObjectReferences(expression, resources);
-        }
-        return new JavaScriptPolicyModule(new PolicyIr(expression), resources);
+        return new PolicyIr(expression);
     }
 
     private static FunctionNode function(AstNode declaration, String kind) {
@@ -168,66 +132,28 @@ public final class JavaScriptPolicyCompiler {
         return Map.copyOf(roots);
     }
 
-    private List<ResourceDescriptor> resources(FunctionNode function) {
-        Map<String, PolicyIr.Expression> roots = parameters(function, false);
-        if (!(function.getBody() instanceof Block block)) {
-            throw invalid("resources export must use a function body");
-        }
-        List<AstNode> statements = childStatements(block);
-        if (statements.size() != 1 || !(statements.getFirst() instanceof ReturnStatement result)) {
-            throw invalid("resources export must return one object literal");
-        }
-        if (result.getReturnValue() == null || !(result.getReturnValue() instanceof ObjectLiteral object)) {
-            throw invalid("resources export must return one object literal");
-        }
-        List<ResourceDescriptor> descriptors = new ArrayList<>();
-        for (AbstractObjectProperty element : object.getElements()) {
-            if (
-                !(element instanceof ObjectProperty property) ||
-                property.isGetterMethod() ||
-                property.isSetterMethod() ||
-                property.isMethod()
-            ) {
-                throw invalid("resource declarations must contain simple properties");
-            }
-            String name = propertyName(property.getKey());
-            if (
-                !(property.getValue() instanceof FunctionCall call) ||
-                !(call.getTarget() instanceof Name intrinsic) ||
-                !intrinsic.getIdentifier().equals("resource") ||
-                call.getArguments().size() != 2
-            ) {
-                throw invalid("resource declarations must call resource(type, key)");
-            }
-            if (!(call.getArguments().getFirst() instanceof StringLiteral type) || type.getValue().isBlank()) {
-                throw invalid("resource type must be a nonblank string");
-            }
-            PolicyIr.Expression key = this.expression(call.getArguments().get(1), roots, 0, new Counter());
-            if (containsObject(key)) {
-                throw invalid("resource keys cannot depend on object resources");
-            }
-            if (descriptors.stream().anyMatch(existing -> existing.name().equals(name))) {
-                throw invalid("resource declarations cannot contain duplicate names");
-            }
-            descriptors.add(new ResourceDescriptor(name, type.getValue(), key));
-            if (descriptors.size() > 16) {
-                throw invalid("request selects too many resources");
-            }
-        }
-        return List.copyOf(descriptors);
-    }
-
     private PolicyIr.Expression statements(
         List<AstNode> statements,
         Map<String, PolicyIr.Expression> environment,
         int index,
         Counter counter
     ) {
-        if (index >= statements.size()) {
-            return new PolicyIr.UndefinedValue();
+        return this.statements(new StatementSequence(statements, null), environment, index, counter);
+    }
+
+    private PolicyIr.Expression statements(
+        StatementSequence sequence,
+        Map<String, PolicyIr.Expression> environment,
+        int index,
+        Counter counter
+    ) {
+        if (index >= sequence.statements().size()) {
+            return sequence.continuation() == null
+                ? new PolicyIr.UndefinedValue()
+                : this.statements(sequence.continuation(), environment, 0, counter);
         }
         counter.consume();
-        AstNode statement = statements.get(index);
+        AstNode statement = sequence.statements().get(index);
         switch (statement) {
             case VariableDeclaration declaration -> {
                 if (!declaration.isConst()) {
@@ -245,7 +171,7 @@ public final class JavaScriptPolicyCompiler {
                         this.expression(variable.getInitializer(), environment, 0, counter)
                     );
                 }
-                return this.statements(statements, environment, index + 1, counter);
+                return this.statements(sequence, environment, index + 1, counter);
             }
             case ReturnStatement result -> {
                 if (result.getReturnValue() == null) {
@@ -255,7 +181,10 @@ public final class JavaScriptPolicyCompiler {
             }
             case IfStatement conditional -> {
                 PolicyIr.Expression condition = this.expression(conditional.getCondition(), environment, 0, counter);
-                List<AstNode> continuation = statements.subList(index + 1, statements.size());
+                StatementSequence continuation = new StatementSequence(
+                    sequence.statements().subList(index + 1, sequence.statements().size()),
+                    sequence.continuation()
+                );
                 PolicyIr.Expression whenTrue = this.branch(
                     conditional.getThenPart(),
                     continuation,
@@ -274,20 +203,28 @@ public final class JavaScriptPolicyCompiler {
 
     private PolicyIr.Expression branch(
         AstNode branch,
-        List<AstNode> continuation,
+        StatementSequence continuation,
         Map<String, PolicyIr.Expression> environment,
         Counter counter
     ) {
-        List<AstNode> branchStatements = new ArrayList<>();
+        Map<String, PolicyIr.Expression> branchEnvironment = new HashMap<>(environment);
         if (branch instanceof Block block) {
-            branchStatements.addAll(childStatements(block));
+            return this.statements(
+                new StatementSequence(childStatements(block), continuation),
+                branchEnvironment,
+                0,
+                counter
+            );
         } else if (branch instanceof org.mozilla.javascript.ast.Scope scope) {
-            branchStatements.addAll(childStatements(scope));
+            return this.statements(
+                new StatementSequence(childStatements(scope), continuation),
+                branchEnvironment,
+                0,
+                counter
+            );
         } else {
-            branchStatements.add(branch);
+            return this.statements(new StatementSequence(List.of(branch), continuation), branchEnvironment, 0, counter);
         }
-        branchStatements.addAll(continuation);
-        return this.statements(branchStatements, new HashMap<>(environment), 0, counter);
     }
 
     private PolicyIr.Expression expression(
@@ -365,6 +302,7 @@ public final class JavaScriptPolicyCompiler {
             case Token.SUB -> PolicyIr.BinaryOperator.SUBTRACT;
             case Token.MUL -> PolicyIr.BinaryOperator.MULTIPLY;
             case Token.DIV -> PolicyIr.BinaryOperator.DIVIDE;
+            case Token.MOD -> PolicyIr.BinaryOperator.MODULO;
             default -> throw invalid("unsupported policy operator");
         };
         return new PolicyIr.Binary(
@@ -403,9 +341,10 @@ public final class JavaScriptPolicyCompiler {
     }
 
     private static List<String> append(List<String> path, String value) {
-        List<String> result = new ArrayList<>(path);
+        List<String> result = new ArrayList<>(path.size() + 1);
+        result.addAll(path);
         result.add(value);
-        return List.copyOf(result);
+        return result;
     }
 
     private static List<AstNode> childStatements(Block block) {
@@ -438,57 +377,74 @@ public final class JavaScriptPolicyCompiler {
         };
     }
 
-    private static boolean containsReference(PolicyIr.Expression expression) {
+    private static PolicyIr.Expression fold(PolicyIr.Expression expression, FoldState state) {
         return switch (expression) {
-            case PolicyIr.Literal ignored -> false;
-            case PolicyIr.UndefinedValue ignored -> false;
-            case PolicyIr.Reference ignored -> true;
-            case PolicyIr.PropertyAccess property -> containsReference(property.target());
-            case PolicyIr.Binary binary -> containsReference(binary.left()) || containsReference(binary.right());
-            case PolicyIr.Unary unary -> containsReference(unary.operand());
-            case PolicyIr.Conditional conditional -> containsReference(conditional.condition()) ||
-                containsReference(conditional.whenTrue()) ||
-                containsReference(conditional.whenFalse());
+            case PolicyIr.Literal literal -> {
+                state.containsReference = false;
+                yield literal;
+            }
+            case PolicyIr.UndefinedValue undefined -> {
+                state.containsReference = false;
+                yield undefined;
+            }
+            case PolicyIr.Reference reference -> {
+                state.containsReference = true;
+                yield reference;
+            }
+            case PolicyIr.PropertyAccess property -> {
+                PolicyIr.Expression target = fold(property.target(), state);
+                boolean containsReference = state.containsReference;
+                yield foldConstant(new PolicyIr.PropertyAccess(target, property.property()), containsReference);
+            }
+            case PolicyIr.Binary binary -> foldBinary(binary, state);
+            case PolicyIr.Unary unary -> {
+                PolicyIr.Expression operand = fold(unary.operand(), state);
+                boolean containsReference = state.containsReference;
+                yield foldConstant(new PolicyIr.Unary(unary.operator(), operand), containsReference);
+            }
+            case PolicyIr.Conditional conditional -> foldConditional(conditional, state);
         };
     }
 
-    private static PolicyIr.Expression fold(PolicyIr.Expression expression) {
-        return switch (expression) {
-            case PolicyIr.Literal literal -> literal;
-            case PolicyIr.UndefinedValue undefined -> undefined;
-            case PolicyIr.Reference reference -> reference;
-            case PolicyIr.PropertyAccess property -> foldConstant(
-                new PolicyIr.PropertyAccess(fold(property.target()), property.property())
-            );
-            case PolicyIr.Binary binary -> foldBinary(binary);
-            case PolicyIr.Unary unary -> foldConstant(new PolicyIr.Unary(unary.operator(), fold(unary.operand())));
-            case PolicyIr.Conditional conditional -> foldConditional(conditional);
-        };
-    }
-
-    private static PolicyIr.Expression foldBinary(PolicyIr.Binary binary) {
-        PolicyIr.Expression left = fold(binary.left());
+    private static PolicyIr.Expression foldBinary(PolicyIr.Binary binary, FoldState state) {
+        PolicyIr.Expression left = fold(binary.left(), state);
+        boolean leftContainsReference = state.containsReference;
         if (binary.operator() == PolicyIr.BinaryOperator.AND && left instanceof PolicyIr.Literal literal) {
-            return truthy(literal.value()) ? fold(binary.right()) : literal;
+            return truthy(literal.value()) ? fold(binary.right(), state) : left;
         }
         if (binary.operator() == PolicyIr.BinaryOperator.OR && left instanceof PolicyIr.Literal literal) {
-            return truthy(literal.value()) ? literal : fold(binary.right());
+            return truthy(literal.value()) ? left : fold(binary.right(), state);
         }
-        return foldConstant(new PolicyIr.Binary(binary.operator(), left, fold(binary.right())));
-    }
-
-    private static PolicyIr.Expression foldConditional(PolicyIr.Conditional conditional) {
-        PolicyIr.Expression condition = fold(conditional.condition());
-        if (condition instanceof PolicyIr.Literal literal) {
-            return truthy(literal.value()) ? fold(conditional.whenTrue()) : fold(conditional.whenFalse());
-        }
-        return foldConstant(
-            new PolicyIr.Conditional(condition, fold(conditional.whenTrue()), fold(conditional.whenFalse()))
+        PolicyIr.Expression right = fold(binary.right(), state);
+        boolean containsReference = leftContainsReference || state.containsReference;
+        PolicyIr.Expression folded = foldConstant(
+            new PolicyIr.Binary(binary.operator(), left, right),
+            containsReference
         );
+        state.containsReference = containsReference;
+        return folded;
     }
 
-    private static PolicyIr.Expression foldConstant(PolicyIr.Expression expression) {
-        if (containsReference(expression)) {
+    private static PolicyIr.Expression foldConditional(PolicyIr.Conditional conditional, FoldState state) {
+        PolicyIr.Expression condition = fold(conditional.condition(), state);
+        boolean conditionContainsReference = state.containsReference;
+        if (condition instanceof PolicyIr.Literal literal) {
+            return truthy(literal.value()) ? fold(conditional.whenTrue(), state) : fold(conditional.whenFalse(), state);
+        }
+        PolicyIr.Expression whenTrue = fold(conditional.whenTrue(), state);
+        boolean whenTrueContainsReference = state.containsReference;
+        PolicyIr.Expression whenFalse = fold(conditional.whenFalse(), state);
+        boolean containsReference = conditionContainsReference || whenTrueContainsReference || state.containsReference;
+        PolicyIr.Expression folded = foldConstant(
+            new PolicyIr.Conditional(condition, whenTrue, whenFalse),
+            containsReference
+        );
+        state.containsReference = containsReference;
+        return folded;
+    }
+
+    private static PolicyIr.Expression foldConstant(PolicyIr.Expression expression, boolean containsReference) {
+        if (containsReference) {
             return expression;
         }
         Object value;
@@ -537,6 +493,9 @@ public final class JavaScriptPolicyCompiler {
                 validateObjectPolicy(property.target());
             }
             case PolicyIr.Binary binary -> {
+                if (binary.operator() == PolicyIr.BinaryOperator.MODULO) {
+                    throw invalid("modulo is not queryable for Object authorization");
+                }
                 if (
                     binary.operator() == PolicyIr.BinaryOperator.AND || binary.operator() == PolicyIr.BinaryOperator.OR
                 ) {
@@ -563,42 +522,9 @@ public final class JavaScriptPolicyCompiler {
         }
     }
 
-    private static void validateObjectReferences(PolicyIr.Expression expression, List<ResourceDescriptor> resources) {
-        Set<String> names = resources
-            .stream()
-            .map(ResourceDescriptor::name)
-            .collect(java.util.stream.Collectors.toSet());
-        switch (expression) {
-            case PolicyIr.Reference reference -> {
-                if (
-                    reference.root().equals("object") &&
-                    (reference.path().isEmpty() || !names.contains(reference.path().getFirst()))
-                ) {
-                    throw invalid("object references must select a declared request resource");
-                }
-            }
-            case PolicyIr.Literal ignored -> {
-            }
-            case PolicyIr.UndefinedValue ignored -> {
-            }
-            case PolicyIr.PropertyAccess property -> validateObjectReferences(property.target(), resources);
-            case PolicyIr.Binary binary -> {
-                validateObjectReferences(binary.left(), resources);
-                validateObjectReferences(binary.right(), resources);
-            }
-            case PolicyIr.Unary unary -> validateObjectReferences(unary.operand(), resources);
-            case PolicyIr.Conditional conditional -> {
-                validateObjectReferences(conditional.condition(), resources);
-                validateObjectReferences(conditional.whenTrue(), resources);
-                validateObjectReferences(conditional.whenFalse(), resources);
-            }
-        }
-    }
-
-    private static ModuleSource sanitizeModule(String source) {
+    private static String sanitizeModule(String source) {
         StringBuilder sanitized = new StringBuilder(source.length());
         int defaults = 0;
-        int namedResources = 0;
         int index = 0;
         while (index < source.length()) {
             char current = source.charAt(index);
@@ -631,15 +557,8 @@ public final class JavaScriptPolicyCompiler {
                         defaults++;
                         sanitized.append(' ');
                         index = next + "default".length();
-                    } else if (wordAt(source, next, "function")) {
-                        int name = skipTrivia(source, next + "function".length());
-                        if (!wordAt(source, name, "resources")) {
-                            throw invalid("only a default export and resources export are supported");
-                        }
-                        namedResources++;
-                        index = end;
                     } else {
-                        throw invalid("only a default export and resources export are supported");
+                        throw invalid("only a default export is supported");
                     }
                 } else if (identifier.equals("import")) {
                     throw invalid("imports are not supported");
@@ -655,10 +574,7 @@ public final class JavaScriptPolicyCompiler {
         if (defaults != 1) {
             throw invalid("module must contain one default export");
         }
-        if (namedResources > 1) {
-            throw invalid("module must contain only one resources export");
-        }
-        return new ModuleSource(sanitized.toString(), namedResources);
+        return sanitized.toString();
     }
 
     private static int quotedEnd(String source, int start, char quote) {
@@ -710,7 +626,12 @@ public final class JavaScriptPolicyCompiler {
         return new AuthorizationException("Invalid JavaScript authorization policy: " + message);
     }
 
-    private record ModuleSource(String source, int namedResources) {}
+    private record StatementSequence(List<AstNode> statements, @Nullable StatementSequence continuation) {}
+
+    private static final class FoldState {
+
+        private boolean containsReference;
+    }
 
     private static final class Counter {
 

@@ -2,7 +2,7 @@ package io.taskmigo.auth.authorization.request;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
-import io.taskmigo.auth.authorization.policy.JavaScriptPolicyModule;
+import io.taskmigo.auth.authorization.policy.PolicyIr;
 import io.taskmigo.auth.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import java.nio.charset.StandardCharsets;
@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
@@ -24,7 +25,7 @@ import org.springframework.stereotype.Service;
 public final class StatementArtifactFactory {
 
     private final JavaScriptPolicyCompiler compiler;
-    private final ConcurrentMap<String, DerivedArtifacts> derived = new ConcurrentHashMap<>();
+    private final ConcurrentMap<UUID, CachedArtifacts> derived = new ConcurrentHashMap<>();
 
     /// Creates a factory whose cache contains only compiled policy and matcher derivatives.
     public StatementArtifactFactory(JavaScriptPolicyCompiler compiler) {
@@ -36,8 +37,14 @@ public final class StatementArtifactFactory {
         List<StatementExecutionArtifact> result = new ArrayList<>();
         for (StatementInfo statement : statements) {
             String fingerprint = fingerprint(statement);
-            DerivedArtifacts artifacts = this.derived.computeIfAbsent(fingerprint, ignored -> this.compile(statement));
-            result.add(new StatementExecutionArtifact(statement, artifacts.policy(), artifacts.pathMatcher()));
+            CachedArtifacts cached = this.derived.compute(statement.id(), (ignored, current) ->
+                current != null && current.fingerprint().equals(fingerprint)
+                    ? current
+                    : new CachedArtifacts(fingerprint, this.compile(statement))
+            );
+            result.add(
+                new StatementExecutionArtifact(statement, cached.artifacts().policy(), cached.artifacts().pathMatcher())
+            );
         }
         return List.copyOf(result);
     }
@@ -45,7 +52,7 @@ public final class StatementArtifactFactory {
     private DerivedArtifacts compile(StatementInfo statement) {
         try {
             return new DerivedArtifacts(
-                this.compiler.compileModule(statement.policy(), statement.scope()),
+                this.compiler.compile(statement.policy(), statement.scope()),
                 Pattern.compile(statement.target().api().path())
             );
         } catch (PatternSyntaxException exception) {
@@ -81,5 +88,7 @@ public final class StatementArtifactFactory {
         state.append(encoded.length()).append(':').append(encoded);
     }
 
-    private record DerivedArtifacts(JavaScriptPolicyModule policy, Pattern pathMatcher) {}
+    private record CachedArtifacts(String fingerprint, DerivedArtifacts artifacts) {}
+
+    private record DerivedArtifacts(PolicyIr policy, Pattern pathMatcher) {}
 }
