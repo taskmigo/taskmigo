@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.statement.Scope;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -104,6 +105,86 @@ class JavaScriptPolicyCompilerTest {
 
         // Assert
         assertThat(policy.expression()).isEqualTo(new PolicyIr.Literal(true));
+    }
+
+    /**
+     * Verifies that constant subexpressions are folded even when their surrounding policy reads an authorization
+     * root.
+     *
+     * Given: a Request policy comparing a request field with a constant arithmetic expression.
+     * Expect: the runtime reference remains in the Policy IR while the constant arithmetic expression is reduced to
+     * one literal.
+     */
+    @Test
+    @DisplayName("folds constant subexpressions inside reference-based policies")
+    void shouldFoldConstantSubexpressionWhenPolicyContainsAuthorizationReference() {
+        // Arrange
+        String source = "export default ({ request }) => request.value === (40 + 2);";
+
+        // Act
+        PolicyIr.Binary expression = (PolicyIr.Binary) this.compiler.compile(source, Scope.REQUEST).expression();
+
+        // Assert
+        assertThat(expression.left()).isEqualTo(new PolicyIr.Reference("request", List.of("value")));
+        assertThat(expression.right()).isEqualTo(new PolicyIr.Literal(42.0));
+    }
+
+    /**
+     * Verifies that logical constant folding preserves JavaScript short-circuit behavior.
+     *
+     * Given: policies whose left logical operand is a constant false or true value and whose right operand reads a
+     * request field.
+     * Expect: false AND and true OR each reduce to the left constant without requiring the right operand.
+     */
+    @Test
+    @DisplayName("preserves logical short circuit while folding constants")
+    void shouldPreserveShortCircuitWhenLogicalOperandIsConstant() {
+        // Arrange
+        String andSource = "export default ({ request }) => false && request.missing;";
+        String orSource = "export default ({ request }) => true || request.missing;";
+
+        // Act
+        PolicyIr andPolicy = this.compiler.compile(andSource, Scope.REQUEST);
+        PolicyIr orPolicy = this.compiler.compile(orSource, Scope.REQUEST);
+
+        // Assert
+        assertThat(andPolicy.expression()).isEqualTo(new PolicyIr.Literal(false));
+        assertThat(orPolicy.expression()).isEqualTo(new PolicyIr.Literal(true));
+    }
+
+    /**
+     * Verifies that nested conditional branches continue into the enclosing statement sequence when they fall
+     * through without returning.
+     *
+     * Given: a policy with an inner conditional return nested inside an outer conditional and a final fallback return.
+     * Expect: the fallback is used when either condition is false, and the inner return is used only when both are
+     * true.
+     */
+    @Test
+    @DisplayName("preserves nested branch continuation semantics")
+    void shouldUseFallbackWhenNestedBranchFallsThrough() {
+        // Arrange
+        String source = """
+        export default ({ request }) => {
+          if (request.first) {
+            if (request.second) {
+              return true;
+            }
+          }
+          return false;
+        };
+        """;
+        PolicyIr policy = this.compiler.compile(source, Scope.REQUEST);
+
+        // Act
+        boolean bothTrue = this.evaluator.evaluate(policy, Map.of("request", Map.of("first", true, "second", true)));
+        boolean innerFalse = this.evaluator.evaluate(policy, Map.of("request", Map.of("first", true, "second", false)));
+        boolean outerFalse = this.evaluator.evaluate(policy, Map.of("request", Map.of("first", false, "second", true)));
+
+        // Assert
+        assertThat(bothTrue).isTrue();
+        assertThat(innerFalse).isFalse();
+        assertThat(outerFalse).isFalse();
     }
 
     /**

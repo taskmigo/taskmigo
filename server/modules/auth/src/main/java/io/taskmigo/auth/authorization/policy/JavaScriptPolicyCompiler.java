@@ -79,7 +79,7 @@ public final class JavaScriptPolicyCompiler {
             function.getBody() instanceof Block block
                 ? this.statements(childStatements(block), new HashMap<>(roots), 0, new Counter())
                 : this.expression(function.getBody(), roots, 0, new Counter());
-        expression = fold(expression);
+        expression = fold(expression).expression();
         if (scope == Scope.OBJECT) {
             validateObjectPolicy(expression);
         }
@@ -138,11 +138,22 @@ public final class JavaScriptPolicyCompiler {
         int index,
         Counter counter
     ) {
-        if (index >= statements.size()) {
-            return new PolicyIr.UndefinedValue();
+        return this.statements(new StatementSequence(statements, null), environment, index, counter);
+    }
+
+    private PolicyIr.Expression statements(
+        StatementSequence sequence,
+        Map<String, PolicyIr.Expression> environment,
+        int index,
+        Counter counter
+    ) {
+        if (index >= sequence.statements().size()) {
+            return sequence.continuation() == null
+                ? new PolicyIr.UndefinedValue()
+                : this.statements(sequence.continuation(), environment, 0, counter);
         }
         counter.consume();
-        AstNode statement = statements.get(index);
+        AstNode statement = sequence.statements().get(index);
         switch (statement) {
             case VariableDeclaration declaration -> {
                 if (!declaration.isConst()) {
@@ -160,7 +171,7 @@ public final class JavaScriptPolicyCompiler {
                         this.expression(variable.getInitializer(), environment, 0, counter)
                     );
                 }
-                return this.statements(statements, environment, index + 1, counter);
+                return this.statements(sequence, environment, index + 1, counter);
             }
             case ReturnStatement result -> {
                 if (result.getReturnValue() == null) {
@@ -170,7 +181,10 @@ public final class JavaScriptPolicyCompiler {
             }
             case IfStatement conditional -> {
                 PolicyIr.Expression condition = this.expression(conditional.getCondition(), environment, 0, counter);
-                List<AstNode> continuation = statements.subList(index + 1, statements.size());
+                StatementSequence continuation = new StatementSequence(
+                    sequence.statements().subList(index + 1, sequence.statements().size()),
+                    sequence.continuation()
+                );
                 PolicyIr.Expression whenTrue = this.branch(
                     conditional.getThenPart(),
                     continuation,
@@ -189,20 +203,28 @@ public final class JavaScriptPolicyCompiler {
 
     private PolicyIr.Expression branch(
         AstNode branch,
-        List<AstNode> continuation,
+        StatementSequence continuation,
         Map<String, PolicyIr.Expression> environment,
         Counter counter
     ) {
-        List<AstNode> branchStatements = new ArrayList<>();
+        Map<String, PolicyIr.Expression> branchEnvironment = new HashMap<>(environment);
         if (branch instanceof Block block) {
-            branchStatements.addAll(childStatements(block));
+            return this.statements(
+                new StatementSequence(childStatements(block), continuation),
+                branchEnvironment,
+                0,
+                counter
+            );
         } else if (branch instanceof org.mozilla.javascript.ast.Scope scope) {
-            branchStatements.addAll(childStatements(scope));
+            return this.statements(
+                new StatementSequence(childStatements(scope), continuation),
+                branchEnvironment,
+                0,
+                counter
+            );
         } else {
-            branchStatements.add(branch);
+            return this.statements(new StatementSequence(List.of(branch), continuation), branchEnvironment, 0, counter);
         }
-        branchStatements.addAll(continuation);
-        return this.statements(branchStatements, new HashMap<>(environment), 0, counter);
     }
 
     private PolicyIr.Expression expression(
@@ -319,9 +341,10 @@ public final class JavaScriptPolicyCompiler {
     }
 
     private static List<String> append(List<String> path, String value) {
-        List<String> result = new ArrayList<>(path);
+        List<String> result = new ArrayList<>(path.size() + 1);
+        result.addAll(path);
         result.add(value);
-        return List.copyOf(result);
+        return result;
     }
 
     private static List<AstNode> childStatements(Block block) {
@@ -354,57 +377,73 @@ public final class JavaScriptPolicyCompiler {
         };
     }
 
-    private static boolean containsReference(PolicyIr.Expression expression) {
+    private static FoldedExpression fold(PolicyIr.Expression expression) {
         return switch (expression) {
-            case PolicyIr.Literal ignored -> false;
-            case PolicyIr.UndefinedValue ignored -> false;
-            case PolicyIr.Reference ignored -> true;
-            case PolicyIr.PropertyAccess property -> containsReference(property.target());
-            case PolicyIr.Binary binary -> containsReference(binary.left()) || containsReference(binary.right());
-            case PolicyIr.Unary unary -> containsReference(unary.operand());
-            case PolicyIr.Conditional conditional -> containsReference(conditional.condition()) ||
-                containsReference(conditional.whenTrue()) ||
-                containsReference(conditional.whenFalse());
-        };
-    }
-
-    private static PolicyIr.Expression fold(PolicyIr.Expression expression) {
-        return switch (expression) {
-            case PolicyIr.Literal literal -> literal;
-            case PolicyIr.UndefinedValue undefined -> undefined;
-            case PolicyIr.Reference reference -> reference;
-            case PolicyIr.PropertyAccess property -> foldConstant(
-                new PolicyIr.PropertyAccess(fold(property.target()), property.property())
-            );
+            case PolicyIr.Literal literal -> new FoldedExpression(literal, false);
+            case PolicyIr.UndefinedValue undefined -> new FoldedExpression(undefined, false);
+            case PolicyIr.Reference reference -> new FoldedExpression(reference, true);
+            case PolicyIr.PropertyAccess property -> {
+                FoldedExpression target = fold(property.target());
+                PolicyIr.Expression folded = foldConstant(
+                    new PolicyIr.PropertyAccess(target.expression(), property.property()),
+                    target.containsReference()
+                );
+                yield new FoldedExpression(folded, target.containsReference());
+            }
             case PolicyIr.Binary binary -> foldBinary(binary);
-            case PolicyIr.Unary unary -> foldConstant(new PolicyIr.Unary(unary.operator(), fold(unary.operand())));
+            case PolicyIr.Unary unary -> {
+                FoldedExpression operand = fold(unary.operand());
+                yield new FoldedExpression(
+                    foldConstant(
+                        new PolicyIr.Unary(unary.operator(), operand.expression()),
+                        operand.containsReference()
+                    ),
+                    operand.containsReference()
+                );
+            }
             case PolicyIr.Conditional conditional -> foldConditional(conditional);
         };
     }
 
-    private static PolicyIr.Expression foldBinary(PolicyIr.Binary binary) {
-        PolicyIr.Expression left = fold(binary.left());
-        if (binary.operator() == PolicyIr.BinaryOperator.AND && left instanceof PolicyIr.Literal literal) {
-            return truthy(literal.value()) ? fold(binary.right()) : literal;
+    private static FoldedExpression foldBinary(PolicyIr.Binary binary) {
+        FoldedExpression left = fold(binary.left());
+        if (binary.operator() == PolicyIr.BinaryOperator.AND && left.expression() instanceof PolicyIr.Literal literal) {
+            return truthy(literal.value()) ? fold(binary.right()) : left;
         }
-        if (binary.operator() == PolicyIr.BinaryOperator.OR && left instanceof PolicyIr.Literal literal) {
-            return truthy(literal.value()) ? literal : fold(binary.right());
+        if (binary.operator() == PolicyIr.BinaryOperator.OR && left.expression() instanceof PolicyIr.Literal literal) {
+            return truthy(literal.value()) ? left : fold(binary.right());
         }
-        return foldConstant(new PolicyIr.Binary(binary.operator(), left, fold(binary.right())));
-    }
-
-    private static PolicyIr.Expression foldConditional(PolicyIr.Conditional conditional) {
-        PolicyIr.Expression condition = fold(conditional.condition());
-        if (condition instanceof PolicyIr.Literal literal) {
-            return truthy(literal.value()) ? fold(conditional.whenTrue()) : fold(conditional.whenFalse());
-        }
-        return foldConstant(
-            new PolicyIr.Conditional(condition, fold(conditional.whenTrue()), fold(conditional.whenFalse()))
+        FoldedExpression right = fold(binary.right());
+        boolean containsReference = left.containsReference() || right.containsReference();
+        return new FoldedExpression(
+            foldConstant(
+                new PolicyIr.Binary(binary.operator(), left.expression(), right.expression()),
+                containsReference
+            ),
+            containsReference
         );
     }
 
-    private static PolicyIr.Expression foldConstant(PolicyIr.Expression expression) {
-        if (containsReference(expression)) {
+    private static FoldedExpression foldConditional(PolicyIr.Conditional conditional) {
+        FoldedExpression condition = fold(conditional.condition());
+        if (condition.expression() instanceof PolicyIr.Literal literal) {
+            return truthy(literal.value()) ? fold(conditional.whenTrue()) : fold(conditional.whenFalse());
+        }
+        FoldedExpression whenTrue = fold(conditional.whenTrue());
+        FoldedExpression whenFalse = fold(conditional.whenFalse());
+        boolean containsReference =
+            condition.containsReference() || whenTrue.containsReference() || whenFalse.containsReference();
+        return new FoldedExpression(
+            foldConstant(
+                new PolicyIr.Conditional(condition.expression(), whenTrue.expression(), whenFalse.expression()),
+                containsReference
+            ),
+            containsReference
+        );
+    }
+
+    private static PolicyIr.Expression foldConstant(PolicyIr.Expression expression, boolean containsReference) {
+        if (containsReference) {
             return expression;
         }
         Object value;
@@ -585,6 +624,10 @@ public final class JavaScriptPolicyCompiler {
     private static AuthorizationException invalid(String message) {
         return new AuthorizationException("Invalid JavaScript authorization policy: " + message);
     }
+
+    private record StatementSequence(List<AstNode> statements, @Nullable StatementSequence continuation) {}
+
+    private record FoldedExpression(PolicyIr.Expression expression, boolean containsReference) {}
 
     private static final class Counter {
 
