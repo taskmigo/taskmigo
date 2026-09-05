@@ -18,7 +18,6 @@ import org.mozilla.javascript.ast.AstNode;
 import org.mozilla.javascript.ast.AstRoot;
 import org.mozilla.javascript.ast.Block;
 import org.mozilla.javascript.ast.ExpressionStatement;
-import org.mozilla.javascript.ast.FunctionCall;
 import org.mozilla.javascript.ast.FunctionNode;
 import org.mozilla.javascript.ast.IfStatement;
 import org.mozilla.javascript.ast.InfixExpression;
@@ -55,58 +54,27 @@ public final class JavaScriptPolicyCompiler {
     /// @return the immutable, parser-independent policy representation
     /// @throws AuthorizationException when the module or one of its expressions is unsupported
     public PolicyIr compile(String source, Scope scope) {
-        return this.compileModule(source, scope).policy();
-    }
-
-    /// Compiles a policy module, including its declarative request resources.
-    ///
-    /// Request resources are descriptors only at activation time. Their keys are evaluated and resolved by the
-    /// request authorization service, after the approved request and principal roots are available.
-    ///
-    /// @param source the JavaScript module containing a default policy and optional named resources export
-    /// @param scope the Statement scope in which the policy will run
-    /// @return the immutable compiled policy module
-    /// @throws AuthorizationException when the module or one of its expressions is unsupported
-    public JavaScriptPolicyModule compileModule(String source, Scope scope) {
         return this.compileUncached(source, scope);
     }
 
-    private JavaScriptPolicyModule compileUncached(String source, Scope scope) {
+    private PolicyIr compileUncached(String source, Scope scope) {
         if (source.length() > MAX_SOURCE_LENGTH) {
             throw invalid("policy is too long");
         }
-        ModuleSource module = sanitizeModule(source);
+        String sanitized = sanitizeModule(source);
         AstRoot root;
         try {
             var environment = new CompilerEnvirons();
             environment.setLanguageVersion(Context.VERSION_ES6);
-            root = new Parser(environment).parse(module.source(), "authorization-policy.js", 1);
+            root = new Parser(environment).parse(sanitized, "authorization-policy.js", 1);
         } catch (RuntimeException exception) {
             throw invalid("policy cannot be parsed");
         }
-        FunctionNode resourcesFunction = null;
-        List<AstNode> policyDeclarations = new ArrayList<>();
-        for (AstNode declaration : root.getStatements()) {
-            if (declaration instanceof FunctionNode function && function.getName().equals("resources")) {
-                if (module.namedResources() != 1 || resourcesFunction != null) {
-                    throw invalid("module must contain only one resources export");
-                }
-                resourcesFunction = function;
-            } else {
-                policyDeclarations.add(declaration);
-            }
-        }
-        if (module.namedResources() == 1 && resourcesFunction == null) {
-            throw invalid("resources export must be a named function");
-        }
-        if (scope != Scope.REQUEST && module.namedResources() > 0) {
-            throw invalid("resources export is only valid for request Statements");
-        }
-        if (policyDeclarations.size() != 1) {
+        if (root.getStatements().size() != 1) {
             throw invalid("module must contain only one default export");
         }
-        FunctionNode function = function(policyDeclarations.getFirst(), "default export");
-        Map<String, PolicyIr.Expression> roots = parameters(function, true);
+        FunctionNode function = function(root.getStatements().getFirst(), "default export");
+        Map<String, PolicyIr.Expression> roots = parameters(function, scope == Scope.OBJECT);
         PolicyIr.Expression expression =
             function.getBody() instanceof Block block
                 ? this.statements(childStatements(block), new HashMap<>(roots), 0, new Counter())
@@ -115,11 +83,7 @@ public final class JavaScriptPolicyCompiler {
         if (scope == Scope.OBJECT) {
             validateObjectPolicy(expression);
         }
-        List<ResourceDescriptor> resources = resourcesFunction == null ? List.of() : this.resources(resourcesFunction);
-        if (scope == Scope.REQUEST) {
-            validateObjectReferences(expression, resources);
-        }
-        return new JavaScriptPolicyModule(new PolicyIr(expression), resources);
+        return new PolicyIr(expression);
     }
 
     private static FunctionNode function(AstNode declaration, String kind) {
@@ -166,55 +130,6 @@ public final class JavaScriptPolicyCompiler {
             }
         }
         return Map.copyOf(roots);
-    }
-
-    private List<ResourceDescriptor> resources(FunctionNode function) {
-        Map<String, PolicyIr.Expression> roots = parameters(function, false);
-        if (!(function.getBody() instanceof Block block)) {
-            throw invalid("resources export must use a function body");
-        }
-        List<AstNode> statements = childStatements(block);
-        if (statements.size() != 1 || !(statements.getFirst() instanceof ReturnStatement result)) {
-            throw invalid("resources export must return one object literal");
-        }
-        if (result.getReturnValue() == null || !(result.getReturnValue() instanceof ObjectLiteral object)) {
-            throw invalid("resources export must return one object literal");
-        }
-        List<ResourceDescriptor> descriptors = new ArrayList<>();
-        for (AbstractObjectProperty element : object.getElements()) {
-            if (
-                !(element instanceof ObjectProperty property) ||
-                property.isGetterMethod() ||
-                property.isSetterMethod() ||
-                property.isMethod()
-            ) {
-                throw invalid("resource declarations must contain simple properties");
-            }
-            String name = propertyName(property.getKey());
-            if (
-                !(property.getValue() instanceof FunctionCall call) ||
-                !(call.getTarget() instanceof Name intrinsic) ||
-                !intrinsic.getIdentifier().equals("resource") ||
-                call.getArguments().size() != 2
-            ) {
-                throw invalid("resource declarations must call resource(type, key)");
-            }
-            if (!(call.getArguments().getFirst() instanceof StringLiteral type) || type.getValue().isBlank()) {
-                throw invalid("resource type must be a nonblank string");
-            }
-            PolicyIr.Expression key = this.expression(call.getArguments().get(1), roots, 0, new Counter());
-            if (containsObject(key)) {
-                throw invalid("resource keys cannot depend on object resources");
-            }
-            if (descriptors.stream().anyMatch(existing -> existing.name().equals(name))) {
-                throw invalid("resource declarations cannot contain duplicate names");
-            }
-            descriptors.add(new ResourceDescriptor(name, type.getValue(), key));
-            if (descriptors.size() > 16) {
-                throw invalid("request selects too many resources");
-            }
-        }
-        return List.copyOf(descriptors);
     }
 
     private PolicyIr.Expression statements(
@@ -365,6 +280,7 @@ public final class JavaScriptPolicyCompiler {
             case Token.SUB -> PolicyIr.BinaryOperator.SUBTRACT;
             case Token.MUL -> PolicyIr.BinaryOperator.MULTIPLY;
             case Token.DIV -> PolicyIr.BinaryOperator.DIVIDE;
+            case Token.MOD -> PolicyIr.BinaryOperator.MODULO;
             default -> throw invalid("unsupported policy operator");
         };
         return new PolicyIr.Binary(
@@ -537,6 +453,9 @@ public final class JavaScriptPolicyCompiler {
                 validateObjectPolicy(property.target());
             }
             case PolicyIr.Binary binary -> {
+                if (binary.operator() == PolicyIr.BinaryOperator.MODULO) {
+                    throw invalid("modulo is not queryable for Object authorization");
+                }
                 if (
                     binary.operator() == PolicyIr.BinaryOperator.AND || binary.operator() == PolicyIr.BinaryOperator.OR
                 ) {
@@ -563,42 +482,9 @@ public final class JavaScriptPolicyCompiler {
         }
     }
 
-    private static void validateObjectReferences(PolicyIr.Expression expression, List<ResourceDescriptor> resources) {
-        Set<String> names = resources
-            .stream()
-            .map(ResourceDescriptor::name)
-            .collect(java.util.stream.Collectors.toSet());
-        switch (expression) {
-            case PolicyIr.Reference reference -> {
-                if (
-                    reference.root().equals("object") &&
-                    (reference.path().isEmpty() || !names.contains(reference.path().getFirst()))
-                ) {
-                    throw invalid("object references must select a declared request resource");
-                }
-            }
-            case PolicyIr.Literal ignored -> {
-            }
-            case PolicyIr.UndefinedValue ignored -> {
-            }
-            case PolicyIr.PropertyAccess property -> validateObjectReferences(property.target(), resources);
-            case PolicyIr.Binary binary -> {
-                validateObjectReferences(binary.left(), resources);
-                validateObjectReferences(binary.right(), resources);
-            }
-            case PolicyIr.Unary unary -> validateObjectReferences(unary.operand(), resources);
-            case PolicyIr.Conditional conditional -> {
-                validateObjectReferences(conditional.condition(), resources);
-                validateObjectReferences(conditional.whenTrue(), resources);
-                validateObjectReferences(conditional.whenFalse(), resources);
-            }
-        }
-    }
-
-    private static ModuleSource sanitizeModule(String source) {
+    private static String sanitizeModule(String source) {
         StringBuilder sanitized = new StringBuilder(source.length());
         int defaults = 0;
-        int namedResources = 0;
         int index = 0;
         while (index < source.length()) {
             char current = source.charAt(index);
@@ -631,15 +517,8 @@ public final class JavaScriptPolicyCompiler {
                         defaults++;
                         sanitized.append(' ');
                         index = next + "default".length();
-                    } else if (wordAt(source, next, "function")) {
-                        int name = skipTrivia(source, next + "function".length());
-                        if (!wordAt(source, name, "resources")) {
-                            throw invalid("only a default export and resources export are supported");
-                        }
-                        namedResources++;
-                        index = end;
                     } else {
-                        throw invalid("only a default export and resources export are supported");
+                        throw invalid("only a default export is supported");
                     }
                 } else if (identifier.equals("import")) {
                     throw invalid("imports are not supported");
@@ -655,10 +534,7 @@ public final class JavaScriptPolicyCompiler {
         if (defaults != 1) {
             throw invalid("module must contain one default export");
         }
-        if (namedResources > 1) {
-            throw invalid("module must contain only one resources export");
-        }
-        return new ModuleSource(sanitized.toString(), namedResources);
+        return sanitized.toString();
     }
 
     private static int quotedEnd(String source, int start, char quote) {
@@ -709,8 +585,6 @@ public final class JavaScriptPolicyCompiler {
     private static AuthorizationException invalid(String message) {
         return new AuthorizationException("Invalid JavaScript authorization policy: " + message);
     }
-
-    private record ModuleSource(String source, int namedResources) {}
 
     private static final class Counter {
 

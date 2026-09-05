@@ -122,6 +122,7 @@ public final class PolicyIrPartialEvaluator {
             case SUBTRACT -> FilterAst.Operator.SUBTRACT;
             case MULTIPLY -> FilterAst.Operator.MULTIPLY;
             case DIVIDE -> FilterAst.Operator.DIVIDE;
+            case MODULO -> throw invalid("modulo is not queryable");
         };
         return new FilterAst.Binary(operator, this.filter(binary.left()), this.filter(binary.right()));
     }

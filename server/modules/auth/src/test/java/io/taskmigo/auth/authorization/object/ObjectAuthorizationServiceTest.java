@@ -101,6 +101,56 @@ class ObjectAuthorizationServiceTest {
     }
 
     /**
+     * Verifies that a constant deny prevents later non-queryable Object policies from being translated.
+     *
+     * Given: a constant-true deny followed by an Object policy with an unsupported undefined residual.
+     * Expect: the plan is `NONE` and planning does not fail on the later policy.
+     */
+    @Test
+    @DisplayName("short-circuits object planning on a constant deny")
+    void shouldReturnNoneWhenObjectDenyPolicyIsConstantTrue() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        AuthorizationSnapshot snapshot = snapshot(
+            userId,
+            Map.of(),
+            statement(Effect.DENY, "export default () => true;"),
+            statement(Effect.ALLOW, "export default ({ object }) => object.username !== undefined;")
+        );
+
+        // Act
+        ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
+            snapshot,
+            "GET",
+            "/api/v0/objects"
+        );
+
+        // Assert
+        assertThat(plan.predicate().expression()).isEqualTo(new FilterAst.None());
+    }
+
+    /**
+     * Verifies that modulo arithmetic cannot enter a database Object filter.
+     *
+     * Given: an Object policy using modulo against a mapped numeric field.
+     * Expect: planning fails with an authorization error instead of falling back to JVM row filtering.
+     */
+    @Test
+    @DisplayName("rejects modulo arithmetic in object policies")
+    void shouldRejectModuloWhenObjectPolicyCannotBeTranslated() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        String policy = "export default ({ object }) => object.age % 2 === 0;";
+
+        // Act + Assert
+        assertThatThrownBy(() ->
+            this.service.plan(snapshot(userId, Map.of(), statement(Effect.ALLOW, policy)), "GET", "/api/v0/objects")
+        )
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("modulo");
+    }
+
+    /**
      * Verifies that known principal and request values are specialized while object values remain database fields.
      *
      * Given: an Object policy comparing an object username with the known principal username.

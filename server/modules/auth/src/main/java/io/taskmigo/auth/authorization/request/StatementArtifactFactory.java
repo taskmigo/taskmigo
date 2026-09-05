@@ -2,7 +2,7 @@ package io.taskmigo.auth.authorization.request;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
-import io.taskmigo.auth.authorization.policy.JavaScriptPolicyModule;
+import io.taskmigo.auth.authorization.policy.PolicyIr;
 import io.taskmigo.auth.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import java.nio.charset.StandardCharsets;
@@ -45,7 +45,7 @@ public final class StatementArtifactFactory {
     private DerivedArtifacts compile(StatementInfo statement) {
         try {
             return new DerivedArtifacts(
-                this.compiler.compileModule(statement.policy(), statement.scope()),
+                this.compiler.compile(statement.policy(), statement.scope()),
                 Pattern.compile(statement.target().api().path())
             );
         } catch (PatternSyntaxException exception) {
@@ -81,5 +81,5 @@ public final class StatementArtifactFactory {
         state.append(encoded.length()).append(':').append(encoded);
     }
 
-    private record DerivedArtifacts(JavaScriptPolicyModule policy, Pattern pathMatcher) {}
+    private record DerivedArtifacts(PolicyIr policy, Pattern pathMatcher) {}
 }

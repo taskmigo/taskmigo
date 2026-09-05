@@ -165,41 +165,57 @@ class JavaScriptPolicyCompilerTest {
         // Act + Assert
         assertThatThrownBy(() -> this.compiler.compile(source, Scope.REQUEST))
             .isInstanceOf(AuthorizationException.class)
-            .hasMessageContaining("object references");
+            .hasMessageContaining("unsupported root");
         assertThat(this.compiler.compile(source, Scope.OBJECT)).isNotNull();
     }
 
     /**
-     * Verifies that a request module can declare named resources and consume the resolved object root.
+     * Verifies that request authorization cannot declare or invoke business-resource loading.
      *
-     * Given: a resources export selecting a user by a request path variable and a policy reading that user.
-     * Expect: both declarations compile into one immutable module with the named descriptor preserved.
+     * Given: policies containing a resources export or a resource intrinsic.
+     * Expect: both policies are rejected before activation.
      */
     @Test
-    @DisplayName("compiles request resources and object references")
-    void shouldCompileResourcesWhenRequestPolicySelectsNamedObjects() {
+    @DisplayName("rejects request resource declarations and intrinsics")
+    void shouldRejectPolicyWhenRequestDeclaresOrInvokesResources() {
         // Arrange
-        String source = """
+        String resources = """
         export function resources({ request, principal }) {
-          return { user: resource("user", request.path.userId) };
+          return { user: resource("user", request.pathVariables.userId) };
         }
-        export default ({ object }) => object.user.username === "alice";
+        export default () => true;
         """;
+        String intrinsic = "export default ({ request }) => resource('user', request.pathVariables.userId);";
+
+        // Act + Assert
+        assertUnsupported(resources);
+        assertUnsupported(intrinsic);
+        assertThatThrownBy(() -> this.compiler.compile(resources, Scope.OBJECT))
+            .isInstanceOf(AuthorizationException.class);
+    }
+
+    /**
+     * Verifies that modulo arithmetic is represented in Policy IR for Request authorization.
+     *
+     * Given: a Request policy checking whether a numeric request value is even.
+     * Expect: the policy evaluates true for an even value and false for an odd value.
+     */
+    @Test
+    @DisplayName("evaluates modulo arithmetic in request policies")
+    void shouldEvaluateModuloWhenRequestPolicyUsesNumericArithmetic() {
+        // Arrange
+        PolicyIr policy = this.compiler.compile(
+            "export default ({ request }) => request.value % 2 === 0;",
+            Scope.REQUEST
+        );
 
         // Act
-        JavaScriptPolicyModule module = this.compiler.compileModule(source, Scope.REQUEST);
+        boolean even = this.evaluator.evaluate(policy, Map.of("request", Map.of("value", 4)));
+        boolean odd = this.evaluator.evaluate(policy, Map.of("request", Map.of("value", 5)));
 
         // Assert
-        assertThat(module.resources())
-            .singleElement()
-            .satisfies(resource -> {
-                assertThat(resource.name()).isEqualTo("user");
-                assertThat(resource.type()).isEqualTo("user");
-                assertThat(resource.key()).isEqualTo(
-                    new PolicyIr.Reference("request", java.util.List.of("path", "userId"))
-                );
-            });
-        assertThat(module.policy()).isNotNull();
+        assertThat(even).isTrue();
+        assertThat(odd).isFalse();
     }
 
     private static Map<String, ?> roots(String method, String path, boolean enabled) {

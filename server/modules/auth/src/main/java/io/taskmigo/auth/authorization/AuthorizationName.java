@@ -3,7 +3,7 @@ package io.taskmigo.auth.authorization;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 
-/// Validates stable machine-readable names used by authorization resources.
+/// Validates stable machine-readable names used by authorization definitions.
 public final class AuthorizationName {
 
     private static final Pattern FORMAT = Pattern.compile("[a-zA-Z0-9_-]{6,255}");

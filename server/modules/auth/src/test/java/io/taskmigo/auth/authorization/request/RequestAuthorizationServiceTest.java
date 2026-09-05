@@ -6,8 +6,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.auth.authorization.policy.AuthorizationResourceAdapter;
-import io.taskmigo.auth.authorization.policy.AuthorizationResourceRegistry;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyEvaluator;
 import io.taskmigo.auth.authorization.statement.ApiInfo;
@@ -15,11 +13,9 @@ import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.auth.authorization.statement.TargetInfo;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -29,7 +25,6 @@ class RequestAuthorizationServiceTest {
     private final RequestAuthorizationService service = new RequestAuthorizationService(
         this.statements,
         new JavaScriptPolicyEvaluator(),
-        new AuthorizationResourceRegistry(new JavaScriptPolicyEvaluator(), List.of()),
         new StatementArtifactFactory(new JavaScriptPolicyCompiler())
     );
 
@@ -182,66 +177,30 @@ class RequestAuthorizationServiceTest {
     }
 
     /**
-     * Verifies that a request policy is evaluated against explicitly selected persisted resource values.
+     * Verifies that Request policies use the supplied path variables without loading business resources.
      *
-     * Given: a request policy selecting two users by path variables and a batched adapter returning both users.
-     * Expect: the policy can read both resolved names while the adapter is called only once.
+     * Given: a Request policy comparing a route variable with a constant.
+     * Expect: the matching route variable allows the request and no resource-resolution collaborator is required.
      */
     @Test
-    @DisplayName("evaluates request policy against resolved resources")
-    void shouldEvaluateResolvedResourceWhenRequestPolicySelectsUser() {
+    @DisplayName("evaluates request path variables without loading resources")
+    void shouldEvaluatePathVariablesWhenRequestPolicyUsesAvailableInputs() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        AtomicInteger calls = new AtomicInteger();
-        AuthorizationResourceAdapter users = new AuthorizationResourceAdapter() {
-            @Override
-            public String type() {
-                return "user";
-            }
-
-            @Override
-            public Map<String, Map<String, ?>> resolve(Collection<String> keys) {
-                calls.incrementAndGet();
-                assertThat(keys).containsExactlyInAnyOrder("target-user", "owner-user");
-                return Map.of("target-user", Map.of("username", "alice"), "owner-user", Map.of("username", "bob"));
-            }
-        };
-        JavaScriptPolicyEvaluator evaluator = new JavaScriptPolicyEvaluator();
-        RequestAuthorizationService service = new RequestAuthorizationService(
-            this.statements,
-            evaluator,
-            new AuthorizationResourceRegistry(evaluator, List.of(users)),
-            new StatementArtifactFactory(new JavaScriptPolicyCompiler())
-        );
         when(this.statements.resolve(userId)).thenReturn(
-            List.of(
-                statement(
-                    Effect.ALLOW,
-                    """
-                    export function resources({ request }) {
-                      return {
-                        user: resource("user", request.path.userId),
-                        owner: resource("user", request.path.ownerId),
-                      };
-                    }
-                    export default ({ object }) => object.user.username === "alice"
-                      && object.owner.username === "bob";
-                    """
-                )
-            )
+            List.of(statement(Effect.ALLOW, "export default ({ request }) => request.pathVariables.userId === '42';"))
         );
 
         // Act
-        RequestAuthorizationDecision result = service.authorize(
+        RequestAuthorizationDecision result = this.service.authorize(
             userId,
             "GET",
             "/api/v0/users",
-            Map.of("request", Map.of("path", Map.of("userId", "target-user", "ownerId", "owner-user")))
+            Map.of("request", Map.of("pathVariables", Map.of("userId", "42")))
         );
 
         // Assert
         assertThat(result.allowed()).isTrue();
-        assertThat(calls).hasValue(1);
     }
 
     /**
@@ -291,53 +250,25 @@ class RequestAuthorizationServiceTest {
     }
 
     /**
-     * Verifies that a matching constant-true deny ends authorization before resource resolution or later policy work.
+     * Verifies that a matching constant-true deny ends authorization before later policy work.
      *
-     * Given: an allow policy that selects a resource followed by a constant-true deny policy for the same request.
-     * Expect: authorization is denied and the resource adapter is never called.
+     * Given: a matching allow policy followed by a constant-true deny policy for the same request.
+     * Expect: authorization is denied without evaluating the remaining policy.
      */
     @Test
     @DisplayName("short-circuits a request on a constant deny policy")
     void shouldDenyRequestImmediatelyWhenMatchingDenyPolicyIsConstantTrue() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        AtomicInteger calls = new AtomicInteger();
-        AuthorizationResourceAdapter users = new AuthorizationResourceAdapter() {
-            @Override
-            public String type() {
-                return "user";
-            }
-
-            @Override
-            public Map<String, Map<String, ?>> resolve(Collection<String> keys) {
-                calls.incrementAndGet();
-                return Map.of();
-            }
-        };
-        JavaScriptPolicyEvaluator evaluator = new JavaScriptPolicyEvaluator();
-        RequestAuthorizationService service = new RequestAuthorizationService(
-            this.statements,
-            evaluator,
-            new AuthorizationResourceRegistry(evaluator, List.of(users)),
-            new StatementArtifactFactory(new JavaScriptPolicyCompiler())
-        );
         when(this.statements.resolve(userId)).thenReturn(
             List.of(
-                statement(
-                    Effect.ALLOW,
-                    """
-                    export function resources({ request }) {
-                      return { user: resource("user", request.path.userId) };
-                    }
-                    export default () => true;
-                    """
-                ),
+                statement(Effect.ALLOW),
                 statement(Effect.DENY, "export default () => true;")
             )
         );
 
         // Act
-        RequestAuthorizationDecision result = service.authorize(
+        RequestAuthorizationDecision result = this.service.authorize(
             userId,
             "GET",
             "/api/v0/users",
@@ -346,7 +277,6 @@ class RequestAuthorizationServiceTest {
 
         // Assert
         assertThat(result.allowed()).isFalse();
-        assertThat(calls).hasValue(0);
     }
 
     private static StatementInfo statement(Effect effect) {
