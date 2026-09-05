@@ -45,6 +45,9 @@ public class GroupEntity {
     @OrderBy("id")
     Set<GroupEntity> childGroups = new LinkedHashSet<>();
 
+    @ManyToMany(mappedBy = "childGroups")
+    Set<GroupEntity> parentGroups = new LinkedHashSet<>();
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "group_roles", joinColumns = @JoinColumn(name = "group_id"))
     @Column(name = "role_id", nullable = false)

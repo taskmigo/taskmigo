@@ -17,6 +17,8 @@
         <!-- Prefer imports over fully-qualified type references. -->
         <module name="UnnecessaryFullyQualifiedType"/>
 
+        <module name="NeedBraces"/>
+
         <!-- Require imported short forms for annotations. -->
         <module name="MatchXpath">
             <property name="id" value="NoFullyQualifiedAnnotation"/>

@@ -1,8 +1,8 @@
 package io.taskmigo.bootstrap;
 
 import io.taskmigo.auth.authorization.statement.Effect;
+import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementService;
-import io.taskmigo.auth.authorization.statement.TargetType;
 import io.taskmigo.auth.role.RoleAuthorizationService;
 import io.taskmigo.auth.role.RoleService;
 import io.taskmigo.auth.user.UserService;
@@ -54,7 +54,9 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
         UsersFile usersFile = this.read("users.yaml", UsersFile.class);
         Map<String, UUID> statementIds = this.reconcileStatements(values(statementsFile.statements()));
         Map<String, UUID> roleIds = this.reconcileRoles(values(rolesFile.roles()), statementIds);
-        for (User user : values(usersFile.users())) this.reconcileUser(user, roleIds, statementIds);
+        for (User user : values(usersFile.users())) {
+            this.reconcileUser(user, roleIds, statementIds);
+        }
     }
 
     private <T> T read(String filename, Class<T> type) throws Exception {
@@ -67,19 +69,19 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
     private Map<String, UUID> reconcileStatements(List<Statement> definitions) {
         Map<String, UUID> result = new LinkedHashMap<>();
         for (Statement definition : definitions) {
-            if (result.containsKey(definition.name())) throw new IllegalStateException(
-                "Duplicate built-in authorization Statement: " + definition.name()
-            );
+            if (result.containsKey(definition.name())) {
+                throw new IllegalStateException("Duplicate built-in authorization Statement: " + definition.name());
+            }
             result.put(
                 definition.name(),
                 this.statements.reconcile(
                     definition.name(),
                     definition.description(),
                     definition.effect(),
-                    definition.target().type(),
+                    definition.scope(),
                     definition.target().api().method(),
                     definition.target().api().path(),
-                    definition.conditions()
+                    definition.policy()
                 )
             );
         }
@@ -89,9 +91,9 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
     private Map<String, UUID> reconcileRoles(List<Role> definitions, Map<String, UUID> statementIds) {
         Map<String, UUID> result = new LinkedHashMap<>();
         for (Role definition : definitions) {
-            if (result.containsKey(definition.name())) throw new IllegalStateException(
-                "Duplicate built-in authorization Role: " + definition.name()
-            );
+            if (result.containsKey(definition.name())) {
+                throw new IllegalStateException("Duplicate built-in authorization Role: " + definition.name());
+            }
             List<UUID> ids = values(definition.statements())
                 .stream()
                 .map(name -> this.resolveStatement(statementIds, name))
@@ -150,9 +152,16 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
         }
     }
 
-    private record Statement(String name, String description, Effect effect, Target target, List<String> conditions) {}
+    private record Statement(
+        String name,
+        String description,
+        Effect effect,
+        Scope scope,
+        Target target,
+        String policy
+    ) {}
 
-    private record Target(TargetType type, Api api) {}
+    private record Target(Api api) {}
 
     private record Api(String method, String path) {}
 

@@ -111,7 +111,9 @@ class UserController {
             request.lastName(),
             roleIds
         );
-        for (UUID groupId : groupIds) this.groups.addMember(groupId, id);
+        for (UUID groupId : groupIds) {
+            this.groups.addMember(groupId, id);
+        }
         return this.responses.created(
             URI.create("/api/v0/users/" + id),
             Map.of("id", id),

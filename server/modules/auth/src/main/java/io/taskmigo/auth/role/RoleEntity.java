@@ -45,6 +45,9 @@ public class RoleEntity {
     @OrderBy("id")
     Set<RoleEntity> childRoles = new LinkedHashSet<>();
 
+    @ManyToMany(mappedBy = "childRoles")
+    Set<RoleEntity> parentRoles = new LinkedHashSet<>();
+
     protected RoleEntity() {}
 
     RoleEntity(UUID id, String name, @Nullable String description) {

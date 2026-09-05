@@ -46,24 +46,20 @@ jobs:
         with:
           pr-mode: false
           use-caches: false
-          upload-result: true
+          upload-result: false
           args: >-
             --project-dir server
 
-      - name: Check SARIF
-        if: ${{ always() }}
-        id: sarif
-        shell: bash
-        run: |
-          if [[ -f "$RUNNER_TEMP/qodana/results/qodana.sarif.json" ]]; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-            echo "Qodana SARIF was not generated; skipping SARIF uploads."
-          fi
+      - if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: qodana.sarif.json
+          path: ${{ runner.temp }}/qodana/results/qodana.sarif.json
+          retention-days: 1
+          archive: false
 
       - name: Upload SARIF
-        if: ${{ always() && steps.sarif.outputs.exists == 'true' }}
+        if: ${{ always() }}
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ${{ runner.temp }}/qodana/results/qodana.sarif.json

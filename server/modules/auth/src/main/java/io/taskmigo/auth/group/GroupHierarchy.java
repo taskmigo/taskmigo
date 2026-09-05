@@ -36,7 +36,9 @@ public final class GroupHierarchy {
         Map<UUID, Set<UUID>> childrenByParent = new HashMap<>();
         for (GroupEntity group : groups) {
             Set<UUID> children = new HashSet<>();
-            for (GroupEntity child : group.childGroups) children.add(child.id);
+            for (GroupEntity child : group.childGroups) {
+                children.add(child.id);
+            }
             childrenByParent.put(group.id, children);
         }
         return new GroupHierarchy(childrenByParent);
@@ -62,17 +64,18 @@ public final class GroupHierarchy {
             .stream()
             .filter(this.graph.nodes()::contains)
             .collect(java.util.stream.Collectors.toSet());
-        if (knownRoots.isEmpty()) return List.of();
+        if (knownRoots.isEmpty()) {
+            return List.of();
+        }
         return StreamSupport.stream(Traverser.forGraph(this.graph).breadthFirst(knownRoots).spliterator(), false)
             .sorted()
             .toList();
     }
 
     private void requireAcyclic() {
-        if (Graphs.hasCycle(this.graph)) throw new GroupException(
-            GroupException.Type.BAD_REQUEST,
-            "Group hierarchy must be acyclic"
-        );
+        if (Graphs.hasCycle(this.graph)) {
+            throw new GroupException(GroupException.Type.BAD_REQUEST, "Group hierarchy must be acyclic");
+        }
     }
 
     private static MutableGraph<UUID> newGraph() {

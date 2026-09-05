@@ -1,8 +1,9 @@
 package io.taskmigo.auth.authorization.statement;
 
-import io.taskmigo.auth.authorization.condition.AuthorizationException;
-import io.taskmigo.auth.authorization.condition.AuthorizationName;
+import io.taskmigo.auth.authorization.AuthorizationException;
+import io.taskmigo.auth.authorization.AuthorizationName;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
+import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import io.taskmigo.foundation.OffsetPage;
 import java.util.Collection;
 import java.util.List;
@@ -16,16 +17,22 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/// Manages canonical authorization Statements without applying them to requests yet.
+/// Manages canonical authorization Statements and validates their compiled policy modules.
 @Service
 public class StatementService {
 
     private final StatementRepository statements;
     private final ObjectAuthorizationService objectAuthorization;
+    private final JavaScriptPolicyCompiler policyCompiler;
 
-    StatementService(StatementRepository statements, ObjectAuthorizationService objectAuthorization) {
+    StatementService(
+        StatementRepository statements,
+        ObjectAuthorizationService objectAuthorization,
+        JavaScriptPolicyCompiler policyCompiler
+    ) {
         this.statements = statements;
         this.objectAuthorization = objectAuthorization;
+        this.policyCompiler = policyCompiler;
     }
 
     /// Validates and persists a Statement with a server-assigned stable identifier.
@@ -34,15 +41,17 @@ public class StatementService {
         @Nullable String name,
         @Nullable String description,
         @Nullable Effect effect,
-        @Nullable TargetType targetType,
+        @Nullable Scope scope,
         @Nullable String method,
         @Nullable String path,
-        @Nullable List<String> conditions
+        @Nullable String policy
     ) {
         String validName = AuthorizationName.required(name, "name");
-        if (this.statements.existsByName(validName)) throw new AuthorizationException("Statement name already exists");
+        if (this.statements.existsByName(validName)) {
+            throw new AuthorizationException("Statement name already exists");
+        }
         Effect validEffect = required(effect, "effect");
-        TargetType validTargetType = required(targetType, "target.type");
+        Scope validScope = required(scope, "scope");
         String validMethod = required(method, "target.api.method");
         if (
             !"*".equals(validMethod) &&
@@ -51,21 +60,19 @@ public class StatementService {
             throw new AuthorizationException("target.api.method must be a valid HTTP method");
         }
         String validPath = required(path, "target.api.path");
-        if (validPath.length() > 2000) throw new AuthorizationException(
-            "target.api.path must not exceed 2000 characters"
-        );
+        if (validPath.length() > 2000) {
+            throw new AuthorizationException("target.api.path must not exceed 2000 characters");
+        }
         try {
             Pattern.compile(validPath);
         } catch (PatternSyntaxException exception) {
             throw new AuthorizationException("target.api.path must be a valid regular expression");
         }
-        if (validMethod.length() > 16) throw new AuthorizationException(
-            "target.api.method must not exceed 16 characters"
-        );
-        List<String> validConditions = conditions == null ? List.of() : List.copyOf(conditions);
-        if (validConditions.stream().anyMatch(String::isBlank)) {
-            throw new AuthorizationException("conditions must not contain blank expressions");
+        if (validMethod.length() > 16) {
+            throw new AuthorizationException("target.api.method must not exceed 16 characters");
         }
+        String validPolicy = requiredPolicy(policy);
+        this.policyCompiler.compile(validPolicy, validScope);
         UUID id = UUID.randomUUID();
         this.statements.save(
             new StatementEntity(
@@ -73,10 +80,10 @@ public class StatementService {
                 validName,
                 description,
                 validEffect,
-                validTargetType,
+                validScope,
                 validMethod,
                 validPath,
-                validConditions
+                validPolicy
             )
         );
         return id;
@@ -88,18 +95,18 @@ public class StatementService {
         @Nullable String name,
         @Nullable String description,
         @Nullable Effect effect,
-        @Nullable TargetType targetType,
+        @Nullable Scope scope,
         @Nullable String method,
         @Nullable String path,
-        @Nullable List<String> conditions
+        @Nullable String policy
     ) {
         String validName = AuthorizationName.required(name, "name");
         StatementEntity existing = this.statements.findByName(validName).orElse(null);
         if (existing == null) {
-            return this.create(validName, description, effect, targetType, method, path, conditions);
+            return this.create(validName, description, effect, scope, method, path, policy);
         }
         Effect validEffect = required(effect, "effect");
-        TargetType validTargetType = required(targetType, "target.type");
+        Scope validScope = required(scope, "scope");
         String validMethod = required(method, "target.api.method");
         if (
             !"*".equals(validMethod) &&
@@ -113,17 +120,14 @@ public class StatementService {
         } catch (PatternSyntaxException exception) {
             throw new AuthorizationException("target.api.path must be a valid regular expression");
         }
-        List<String> validConditions = conditions == null ? List.of() : List.copyOf(conditions);
-        if (validConditions.stream().anyMatch(String::isBlank)) throw new AuthorizationException(
-            "conditions must not contain blank expressions"
-        );
+        String validPolicy = requiredPolicy(policy);
+        this.policyCompiler.compile(validPolicy, validScope);
         existing.description = description;
         existing.effect = validEffect;
-        existing.targetType = validTargetType;
+        existing.scope = validScope;
         existing.method = validMethod;
         existing.path = validPath;
-        existing.conditions.clear();
-        existing.conditions.addAll(validConditions);
+        existing.policy = validPolicy;
         this.statements.flush();
         return existing.id;
     }
@@ -141,6 +145,9 @@ public class StatementService {
         int perPage,
         ObjectAuthorizationService.@Nullable ObjectAuthorizationPlan authorization
     ) {
+        if (authorization != null && authorization.deniesAll()) {
+            return new OffsetPage<>(List.of(), 0, 0);
+        }
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
         var result =
             authorization == null
@@ -177,12 +184,23 @@ public class StatementService {
     }
 
     private static String required(@Nullable String value, String field) {
-        if (value == null || value.isBlank()) throw new AuthorizationException(field + " must not be blank");
+        if (value == null || value.isBlank()) {
+            throw new AuthorizationException(field + " must not be blank");
+        }
         return value.trim();
     }
 
     private static <T> T required(@Nullable T value, String field) {
-        if (value == null) throw new AuthorizationException(field + " is required");
+        if (value == null) {
+            throw new AuthorizationException(field + " is required");
+        }
         return value;
+    }
+
+    private static String requiredPolicy(@Nullable String policy) {
+        if (policy == null || policy.isBlank()) {
+            throw new AuthorizationException("policy must not be blank");
+        }
+        return policy;
     }
 }

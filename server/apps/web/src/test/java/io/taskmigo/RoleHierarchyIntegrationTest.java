@@ -39,6 +39,12 @@ class RoleHierarchyIntegrationTest {
         this.jdbc = jdbc;
     }
 
+    /**
+     * Verifies that duplicate direct edges produce one edge and the closure contains shared transitive descendants.
+     *
+     * Given: a diamond-shaped Role hierarchy with duplicate requested child ids.
+     * Expect: direct and closure tables contain deduplicated reflexive-transitive relationships.
+     */
     @Test
     @DisplayName("persists unique role edges and resolves transitive descendants")
     void shouldResolveTransitiveDescendantsWhenUniqueRoleEdgesArePersisted() {
@@ -62,8 +68,30 @@ class RoleHierarchyIntegrationTest {
                 left
             )
         ).isEqualTo(1);
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from role_hierarchy_closure where ancestor_role_id = ? and descendant_role_id = ?",
+                Integer.class,
+                root,
+                root
+            )
+        ).isEqualTo(1);
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from role_hierarchy_closure where ancestor_role_id = ? and descendant_role_id = ?",
+                Integer.class,
+                root,
+                leaf
+            )
+        ).isEqualTo(1);
     }
 
+    /**
+     * Verifies that rejected cycle mutations leave both direct hierarchy and closure data unchanged.
+     *
+     * Given: a valid root-to-leaf Role chain followed by two invalid cycle replacements.
+     * Expect: the original transitive relationship remains effective after both failures.
+     */
     @Test
     @DisplayName("rejects role cycles without changing existing edges")
     void shouldPreserveExistingEdgesWhenRoleCycleIsRejected() {
@@ -84,6 +112,14 @@ class RoleHierarchyIntegrationTest {
             .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(child, leaf).stream().sorted().toList());
         assertThat(this.access.descendantRoles(leaf)).isEmpty();
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from role_hierarchy_closure where ancestor_role_id = ? and descendant_role_id = ?",
+                Integer.class,
+                root,
+                leaf
+            )
+        ).isEqualTo(1);
     }
 
     private UUID role(String name) {

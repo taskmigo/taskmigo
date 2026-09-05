@@ -51,12 +51,26 @@ CREATE TABLE role_hierarchy (
 );
 CREATE INDEX ix_role_hierarchy_child_role_id ON role_hierarchy(child_role_id);
 
+CREATE TABLE role_hierarchy_closure (
+    ancestor_role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    descendant_role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    PRIMARY KEY (ancestor_role_id, descendant_role_id)
+);
+CREATE INDEX ix_role_hierarchy_closure_descendant_role_id ON role_hierarchy_closure(descendant_role_id);
+
 CREATE TABLE group_hierarchy (
     parent_group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
     child_group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
     PRIMARY KEY (parent_group_id, child_group_id)
 );
 CREATE INDEX ix_group_hierarchy_child_group_id ON group_hierarchy(child_group_id);
+
+CREATE TABLE group_hierarchy_closure (
+    ancestor_group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    descendant_group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    PRIMARY KEY (ancestor_group_id, descendant_group_id)
+);
+CREATE INDEX ix_group_hierarchy_closure_descendant_group_id ON group_hierarchy_closure(descendant_group_id);
 
 CREATE TABLE group_roles (
     group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
@@ -70,12 +84,14 @@ CREATE TABLE statements (
     name VARCHAR(255) NOT NULL,
     description VARCHAR(1000),
     effect VARCHAR(16) NOT NULL,
-    target_type VARCHAR(16) NOT NULL,
+    scope VARCHAR(16) NOT NULL,
     method VARCHAR(16) NOT NULL,
     path VARCHAR(2000) NOT NULL,
+    policy TEXT NOT NULL,
     CONSTRAINT uk_statements_name UNIQUE (name),
     CONSTRAINT ck_statements_effect CHECK (effect IN ('ALLOW', 'DENY')),
-    CONSTRAINT ck_statements_target_type CHECK (target_type IN ('OBJECT', 'REQUEST'))
+    CONSTRAINT ck_statements_scope CHECK (scope IN ('OBJECT', 'REQUEST')),
+    CONSTRAINT ck_statements_policy_nonblank CHECK (btrim(policy) <> '')
 );
 
 CREATE TABLE role_statements (
@@ -91,13 +107,6 @@ CREATE TABLE user_statements (
     PRIMARY KEY (user_id, statement_id)
 );
 CREATE INDEX ix_user_statements_statement_id ON user_statements(statement_id);
-
-CREATE TABLE statement_conditions (
-    statement_id UUID NOT NULL REFERENCES statements(id) ON DELETE CASCADE,
-    condition_index INTEGER NOT NULL,
-    expression VARCHAR(2000) NOT NULL,
-    PRIMARY KEY (statement_id, condition_index)
-);
 
 CREATE TABLE oauth2_registered_client (
     id varchar(100) NOT NULL,

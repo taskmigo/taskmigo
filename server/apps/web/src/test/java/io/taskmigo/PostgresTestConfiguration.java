@@ -1,8 +1,8 @@
 package io.taskmigo;
 
 import io.taskmigo.auth.authorization.statement.Effect;
+import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementService;
-import io.taskmigo.auth.authorization.statement.TargetType;
 import io.taskmigo.auth.oauth.InternalClientMetadata;
 import io.taskmigo.auth.role.RoleAuthorizationService;
 import io.taskmigo.auth.user.UserService;
@@ -43,10 +43,10 @@ public class PostgresTestConfiguration {
                 "system_operator_request_all",
                 "Allows the system administrator to access the versioned API.",
                 Effect.ALLOW,
-                TargetType.REQUEST,
+                Scope.REQUEST,
                 "*",
                 "/api/v.*/.*",
-                java.util.List.of()
+                "export default () => true;"
             );
             UUID usersAccess = objectStatement(statements, "system_users_full_access", "/api/v0/users");
             UUID rolesAccess = objectStatement(statements, "system_roles_full_access", "/api/v0/roles");
@@ -79,10 +79,10 @@ public class PostgresTestConfiguration {
             name,
             "Allows the system administrator to view every object.",
             Effect.ALLOW,
-            TargetType.OBJECT,
+            Scope.OBJECT,
             "GET",
             path,
-            java.util.List.of()
+            "export default () => true;"
         );
     }
 }

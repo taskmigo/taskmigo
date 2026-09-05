@@ -44,7 +44,9 @@ final class SystemUserReconciler implements ApplicationRunner {
                 }
                 return;
             } catch (TransientDataAccessException | DataIntegrityViolationException exception) {
-                if (attempt == MAX_RECONCILIATION_ATTEMPTS) throw exception;
+                if (attempt == MAX_RECONCILIATION_ATTEMPTS) {
+                    throw exception;
+                }
             }
         }
     }

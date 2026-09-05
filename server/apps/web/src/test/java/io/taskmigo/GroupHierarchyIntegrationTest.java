@@ -44,6 +44,12 @@ class GroupHierarchyIntegrationTest {
         this.jdbc = jdbc;
     }
 
+    /**
+     * Verifies that a Group closure contains self and multi-level relationships while direct edges stay unique.
+     *
+     * Given: a Group hierarchy with a three-level branch and duplicate child and Role assignments.
+     * Expect: effective Roles and closure rows include every reachable node exactly once.
+     */
     @Test
     @DisplayName("persists unique group edges and resolves descendant roles")
     void shouldResolveDescendantRolesWhenUniqueGroupEdgesArePersisted() {
@@ -79,6 +85,22 @@ class GroupHierarchyIntegrationTest {
         ).isEqualTo(1);
         assertThat(
             this.jdbc.queryForObject(
+                "select count(*) from group_hierarchy_closure where ancestor_group_id = ? and descendant_group_id = ?",
+                Integer.class,
+                engineering,
+                engineering
+            )
+        ).isEqualTo(1);
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from group_hierarchy_closure where ancestor_group_id = ? and descendant_group_id = ?",
+                Integer.class,
+                engineering,
+                platform
+            )
+        ).isEqualTo(1);
+        assertThat(
+            this.jdbc.queryForObject(
                 "select count(*) from group_roles where group_id = ? and role_id = ?",
                 Integer.class,
                 platform,
@@ -87,6 +109,12 @@ class GroupHierarchyIntegrationTest {
         ).isEqualTo(1);
     }
 
+    /**
+     * Verifies that rejected cycle mutations leave both direct hierarchy and closure data unchanged.
+     *
+     * Given: a valid root-to-leaf Group chain followed by two invalid cycle replacements.
+     * Expect: the original transitive Role relationship remains effective after both failures.
+     */
     @Test
     @DisplayName("rejects group cycles without changing existing edges")
     void shouldPreserveExistingEdgesWhenGroupCycleIsRejected() {
@@ -107,8 +135,22 @@ class GroupHierarchyIntegrationTest {
 
         assertThat(this.groups.effectiveRoles(root)).extracting(RoleInfo::id).containsExactly(role);
         assertThat(this.groups.effectiveRoles(leaf)).extracting(RoleInfo::id).containsExactly(role);
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from group_hierarchy_closure where ancestor_group_id = ? and descendant_group_id = ?",
+                Integer.class,
+                root,
+                leaf
+            )
+        ).isEqualTo(1);
     }
 
+    /**
+     * Verifies that invalid Group and Role assignments fail before changing the existing hierarchy.
+     *
+     * Given: a valid Group-to-Role assignment followed by unknown relationship ids.
+     * Expect: validation errors are raised and the original effective Role remains available.
+     */
     @Test
     @DisplayName("rejects unknown group relationships without changing existing edges")
     void shouldPreserveExistingEdgesWhenGroupRelationshipIsUnknown() {

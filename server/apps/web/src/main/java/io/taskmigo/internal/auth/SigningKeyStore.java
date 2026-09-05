@@ -27,7 +27,10 @@ final class SigningKeyStore {
     private SigningKeyStore() {}
 
     static synchronized RSAKey load(Path configuredPath, String keyId, boolean createIfMissing) {
-        if (keyId.isBlank()) throw new IllegalStateException("OAuth signing key id must not be blank");
+        if (keyId.isBlank()) {
+            throw new IllegalStateException("OAuth signing key id must not be blank");
+        }
+
         var path = configuredPath.toAbsolutePath().normalize();
         try {
             if (!Files.exists(path)) {

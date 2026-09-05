@@ -1,23 +1,24 @@
 package io.taskmigo.rest.api.v0.auth.authorization;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.rest.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.CreateStatementRequest;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.StatementApiTarget;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.StatementTarget;
-import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.client.HttpClientErrorException;
 
 class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
 
     /**
      * Verifies that the public API persists and returns the canonical Statement representation.
      *
-     * Given: a request Statement with a lowercase HTTP method and one condition.
-     * Expect: creation returns an id and listing exposes the uppercase method and original condition.
+     * Given: a request Statement with an unconditional JavaScript policy.
+     * Expect: creation returns an id and listing exposes the canonical scope, target, and policy.
      */
     @Test
     @DisplayName("creates and lists a canonical statement")
@@ -27,19 +28,46 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
             "users_read",
             "Read users",
             "allow",
-            new StatementTarget("request", new StatementApiTarget("GET", "/api/v0/users")),
-            List.of("request.path == '/api/v0/users'")
+            "request",
+            new StatementTarget(new StatementApiTarget("GET", "/api/v0/users")),
+            "export default ({ request }) => request.path === '/api/v0/users';"
         );
 
         // Act
         this.api().statements().create(request);
-        String response = this.api().get("/api/v0/statements?page=1&pageSize=100");
+        String response = this.findStatement("users_read");
 
         // Assert
         assertThat(response)
             .contains("\"name\":\"users_read\"")
             .contains("\"method\":\"GET\"")
-            .contains("request.path == '/api/v0/users'");
+            .contains("\"scope\":\"REQUEST\"")
+            .contains("export default ({ request }) => request.path === '/api/v0/users';");
+    }
+
+    /**
+     * Verifies that the public API rejects a Statement with a blank required policy source.
+     *
+     * Given: a request Statement whose policy is an empty string.
+     * Expect: creation fails with an unprocessable-content response and no Statement is created.
+     */
+    @Test
+    @DisplayName("rejects a statement when policy is blank")
+    void shouldRejectStatementWhenPolicyIsBlank() {
+        // Arrange
+        CreateStatementRequest request = new CreateStatementRequest(
+            "users_all",
+            null,
+            "allow",
+            "request",
+            new StatementTarget(new StatementApiTarget("GET", "/api/v0/users")),
+            ""
+        );
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.api().statements().create(request))
+            .isInstanceOf(HttpClientErrorException.UnprocessableContent.class)
+            .hasMessageContaining("policy");
     }
 
     /**
@@ -77,8 +105,19 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
             name,
             null,
             "allow",
-            new StatementTarget("request", new StatementApiTarget("GET", "/api/v0/statements")),
-            List.of()
+            "request",
+            new StatementTarget(new StatementApiTarget("GET", "/api/v0/statements")),
+            "export default () => true;"
         );
+    }
+
+    private String findStatement(String name) {
+        for (int page = 1; page <= 100; page++) {
+            String response = this.api().get("/api/v0/statements?page=" + page + "&pageSize=100");
+            if (response.contains("\"name\":\"" + name + "\"")) {
+                return response;
+            }
+        }
+        throw new AssertionError("Statement was not found in the paginated collection: " + name);
     }
 }

@@ -1,17 +1,11 @@
 package io.taskmigo.auth.authorization.statement;
 
-import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
@@ -35,8 +29,8 @@ public class StatementEntity {
     Effect effect;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "target_type", nullable = false, length = 16)
-    TargetType targetType;
+    @Column(nullable = false, length = 16)
+    Scope scope;
 
     @Column(nullable = false, length = 16)
     String method;
@@ -44,11 +38,8 @@ public class StatementEntity {
     @Column(nullable = false, length = 2000)
     String path;
 
-    @ElementCollection
-    @CollectionTable(name = "statement_conditions", joinColumns = @JoinColumn(name = "statement_id"))
-    @OrderColumn(name = "condition_index")
-    @Column(name = "expression", nullable = false, length = 2000)
-    List<String> conditions = new ArrayList<>();
+    @Column(nullable = false, columnDefinition = "text")
+    String policy;
 
     protected StatementEntity() {}
 
@@ -57,19 +48,19 @@ public class StatementEntity {
         String name,
         @Nullable String description,
         Effect effect,
-        TargetType targetType,
+        Scope scope,
         String method,
         String path,
-        List<String> conditions
+        String policy
     ) {
         this.id = id;
         this.name = name;
         this.description = description;
         this.effect = effect;
-        this.targetType = targetType;
+        this.scope = scope;
         this.method = method;
         this.path = path;
-        this.conditions.addAll(conditions);
+        this.policy = policy;
     }
 
     public StatementInfo info() {
@@ -78,8 +69,9 @@ public class StatementEntity {
             this.name,
             this.description,
             this.effect,
-            new TargetInfo(this.targetType, new ApiInfo(this.method, this.path)),
-            List.copyOf(this.conditions)
+            this.scope,
+            new TargetInfo(new ApiInfo(this.method, this.path)),
+            this.policy
         );
     }
 

@@ -8,6 +8,7 @@ import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.auth.group.GroupService;
 import io.taskmigo.auth.role.RoleInfo;
 import io.taskmigo.auth.role.RoleService;
+import io.taskmigo.auth.user.UserAuthorizationResourceAdapter;
 import io.taskmigo.auth.user.UserService;
 import io.taskmigo.rest.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.CreateGroupRequest;
@@ -16,10 +17,16 @@ import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.CreateStatementRequest;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.CreateUserRequest;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.StatementApiTarget;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.StatementTarget;
+import jakarta.persistence.EntityManagerFactory;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.IntStream;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -30,21 +37,28 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
     private final RoleService access;
     private final GroupService groups;
     private final UserService users;
+    private final UserAuthorizationResourceAdapter userResources;
     private final EffectiveStatementResolver statementResolver;
     private final JdbcTemplate jdbc;
+    private final Statistics statistics;
 
     UserApiIntegrationTest(
         RoleService access,
         GroupService groups,
         UserService users,
+        UserAuthorizationResourceAdapter userResources,
         EffectiveStatementResolver statementResolver,
-        JdbcTemplate jdbc
+        JdbcTemplate jdbc,
+        EntityManagerFactory entityManagerFactory
     ) {
         this.access = access;
         this.groups = groups;
         this.users = users;
+        this.userResources = userResources;
         this.statementResolver = statementResolver;
         this.jdbc = jdbc;
+        this.statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        this.statistics.setStatisticsEnabled(true);
     }
 
     /**
@@ -70,6 +84,41 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
             .contains("\"pageSize\":1")
             .contains("\"totalItems\":")
             .contains("\"totalPages\":");
+    }
+
+    /**
+     * Verifies that persisted user resources are resolved with one bounded database batch instead of one query per
+     * user.
+     *
+     * Given: eight persisted users selected as request resources.
+     * Expect: the adapter returns all users and Hibernate executes a fixed small number of statements independent of
+     * user count.
+     */
+    @Test
+    @DisplayName("resolves multiple user resources without N plus one queries")
+    void shouldResolveUserResourcesWithoutNPlusOneQueries() {
+        // Arrange
+        List<UUID> userIds = new ArrayList<>();
+        IntStream.range(0, 8).forEach(index ->
+            userIds.add(
+                this.users.create(
+                    "resource-query-user-" + UUID.randomUUID(),
+                    Set.of("resource-query-" + UUID.randomUUID() + "@example.com"),
+                    "Resource",
+                    "User"
+                )
+            )
+        );
+        this.statistics.clear();
+
+        // Act
+        Map<String, Map<String, ?>> resources = this.userResources.resolve(
+            userIds.stream().map(UUID::toString).toList()
+        );
+
+        // Assert
+        assertThat(resources).hasSize(8);
+        assertThat(this.statistics.getPrepareStatementCount()).isLessThanOrEqualTo(3);
     }
 
     @Test
@@ -309,8 +358,9 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
                     name,
                     null,
                     "allow",
-                    new StatementTarget("request", new StatementApiTarget("GET", "/api/v0/users")),
-                    List.of()
+                    "request",
+                    new StatementTarget(new StatementApiTarget("GET", "/api/v0/users")),
+                    "export default () => true;"
                 )
             );
     }

@@ -142,15 +142,16 @@ public final class TaskmigoApiClient {
         String name,
         @Nullable String description,
         String effect,
+        String scope,
         StatementTarget target,
-        @Nullable Collection<String> conditions
+        String policy
     ) {}
 
     /// Payload accepted by the direct Statement-assignment PATCH APIs.
     public record ReplaceStatementsRequest(@Nullable Collection<UUID> statementIds) {}
 
     /// API target embedded in a Statement request.
-    public record StatementTarget(String type, StatementApiTarget api) {}
+    public record StatementTarget(StatementApiTarget api) {}
 
     /// HTTP method and regular-expression path embedded in a Statement target.
     public record StatementApiTarget(String method, String path) {}

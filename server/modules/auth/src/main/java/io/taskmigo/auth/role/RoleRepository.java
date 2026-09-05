@@ -12,15 +12,29 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface RoleRepository extends JpaRepository<RoleEntity, UUID>, JpaSpecificationExecutor<RoleEntity> {
     Optional<RoleEntity> findByName(String name);
+
     List<RoleEntity> findAllByIdIn(Collection<UUID> ids);
 
-    Page<RoleEntity> findAllBy(Pageable pageable);
+    @EntityGraph(attributePaths = "statementIds")
+    List<RoleEntity> findDistinctByIdIn(Collection<UUID> ids);
 
-    @EntityGraph(attributePaths = "childRoles")
-    List<RoleEntity> findAllByOrderByIdAsc();
+    /// Returns all closure descendants, including each requested ancestor.
+    @SuppressWarnings("checkstyle:SpringDataQuery")
+    @Query(
+        """
+        select relation.id.descendantRoleId
+        from RoleHierarchyClosureEntity relation
+        where relation.id.ancestorRoleId in :ancestorRoleIds
+        order by relation.id.descendantRoleId
+        """
+    )
+    List<UUID> findDescendantRoleIds(@Param("ancestorRoleIds") Collection<UUID> ancestorRoleIds);
+
+    Page<RoleEntity> findAllBy(Pageable pageable);
 
     @SuppressWarnings("checkstyle:SpringDataQuery")
     @Lock(LockModeType.PESSIMISTIC_WRITE)

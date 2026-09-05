@@ -1,6 +1,8 @@
 package io.taskmigo.internal.security;
 
+import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
 import io.taskmigo.auth.authorization.request.RequestAuthorizationService;
+import io.taskmigo.rest.api.v0.support.objectauthorization.ObjectAuthorizationContext;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -30,16 +32,26 @@ final class RequestAuthorizationManager implements AuthorizationManager<RequestA
         RequestAuthorizationContext context
     ) {
         Authentication current = authentication.get();
-        if (current == null) return new AuthorizationDecision(false);
-        if (!(current instanceof JwtAuthenticationToken token)) return new AuthorizationDecision(false);
-        if (!hasAuthority(current, "SCOPE_taskmigo.api")) return new AuthorizationDecision(false);
+        if (current == null) {
+            return new AuthorizationDecision(false);
+        }
+        if (!(current instanceof JwtAuthenticationToken token)) {
+            return new AuthorizationDecision(false);
+        }
+        if (!hasAuthority(current, "SCOPE_taskmigo.api")) {
+            return new AuthorizationDecision(false);
+        }
 
         Jwt jwt = token.getToken();
         String principalType = jwt.getClaimAsString("principal_type");
-        if (!"user".equals(principalType) && !"service".equals(principalType)) return new AuthorizationDecision(false);
+        if (!"user".equals(principalType) && !"service".equals(principalType)) {
+            return new AuthorizationDecision(false);
+        }
 
         String userId = jwt.getClaimAsString("user_id");
-        if (userId == null) return new AuthorizationDecision(false);
+        if (userId == null) {
+            return new AuthorizationDecision(false);
+        }
 
         try {
             UUID id = UUID.fromString(userId);
@@ -51,16 +63,23 @@ final class RequestAuthorizationManager implements AuthorizationManager<RequestA
                     "method",
                     context.getRequest().getMethod(),
                     "path",
-                    context.getRequest().getRequestURI().split("\\?", 2)[0]
+                    context.getRequest().getRequestURI().split("\\?", 2)[0],
+                    "pathVariables",
+                    Map.copyOf(context.getVariables())
                 )
             );
+            Object currentSnapshot = context.getRequest().getAttribute(ObjectAuthorizationContext.SNAPSHOT_ATTRIBUTE);
+            AuthorizationSnapshot snapshot =
+                currentSnapshot instanceof AuthorizationSnapshot existing && existing.userId().equals(id)
+                    ? existing
+                    : this.authorization.snapshot(id, roots);
+            context.getRequest().setAttribute(ObjectAuthorizationContext.SNAPSHOT_ATTRIBUTE, snapshot);
             return new AuthorizationDecision(
                 this.authorization
                     .authorize(
-                        id,
+                        snapshot,
                         context.getRequest().getMethod(),
-                        context.getRequest().getRequestURI().split("\\?", 2)[0],
-                        roots
+                        context.getRequest().getRequestURI().split("\\?", 2)[0]
                     )
                     .allowed()
             );
