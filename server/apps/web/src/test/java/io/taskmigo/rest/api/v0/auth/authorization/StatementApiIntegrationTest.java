@@ -74,7 +74,7 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
      * Verifies that the public Statement API rejects the removed business-resource policy contract.
      *
      * Given: Statements containing a named resources export or a resource intrinsic.
-     * Expect: both requests fail validation before either Statement is persisted.
+     * Expect: both requests fail with a bad-request response before either Statement is persisted.
      */
     @Test
     @DisplayName("rejects removed resource policy constructs")
@@ -99,10 +99,10 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
 
         // Act + Assert
         assertThatThrownBy(() -> this.api().statements().create(resources))
-            .isInstanceOf(HttpClientErrorException.UnprocessableContent.class)
+            .isInstanceOf(HttpClientErrorException.BadRequest.class)
             .hasMessageContaining("policy");
         assertThatThrownBy(() -> this.api().statements().create(intrinsic))
-            .isInstanceOf(HttpClientErrorException.UnprocessableContent.class)
+            .isInstanceOf(HttpClientErrorException.BadRequest.class)
             .hasMessageContaining("policy");
     }
 
