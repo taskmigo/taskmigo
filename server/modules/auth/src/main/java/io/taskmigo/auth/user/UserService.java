@@ -28,17 +28,6 @@ public class UserService {
         this.objectAuthorization = objectAuthorization;
     }
 
-    /// Creates a user while normalizing zero or more email addresses.
-    @Transactional
-    public UUID create(
-        @Nullable String username,
-        @Nullable Set<String> emails,
-        @Nullable String firstName,
-        @Nullable String lastName
-    ) {
-        return this.create(username, emails, firstName, lastName, Set.of());
-    }
-
     /// Creates a user with optional direct Role assignments.
     ///
     /// @param username the unique login name for the new User
@@ -109,16 +98,6 @@ public class UserService {
                     user.passwordHash
                 )
             );
-    }
-
-    /// Lists global Users in stable identifier order for offset pagination.
-    ///
-    /// @param page the one-based page requested by the API client
-    /// @param perPage the maximum number of Users to return
-    /// @return one offset-paginated page of Users
-    @Transactional(readOnly = true)
-    public OffsetPage<UserInfo> list(int page, int perPage) {
-        return this.list(page, perPage, null);
     }
 
     /// Lists Users using an optional database-side object authorization predicate.

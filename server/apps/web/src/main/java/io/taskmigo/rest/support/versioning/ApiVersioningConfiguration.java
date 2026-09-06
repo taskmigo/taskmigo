@@ -1,7 +1,10 @@
 package io.taskmigo.rest.support.versioning;
 
+import io.taskmigo.rest.support.objectauthorization.AuthorizationOperationArgumentResolver;
+import java.util.List;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.servlet.config.annotation.ApiVersionConfigurer;
 import org.springframework.web.servlet.config.annotation.PathMatchConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -9,6 +12,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 /// Configures Spring MVC's built-in path-based API versioning for module-owned controllers.
 @Configuration(proxyBeanMethods = false)
 class ApiVersioningConfiguration implements WebMvcConfigurer {
+
+    private final AuthorizationOperationArgumentResolver authorizationOperation;
+
+    ApiVersioningConfiguration(AuthorizationOperationArgumentResolver authorizationOperation) {
+        this.authorizationOperation = authorizationOperation;
+    }
 
     @Override
     public void configureApiVersioning(ApiVersionConfigurer configurer) {
@@ -22,5 +31,10 @@ class ApiVersioningConfiguration implements WebMvcConfigurer {
 
             return mapping != null && mapping.version().equals("0");
         });
+    }
+
+    @Override
+    public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
+        resolvers.add(this.authorizationOperation);
     }
 }

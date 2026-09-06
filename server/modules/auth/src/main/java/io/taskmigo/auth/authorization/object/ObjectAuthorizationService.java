@@ -2,6 +2,7 @@ package io.taskmigo.auth.authorization.object;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.filter.FilterAst;
+import io.taskmigo.auth.authorization.policy.PolicyIr;
 import io.taskmigo.auth.authorization.policy.PolicyIrPartialEvaluator;
 import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
 import io.taskmigo.auth.authorization.statement.Effect;
@@ -50,7 +51,14 @@ public class ObjectAuthorizationService {
         for (var artifact : snapshot.executableStatements()) {
             StatementInfo statement = artifact.statement();
             if (statement.scope() == Scope.OBJECT && artifact.matches(method, path)) {
-                FilterAst filter = this.partialEvaluator.partial(artifact.policy().policy(), snapshot.roots());
+                if (statement.effect() == Effect.DENY && constantTrue(artifact.policy())) {
+                    return new ObjectAuthorizationPlan(
+                        new FilterAst(FilterAst.none()),
+                        List.of(statement),
+                        dialect.fields()
+                    );
+                }
+                FilterAst filter = this.partialEvaluator.partial(artifact.policy(), snapshot.roots());
                 matched.add(statement);
                 (statement.effect() == Effect.DENY ? denies : allows).add(filter.expression());
             }
@@ -59,6 +67,10 @@ public class ObjectAuthorizationService {
         FilterAst.Expression predicate = FilterAst.and(FilterAst.any(allows), FilterAst.not(FilterAst.any(denies)));
         this.validatePredicate(predicate, dialect);
         return new ObjectAuthorizationPlan(new FilterAst(predicate), List.copyOf(matched), dialect.fields());
+    }
+
+    private static boolean constantTrue(PolicyIr policy) {
+        return policy.expression() instanceof PolicyIr.Literal literal && Boolean.TRUE.equals(literal.value());
     }
 
     private AuthorizationObjectQueryDialect dialect(String method, String path) {
@@ -87,8 +99,8 @@ public class ObjectAuthorizationService {
         Map<String, Class<?>> fields
     ) {
         return switch (expression) {
-            case FilterAst.All ignored -> builder.conjunction();
-            case FilterAst.None ignored -> builder.disjunction();
+            case FilterAst.All _ -> builder.conjunction();
+            case FilterAst.None _ -> builder.disjunction();
             case FilterAst.Literal literal when literal.value() instanceof Boolean value -> value
                 ? builder.conjunction()
                 : builder.disjunction();
@@ -192,11 +204,7 @@ public class ObjectAuthorizationService {
 
     private void validate(FilterAst.Expression expression, FilterSchema schema) {
         switch (expression) {
-            case FilterAst.All ignored -> {
-            }
-            case FilterAst.None ignored -> {
-            }
-            case FilterAst.Literal ignored -> {
+            case FilterAst.All _, FilterAst.None _, FilterAst.Literal _ -> {
             }
             case FilterAst.Field field -> {
                 if (!schema.fields().containsKey(field.name())) {
@@ -226,9 +234,7 @@ public class ObjectAuthorizationService {
 
     private void validatePredicate(FilterAst.Expression expression, FilterSchema schema) {
         switch (expression) {
-            case FilterAst.All ignored -> {
-            }
-            case FilterAst.None ignored -> {
+            case FilterAst.All _, FilterAst.None _ -> {
             }
             case FilterAst.Literal literal -> {
                 if (!(literal.value() instanceof Boolean)) {

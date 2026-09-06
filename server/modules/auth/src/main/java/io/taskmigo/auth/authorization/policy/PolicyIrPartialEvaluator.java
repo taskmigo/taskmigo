@@ -91,9 +91,9 @@ public final class PolicyIrPartialEvaluator {
     private FilterAst.Expression filter(PolicyIr.Expression expression) {
         return switch (expression) {
             case PolicyIr.Literal literal -> new FilterAst.Literal(literal.value());
-            case PolicyIr.UndefinedValue ignored -> throw invalid("undefined is not a database filter value");
+            case PolicyIr.UndefinedValue _ -> throw invalid("undefined is not a database filter value");
             case PolicyIr.Reference reference -> objectField(reference);
-            case PolicyIr.PropertyAccess ignored -> throw invalid("computed properties are not queryable");
+            case PolicyIr.PropertyAccess _ -> throw invalid("computed properties are not queryable");
             case PolicyIr.Binary binary -> this.binary(binary);
             case PolicyIr.Unary unary when unary.operator() == PolicyIr.UnaryOperator.NOT -> new FilterAst.Unary(
                 FilterAst.Operator.NOT,
@@ -103,8 +103,8 @@ public final class PolicyIrPartialEvaluator {
                 FilterAst.Operator.NEGATE,
                 this.filter(unary.operand())
             );
-            case PolicyIr.Unary ignored -> throw invalid("unary arithmetic is not queryable");
-            case PolicyIr.Conditional ignored -> throw invalid("conditional residuals are not queryable");
+            case PolicyIr.Unary _ -> throw invalid("unary arithmetic is not queryable");
+            case PolicyIr.Conditional _ -> throw invalid("conditional residuals are not queryable");
         };
     }
 
@@ -122,6 +122,7 @@ public final class PolicyIrPartialEvaluator {
             case SUBTRACT -> FilterAst.Operator.SUBTRACT;
             case MULTIPLY -> FilterAst.Operator.MULTIPLY;
             case DIVIDE -> FilterAst.Operator.DIVIDE;
+            case MODULO -> throw invalid("modulo is not queryable");
         };
         return new FilterAst.Binary(operator, this.filter(binary.left()), this.filter(binary.right()));
     }
@@ -159,9 +160,8 @@ public final class PolicyIrPartialEvaluator {
 
     private static boolean containsReference(PolicyIr.Expression expression) {
         return switch (expression) {
-            case PolicyIr.Literal ignored -> false;
-            case PolicyIr.UndefinedValue ignored -> false;
-            case PolicyIr.Reference ignored -> true;
+            case PolicyIr.Literal _, PolicyIr.UndefinedValue _ -> false;
+            case PolicyIr.Reference _ -> true;
             case PolicyIr.PropertyAccess property -> containsReference(property.target());
             case PolicyIr.Binary binary -> containsReference(binary.left()) || containsReference(binary.right());
             case PolicyIr.Unary unary -> containsReference(unary.operand());
@@ -173,8 +173,7 @@ public final class PolicyIrPartialEvaluator {
 
     private static boolean isPredicate(FilterAst.Expression expression) {
         return switch (expression) {
-            case FilterAst.All ignored -> true;
-            case FilterAst.None ignored -> true;
+            case FilterAst.All _, FilterAst.None _ -> true;
             case FilterAst.Literal literal -> literal.value() instanceof Boolean;
             case FilterAst.Unary unary -> unary.operator() == FilterAst.Operator.NOT && isPredicate(unary.operand());
             case FilterAst.Binary binary -> switch (binary.operator()) {
@@ -182,7 +181,7 @@ public final class PolicyIrPartialEvaluator {
                 case EQ, NE, GT, GE, LT, LE -> true;
                 default -> false;
             };
-            case FilterAst.Field ignored -> false;
+            case FilterAst.Field _ -> false;
         };
     }
 

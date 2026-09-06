@@ -4,7 +4,7 @@ import io.taskmigo.foundation.DomainException;
 import io.taskmigo.foundation.DomainFailureType;
 import java.io.Serial;
 
-/// Reports invalid or conflicting authorization resource input.
+/// Reports invalid or conflicting authorization input.
 public final class AuthorizationException extends DomainException {
 
     @Serial

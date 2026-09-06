@@ -1,7 +1,6 @@
 package io.taskmigo.auth.authorization.request;
 
-import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
-import io.taskmigo.auth.authorization.policy.JavaScriptPolicyModule;
+import io.taskmigo.auth.authorization.policy.PolicyIr;
 import io.taskmigo.auth.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import java.util.Collections;
@@ -19,11 +18,6 @@ public record AuthorizationSnapshot(
     List<StatementExecutionArtifact> executableStatements,
     Map<String, ?> roots
 ) {
-    /// Creates a snapshot and derives executable Statements from the supplied database-loaded rows.
-    public AuthorizationSnapshot(UUID userId, List<StatementInfo> statements, Map<String, ?> roots) {
-        this(userId, statements, new StatementArtifactFactory(new JavaScriptPolicyCompiler()).build(statements), roots);
-    }
-
     /// Creates a snapshot with immutable executable Statements and authorization input values.
     public AuthorizationSnapshot {
         List<StatementInfo> effectiveStatements = List.copyOf(statements);
@@ -38,8 +32,8 @@ public record AuthorizationSnapshot(
         roots = immutableMap(roots);
     }
 
-    /// Returns the compiled policy module associated with an effective Statement.
-    public JavaScriptPolicyModule compiledPolicy(StatementInfo statement) {
+    /// Returns the compiled Policy IR associated with an effective Statement.
+    public PolicyIr compiledPolicy(StatementInfo statement) {
         return this.executableStatements
             .stream()
             .filter(artifact -> artifact.statement().id().equals(statement.id()))

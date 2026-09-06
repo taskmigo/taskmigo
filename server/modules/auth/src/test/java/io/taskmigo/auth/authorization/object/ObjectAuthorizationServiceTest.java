@@ -5,8 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.filter.FilterAst;
+import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import io.taskmigo.auth.authorization.policy.PolicyIrPartialEvaluator;
 import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
+import io.taskmigo.auth.authorization.request.StatementArtifactFactory;
 import io.taskmigo.auth.authorization.statement.ApiInfo;
 import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
@@ -98,6 +100,52 @@ class ObjectAuthorizationServiceTest {
 
         // Assert
         assertThat(plan.predicate().expression()).isEqualTo(new FilterAst.None());
+    }
+
+    /**
+     * Verifies that a constant deny prevents later non-queryable Object policies from being translated.
+     *
+     * Given: a constant-true deny followed by an Object policy with an unsupported undefined residual.
+     * Expect: the plan is `NONE` and planning does not fail on the later policy.
+     */
+    @Test
+    @DisplayName("short-circuits object planning on a constant deny")
+    void shouldReturnNoneWhenObjectDenyPolicyIsConstantTrue() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        AuthorizationSnapshot snapshot = snapshot(
+            userId,
+            Map.of(),
+            statement(Effect.DENY, "export default () => true;"),
+            statement(Effect.ALLOW, "export default ({ object }) => object.username !== undefined;")
+        );
+
+        // Act
+        ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(snapshot, "GET", "/api/v0/objects");
+
+        // Assert
+        assertThat(plan.predicate().expression()).isEqualTo(new FilterAst.None());
+    }
+
+    /**
+     * Verifies that modulo arithmetic cannot enter a database Object filter.
+     *
+     * Given: an Object policy using modulo against a mapped numeric field.
+     * Expect: planning fails with an authorization error instead of falling back to JVM row filtering.
+     */
+    @Test
+    @DisplayName("rejects modulo arithmetic in object policies")
+    void shouldRejectModuloWhenObjectPolicyCannotBeTranslated() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        String policy = "export default ({ object }) => object.age % 2 === 0;";
+
+        // Act + Assert
+        assertThatThrownBy(() ->
+            this.service.plan(snapshot(userId, Map.of(), statement(Effect.ALLOW, policy)), "GET", "/api/v0/objects")
+        )
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("modulo");
     }
 
     /**
@@ -232,10 +280,10 @@ class ObjectAuthorizationServiceTest {
     void shouldReuseAuthorizationSnapshotWhenBuildingObjectPlan() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        AuthorizationSnapshot snapshot = new AuthorizationSnapshot(
+        AuthorizationSnapshot snapshot = snapshot(
             userId,
-            List.of(statement(Effect.ALLOW, "export default () => true;")),
-            Map.of()
+            Map.of(),
+            statement(Effect.ALLOW, "export default () => true;")
         );
 
         // Act
@@ -276,6 +324,12 @@ class ObjectAuthorizationServiceTest {
     }
 
     private static AuthorizationSnapshot snapshot(UUID userId, Map<String, ?> roots, StatementInfo... statements) {
-        return new AuthorizationSnapshot(userId, List.of(statements), roots);
+        List<StatementInfo> effectiveStatements = List.of(statements);
+        return new AuthorizationSnapshot(
+            userId,
+            effectiveStatements,
+            new StatementArtifactFactory(new JavaScriptPolicyCompiler()).build(effectiveStatements),
+            roots
+        );
     }
 }

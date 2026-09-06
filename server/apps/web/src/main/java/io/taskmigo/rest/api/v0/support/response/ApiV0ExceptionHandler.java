@@ -42,9 +42,7 @@ final class ApiV0ExceptionHandler {
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleUnreadableRequest(
-        HttpMessageNotReadableException exception
-    ) {
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleUnreadableRequest() {
         String message = "Request body is malformed or unreadable";
         return this.responses.failure(
             HttpStatus.BAD_REQUEST,
@@ -55,7 +53,7 @@ final class ApiV0ExceptionHandler {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleAccessDenied(AccessDeniedException exception) {
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleAccessDenied() {
         String message = "Access is denied";
         return this.responses.failure(
             HttpStatus.FORBIDDEN,
@@ -66,7 +64,7 @@ final class ApiV0ExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleUnexpected(Exception exception) {
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleUnexpected() {
         String message = "An unexpected error occurred";
         return this.responses.failure(
             HttpStatus.INTERNAL_SERVER_ERROR,

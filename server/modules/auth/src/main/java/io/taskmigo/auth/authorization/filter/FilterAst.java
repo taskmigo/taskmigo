@@ -40,8 +40,8 @@ public record FilterAst(Expression expression) {
     /// Negates a filter with null-object simplification.
     public static Expression not(Expression expression) {
         return switch (expression) {
-            case All ignored -> none();
-            case None ignored -> all();
+            case All _ -> none();
+            case None _ -> all();
             case Literal literal when literal.value() instanceof Boolean value -> value ? none() : all();
             case Unary unary when unary.operator() == Operator.NOT -> unary.operand();
             default -> new Unary(Operator.NOT, expression);

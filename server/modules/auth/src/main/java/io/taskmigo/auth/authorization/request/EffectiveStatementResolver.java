@@ -43,8 +43,9 @@ public class EffectiveStatementResolver {
     /// Combines direct User Statements with Statements reachable through User Roles and Groups.
     ///
     /// Each hierarchy frontier is fetched in one targeted batch and traversed with visited-node semantics, so shared
-    /// descendants and corrupted cycles cannot cause duplicate results or infinite traversal. Results are ordered by
-    /// Statement id.
+    /// descendants and corrupted cycles cannot cause duplicate results or infinite traversal. The independent
+    /// repeatable-read transaction intentionally isolates the authorization snapshot from any caller transaction.
+    /// Results are ordered by Statement id.
     ///
     /// @param userId the User whose effective authorization Statements are required
     /// @return every effective Statement exactly once

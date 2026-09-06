@@ -48,6 +48,7 @@ public record PolicyIr(Expression expression) {
         SUBTRACT,
         MULTIPLY,
         DIVIDE,
+        MODULO,
     }
 
     /// Supported unary operations.

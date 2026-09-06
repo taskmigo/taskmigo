@@ -38,7 +38,7 @@ public final class JavaScriptPolicyEvaluator {
     private @Nullable Object value(PolicyIr.Expression expression, Map<String, ?> roots) {
         return switch (expression) {
             case PolicyIr.Literal literal -> literal.value();
-            case PolicyIr.UndefinedValue ignored -> UNDEFINED;
+            case PolicyIr.UndefinedValue _ -> UNDEFINED;
             case PolicyIr.Reference reference -> this.reference(reference, roots);
             case PolicyIr.PropertyAccess property -> this.property(property, roots);
             case PolicyIr.Binary binary -> this.binary(binary, roots);
@@ -76,7 +76,7 @@ public final class JavaScriptPolicyEvaluator {
             case EQUAL -> strictEquals(left, right);
             case NOT_EQUAL -> !strictEquals(left, right);
             case GREATER, GREATER_OR_EQUAL, LESS, LESS_OR_EQUAL -> compare(binary.operator(), left, right);
-            case ADD, SUBTRACT, MULTIPLY, DIVIDE -> arithmetic(binary.operator(), left, right);
+            case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO -> arithmetic(binary.operator(), left, right);
             case AND, OR -> throw new AssertionError("logical operators are handled before operands");
         };
     }
@@ -145,6 +145,7 @@ public final class JavaScriptPolicyEvaluator {
             case SUBTRACT -> leftValue - rightValue;
             case MULTIPLY -> leftValue * rightValue;
             case DIVIDE -> leftValue / rightValue;
+            case MODULO -> leftValue % rightValue;
             default -> throw new AssertionError("not an arithmetic operator");
         };
     }
