@@ -83,13 +83,13 @@ public class JavaScriptPolicyCompilerBenchmark {
         if (scope == Scope.REQUEST) {
             return switch (index % 4) {
                 case 0 -> "export default ({ request }) => request.method === 'METHOD_%d';".formatted(index);
-                case 1 ->
-                    "export default ({ request }) => request.pathVariables.userId === 'USER_%d';".formatted(index);
+                case 1 -> "export default ({ request }) => request.pathVariables.userId === 'USER_%d';".formatted(
+                    index
+                );
                 case 2 -> "export default ({ principal }) => principal.id !== 'PRINCIPAL_%d';".formatted(index);
-                default ->
-                    "export default ({ request }) => request.pathVariables.resourceId !== 'RESOURCE_%d';".formatted(
-                        index
-                    );
+                default -> "export default ({ request }) => request.pathVariables.resourceId !== 'RESOURCE_%d';".formatted(
+                    index
+                );
             };
         }
         return switch (index % 4) {
@@ -109,95 +109,87 @@ public class JavaScriptPolicyCompilerBenchmark {
 
     private static String complexRequestPolicy(int index) {
         return switch (index % 4) {
-            case 0 ->
-                """
-                export default ({ request, principal }) => {
-                  const expectedMethod = 'METHOD_%d';
-                  const reservedUser = 'USER_%d';
-                  if (request.method === expectedMethod && principal.id !== '') {
-                    return request.pathVariables.userId === principal.id
-                      && request.pathVariables.userId !== reservedUser;
-                  }
-                  return false;
-                };
-                """.formatted(index, index);
-            case 1 ->
-                """
-                export default ({ request, principal }) => {
-                  const expectedResource = 'RESOURCE_%d';
-                  if (request.pathVariables.resourceId === expectedResource) {
-                    return request.method !== 'DELETE_%d' && principal.id !== '';
-                  }
-                  return false;
-                };
-                """.formatted(index, index);
-            case 2 ->
-                """
-                export default ({ request, principal }) => {
-                  const lowerBound = %d;
-                  const upperBound = %d;
-                  if (principal.rank >= lowerBound) {
-                    return principal.rank < upperBound && request.method === 'PATCH_%d';
-                  }
-                  return false;
-                };
-                """.formatted(index, index + 100, index);
-            default ->
-                """
-                export default ({ request, principal }) => {
-                  const expectedOwner = 'OWNER_%d';
-                  if (request.pathVariables.ownerId === expectedOwner || principal.id === expectedOwner) {
-                    return request.method === 'GET_%d' && request.pathVariables.userId !== '';
-                  }
-                  return false;
-                };
-                """.formatted(index, index);
+            case 0 -> """
+            export default ({ request, principal }) => {
+              const expectedMethod = 'METHOD_%d';
+              const reservedUser = 'USER_%d';
+              if (request.method === expectedMethod && principal.id !== '') {
+                return request.pathVariables.userId === principal.id
+                  && request.pathVariables.userId !== reservedUser;
+              }
+              return false;
+            };
+            """.formatted(index, index);
+            case 1 -> """
+            export default ({ request, principal }) => {
+              const expectedResource = 'RESOURCE_%d';
+              if (request.pathVariables.resourceId === expectedResource) {
+                return request.method !== 'DELETE_%d' && principal.id !== '';
+              }
+              return false;
+            };
+            """.formatted(index, index);
+            case 2 -> """
+            export default ({ request, principal }) => {
+              const lowerBound = %d;
+              const upperBound = %d;
+              if (principal.rank >= lowerBound) {
+                return principal.rank < upperBound && request.method === 'PATCH_%d';
+              }
+              return false;
+            };
+            """.formatted(index, index + 100, index);
+            default -> """
+            export default ({ request, principal }) => {
+              const expectedOwner = 'OWNER_%d';
+              if (request.pathVariables.ownerId === expectedOwner || principal.id === expectedOwner) {
+                return request.method === 'GET_%d' && request.pathVariables.userId !== '';
+              }
+              return false;
+            };
+            """.formatted(index, index);
         };
     }
 
     private static String complexObjectPolicy(int index) {
         return switch (index % 4) {
-            case 0 ->
-                """
-                export default ({ object, principal }) => {
-                  const threshold = 40 + %d;
-                  if (object.enabled === true && object.ownerId === principal.id) {
-                    return object.score >= threshold && object.kind !== 'KIND_%d';
-                  }
-                  return false;
-                };
-                """.formatted(index, index);
-            case 1 ->
-                """
-                export default ({ object, principal }) => {
-                  const expectedStatus = 'STATUS_%d';
-                  if (object.status === expectedStatus) {
-                    return object.ownerId === principal.id && object.version >= %d;
-                  }
-                  return false;
-                };
-                """.formatted(index, index);
-            case 2 ->
-                """
-                export default ({ object, principal }) => {
-                  const minimumScore = %d;
-                  const maximumScore = %d;
-                  if (object.score >= minimumScore && object.score < maximumScore) {
-                    return object.enabled !== false && principal.id !== '';
-                  }
-                  return false;
-                };
-                """.formatted(index, index + 100);
-            default ->
-                """
-                export default ({ object, principal }) => {
-                  const expectedOwner = 'OWNER_%d';
-                  if (object.ownerId === expectedOwner || object.ownerId === principal.id) {
-                    return object.kind === 'KIND_%d' && object.enabled === true;
-                  }
-                  return false;
-                };
-                """.formatted(index, index);
+            case 0 -> """
+            export default ({ object, principal }) => {
+              const threshold = 40 + %d;
+              if (object.enabled === true && object.ownerId === principal.id) {
+                return object.score >= threshold && object.kind !== 'KIND_%d';
+              }
+              return false;
+            };
+            """.formatted(index, index);
+            case 1 -> """
+            export default ({ object, principal }) => {
+              const expectedStatus = 'STATUS_%d';
+              if (object.status === expectedStatus) {
+                return object.ownerId === principal.id && object.version >= %d;
+              }
+              return false;
+            };
+            """.formatted(index, index);
+            case 2 -> """
+            export default ({ object, principal }) => {
+              const minimumScore = %d;
+              const maximumScore = %d;
+              if (object.score >= minimumScore && object.score < maximumScore) {
+                return object.enabled !== false && principal.id !== '';
+              }
+              return false;
+            };
+            """.formatted(index, index + 100);
+            default -> """
+            export default ({ object, principal }) => {
+              const expectedOwner = 'OWNER_%d';
+              if (object.ownerId === expectedOwner || object.ownerId === principal.id) {
+                return object.kind === 'KIND_%d' && object.enabled === true;
+              }
+              return false;
+            };
+            """.formatted(index, index);
         };
     }
 }
