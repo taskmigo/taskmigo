@@ -2,11 +2,11 @@ package io.taskmigo.auth.authorization.statement;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.AuthorizationName;
+import io.taskmigo.auth.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
-import io.taskmigo.auth.authorization.policy.AuthorizationPolicySchemas;
+import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
+import io.taskmigo.embeddedlanguage.EmbeddedLanguageException;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.policy.PolicyCompiler;
-import io.taskmigo.policy.PolicyException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -25,16 +25,16 @@ public class StatementService {
 
     private final StatementRepository statements;
     private final ObjectAuthorizationService objectAuthorization;
-    private final PolicyCompiler policyCompiler;
+    private final EmbeddedLanguageCompiler embeddedLanguageCompiler;
 
     StatementService(
         StatementRepository statements,
         ObjectAuthorizationService objectAuthorization,
-        PolicyCompiler policyCompiler
+        EmbeddedLanguageCompiler embeddedLanguageCompiler
     ) {
         this.statements = statements;
         this.objectAuthorization = objectAuthorization;
-        this.policyCompiler = policyCompiler;
+        this.embeddedLanguageCompiler = embeddedLanguageCompiler;
     }
 
     /// Validates and persists a Statement with a server-assigned stable identifier.
@@ -76,11 +76,11 @@ public class StatementService {
         String validPolicy = requiredPolicy(policy);
         try {
             if (validScope == Scope.REQUEST) {
-                this.policyCompiler.compile(validPolicy, AuthorizationPolicySchemas.request());
+                this.embeddedLanguageCompiler.compile(validPolicy, AuthorizationEmbeddedLanguageSchemas.request());
             } else {
                 this.objectAuthorization.validatePolicy(validPolicy, validMethod, validPath);
             }
-        } catch (PolicyException exception) {
+        } catch (EmbeddedLanguageException exception) {
             throw new AuthorizationException("Invalid Statement policy: " + exception.getMessage());
         }
         UUID id = UUID.randomUUID();
@@ -133,11 +133,11 @@ public class StatementService {
         String validPolicy = requiredPolicy(policy);
         try {
             if (validScope == Scope.REQUEST) {
-                this.policyCompiler.compile(validPolicy, AuthorizationPolicySchemas.request());
+                this.embeddedLanguageCompiler.compile(validPolicy, AuthorizationEmbeddedLanguageSchemas.request());
             } else {
                 this.objectAuthorization.validatePolicy(validPolicy, validMethod, validPath);
             }
-        } catch (PolicyException exception) {
+        } catch (EmbeddedLanguageException exception) {
             throw new AuthorizationException("Invalid Statement policy: " + exception.getMessage());
         }
         existing.description = description;

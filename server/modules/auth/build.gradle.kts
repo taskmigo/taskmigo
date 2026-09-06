@@ -8,7 +8,7 @@ dependencies {
     api(libs.jspecify)
     api(libs.spring.modulith.starter.core)
     api(project(":modules:foundation"))
-    api(project(":modules:policy"))
+    api(project(":modules:embedded-language"))
 
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.jackson.databind)

@@ -162,14 +162,14 @@ class BootstrapIntegrationTest {
     }
 
     /**
-     * Verifies that every managed bootstrap Statement uses the final Policy Language contract.
+     * Verifies that every managed bootstrap Statement uses the final Embedded Language contract.
      *
      * Given: the five Statements declared in the managed bootstrap authorization bundle.
      * Expect: every definition is persisted with a canonical scope and a non-blank direct-body policy.
      */
     @Test
-    @DisplayName("persists Policy Language policies for every built-in statement")
-    void shouldPersistPolicyLanguagePoliciesWhenBootstrapRuns() {
+    @DisplayName("persists Embedded Language policies for every built-in statement")
+    void shouldPersistEmbeddedLanguagePoliciesWhenBootstrapRuns() {
         // Arrange
         Map<String, Scope> builtInScopes = Map.of(
             "system_operator_request_all",

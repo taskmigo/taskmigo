@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
+import io.taskmigo.auth.authorization.embeddedlanguage.EmbeddedLanguageFilterLowerer;
 import io.taskmigo.auth.authorization.filter.FilterAst;
-import io.taskmigo.auth.authorization.policy.PolicyFilterLowerer;
 import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
 import io.taskmigo.auth.authorization.request.StatementArtifactFactory;
 import io.taskmigo.auth.authorization.statement.ApiInfo;
@@ -13,8 +13,8 @@ import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.auth.authorization.statement.TargetInfo;
-import io.taskmigo.policy.PolicyCompiler;
-import io.taskmigo.policy.PolicyPartialEvaluator;
+import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
+import io.taskmigo.embeddedlanguage.EmbeddedLanguagePartialEvaluator;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -27,8 +27,8 @@ class ObjectAuthorizationServiceTest {
 
     private final AuthorizationObjectQueryDialect dialect = new TestDialect();
     private final ObjectAuthorizationService service = new ObjectAuthorizationService(
-        new PolicyFilterLowerer(new PolicyPartialEvaluator()),
-        new PolicyCompiler(),
+        new EmbeddedLanguageFilterLowerer(new EmbeddedLanguagePartialEvaluator()),
+        new EmbeddedLanguageCompiler(),
         List.of(this.dialect)
     );
 
@@ -332,7 +332,9 @@ class ObjectAuthorizationServiceTest {
         return new AuthorizationSnapshot(
             userId,
             effectiveStatements,
-            new StatementArtifactFactory(new PolicyCompiler(), List.of(new TestDialect())).build(effectiveStatements),
+            new StatementArtifactFactory(new EmbeddedLanguageCompiler(), List.of(new TestDialect())).build(
+                effectiveStatements
+            ),
             roots
         );
     }

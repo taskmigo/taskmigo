@@ -10,8 +10,8 @@ import static org.mockito.Mockito.when;
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
 import io.taskmigo.auth.authorization.request.StatementArtifactFactory;
-import io.taskmigo.policy.EnvironmentSchema;
-import io.taskmigo.policy.PolicyCompiler;
+import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
+import io.taskmigo.embeddedlanguage.EnvironmentSchema;
 import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -32,7 +32,7 @@ class StatementServiceTest {
     private StatementRepository statements;
 
     @Mock
-    private PolicyCompiler policyCompiler;
+    private EmbeddedLanguageCompiler embeddedLanguageCompiler;
 
     @InjectMocks
     private StatementService service;
@@ -86,7 +86,7 @@ class StatementServiceTest {
         assertThatThrownBy(() -> this.create("missing-policy", null)).isInstanceOf(AuthorizationException.class);
         assertThatThrownBy(() -> this.create("empty-policy", "")).isInstanceOf(AuthorizationException.class);
         assertThatThrownBy(() -> this.create("blank-policy", " \t\n ")).isInstanceOf(AuthorizationException.class);
-        verify(this.policyCompiler, org.mockito.Mockito.never()).compile(
+        verify(this.embeddedLanguageCompiler, org.mockito.Mockito.never()).compile(
             org.mockito.ArgumentMatchers.anyString(),
             org.mockito.ArgumentMatchers.any(EnvironmentSchema.class)
         );
@@ -98,7 +98,7 @@ class StatementServiceTest {
     /**
      * Verifies that policy syntax is compiled during Statement activation rather than deferred to request handling.
      *
-     * Given: a new request Statement containing malformed Policy Language source.
+     * Given: a new request Statement containing malformed Embedded Language source.
      * Expect: activation fails and the malformed Statement is never persisted.
      */
     @Test
@@ -109,7 +109,7 @@ class StatementServiceTest {
         StatementService activation = new StatementService(
             this.statements,
             mock(ObjectAuthorizationService.class),
-            new PolicyCompiler()
+            new EmbeddedLanguageCompiler()
         );
 
         // Act + Assert
@@ -227,6 +227,8 @@ class StatementServiceTest {
     }
 
     private static StatementExecutionArtifact executable(StatementInfo statement) {
-        return new StatementArtifactFactory(new PolicyCompiler(), List.of()).build(List.of(statement)).getFirst();
+        return new StatementArtifactFactory(new EmbeddedLanguageCompiler(), List.of())
+            .build(List.of(statement))
+            .getFirst();
     }
 }

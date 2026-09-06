@@ -1,17 +1,17 @@
 package io.taskmigo.auth.authorization.object;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
+import io.taskmigo.auth.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
+import io.taskmigo.auth.authorization.embeddedlanguage.EmbeddedLanguageFilterLowerer;
 import io.taskmigo.auth.authorization.filter.FilterAst;
-import io.taskmigo.auth.authorization.policy.AuthorizationPolicySchemas;
-import io.taskmigo.auth.authorization.policy.PolicyFilterLowerer;
 import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
 import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
-import io.taskmigo.policy.PolicyCompiler;
-import io.taskmigo.policy.PolicyIr;
-import io.taskmigo.policy.PolicyQueryability;
-import io.taskmigo.policy.QueryCapability;
+import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
+import io.taskmigo.embeddedlanguage.LanguageIr;
+import io.taskmigo.embeddedlanguage.LanguageQueryability;
+import io.taskmigo.embeddedlanguage.QueryCapability;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -29,13 +29,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class ObjectAuthorizationService {
 
-    private final PolicyFilterLowerer partialEvaluator;
-    private final PolicyCompiler compiler;
+    private final EmbeddedLanguageFilterLowerer partialEvaluator;
+    private final EmbeddedLanguageCompiler compiler;
     private final List<AuthorizationObjectQueryDialect> dialects;
 
     ObjectAuthorizationService(
-        PolicyFilterLowerer partialEvaluator,
-        PolicyCompiler compiler,
+        EmbeddedLanguageFilterLowerer partialEvaluator,
+        EmbeddedLanguageCompiler compiler,
         List<AuthorizationObjectQueryDialect> dialects
     ) {
         this.partialEvaluator = partialEvaluator;
@@ -54,31 +54,34 @@ public class ObjectAuthorizationService {
             throw new AuthorizationException("No object authorization query dialect matches " + method + " " + path);
         }
         for (AuthorizationObjectQueryDialect dialect : matching) {
-            PolicyIr compiled = this.compiler.compile(policy, AuthorizationPolicySchemas.object(dialect));
-            PolicyQueryability.validate(compiled, capability(dialect));
+            LanguageIr compiled = this.compiler.compile(policy, AuthorizationEmbeddedLanguageSchemas.object(dialect));
+            LanguageQueryability.validate(compiled, capability(dialect));
         }
     }
 
     private static QueryCapability capability(AuthorizationObjectQueryDialect dialect) {
-        Set<io.taskmigo.policy.PolicyIr.BinaryOperator> binary = Set.of(
-            io.taskmigo.policy.PolicyIr.BinaryOperator.OR,
-            io.taskmigo.policy.PolicyIr.BinaryOperator.AND,
-            io.taskmigo.policy.PolicyIr.BinaryOperator.EQUAL,
-            io.taskmigo.policy.PolicyIr.BinaryOperator.NOT_EQUAL,
-            io.taskmigo.policy.PolicyIr.BinaryOperator.GREATER,
-            io.taskmigo.policy.PolicyIr.BinaryOperator.GREATER_OR_EQUAL,
-            io.taskmigo.policy.PolicyIr.BinaryOperator.LESS,
-            io.taskmigo.policy.PolicyIr.BinaryOperator.LESS_OR_EQUAL,
-            io.taskmigo.policy.PolicyIr.BinaryOperator.ADD,
-            io.taskmigo.policy.PolicyIr.BinaryOperator.SUBTRACT,
-            io.taskmigo.policy.PolicyIr.BinaryOperator.MULTIPLY,
-            io.taskmigo.policy.PolicyIr.BinaryOperator.DIVIDE
+        Set<io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator> binary = Set.of(
+            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.OR,
+            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.AND,
+            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.EQUAL,
+            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.NOT_EQUAL,
+            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.GREATER,
+            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.GREATER_OR_EQUAL,
+            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.LESS,
+            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.LESS_OR_EQUAL,
+            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.ADD,
+            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.SUBTRACT,
+            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.MULTIPLY,
+            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.DIVIDE
         );
         return new QueryCapability(
             Set.of("object"),
             dialect.fields().keySet(),
             binary,
-            Set.of(io.taskmigo.policy.PolicyIr.UnaryOperator.NOT, io.taskmigo.policy.PolicyIr.UnaryOperator.MINUS)
+            Set.of(
+                io.taskmigo.embeddedlanguage.LanguageIr.UnaryOperator.NOT,
+                io.taskmigo.embeddedlanguage.LanguageIr.UnaryOperator.MINUS
+            )
         );
     }
 
@@ -116,8 +119,8 @@ public class ObjectAuthorizationService {
         return new ObjectAuthorizationPlan(new FilterAst(predicate), List.copyOf(matched), dialect.fields());
     }
 
-    private static boolean constantTrue(PolicyIr policy) {
-        return policy.expression() instanceof PolicyIr.Literal literal && Boolean.TRUE.equals(literal.value());
+    private static boolean constantTrue(LanguageIr policy) {
+        return policy.expression() instanceof LanguageIr.Literal literal && Boolean.TRUE.equals(literal.value());
     }
 
     private AuthorizationObjectQueryDialect dialect(String method, String path) {

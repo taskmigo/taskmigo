@@ -17,7 +17,7 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
     /**
      * Verifies that the public API persists and returns the canonical Statement representation.
      *
-     * Given: a request Statement with an unconditional Policy Language policy.
+     * Given: a request Statement with an unconditional Embedded Language policy.
      * Expect: creation returns an id and listing exposes the canonical scope, target, and policy.
      */
     @Test

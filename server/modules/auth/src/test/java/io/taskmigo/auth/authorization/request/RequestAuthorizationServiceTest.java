@@ -12,8 +12,8 @@ import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.auth.authorization.statement.TargetInfo;
-import io.taskmigo.policy.PolicyCompiler;
-import io.taskmigo.policy.PolicyEvaluator;
+import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
+import io.taskmigo.embeddedlanguage.EmbeddedLanguageEvaluator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -25,8 +25,8 @@ class RequestAuthorizationServiceTest {
     private final EffectiveStatementResolver statements = mock(EffectiveStatementResolver.class);
     private final RequestAuthorizationService service = new RequestAuthorizationService(
         this.statements,
-        new PolicyEvaluator(),
-        new StatementArtifactFactory(new PolicyCompiler(), List.of())
+        new EmbeddedLanguageEvaluator(),
+        new StatementArtifactFactory(new EmbeddedLanguageCompiler(), List.of())
     );
 
     /**
@@ -80,10 +80,10 @@ class RequestAuthorizationServiceTest {
     }
 
     /**
-     * Verifies that an allow Statement only grants access when its Policy Language policy returns true.
+     * Verifies that an allow Statement only grants access when its Embedded Language policy returns true.
      *
      * Given: a matching allow Statement whose policy requires the request method to be GET.
-     * Expect: GET is allowed and POST is denied by the policy IR evaluator.
+     * Expect: GET is allowed and POST is denied by the Language IR evaluator.
      */
     @Test
     @DisplayName("evaluates a request policy before allowing access")
@@ -153,7 +153,7 @@ class RequestAuthorizationServiceTest {
     /**
      * Verifies that a policy evaluation failure cannot turn into an authorization grant.
      *
-     * Given: a matching allow Statement containing malformed Policy Language source.
+     * Given: a matching allow Statement containing malformed Embedded Language source.
      * Expect: authorization returns a denied decision.
      */
     @Test
@@ -238,7 +238,7 @@ class RequestAuthorizationServiceTest {
         AuthorizationSnapshot snapshot = new AuthorizationSnapshot(
             userId,
             statements,
-            new StatementArtifactFactory(new PolicyCompiler(), List.of()).build(statements),
+            new StatementArtifactFactory(new EmbeddedLanguageCompiler(), List.of()).build(statements),
             Map.of("request", Map.of("method", "GET"))
         );
 

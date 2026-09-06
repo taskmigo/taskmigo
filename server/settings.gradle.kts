@@ -2,7 +2,7 @@ rootProject.name = "taskmigo"
 
 include(
     ":modules:foundation",
-    ":modules:policy",
+    ":modules:embedded-language",
     ":modules:database",
     ":modules:auth",
     ":benchmarks:authorization",

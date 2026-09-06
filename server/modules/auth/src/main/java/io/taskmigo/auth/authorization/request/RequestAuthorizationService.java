@@ -1,13 +1,13 @@
 package io.taskmigo.auth.authorization.request;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
-import io.taskmigo.auth.authorization.policy.AuthorizationPolicySchemas;
+import io.taskmigo.auth.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
 import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.auth.user.UserException;
-import io.taskmigo.policy.PolicyEvaluator;
-import io.taskmigo.policy.PolicyIr;
+import io.taskmigo.embeddedlanguage.EmbeddedLanguageEvaluator;
+import io.taskmigo.embeddedlanguage.LanguageIr;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -19,16 +19,16 @@ import org.springframework.stereotype.Service;
 public class RequestAuthorizationService {
 
     private final EffectiveStatementResolver statements;
-    private final PolicyEvaluator policyEvaluator;
+    private final EmbeddedLanguageEvaluator embeddedLanguageEvaluator;
     private final StatementArtifactFactory artifacts;
 
     RequestAuthorizationService(
         EffectiveStatementResolver statements,
-        PolicyEvaluator policyEvaluator,
+        EmbeddedLanguageEvaluator embeddedLanguageEvaluator,
         StatementArtifactFactory artifacts
     ) {
         this.statements = statements;
-        this.policyEvaluator = policyEvaluator;
+        this.embeddedLanguageEvaluator = embeddedLanguageEvaluator;
         this.artifacts = artifacts;
     }
 
@@ -87,9 +87,9 @@ public class RequestAuthorizationService {
         for (Evaluation evaluation : evaluations) {
             StatementInfo statement = evaluation.statement();
             try {
-                boolean matches = this.policyEvaluator.evaluate(
+                boolean matches = this.embeddedLanguageEvaluator.evaluate(
                     evaluation.policy(),
-                    AuthorizationPolicySchemas.request(),
+                    AuthorizationEmbeddedLanguageSchemas.request(),
                     approvedRoots
                 );
                 if (matches) {
@@ -105,9 +105,9 @@ public class RequestAuthorizationService {
         return new RequestAuthorizationDecision(allowed);
     }
 
-    private static boolean constantTrue(PolicyIr policy) {
-        return policy.expression() instanceof PolicyIr.Literal literal && Boolean.TRUE.equals(literal.value());
+    private static boolean constantTrue(LanguageIr policy) {
+        return policy.expression() instanceof LanguageIr.Literal literal && Boolean.TRUE.equals(literal.value());
     }
 
-    private record Evaluation(StatementInfo statement, PolicyIr policy) {}
+    private record Evaluation(StatementInfo statement, LanguageIr policy) {}
 }

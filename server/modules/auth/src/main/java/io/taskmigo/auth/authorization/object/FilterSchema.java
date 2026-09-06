@@ -9,7 +9,7 @@ public interface FilterSchema {
     /// Returns field names and their persisted Java types.
     Map<String, Class<?>> fields();
 
-    /// Returns nullable persisted field names for strict Policy Language null comparisons.
+    /// Returns nullable persisted field names for strict Embedded Language null comparisons.
     default Set<String> nullableFields() {
         return Set.of();
     }

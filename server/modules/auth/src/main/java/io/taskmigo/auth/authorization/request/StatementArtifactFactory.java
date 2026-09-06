@@ -1,14 +1,14 @@
 package io.taskmigo.auth.authorization.request;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
+import io.taskmigo.auth.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
 import io.taskmigo.auth.authorization.object.AuthorizationObjectQueryDialect;
-import io.taskmigo.auth.authorization.policy.AuthorizationPolicySchemas;
 import io.taskmigo.auth.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
-import io.taskmigo.policy.EnvironmentSchema;
-import io.taskmigo.policy.PolicyCompiler;
-import io.taskmigo.policy.PolicyException;
-import io.taskmigo.policy.PolicyIr;
+import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
+import io.taskmigo.embeddedlanguage.EmbeddedLanguageException;
+import io.taskmigo.embeddedlanguage.EnvironmentSchema;
+import io.taskmigo.embeddedlanguage.LanguageIr;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -28,12 +28,12 @@ import org.springframework.stereotype.Service;
 @Service
 public final class StatementArtifactFactory {
 
-    private final PolicyCompiler compiler;
+    private final EmbeddedLanguageCompiler compiler;
     private final List<AuthorizationObjectQueryDialect> dialects;
     private final ConcurrentMap<CacheKey, CachedArtifacts> derived = new ConcurrentHashMap<>();
 
     /// Creates a factory whose cache contains only compiled policy and matcher derivatives.
-    public StatementArtifactFactory(PolicyCompiler compiler, List<AuthorizationObjectQueryDialect> dialects) {
+    public StatementArtifactFactory(EmbeddedLanguageCompiler compiler, List<AuthorizationObjectQueryDialect> dialects) {
         this.compiler = compiler;
         this.dialects = List.copyOf(dialects);
     }
@@ -44,8 +44,8 @@ public final class StatementArtifactFactory {
         for (StatementInfo statement : statements) {
             EnvironmentSchema schema =
                 statement.scope() == io.taskmigo.auth.authorization.statement.Scope.REQUEST
-                    ? AuthorizationPolicySchemas.request()
-                    : AuthorizationPolicySchemas.object(this.dialects);
+                    ? AuthorizationEmbeddedLanguageSchemas.request()
+                    : AuthorizationEmbeddedLanguageSchemas.object(this.dialects);
             String fingerprint = fingerprint(statement, schema);
             CacheKey key = new CacheKey(statement.id(), schema.fingerprint(), fingerprint);
             CachedArtifacts cached = this.derived.compute(key, (ignored, current) ->
@@ -68,7 +68,7 @@ public final class StatementArtifactFactory {
             );
         } catch (PatternSyntaxException exception) {
             throw new AuthorizationException("Statement target path is not a valid regular expression");
-        } catch (PolicyException exception) {
+        } catch (EmbeddedLanguageException exception) {
             throw new AuthorizationException("Invalid Statement policy: " + exception.getMessage());
         }
     }
@@ -83,7 +83,7 @@ public final class StatementArtifactFactory {
         append(state, statement.target().api().method());
         append(state, statement.target().api().path());
         append(state, statement.policy());
-        append(state, PolicyIr.LANGUAGE_VERSION);
+        append(state, LanguageIr.LANGUAGE_VERSION);
         append(state, schema.fingerprint());
         append(state, this.compiler.contractFingerprint());
         if (statement.scope() == io.taskmigo.auth.authorization.statement.Scope.OBJECT) {
@@ -117,5 +117,5 @@ public final class StatementArtifactFactory {
 
     private record CacheKey(UUID statementId, String schemaFingerprint, String statementFingerprint) {}
 
-    private record DerivedArtifacts(PolicyIr policy, Pattern pathMatcher) {}
+    private record DerivedArtifacts(LanguageIr policy, Pattern pathMatcher) {}
 }

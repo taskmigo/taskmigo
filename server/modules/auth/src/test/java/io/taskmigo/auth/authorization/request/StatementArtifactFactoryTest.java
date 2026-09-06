@@ -8,7 +8,7 @@ import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.auth.authorization.statement.TargetInfo;
-import io.taskmigo.policy.PolicyCompiler;
+import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -16,7 +16,10 @@ import org.junit.jupiter.api.Test;
 
 class StatementArtifactFactoryTest {
 
-    private final StatementArtifactFactory factory = new StatementArtifactFactory(new PolicyCompiler(), List.of());
+    private final StatementArtifactFactory factory = new StatementArtifactFactory(
+        new EmbeddedLanguageCompiler(),
+        List.of()
+    );
 
     /**
      * Verifies that derived policy and matcher artifacts are reused only for identical persisted execution state.
