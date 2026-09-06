@@ -5,12 +5,14 @@ on:
     paths:
       - "server/**"
       - "!server/**/*.md"
+      - "!server/benchmarks/**"
       - ".github/workflows/qodana.yml"
   push:
     branches: [next]
     paths:
       - "server/**"
       - "!server/**/*.md"
+      - "!server/benchmarks/**"
       - ".github/workflows/qodana.yml"
   workflow_dispatch:
 

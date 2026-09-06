@@ -4,19 +4,11 @@ on:
   pull_request:
     paths:
       - "server/benchmarks/authorization/**"
-      - "server/modules/auth/**"
-      - "server/gradle/**"
-      - "server/settings.gradle.kts"
-      - "server/build.gradle.kts"
       - ".github/workflows/authorization-performance.yml"
   push:
     branches: [next]
     paths:
       - "server/benchmarks/authorization/**"
-      - "server/modules/auth/**"
-      - "server/gradle/**"
-      - "server/settings.gradle.kts"
-      - "server/build.gradle.kts"
       - ".github/workflows/authorization-performance.yml"
 
 concurrency:
@@ -72,7 +64,7 @@ jobs:
           jmh_jar="$(find benchmarks/authorization/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jmh_jar"
 
-          java -jar "$jmh_jar" '.*JavaScriptPolicyCompilerBenchmark.*' \
+          java --enable-native-access=ALL-UNNAMED -jar "$jmh_jar" '.*JavaScriptPolicyCompilerBenchmark.*' \
             -bm avgt \
             -tu ms \
             -t 1 \
