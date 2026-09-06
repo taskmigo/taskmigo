@@ -12,6 +12,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -29,6 +30,8 @@ public class JavaScriptPolicyCompilerBenchmark {
 
     private static final int DATASET_SIZE = 500;
     private static final String DATASET_ROOT = "/io/taskmigo/benchmarks/authorization/";
+    private static final Pattern STRING_LITERAL = Pattern.compile("'(?:\\\\.|[^'\\\\])*'|\"(?:\\\\.|[^\"\\\\])*\"");
+    private static final Pattern NUMBER_LITERAL = Pattern.compile("\\b\\d+(?:\\.\\d+)?\\b");
 
     /// Measures compiling one deterministic batch of authorization policies.
     @Benchmark
@@ -77,6 +80,7 @@ public class JavaScriptPolicyCompilerBenchmark {
             throw new IllegalStateException("Benchmark dataset must contain exactly " + DATASET_SIZE + " statements");
         }
         IntStream.range(0, rows.size()).forEach(index -> validateRow(rows.get(index), index));
+        validateDataset(rows, policyType);
         int column = scope == Scope.REQUEST ? 1 : 2;
         List<String> policies = rows.subList(0, count).stream().map(row -> row[column]).toList();
         if (policies.stream().distinct().count() != policies.size()) {
@@ -89,6 +93,14 @@ public class JavaScriptPolicyCompilerBenchmark {
         return switch (policyType) {
             case "SIMPLE" -> DATASET_ROOT + "simple-statements.tsv";
             case "COMPLEX" -> DATASET_ROOT + "complex-statements.tsv";
+            default -> throw new IllegalArgumentException("Unknown policy type: " + policyType);
+        };
+    }
+
+    private static int expectedStructuralFamilies(String policyType) {
+        return switch (policyType) {
+            case "SIMPLE" -> 100;
+            case "COMPLEX" -> 125;
             default -> throw new IllegalArgumentException("Unknown policy type: " + policyType);
         };
     }
@@ -107,6 +119,27 @@ public class JavaScriptPolicyCompilerBenchmark {
         } catch (IOException exception) {
             throw new IllegalStateException("Cannot read benchmark dataset: " + resource, exception);
         }
+    }
+
+    private static void validateDataset(List<String[]> rows, String policyType) {
+        int expectedFamilies = expectedStructuralFamilies(policyType);
+        for (int column = 1; column <= 2; column++) {
+            if (rows.stream().map(row -> row[column]).distinct().count() != DATASET_SIZE) {
+                throw new IllegalStateException("Benchmark dataset must contain only unique statements");
+            }
+            long families = rows.stream().map(row -> structuralFingerprint(row[column])).distinct().count();
+            if (families != expectedFamilies) {
+                throw new IllegalStateException(
+                    "Benchmark dataset must contain exactly " + expectedFamilies + " structural families"
+                );
+            }
+        }
+    }
+
+    private static String structuralFingerprint(String source) {
+        String normalized = STRING_LITERAL.matcher(source).replaceAll("'#'");
+        normalized = NUMBER_LITERAL.matcher(normalized).replaceAll("#");
+        return normalized.replaceAll("\\s+", " ").trim();
     }
 
     private static void validateRow(String[] row, int index) {
