@@ -1,5 +1,5 @@
 /// Provides the authentication and authorization module namespace.
-@ApplicationModule(allowedDependencies = "foundation")
+@ApplicationModule(allowedDependencies = { "foundation", "policy" })
 @NullMarked
 package io.taskmigo.auth;
 

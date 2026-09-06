@@ -1,12 +1,13 @@
 package io.taskmigo.auth.authorization.request;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
-import io.taskmigo.auth.authorization.policy.JavaScriptPolicyEvaluator;
-import io.taskmigo.auth.authorization.policy.PolicyIr;
+import io.taskmigo.auth.authorization.policy.AuthorizationPolicySchemas;
 import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.auth.user.UserException;
+import io.taskmigo.policy.PolicyEvaluator;
+import io.taskmigo.policy.PolicyIr;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -18,12 +19,12 @@ import org.springframework.stereotype.Service;
 public class RequestAuthorizationService {
 
     private final EffectiveStatementResolver statements;
-    private final JavaScriptPolicyEvaluator policyEvaluator;
+    private final PolicyEvaluator policyEvaluator;
     private final StatementArtifactFactory artifacts;
 
     RequestAuthorizationService(
         EffectiveStatementResolver statements,
-        JavaScriptPolicyEvaluator policyEvaluator,
+        PolicyEvaluator policyEvaluator,
         StatementArtifactFactory artifacts
     ) {
         this.statements = statements;
@@ -86,7 +87,11 @@ public class RequestAuthorizationService {
         for (Evaluation evaluation : evaluations) {
             StatementInfo statement = evaluation.statement();
             try {
-                boolean matches = this.policyEvaluator.evaluate(evaluation.policy(), approvedRoots);
+                boolean matches = this.policyEvaluator.evaluate(
+                    evaluation.policy(),
+                    AuthorizationPolicySchemas.request(),
+                    approvedRoots
+                );
                 if (matches) {
                     if (statement.effect() == Effect.DENY) {
                         return new RequestAuthorizationDecision(false);

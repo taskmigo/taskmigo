@@ -1,4 +1,4 @@
-/// Compiles JavaScript authorization modules into Taskmigo-owned policy representations.
+/// Adapts the standalone Policy Language to authorization-owned schemas and query filters.
 @NullMarked
 package io.taskmigo.auth.authorization.policy;
 

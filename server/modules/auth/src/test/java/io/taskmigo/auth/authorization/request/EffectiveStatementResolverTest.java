@@ -163,7 +163,7 @@ class EffectiveStatementResolverTest {
                 Effect.ALLOW,
                 Scope.REQUEST,
                 new TargetInfo(new ApiInfo("GET", "/")),
-                "export default () => true;"
+                "return true;"
             )
         );
         return statement;

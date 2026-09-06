@@ -3,8 +3,10 @@ package io.taskmigo.auth.authorization.statement;
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.AuthorizationName;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
-import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
+import io.taskmigo.auth.authorization.policy.AuthorizationPolicySchemas;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.policy.PolicyCompiler;
+import io.taskmigo.policy.PolicyException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -23,12 +25,12 @@ public class StatementService {
 
     private final StatementRepository statements;
     private final ObjectAuthorizationService objectAuthorization;
-    private final JavaScriptPolicyCompiler policyCompiler;
+    private final PolicyCompiler policyCompiler;
 
     StatementService(
         StatementRepository statements,
         ObjectAuthorizationService objectAuthorization,
-        JavaScriptPolicyCompiler policyCompiler
+        PolicyCompiler policyCompiler
     ) {
         this.statements = statements;
         this.objectAuthorization = objectAuthorization;
@@ -72,7 +74,15 @@ public class StatementService {
             throw new AuthorizationException("target.api.method must not exceed 16 characters");
         }
         String validPolicy = requiredPolicy(policy);
-        this.policyCompiler.compile(validPolicy, validScope);
+        try {
+            if (validScope == Scope.REQUEST) {
+                this.policyCompiler.compile(validPolicy, AuthorizationPolicySchemas.request());
+            } else {
+                this.objectAuthorization.validatePolicy(validPolicy, validMethod, validPath);
+            }
+        } catch (PolicyException exception) {
+            throw new AuthorizationException("Invalid Statement policy: " + exception.getMessage());
+        }
         UUID id = UUID.randomUUID();
         this.statements.save(
             new StatementEntity(
@@ -121,7 +131,15 @@ public class StatementService {
             throw new AuthorizationException("target.api.path must be a valid regular expression");
         }
         String validPolicy = requiredPolicy(policy);
-        this.policyCompiler.compile(validPolicy, validScope);
+        try {
+            if (validScope == Scope.REQUEST) {
+                this.policyCompiler.compile(validPolicy, AuthorizationPolicySchemas.request());
+            } else {
+                this.objectAuthorization.validatePolicy(validPolicy, validMethod, validPath);
+            }
+        } catch (PolicyException exception) {
+            throw new AuthorizationException("Invalid Statement policy: " + exception.getMessage());
+        }
         existing.description = description;
         existing.effect = validEffect;
         existing.scope = validScope;

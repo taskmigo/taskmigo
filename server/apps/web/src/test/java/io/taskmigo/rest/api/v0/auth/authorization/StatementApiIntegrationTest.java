@@ -17,7 +17,7 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
     /**
      * Verifies that the public API persists and returns the canonical Statement representation.
      *
-     * Given: a request Statement with an unconditional JavaScript policy.
+     * Given: a request Statement with an unconditional Policy Language policy.
      * Expect: creation returns an id and listing exposes the canonical scope, target, and policy.
      */
     @Test
@@ -30,7 +30,7 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
             "allow",
             "request",
             new StatementTarget(new StatementApiTarget("GET", "/api/v0/users")),
-            "export default ({ request }) => request.path === '/api/v0/users';"
+            "return request.path == \"/api/v0/users\";"
         );
 
         // Act
@@ -42,7 +42,7 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
             .contains("\"name\":\"users_read\"")
             .contains("\"method\":\"GET\"")
             .contains("\"scope\":\"REQUEST\"")
-            .contains("export default ({ request }) => request.path === '/api/v0/users';");
+            .contains("return request.path == \\\"/api/v0/users\\\";");
     }
 
     /**
@@ -86,7 +86,7 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
             "allow",
             "request",
             new StatementTarget(new StatementApiTarget("GET", "/api/v0/users")),
-            "export function resources() { return {}; } export default () => true;"
+            "return resources();"
         );
         CreateStatementRequest intrinsic = new CreateStatementRequest(
             "removed-intrinsic-" + UUID.randomUUID(),
@@ -94,7 +94,7 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
             "allow",
             "request",
             new StatementTarget(new StatementApiTarget("GET", "/api/v0/users")),
-            "export default () => resource('user', 'id');"
+            "return resource(\"user\", \"id\");"
         );
 
         // Act + Assert
@@ -143,7 +143,7 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
             "allow",
             "request",
             new StatementTarget(new StatementApiTarget("GET", "/api/v0/statements")),
-            "export default () => true;"
+            "return true;"
         );
     }
 

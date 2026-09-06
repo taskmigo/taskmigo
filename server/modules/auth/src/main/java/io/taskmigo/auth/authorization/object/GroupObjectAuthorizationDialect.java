@@ -1,6 +1,7 @@
 package io.taskmigo.auth.authorization.object;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -21,5 +22,10 @@ final class GroupObjectAuthorizationDialect implements AuthorizationObjectQueryD
     @Override
     public Map<String, Class<?>> fields() {
         return Map.of("id", UUID.class, "name", String.class, "description", String.class);
+    }
+
+    @Override
+    public Set<String> nullableFields() {
+        return Set.of("description");
     }
 }

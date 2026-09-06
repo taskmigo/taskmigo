@@ -2,12 +2,16 @@ package io.taskmigo.auth.authorization.object;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.filter.FilterAst;
-import io.taskmigo.auth.authorization.policy.PolicyIr;
-import io.taskmigo.auth.authorization.policy.PolicyIrPartialEvaluator;
+import io.taskmigo.auth.authorization.policy.AuthorizationPolicySchemas;
+import io.taskmigo.auth.authorization.policy.PolicyFilterLowerer;
 import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
 import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
+import io.taskmigo.policy.PolicyCompiler;
+import io.taskmigo.policy.PolicyIr;
+import io.taskmigo.policy.PolicyQueryability;
+import io.taskmigo.policy.QueryCapability;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -15,6 +19,7 @@ import jakarta.persistence.criteria.Root;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.jpa.domain.Specification;
@@ -24,15 +29,57 @@ import org.springframework.stereotype.Service;
 @Service
 public class ObjectAuthorizationService {
 
-    private final PolicyIrPartialEvaluator partialEvaluator;
+    private final PolicyFilterLowerer partialEvaluator;
+    private final PolicyCompiler compiler;
     private final List<AuthorizationObjectQueryDialect> dialects;
 
     ObjectAuthorizationService(
-        PolicyIrPartialEvaluator partialEvaluator,
+        PolicyFilterLowerer partialEvaluator,
+        PolicyCompiler compiler,
         List<AuthorizationObjectQueryDialect> dialects
     ) {
         this.partialEvaluator = partialEvaluator;
+        this.compiler = compiler;
         this.dialects = List.copyOf(dialects);
+    }
+
+    /// Validates an object policy against every registered dialect matching its target.
+    public void validatePolicy(String policy, String method, String path) {
+        List<AuthorizationObjectQueryDialect> matching = this.dialects
+            .stream()
+            .filter(dialect -> "*".equals(method) || dialect.method().equalsIgnoreCase(method))
+            .filter(dialect -> java.util.regex.Pattern.matches(path, dialect.path()))
+            .toList();
+        if (matching.isEmpty()) {
+            throw new AuthorizationException("No object authorization query dialect matches " + method + " " + path);
+        }
+        for (AuthorizationObjectQueryDialect dialect : matching) {
+            PolicyIr compiled = this.compiler.compile(policy, AuthorizationPolicySchemas.object(dialect));
+            PolicyQueryability.validate(compiled, capability(dialect));
+        }
+    }
+
+    private static QueryCapability capability(AuthorizationObjectQueryDialect dialect) {
+        Set<io.taskmigo.policy.PolicyIr.BinaryOperator> binary = Set.of(
+            io.taskmigo.policy.PolicyIr.BinaryOperator.OR,
+            io.taskmigo.policy.PolicyIr.BinaryOperator.AND,
+            io.taskmigo.policy.PolicyIr.BinaryOperator.EQUAL,
+            io.taskmigo.policy.PolicyIr.BinaryOperator.NOT_EQUAL,
+            io.taskmigo.policy.PolicyIr.BinaryOperator.GREATER,
+            io.taskmigo.policy.PolicyIr.BinaryOperator.GREATER_OR_EQUAL,
+            io.taskmigo.policy.PolicyIr.BinaryOperator.LESS,
+            io.taskmigo.policy.PolicyIr.BinaryOperator.LESS_OR_EQUAL,
+            io.taskmigo.policy.PolicyIr.BinaryOperator.ADD,
+            io.taskmigo.policy.PolicyIr.BinaryOperator.SUBTRACT,
+            io.taskmigo.policy.PolicyIr.BinaryOperator.MULTIPLY,
+            io.taskmigo.policy.PolicyIr.BinaryOperator.DIVIDE
+        );
+        return new QueryCapability(
+            Set.of("object"),
+            dialect.fields().keySet(),
+            binary,
+            Set.of(io.taskmigo.policy.PolicyIr.UnaryOperator.NOT, io.taskmigo.policy.PolicyIr.UnaryOperator.MINUS)
+        );
     }
 
     /// Builds an object plan from the effective Statements already captured for an operation.
@@ -204,7 +251,11 @@ public class ObjectAuthorizationService {
 
     private void validate(FilterAst.Expression expression, FilterSchema schema) {
         switch (expression) {
-            case FilterAst.All _, FilterAst.None _, FilterAst.Literal _ -> {
+            case FilterAst.All _ -> {
+            }
+            case FilterAst.None _ -> {
+            }
+            case FilterAst.Literal _ -> {
             }
             case FilterAst.Field field -> {
                 if (!schema.fields().containsKey(field.name())) {
@@ -234,7 +285,9 @@ public class ObjectAuthorizationService {
 
     private void validatePredicate(FilterAst.Expression expression, FilterSchema schema) {
         switch (expression) {
-            case FilterAst.All _, FilterAst.None _ -> {
+            case FilterAst.All _ -> {
+            }
+            case FilterAst.None _ -> {
             }
             case FilterAst.Literal literal -> {
                 if (!(literal.value() instanceof Boolean)) {

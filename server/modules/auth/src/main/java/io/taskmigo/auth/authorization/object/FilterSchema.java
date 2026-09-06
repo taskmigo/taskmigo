@@ -9,6 +9,11 @@ public interface FilterSchema {
     /// Returns field names and their persisted Java types.
     Map<String, Class<?>> fields();
 
+    /// Returns nullable persisted field names for strict Policy Language null comparisons.
+    default Set<String> nullableFields() {
+        return Set.of();
+    }
+
     /// Returns the Filter AST operators safe for this resource.
     default Set<FilterAst.Operator> operators() {
         return Set.of(

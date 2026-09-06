@@ -1,6 +1,6 @@
 package io.taskmigo.auth.authorization.statement;
 
-import io.taskmigo.auth.authorization.policy.PolicyIr;
+import io.taskmigo.policy.PolicyIr;
 import java.util.regex.Pattern;
 
 /// Holds the executable derivatives of one database-loaded Statement for one authorization operation.

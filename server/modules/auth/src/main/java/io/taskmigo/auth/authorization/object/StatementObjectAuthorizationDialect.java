@@ -1,6 +1,7 @@
 package io.taskmigo.auth.authorization.object;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
@@ -32,5 +33,10 @@ final class StatementObjectAuthorizationDialect implements AuthorizationObjectQu
             "path",
             String.class
         );
+    }
+
+    @Override
+    public Set<String> nullableFields() {
+        return Set.of("description");
     }
 }

@@ -1,8 +1,8 @@
 package io.taskmigo.auth.authorization.request;
 
-import io.taskmigo.auth.authorization.policy.PolicyIr;
 import io.taskmigo.auth.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
+import io.taskmigo.policy.PolicyIr;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;

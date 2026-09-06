@@ -79,15 +79,7 @@ class EffectiveStatementResolverIntegrationTest extends ApiIntegrationTestSuppor
     }
 
     private UUID createStatement(String name) {
-        return this.statements.create(
-            name,
-            null,
-            Effect.ALLOW,
-            Scope.REQUEST,
-            "GET",
-            "/performance",
-            "export default () => true;"
-        );
+        return this.statements.create(name, null, Effect.ALLOW, Scope.REQUEST, "GET", "/performance", "return true;");
     }
 
     private List<UUID> createStatements(int count) {

@@ -9,8 +9,9 @@ import static org.mockito.Mockito.when;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
-import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import io.taskmigo.auth.authorization.request.StatementArtifactFactory;
+import io.taskmigo.policy.EnvironmentSchema;
+import io.taskmigo.policy.PolicyCompiler;
 import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -25,13 +26,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class StatementServiceTest {
 
-    private static final String VALID_POLICY = "export default () => true;";
+    private static final String VALID_POLICY = "return true;";
 
     @Mock
     private StatementRepository statements;
 
     @Mock
-    private JavaScriptPolicyCompiler policyCompiler;
+    private PolicyCompiler policyCompiler;
 
     @InjectMocks
     private StatementService service;
@@ -57,7 +58,7 @@ class StatementServiceTest {
             Scope.REQUEST,
             "GET",
             " /api/v0/users ",
-            "export default ({ request }) => request.path === '/api/v0/users';"
+            "return request.path == \"/api/v0/users\";"
         );
 
         // Assert
@@ -66,9 +67,7 @@ class StatementServiceTest {
         assertThat(saved.getValue().method).isEqualTo("GET");
         assertThat(saved.getValue().name).isEqualTo("users_read");
         assertThat(saved.getValue().scope).isEqualTo(Scope.REQUEST);
-        assertThat(saved.getValue().policy).isEqualTo(
-            "export default ({ request }) => request.path === '/api/v0/users';"
-        );
+        assertThat(saved.getValue().policy).isEqualTo("return request.path == \"/api/v0/users\";");
     }
 
     /**
@@ -89,7 +88,7 @@ class StatementServiceTest {
         assertThatThrownBy(() -> this.create("blank-policy", " \t\n ")).isInstanceOf(AuthorizationException.class);
         verify(this.policyCompiler, org.mockito.Mockito.never()).compile(
             org.mockito.ArgumentMatchers.anyString(),
-            org.mockito.ArgumentMatchers.any(Scope.class)
+            org.mockito.ArgumentMatchers.any(EnvironmentSchema.class)
         );
         verify(this.statements, org.mockito.Mockito.never()).save(
             org.mockito.ArgumentMatchers.any(StatementEntity.class)
@@ -99,7 +98,7 @@ class StatementServiceTest {
     /**
      * Verifies that policy syntax is compiled during Statement activation rather than deferred to request handling.
      *
-     * Given: a new request Statement containing malformed JavaScript policy source.
+     * Given: a new request Statement containing malformed Policy Language source.
      * Expect: activation fails and the malformed Statement is never persisted.
      */
     @Test
@@ -110,7 +109,7 @@ class StatementServiceTest {
         StatementService activation = new StatementService(
             this.statements,
             mock(ObjectAuthorizationService.class),
-            new JavaScriptPolicyCompiler()
+            new PolicyCompiler()
         );
 
         // Act + Assert
@@ -122,11 +121,11 @@ class StatementServiceTest {
                 Scope.REQUEST,
                 "GET",
                 "/api/v0/users",
-                "export default ({ request }) => request.method === ;"
+                "return request.method == ;"
             )
         )
             .isInstanceOf(AuthorizationException.class)
-            .hasMessageContaining("cannot be parsed");
+            .hasMessageContaining("mismatched");
         verify(this.statements, never()).save(org.mockito.ArgumentMatchers.any(StatementEntity.class));
     }
 
@@ -228,6 +227,6 @@ class StatementServiceTest {
     }
 
     private static StatementExecutionArtifact executable(StatementInfo statement) {
-        return new StatementArtifactFactory(new JavaScriptPolicyCompiler()).build(List.of(statement)).getFirst();
+        return new StatementArtifactFactory(new PolicyCompiler(), List.of()).build(List.of(statement)).getFirst();
     }
 }

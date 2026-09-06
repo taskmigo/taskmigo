@@ -7,13 +7,13 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
-import io.taskmigo.auth.authorization.policy.JavaScriptPolicyEvaluator;
 import io.taskmigo.auth.authorization.statement.ApiInfo;
 import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.auth.authorization.statement.TargetInfo;
+import io.taskmigo.policy.PolicyCompiler;
+import io.taskmigo.policy.PolicyEvaluator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -25,8 +25,8 @@ class RequestAuthorizationServiceTest {
     private final EffectiveStatementResolver statements = mock(EffectiveStatementResolver.class);
     private final RequestAuthorizationService service = new RequestAuthorizationService(
         this.statements,
-        new JavaScriptPolicyEvaluator(),
-        new StatementArtifactFactory(new JavaScriptPolicyCompiler())
+        new PolicyEvaluator(),
+        new StatementArtifactFactory(new PolicyCompiler(), List.of())
     );
 
     /**
@@ -80,7 +80,7 @@ class RequestAuthorizationServiceTest {
     }
 
     /**
-     * Verifies that an allow Statement only grants access when its JavaScript policy returns true.
+     * Verifies that an allow Statement only grants access when its Policy Language policy returns true.
      *
      * Given: a matching allow Statement whose policy requires the request method to be GET.
      * Expect: GET is allowed and POST is denied by the policy IR evaluator.
@@ -91,7 +91,7 @@ class RequestAuthorizationServiceTest {
         // Arrange
         UUID userId = UUID.randomUUID();
         when(this.statements.resolve(userId)).thenReturn(
-            List.of(statement(Effect.ALLOW, "export default ({ request }) => request.method === 'GET';"))
+            List.of(statement(Effect.ALLOW, "return request.method == \"GET\";"))
         );
 
         // Act
@@ -126,8 +126,8 @@ class RequestAuthorizationServiceTest {
         UUID userId = UUID.randomUUID();
         when(this.statements.resolve(userId)).thenReturn(
             List.of(
-                statement(Effect.ALLOW, "export default ({ request }) => request.method === 'GET';"),
-                statement(Effect.DENY, "export default ({ principal }) => principal.blocked === true;")
+                statement(Effect.ALLOW, "return request.method == \"GET\";"),
+                statement(Effect.DENY, "return principal.username == \"blocked\";")
             )
         );
 
@@ -136,13 +136,13 @@ class RequestAuthorizationServiceTest {
             userId,
             "GET",
             "/api/v0/users",
-            Map.of("request", Map.of("method", "GET"), "principal", Map.of("blocked", true))
+            Map.of("request", Map.of("method", "GET"), "principal", Map.of("username", "blocked"))
         );
         RequestAuthorizationDecision unblocked = this.service.authorize(
             userId,
             "GET",
             "/api/v0/users",
-            Map.of("request", Map.of("method", "GET"), "principal", Map.of("blocked", false))
+            Map.of("request", Map.of("method", "GET"), "principal", Map.of("username", "alice"))
         );
 
         // Assert
@@ -153,7 +153,7 @@ class RequestAuthorizationServiceTest {
     /**
      * Verifies that a policy evaluation failure cannot turn into an authorization grant.
      *
-     * Given: a matching allow Statement containing malformed JavaScript policy source.
+     * Given: a matching allow Statement containing malformed Policy Language source.
      * Expect: authorization returns a denied decision.
      */
     @Test
@@ -162,7 +162,7 @@ class RequestAuthorizationServiceTest {
         // Arrange
         UUID userId = UUID.randomUUID();
         when(this.statements.resolve(userId)).thenReturn(
-            List.of(statement(Effect.ALLOW, "export default ({ request }) => request.method === ;"))
+            List.of(statement(Effect.ALLOW, "return request.method == ;"))
         );
 
         // Act
@@ -208,7 +208,7 @@ class RequestAuthorizationServiceTest {
         // Arrange
         UUID userId = UUID.randomUUID();
         when(this.statements.resolve(userId)).thenReturn(
-            List.of(statement(Effect.ALLOW, "export default ({ request }) => request.pathVariables.userId === '42';"))
+            List.of(statement(Effect.ALLOW, "return request.pathVariables.userId == \"42\";"))
         );
 
         // Act
@@ -238,7 +238,7 @@ class RequestAuthorizationServiceTest {
         AuthorizationSnapshot snapshot = new AuthorizationSnapshot(
             userId,
             statements,
-            new StatementArtifactFactory(new JavaScriptPolicyCompiler()).build(statements),
+            new StatementArtifactFactory(new PolicyCompiler(), List.of()).build(statements),
             Map.of("request", Map.of("method", "GET"))
         );
 
@@ -283,7 +283,7 @@ class RequestAuthorizationServiceTest {
         // Arrange
         UUID userId = UUID.randomUUID();
         when(this.statements.resolve(userId)).thenReturn(
-            List.of(statement(Effect.ALLOW), statement(Effect.DENY, "export default () => true;"))
+            List.of(statement(Effect.ALLOW), statement(Effect.DENY, "return true;"))
         );
 
         // Act
@@ -299,7 +299,7 @@ class RequestAuthorizationServiceTest {
     }
 
     private static StatementInfo statement(Effect effect) {
-        return statement(effect, "export default () => true;");
+        return statement(effect, "return true;");
     }
 
     private static StatementInfo statement(Effect effect, String policy) {

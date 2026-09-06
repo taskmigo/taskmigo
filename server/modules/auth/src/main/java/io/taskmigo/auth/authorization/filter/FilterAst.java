@@ -71,7 +71,8 @@ public record FilterAst(Expression expression) {
         return new Binary(Operator.AND, left, right);
     }
 
-    private static Expression or(Expression left, Expression right) {
+    /// Disjoins filters with null-object simplification.
+    public static Expression or(Expression left, Expression right) {
         if (left instanceof All || right instanceof All) {
             return all();
         }

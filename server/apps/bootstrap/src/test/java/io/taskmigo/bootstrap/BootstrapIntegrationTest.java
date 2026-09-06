@@ -162,14 +162,14 @@ class BootstrapIntegrationTest {
     }
 
     /**
-     * Verifies that every managed bootstrap Statement uses the final JavaScript policy contract.
+     * Verifies that every managed bootstrap Statement uses the final Policy Language contract.
      *
      * Given: the five Statements declared in the managed bootstrap authorization bundle.
-     * Expect: every definition is persisted with a canonical scope and a non-blank default-exported policy.
+     * Expect: every definition is persisted with a canonical scope and a non-blank direct-body policy.
      */
     @Test
-    @DisplayName("persists JavaScript policies for every built-in statement")
-    void shouldPersistJavaScriptPoliciesWhenBootstrapRuns() {
+    @DisplayName("persists Policy Language policies for every built-in statement")
+    void shouldPersistPolicyLanguagePoliciesWhenBootstrapRuns() {
         // Arrange
         Map<String, Scope> builtInScopes = Map.of(
             "system_operator_request_all",
@@ -193,7 +193,7 @@ class BootstrapIntegrationTest {
             .hasSize(builtInScopes.size())
             .allSatisfy(statement -> {
                 assertThat(statement.scope()).isEqualTo(builtInScopes.get(statement.name()));
-                assertThat(statement.policy()).isNotBlank().startsWith("export default");
+                assertThat(statement.policy()).isNotBlank().startsWith("return");
             });
     }
 

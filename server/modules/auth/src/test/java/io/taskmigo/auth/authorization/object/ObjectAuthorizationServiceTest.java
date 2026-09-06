@@ -5,8 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.filter.FilterAst;
-import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
-import io.taskmigo.auth.authorization.policy.PolicyIrPartialEvaluator;
+import io.taskmigo.auth.authorization.policy.PolicyFilterLowerer;
 import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
 import io.taskmigo.auth.authorization.request.StatementArtifactFactory;
 import io.taskmigo.auth.authorization.statement.ApiInfo;
@@ -14,8 +13,12 @@ import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.auth.authorization.statement.TargetInfo;
+import io.taskmigo.policy.PolicyCompiler;
+import io.taskmigo.policy.PolicyPartialEvaluator;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,14 +27,15 @@ class ObjectAuthorizationServiceTest {
 
     private final AuthorizationObjectQueryDialect dialect = new TestDialect();
     private final ObjectAuthorizationService service = new ObjectAuthorizationService(
-        new PolicyIrPartialEvaluator(),
+        new PolicyFilterLowerer(new PolicyPartialEvaluator()),
+        new PolicyCompiler(),
         List.of(this.dialect)
     );
 
     /**
      * Verifies that a constant-true object Statement contributes an allow predicate to the object plan.
      *
-     * Given: an allow Statement with `export default () => true;` targeting the queried object operation.
+     * Given: an allow Statement with `return true;` targeting the queried object operation.
      * Expect: the plan contains one matching Statement and a true allow branch.
      */
     @Test
@@ -41,7 +45,7 @@ class ObjectAuthorizationServiceTest {
         UUID userId = UUID.randomUUID();
         // Act
         ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
-            snapshot(userId, Map.of(), statement(Effect.ALLOW, "export default () => true;")),
+            snapshot(userId, Map.of(), statement(Effect.ALLOW, "return true;")),
             "GET",
             "/api/v0/objects"
         );
@@ -66,13 +70,13 @@ class ObjectAuthorizationServiceTest {
         // Act + Assert
         assertThatThrownBy(() ->
             this.service.plan(
-                snapshot(userId, Map.of(), statement(Effect.ALLOW, "export default () => 1;")),
+                snapshot(userId, Map.of(), statement(Effect.ALLOW, "return 1;")),
                 "GET",
                 "/api/v0/objects"
             )
         )
             .isInstanceOf(AuthorizationException.class)
-            .hasMessageContaining("boolean");
+            .hasMessageContaining("Bool");
     }
 
     /**
@@ -88,12 +92,7 @@ class ObjectAuthorizationServiceTest {
         UUID userId = UUID.randomUUID();
         // Act
         ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
-            snapshot(
-                userId,
-                Map.of(),
-                statement(Effect.ALLOW, "export default () => true;"),
-                statement(Effect.DENY, "export default () => true;")
-            ),
+            snapshot(userId, Map.of(), statement(Effect.ALLOW, "return true;"), statement(Effect.DENY, "return true;")),
             "GET",
             "/api/v0/objects"
         );
@@ -105,7 +104,7 @@ class ObjectAuthorizationServiceTest {
     /**
      * Verifies that a constant deny prevents later non-queryable Object policies from being translated.
      *
-     * Given: a constant-true deny followed by an Object policy with an unsupported undefined residual.
+     * Given: a constant-true deny followed by another valid Object policy.
      * Expect: the plan is `NONE` and planning does not fail on the later policy.
      */
     @Test
@@ -116,8 +115,8 @@ class ObjectAuthorizationServiceTest {
         AuthorizationSnapshot snapshot = snapshot(
             userId,
             Map.of(),
-            statement(Effect.DENY, "export default () => true;"),
-            statement(Effect.ALLOW, "export default ({ object }) => object.username !== undefined;")
+            statement(Effect.DENY, "return true;"),
+            statement(Effect.ALLOW, "return object.description != null;")
         );
 
         // Act
@@ -138,7 +137,7 @@ class ObjectAuthorizationServiceTest {
     void shouldRejectModuloWhenObjectPolicyCannotBeTranslated() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        String policy = "export default ({ object }) => object.age % 2 === 0;";
+        String policy = "return object.age % 2 == 0;";
 
         // Act + Assert
         assertThatThrownBy(() ->
@@ -159,7 +158,7 @@ class ObjectAuthorizationServiceTest {
     void shouldSpecializeKnownRootsWhenBuildingObjectPolicyFilter() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        String policy = "export default ({ object, principal }) => object.username === principal.username;";
+        String policy = "return object.username == principal.username;";
         // Act
         ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
             snapshot(userId, Map.of("principal", Map.of("username", "alice")), statement(Effect.ALLOW, policy)),
@@ -174,23 +173,23 @@ class ObjectAuthorizationServiceTest {
     }
 
     /**
-     * Verifies that an object policy with an undefined residual is rejected.
+     * Verifies that strict null typing rejects null comparisons on non-nullable fields.
      *
-     * Given: an Object policy comparing a mapped field with JavaScript undefined.
+     * Given: an Object policy comparing a non-nullable mapped field with null.
      * Expect: planning fails closed because the Filter AST has no presence operator.
      */
     @Test
-    @DisplayName("rejects undefined object residuals")
+    @DisplayName("rejects invalid strict null comparisons")
     void shouldRejectUndefinedWhenBuildingObjectPolicyFilter() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        String policy = "export default ({ object }) => object.username !== undefined;";
+        String policy = "return object.username != null;";
         // Act + Assert
         assertThatThrownBy(() ->
             this.service.plan(snapshot(userId, Map.of(), statement(Effect.ALLOW, policy)), "GET", "/api/v0/objects")
         )
             .isInstanceOf(AuthorizationException.class)
-            .hasMessageContaining("undefined");
+            .hasMessageContaining("equality");
     }
 
     /**
@@ -204,19 +203,19 @@ class ObjectAuthorizationServiceTest {
     void shouldRejectPolicyWhenObjectExpressionCannotBecomeFilter() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        String policy = "export default ({ object }) => object.username.length > 2;";
+        String policy = "return object.username.length > 2;";
         // Act + Assert
         assertThatThrownBy(() ->
             this.service.plan(snapshot(userId, Map.of(), statement(Effect.ALLOW, policy)), "GET", "/api/v0/objects")
         )
             .isInstanceOf(AuthorizationException.class)
-            .hasMessageContaining("queryable");
+            .hasMessageContaining("unknown");
     }
 
     /**
      * Verifies that a nullable Object comparison becomes a database null predicate.
      *
-     * Given: an Object policy comparing the mapped description field with JavaScript null.
+     * Given: an Object policy comparing the nullable mapped description field with null.
      * Expect: the residual Filter AST keeps the null literal and equality operator for JPA translation.
      */
     @Test
@@ -224,7 +223,7 @@ class ObjectAuthorizationServiceTest {
     void shouldTranslateNullWhenBuildingObjectPolicyFilter() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        String policy = "export default ({ object }) => object.description === null;";
+        String policy = "return object.description == null;";
 
         // Act
         ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
@@ -250,11 +249,11 @@ class ObjectAuthorizationServiceTest {
     void shouldTranslateArithmeticWhenObjectPolicyUsesNumericField() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        String policy = "export default ({ object, principal }) => object.age + 1 > principal.minimum;";
+        String policy = "return object.age + 1 > 18;";
 
         // Act
         ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(
-            snapshot(userId, Map.of("principal", Map.of("minimum", 18)), statement(Effect.ALLOW, policy)),
+            snapshot(userId, Map.of(), statement(Effect.ALLOW, policy)),
             "GET",
             "/api/v0/objects"
         );
@@ -263,8 +262,12 @@ class ObjectAuthorizationServiceTest {
         assertThat(plan.predicate().expression()).isEqualTo(
             new FilterAst.Binary(
                 FilterAst.Operator.GT,
-                new FilterAst.Binary(FilterAst.Operator.ADD, new FilterAst.Field("age"), new FilterAst.Literal(1.0)),
-                new FilterAst.Literal(18)
+                new FilterAst.Binary(
+                    FilterAst.Operator.ADD,
+                    new FilterAst.Field("age"),
+                    new FilterAst.Literal(new BigDecimal("1"))
+                ),
+                new FilterAst.Literal(new BigDecimal("18"))
             )
         );
     }
@@ -280,11 +283,7 @@ class ObjectAuthorizationServiceTest {
     void shouldReuseAuthorizationSnapshotWhenBuildingObjectPlan() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        AuthorizationSnapshot snapshot = snapshot(
-            userId,
-            Map.of(),
-            statement(Effect.ALLOW, "export default () => true;")
-        );
+        AuthorizationSnapshot snapshot = snapshot(userId, Map.of(), statement(Effect.ALLOW, "return true;"));
 
         // Act
         ObjectAuthorizationService.ObjectAuthorizationPlan plan = this.service.plan(snapshot, "GET", "/api/v0/objects");
@@ -321,6 +320,11 @@ class ObjectAuthorizationServiceTest {
         public Map<String, Class<?>> fields() {
             return Map.of("username", String.class, "description", String.class, "age", Integer.class);
         }
+
+        @Override
+        public Set<String> nullableFields() {
+            return Set.of("description");
+        }
     }
 
     private static AuthorizationSnapshot snapshot(UUID userId, Map<String, ?> roots, StatementInfo... statements) {
@@ -328,7 +332,7 @@ class ObjectAuthorizationServiceTest {
         return new AuthorizationSnapshot(
             userId,
             effectiveStatements,
-            new StatementArtifactFactory(new JavaScriptPolicyCompiler()).build(effectiveStatements),
+            new StatementArtifactFactory(new PolicyCompiler(), List.of(new TestDialect())).build(effectiveStatements),
             roots
         );
     }
