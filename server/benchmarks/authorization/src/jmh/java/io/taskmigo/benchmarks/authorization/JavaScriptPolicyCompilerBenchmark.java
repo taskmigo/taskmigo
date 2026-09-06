@@ -1,10 +1,14 @@
 package io.taskmigo.benchmarks.authorization;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.openjdk.jmh.annotations.Scope.Thread;
 
 import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
 import io.taskmigo.auth.authorization.policy.PolicyIr;
 import io.taskmigo.auth.authorization.statement.Scope;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -23,6 +27,9 @@ import org.openjdk.jmh.infra.Blackhole;
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 public class JavaScriptPolicyCompilerBenchmark {
 
+    private static final int DATASET_SIZE = 500;
+    private static final String DATASET_ROOT = "/io/taskmigo/benchmarks/authorization/";
+
     /// Measures compiling one deterministic batch of authorization policies.
     @Benchmark
     public void compileBatch(BenchmarkState state, Blackhole blackhole) {
@@ -33,7 +40,7 @@ public class JavaScriptPolicyCompilerBenchmark {
         blackhole.consume(compiled);
     }
 
-    /// Holds the immutable compiler and generated policy source used by each benchmark thread.
+    /// Holds the immutable compiler and loaded policy source used by each benchmark thread.
     @State(Thread)
     public static class BenchmarkState {
 
@@ -53,7 +60,7 @@ public class JavaScriptPolicyCompilerBenchmark {
         private Scope scope = Scope.REQUEST;
         private List<String> policies = List.of();
 
-        /// Creates deterministic policy sources before JMH starts measuring the benchmark.
+        /// Loads deterministic policy sources before JMH starts measuring the benchmark.
         @Setup
         public void setUp() {
             this.scope = Scope.valueOf(this.scopeName);
@@ -62,134 +69,52 @@ public class JavaScriptPolicyCompilerBenchmark {
     }
 
     private static List<String> policies(Scope scope, String policyType, int count) {
-        List<String> policies = IntStream.range(0, count)
-            .mapToObj(index -> policy(scope, policyType, index))
-            .toList();
+        if (count < 1 || count > DATASET_SIZE) {
+            throw new IllegalArgumentException("statementCount must be between 1 and " + DATASET_SIZE);
+        }
+        List<String[]> rows = rows(datasetResource(policyType));
+        if (rows.size() != DATASET_SIZE) {
+            throw new IllegalStateException("Benchmark dataset must contain exactly " + DATASET_SIZE + " statements");
+        }
+        IntStream.range(0, rows.size()).forEach(index -> validateRow(rows.get(index), index));
+        int column = scope == Scope.REQUEST ? 1 : 2;
+        List<String> policies = rows.subList(0, count).stream().map(row -> row[column]).toList();
         if (policies.stream().distinct().count() != policies.size()) {
-            throw new IllegalStateException("Benchmark policy data must contain only unique statements");
+            throw new IllegalStateException("Benchmark dataset must contain only unique statements");
         }
         return policies;
     }
 
-    private static String policy(Scope scope, String policyType, int index) {
+    private static String datasetResource(String policyType) {
         return switch (policyType) {
-            case "SIMPLE" -> simplePolicy(scope, index);
-            case "COMPLEX" -> complexPolicy(scope, index);
+            case "SIMPLE" -> DATASET_ROOT + "simple-statements.tsv";
+            case "COMPLEX" -> DATASET_ROOT + "complex-statements.tsv";
             default -> throw new IllegalArgumentException("Unknown policy type: " + policyType);
         };
     }
 
-    private static String simplePolicy(Scope scope, int index) {
-        if (scope == Scope.REQUEST) {
-            return switch (index % 4) {
-                case 0 -> "export default ({ request }) => request.method === 'METHOD_%d';".formatted(index);
-                case 1 -> "export default ({ request }) => request.pathVariables.userId === 'USER_%d';".formatted(
-                    index
-                );
-                case 2 -> "export default ({ principal }) => principal.id !== 'PRINCIPAL_%d';".formatted(index);
-                default -> "export default ({ request }) => request.pathVariables.resourceId !== 'RESOURCE_%d';".formatted(
-                    index
-                );
-            };
+    private static List<String[]> rows(String resource) {
+        var stream = JavaScriptPolicyCompilerBenchmark.class.getResourceAsStream(resource);
+        if (stream == null) {
+            throw new IllegalStateException("Missing benchmark dataset: " + resource);
         }
-        return switch (index % 4) {
-            case 0 -> "export default ({ object }) => object.score >= %d;".formatted(index);
-            case 1 -> "export default ({ object }) => object.ownerId === 'OWNER_%d';".formatted(index);
-            case 2 -> "export default ({ object }) => object.status !== 'STATUS_%d';".formatted(index);
-            default -> "export default ({ object }) => object.version < %d;".formatted(index + 1);
-        };
-    }
-
-    private static String complexPolicy(Scope scope, int index) {
-        if (scope == Scope.REQUEST) {
-            return complexRequestPolicy(index);
+        try (var reader = new BufferedReader(new InputStreamReader(stream, UTF_8))) {
+            String header = reader.readLine();
+            if (!"id\trequest\tobject".equals(header)) {
+                throw new IllegalStateException("Invalid benchmark dataset header: " + resource);
+            }
+            return reader.lines().map(line -> line.split("\\t", -1)).toList();
+        } catch (IOException exception) {
+            throw new IllegalStateException("Cannot read benchmark dataset: " + resource, exception);
         }
-        return complexObjectPolicy(index);
     }
 
-    private static String complexRequestPolicy(int index) {
-        return switch (index % 4) {
-            case 0 -> """
-            export default ({ request, principal }) => {
-              const expectedMethod = 'METHOD_%d';
-              const reservedUser = 'USER_%d';
-              if (request.method === expectedMethod && principal.id !== '') {
-                return request.pathVariables.userId === principal.id
-                  && request.pathVariables.userId !== reservedUser;
-              }
-              return false;
-            };
-            """.formatted(index, index);
-            case 1 -> """
-            export default ({ request, principal }) => {
-              const expectedResource = 'RESOURCE_%d';
-              if (request.pathVariables.resourceId === expectedResource) {
-                return request.method !== 'DELETE_%d' && principal.id !== '';
-              }
-              return false;
-            };
-            """.formatted(index, index);
-            case 2 -> """
-            export default ({ request, principal }) => {
-              const lowerBound = %d;
-              const upperBound = %d;
-              if (principal.rank >= lowerBound) {
-                return principal.rank < upperBound && request.method === 'PATCH_%d';
-              }
-              return false;
-            };
-            """.formatted(index, index + 100, index);
-            default -> """
-            export default ({ request, principal }) => {
-              const expectedOwner = 'OWNER_%d';
-              if (request.pathVariables.ownerId === expectedOwner || principal.id === expectedOwner) {
-                return request.method === 'GET_%d' && request.pathVariables.userId !== '';
-              }
-              return false;
-            };
-            """.formatted(index, index);
-        };
-    }
-
-    private static String complexObjectPolicy(int index) {
-        return switch (index % 4) {
-            case 0 -> """
-            export default ({ object, principal }) => {
-              const threshold = 40 + %d;
-              if (object.enabled === true && object.ownerId === principal.id) {
-                return object.score >= threshold && object.kind !== 'KIND_%d';
-              }
-              return false;
-            };
-            """.formatted(index, index);
-            case 1 -> """
-            export default ({ object, principal }) => {
-              const expectedStatus = 'STATUS_%d';
-              if (object.status === expectedStatus) {
-                return object.ownerId === principal.id && object.version >= %d;
-              }
-              return false;
-            };
-            """.formatted(index, index);
-            case 2 -> """
-            export default ({ object, principal }) => {
-              const minimumScore = %d;
-              const maximumScore = %d;
-              if (object.score >= minimumScore && object.score < maximumScore) {
-                return object.enabled !== false && principal.id !== '';
-              }
-              return false;
-            };
-            """.formatted(index, index + 100);
-            default -> """
-            export default ({ object, principal }) => {
-              const expectedOwner = 'OWNER_%d';
-              if (object.ownerId === expectedOwner || object.ownerId === principal.id) {
-                return object.kind === 'KIND_%d' && object.enabled === true;
-              }
-              return false;
-            };
-            """.formatted(index, index);
-        };
+    private static void validateRow(String[] row, int index) {
+        if (row.length != 3 || row[1].isBlank() || row[2].isBlank()) {
+            throw new IllegalStateException("Invalid benchmark dataset row: " + index);
+        }
+        if (!row[0].equals("%03d".formatted(index))) {
+            throw new IllegalStateException("Benchmark dataset IDs must be contiguous from 000 to 499");
+        }
     }
 }
