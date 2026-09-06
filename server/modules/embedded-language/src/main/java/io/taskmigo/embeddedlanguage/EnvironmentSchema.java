@@ -3,6 +3,7 @@ package io.taskmigo.embeddedlanguage;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +17,8 @@ public final class EnvironmentSchema {
 
     private final String identity;
     private final Map<String, Root> roots;
+    private final Map<String, Map<List<String>, Field>> fieldsByPath;
+    private final String fingerprint;
 
     public EnvironmentSchema(String identity, Map<String, Root> roots) {
         if (identity == null || identity.isBlank() || roots.isEmpty()) throw new IllegalArgumentException(
@@ -23,6 +26,14 @@ public final class EnvironmentSchema {
         );
         this.identity = identity;
         this.roots = Map.copyOf(roots);
+        Map<String, Map<List<String>, Field>> indexedFields = new HashMap<>();
+        this.roots.forEach((rootName, root) -> {
+            Map<List<String>, Field> fields = new HashMap<>();
+            root.fields().forEach((path, field) -> fields.put(List.of(path.split("\\.")), field));
+            indexedFields.put(rootName, Map.copyOf(fields));
+        });
+        this.fieldsByPath = Map.copyOf(indexedFields);
+        this.fingerprint = computeFingerprint();
     }
 
     /// Returns the consumer-owned schema identity.
@@ -40,11 +51,11 @@ public final class EnvironmentSchema {
         Root root = this.roots.get(rootName);
         if (root == null) return null;
         if (path.isEmpty()) return root.value();
-        String joined = String.join(".", path);
-        Field exact = root.fields().get(joined);
+        Map<List<String>, Field> indexedFields = Objects.requireNonNull(this.fieldsByPath.get(rootName));
+        Field exact = indexedFields.get(path);
         if (exact != null) return exact;
         for (int index = path.size() - 1; index >= 0; index--) {
-            Field prefix = root.fields().get(String.join(".", path.subList(0, index)));
+            Field prefix = indexedFields.get(path.subList(0, index));
             if (prefix != null && prefix.dynamicMemberType() != null && index < path.size()) {
                 return new Field(prefix.dynamicMemberType(), false, prefix.symbolic(), prefix.queryable());
             }
@@ -54,6 +65,10 @@ public final class EnvironmentSchema {
 
     /// Returns a deterministic fingerprint for the complete schema contract.
     public String fingerprint() {
+        return this.fingerprint;
+    }
+
+    private String computeFingerprint() {
         StringBuilder value = new StringBuilder(this.identity);
         this.roots
             .keySet()
