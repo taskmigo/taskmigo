@@ -82,7 +82,11 @@ public class JavaScriptPolicyCompilerBenchmark {
         IntStream.range(0, rows.size()).forEach(index -> validateRow(rows.get(index), index));
         validateDataset(rows, policyType);
         int column = scope == Scope.REQUEST ? 1 : 2;
-        List<String> policies = rows.subList(0, count).stream().map(row -> row[column]).toList();
+        List<String> policies = rows
+            .subList(0, count)
+            .stream()
+            .map(row -> row[column])
+            .toList();
         if (policies.stream().distinct().count() != policies.size()) {
             throw new IllegalStateException("Benchmark dataset must contain only unique statements");
         }
@@ -115,7 +119,10 @@ public class JavaScriptPolicyCompilerBenchmark {
             if (!"id\trequest\tobject".equals(header)) {
                 throw new IllegalStateException("Invalid benchmark dataset header: " + resource);
             }
-            return reader.lines().map(line -> line.split("\\t", -1)).toList();
+            return reader
+                .lines()
+                .map(line -> line.split("\\t", -1))
+                .toList();
         } catch (IOException exception) {
             throw new IllegalStateException("Cannot read benchmark dataset: " + resource, exception);
         }
@@ -124,10 +131,20 @@ public class JavaScriptPolicyCompilerBenchmark {
     private static void validateDataset(List<String[]> rows, String policyType) {
         int expectedFamilies = expectedStructuralFamilies(policyType);
         for (int column = 1; column <= 2; column++) {
-            if (rows.stream().map(row -> row[column]).distinct().count() != DATASET_SIZE) {
+            if (
+                rows
+                    .stream()
+                    .map(row -> row[column])
+                    .distinct()
+                    .count() != DATASET_SIZE
+            ) {
                 throw new IllegalStateException("Benchmark dataset must contain only unique statements");
             }
-            long families = rows.stream().map(row -> structuralFingerprint(row[column])).distinct().count();
+            long families = rows
+                .stream()
+                .map(row -> structuralFingerprint(row[column]))
+                .distinct()
+                .count();
             if (families != expectedFamilies) {
                 throw new IllegalStateException(
                     "Benchmark dataset must contain exactly " + expectedFamilies + " structural families"
