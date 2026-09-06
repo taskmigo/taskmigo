@@ -156,6 +156,7 @@ public class JavaScriptPolicyCompilerBenchmark {
         }
     }
 
+    /// Removes literal-only differences so changing a value does not count as structural diversity.
     private static String structuralFingerprint(String source) {
         String normalized = STRING_LITERAL.matcher(source).replaceAll("'#'");
         normalized = NUMBER_LITERAL.matcher(normalized).replaceAll("#");
