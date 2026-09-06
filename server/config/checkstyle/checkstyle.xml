@@ -19,6 +19,10 @@
 
         <module name="NeedBraces"/>
 
+        <module name="UnusedLocalVariable" />
+
+        <module name="UnusedPrivateField"/>
+
         <!-- Require imported short forms for annotations. -->
         <module name="MatchXpath">
             <property name="id" value="NoFullyQualifiedAnnotation"/>

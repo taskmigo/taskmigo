@@ -99,8 +99,8 @@ public class ObjectAuthorizationService {
         Map<String, Class<?>> fields
     ) {
         return switch (expression) {
-            case FilterAst.All ignored -> builder.conjunction();
-            case FilterAst.None ignored -> builder.disjunction();
+            case FilterAst.All _ -> builder.conjunction();
+            case FilterAst.None _ -> builder.disjunction();
             case FilterAst.Literal literal when literal.value() instanceof Boolean value -> value
                 ? builder.conjunction()
                 : builder.disjunction();
@@ -204,11 +204,11 @@ public class ObjectAuthorizationService {
 
     private void validate(FilterAst.Expression expression, FilterSchema schema) {
         switch (expression) {
-            case FilterAst.All ignored -> {
+            case FilterAst.All _ -> {
             }
-            case FilterAst.None ignored -> {
+            case FilterAst.None _ -> {
             }
-            case FilterAst.Literal ignored -> {
+            case FilterAst.Literal _ -> {
             }
             case FilterAst.Field field -> {
                 if (!schema.fields().containsKey(field.name())) {
@@ -238,9 +238,9 @@ public class ObjectAuthorizationService {
 
     private void validatePredicate(FilterAst.Expression expression, FilterSchema schema) {
         switch (expression) {
-            case FilterAst.All ignored -> {
+            case FilterAst.All _ -> {
             }
-            case FilterAst.None ignored -> {
+            case FilterAst.None _ -> {
             }
             case FilterAst.Literal literal -> {
                 if (!(literal.value() instanceof Boolean)) {
