@@ -3,12 +3,12 @@ name: Authorization performance
 on:
   pull_request:
     paths:
-      - "server/benchmarks/authorization/**"
+      - "server/**"
       - ".github/workflows/authorization-performance.yml"
   push:
     branches: [next]
     paths:
-      - "server/benchmarks/authorization/**"
+      - "server/**"
       - ".github/workflows/authorization-performance.yml"
 
 concurrency:
