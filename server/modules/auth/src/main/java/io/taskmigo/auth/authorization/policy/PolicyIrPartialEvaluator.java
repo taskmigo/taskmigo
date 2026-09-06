@@ -160,8 +160,7 @@ public final class PolicyIrPartialEvaluator {
 
     private static boolean containsReference(PolicyIr.Expression expression) {
         return switch (expression) {
-            case PolicyIr.Literal _ -> false;
-            case PolicyIr.UndefinedValue _ -> false;
+            case PolicyIr.Literal _, PolicyIr.UndefinedValue _ -> false;
             case PolicyIr.Reference _ -> true;
             case PolicyIr.PropertyAccess property -> containsReference(property.target());
             case PolicyIr.Binary binary -> containsReference(binary.left()) || containsReference(binary.right());
@@ -174,8 +173,7 @@ public final class PolicyIrPartialEvaluator {
 
     private static boolean isPredicate(FilterAst.Expression expression) {
         return switch (expression) {
-            case FilterAst.All _ -> true;
-            case FilterAst.None _ -> true;
+            case FilterAst.All _, FilterAst.None _ -> true;
             case FilterAst.Literal literal -> literal.value() instanceof Boolean;
             case FilterAst.Unary unary -> unary.operator() == FilterAst.Operator.NOT && isPredicate(unary.operand());
             case FilterAst.Binary binary -> switch (binary.operator()) {

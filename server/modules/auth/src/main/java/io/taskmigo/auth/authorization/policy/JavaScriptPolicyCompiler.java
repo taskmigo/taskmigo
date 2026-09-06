@@ -343,8 +343,7 @@ public final class JavaScriptPolicyCompiler {
     private static boolean containsObject(PolicyIr.Expression expression) {
         return switch (expression) {
             case PolicyIr.Reference reference -> reference.root().equals("object");
-            case PolicyIr.Literal _ -> false;
-            case PolicyIr.UndefinedValue _ -> false;
+            case PolicyIr.Literal _, PolicyIr.UndefinedValue _ -> false;
             case PolicyIr.PropertyAccess property -> containsObject(property.target());
             case PolicyIr.Binary binary -> containsObject(binary.left()) || containsObject(binary.right());
             case PolicyIr.Unary unary -> containsObject(unary.operand());
@@ -356,8 +355,7 @@ public final class JavaScriptPolicyCompiler {
 
     private static boolean containsReference(PolicyIr.Expression expression) {
         return switch (expression) {
-            case PolicyIr.Literal _ -> false;
-            case PolicyIr.UndefinedValue _ -> false;
+            case PolicyIr.Literal _, PolicyIr.UndefinedValue _ -> false;
             case PolicyIr.Reference _ -> true;
             case PolicyIr.PropertyAccess property -> containsReference(property.target());
             case PolicyIr.Binary binary -> containsReference(binary.left()) || containsReference(binary.right());
@@ -437,9 +435,7 @@ public final class JavaScriptPolicyCompiler {
 
     private static void validateObjectPolicy(PolicyIr.Expression expression) {
         switch (expression) {
-            case PolicyIr.Literal _ -> {
-            }
-            case PolicyIr.UndefinedValue _ -> {
+            case PolicyIr.Literal _, PolicyIr.UndefinedValue _ -> {
             }
             case PolicyIr.Reference reference -> {
                 if (reference.root().equals("object") && reference.path().size() != 1) {

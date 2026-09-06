@@ -42,16 +42,6 @@ public class GroupService {
         this.objectAuthorization = objectAuthorization;
     }
 
-    /// Lists Groups in stable id order, retaining their direct child hierarchy in each returned item.
-    ///
-    /// @param page the one-based page requested by the API client
-    /// @param perPage the maximum number of Groups to return
-    /// @return one offset-paginated page of Groups
-    @Transactional(readOnly = true)
-    public OffsetPage<GroupInfo> list(int page, int perPage) {
-        return this.list(page, perPage, null);
-    }
-
     /// Lists Groups using an optional database-side object authorization predicate.
     @Transactional(readOnly = true)
     public OffsetPage<GroupInfo> list(
@@ -120,18 +110,6 @@ public class GroupService {
         this.users.require(userId);
         group.memberIds.add(userId);
         this.groups.flush();
-    }
-
-    @Transactional
-    public void removeMember(UUID groupId, UUID userId) {
-        GroupEntity group = this.entity(groupId);
-        group.memberIds.remove(userId);
-        this.groups.flush();
-    }
-
-    @Transactional(readOnly = true)
-    public GroupInfo require(UUID id) {
-        return info(this.entity(id));
     }
 
     /// Validates that every supplied Group id exists.

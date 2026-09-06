@@ -83,16 +83,6 @@ public class RoleService {
             );
     }
 
-    /// Lists global Roles with a stable id order for offset pagination.
-    ///
-    /// @param page the one-based page requested by the API client
-    /// @param perPage the maximum number of Roles to return
-    /// @return one page of global Roles
-    @Transactional(readOnly = true)
-    public OffsetPage<RoleInfo> listRoles(int page, int perPage) {
-        return this.listRoles(page, perPage, null);
-    }
-
     /// Lists Roles using an optional database-side object authorization predicate.
     @Transactional(readOnly = true)
     public OffsetPage<RoleInfo> listRoles(
@@ -229,12 +219,5 @@ public class RoleService {
             .map(child -> info(child, nextAncestors))
             .toList();
         return new RoleInfo(role.id, role.name, role.description, children);
-    }
-
-    private static String required(@Nullable String value, String field) {
-        if (value == null || value.isBlank()) {
-            throw new RoleException(RoleException.Type.BAD_REQUEST, field + " is required");
-        }
-        return value.trim();
     }
 }

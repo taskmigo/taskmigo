@@ -204,11 +204,7 @@ public class ObjectAuthorizationService {
 
     private void validate(FilterAst.Expression expression, FilterSchema schema) {
         switch (expression) {
-            case FilterAst.All _ -> {
-            }
-            case FilterAst.None _ -> {
-            }
-            case FilterAst.Literal _ -> {
+            case FilterAst.All _, FilterAst.None _, FilterAst.Literal _ -> {
             }
             case FilterAst.Field field -> {
                 if (!schema.fields().containsKey(field.name())) {
@@ -238,9 +234,7 @@ public class ObjectAuthorizationService {
 
     private void validatePredicate(FilterAst.Expression expression, FilterSchema schema) {
         switch (expression) {
-            case FilterAst.All _ -> {
-            }
-            case FilterAst.None _ -> {
+            case FilterAst.All _, FilterAst.None _ -> {
             }
             case FilterAst.Literal literal -> {
                 if (!(literal.value() instanceof Boolean)) {
