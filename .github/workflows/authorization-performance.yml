@@ -33,9 +33,9 @@ env:
   JMH_WARMUP_TIME: 1s
   JMH_MEASUREMENT_ITERATIONS: "4"
   JMH_MEASUREMENT_TIME: 1s
-  JMH_RESULTS_FILE: ${{ runner.temp }}/jmh-results.json
-  JMH_HUMAN_OUTPUT_FILE: ${{ runner.temp }}/jmh-report.txt
-  JMH_LOG_FILE: ${{ runner.temp }}/jmh.log
+  JMH_RESULTS_FILE: jmh-results.json
+  JMH_HUMAN_OUTPUT_FILE: jmh-report.txt
+  JMH_LOG_FILE: jmh.log
 
 jobs:
   benchmark:
@@ -84,9 +84,9 @@ jobs:
             -p policyType=SIMPLE,COMPLEX \
             -p statementCount="$JMH_STATEMENT_COUNT" \
             -rf JSON \
-            -rff "$JMH_RESULTS_FILE" \
-            -o "$JMH_HUMAN_OUTPUT_FILE" \
-            2>&1 | tee "$JMH_LOG_FILE"
+            -rff "$RUNNER_TEMP/$JMH_RESULTS_FILE" \
+            -o "$RUNNER_TEMP/$JMH_HUMAN_OUTPUT_FILE" \
+            2>&1 | tee "$RUNNER_TEMP/$JMH_LOG_FILE"
 
       - name: Publish JMH report
         if: ${{ always() }}
@@ -98,10 +98,10 @@ jobs:
             echo "Forks: $JMH_FORKS"
             echo "Warmup: $JMH_WARMUP_ITERATIONS × $JMH_WARMUP_TIME"
             echo "Measurement: $JMH_MEASUREMENT_ITERATIONS × $JMH_MEASUREMENT_TIME"
-            if [[ -s "$JMH_HUMAN_OUTPUT_FILE" ]]; then
+            if [[ -s "$RUNNER_TEMP/$JMH_HUMAN_OUTPUT_FILE" ]]; then
               echo
               echo '```text'
-              cat "$JMH_HUMAN_OUTPUT_FILE"
+              cat "$RUNNER_TEMP/$JMH_HUMAN_OUTPUT_FILE"
               echo '```'
             else
               echo
