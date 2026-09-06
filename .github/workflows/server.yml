@@ -5,12 +5,14 @@ on:
     paths:
       - "server/**"
       - "!server/**/*.md"
+      - "!server/benchmarks/**"
       - ".github/workflows/server.yml"
   push:
     branches: [next]
     paths:
       - "server/**"
       - "!server/**/*.md"
+      - "!server/benchmarks/**"
       - ".github/workflows/server.yml"
 
 concurrency:

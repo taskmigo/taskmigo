@@ -1,0 +1,118 @@
+name: Authorization performance
+
+on:
+  pull_request:
+    paths:
+      - "server/benchmarks/authorization/**"
+      - ".github/workflows/authorization-performance.yml"
+  push:
+    branches: [next]
+    paths:
+      - "server/benchmarks/authorization/**"
+      - ".github/workflows/authorization-performance.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  JMH_STATEMENT_COUNT: "500"
+  JMH_FORKS: "2"
+  JMH_WARMUP_ITERATIONS: "3"
+  JMH_WARMUP_TIME: 1s
+  JMH_MEASUREMENT_ITERATIONS: "4"
+  JMH_MEASUREMENT_TIME: 1s
+  JMH_PROFILER: jfr
+  JMH_RESULTS_FILE: jmh-results.json
+  JMH_HUMAN_OUTPUT_FILE: jmh-report.txt
+  JMH_LOG_FILE: jmh.log
+
+jobs:
+  benchmark:
+    name: JMH authorization compiler
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Java
+        uses: actions/setup-java@v5.7.0
+        with:
+          distribution: temurin
+          java-version: "26"
+          cache: gradle
+          cache-dependency-path: |
+            server/**/*.gradle*
+            server/gradle/libs.versions.toml
+
+      - name: Build JMH benchmark
+        run: ./gradlew :benchmarks:authorization:jmhJar --no-daemon --console=plain
+
+      - name: Run JMH benchmark
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+
+          mkdir -p "$RUNNER_TEMP/jfr"
+          jmh_jar="$(find benchmarks/authorization/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
+          test -n "$jmh_jar"
+
+          java --enable-native-access=ALL-UNNAMED -jar "$jmh_jar" '.*JavaScriptPolicyCompilerBenchmark.*' \
+            -bm avgt \
+            -tu ms \
+            -t 1 \
+            -f "$JMH_FORKS" \
+            -wi "$JMH_WARMUP_ITERATIONS" \
+            -w "$JMH_WARMUP_TIME" \
+            -i "$JMH_MEASUREMENT_ITERATIONS" \
+            -r "$JMH_MEASUREMENT_TIME" \
+            -foe true \
+            -p scopeName=REQUEST,OBJECT \
+            -p policyType=SIMPLE,COMPLEX \
+            -p statementCount="$JMH_STATEMENT_COUNT" \
+            -prof "$JMH_PROFILER:dir=$RUNNER_TEMP/jfr" \
+            -rf JSON \
+            -rff "$RUNNER_TEMP/$JMH_RESULTS_FILE" \
+            -o "$RUNNER_TEMP/$JMH_HUMAN_OUTPUT_FILE" \
+            2>&1 | tee "$RUNNER_TEMP/$JMH_LOG_FILE"
+
+      - name: Publish JMH report
+        if: ${{ always() }}
+        run: |
+          {
+            echo "## Authorization compiler benchmark"
+            echo
+            echo "Statements: $JMH_STATEMENT_COUNT"
+            echo "Forks: $JMH_FORKS"
+            echo "Warmup: $JMH_WARMUP_ITERATIONS × $JMH_WARMUP_TIME"
+            echo "Measurement: $JMH_MEASUREMENT_ITERATIONS × $JMH_MEASUREMENT_TIME"
+            echo "Profiler: $JMH_PROFILER"
+            if [[ -s "$RUNNER_TEMP/$JMH_HUMAN_OUTPUT_FILE" ]]; then
+              echo
+              echo '```text'
+              cat "$RUNNER_TEMP/$JMH_HUMAN_OUTPUT_FILE"
+              echo '```'
+            else
+              echo
+              echo "JMH human-readable output was not produced. Inspect the uploaded log."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload benchmark report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: authorization-performance
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/jmh-results.json
+            ${{ runner.temp }}/jmh-report.txt
+            ${{ runner.temp }}/jmh.log
+            ${{ runner.temp }}/jfr/**/*.jfr
