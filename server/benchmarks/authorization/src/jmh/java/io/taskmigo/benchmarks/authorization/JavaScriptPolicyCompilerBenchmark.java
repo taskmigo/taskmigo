@@ -130,26 +130,29 @@ public class JavaScriptPolicyCompilerBenchmark {
 
     private static void validateDataset(List<String[]> rows, String policyType) {
         int expectedFamilies = expectedStructuralFamilies(policyType);
-        for (int column = 1; column <= 2; column++) {
-            if (
-                rows
-                    .stream()
-                    .map(row -> row[column])
-                    .distinct()
-                    .count() != DATASET_SIZE
-            ) {
-                throw new IllegalStateException("Benchmark dataset must contain only unique statements");
-            }
-            long families = rows
+        validateDatasetColumn(rows, 1, expectedFamilies);
+        validateDatasetColumn(rows, 2, expectedFamilies);
+    }
+
+    private static void validateDatasetColumn(List<String[]> rows, int column, int expectedFamilies) {
+        if (
+            rows
                 .stream()
-                .map(row -> structuralFingerprint(row[column]))
+                .map(row -> row[column])
                 .distinct()
-                .count();
-            if (families != expectedFamilies) {
-                throw new IllegalStateException(
-                    "Benchmark dataset must contain exactly " + expectedFamilies + " structural families"
-                );
-            }
+                .count() != DATASET_SIZE
+        ) {
+            throw new IllegalStateException("Benchmark dataset must contain only unique statements");
+        }
+        long families = rows
+            .stream()
+            .map(row -> structuralFingerprint(row[column]))
+            .distinct()
+            .count();
+        if (families != expectedFamilies) {
+            throw new IllegalStateException(
+                "Benchmark dataset must contain exactly " + expectedFamilies + " structural families"
+            );
         }
     }
 
