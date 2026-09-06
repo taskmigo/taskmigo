@@ -1,0 +1,347 @@
+name: Generate authorization benchmark data
+
+on:
+  push:
+    branches: [feat/benchmark]
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: feat/benchmark
+
+      - name: Materialize fixed datasets
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          SIZE = 500
+          SIMPLE_FAMILIES = 100
+          COMPLEX_FAMILIES = 125
+          root = Path("server/benchmarks/authorization/src/jmh/resources/io/taskmigo/benchmarks/authorization")
+          root.mkdir(parents=True, exist_ok=True)
+
+          REQUEST_PRIMARY = [
+              ("request.method", "str", "principal.id"),
+              ("request.pathVariables.userId", "str", "principal.id"),
+              ("request.pathVariables.resourceId", "str", "principal.tenantId"),
+              ("request.pathVariables.ownerId", "str", "principal.id"),
+              ("request.pathVariables.projectId", "str", "principal.teamId"),
+              ("request.pathVariables.scope", "str", "principal.role"),
+              ("request.version", "num", "principal.rank"),
+              ("request.sequence", "num", "principal.level"),
+              ("principal.rank", "num", "request.version"),
+              ("principal.active", "bool", "request.method"),
+          ]
+
+          OBJECT_PRIMARY = [
+              ("object.ownerId", "str", "principal.id"),
+              ("object.status", "str", "principal.role"),
+              ("object.kind", "str", "principal.kind"),
+              ("object.tenantId", "str", "principal.tenantId"),
+              ("object.visibility", "str", "principal.role"),
+              ("object.score", "num", "principal.rank"),
+              ("object.version", "num", "principal.version"),
+              ("object.priority", "num", "principal.level"),
+              ("object.rank", "num", "principal.rank"),
+              ("object.enabled", "bool", "principal.active"),
+          ]
+
+          def unique_guard(expression, value):
+              return f"({expression}) && principal.id !== 'UNIQUE_{value}'"
+
+          def simple_request(i):
+              family = i % SIMPLE_FAMILIES
+              value = i + 1
+              field, kind, auxiliary = REQUEST_PRIMARY[family % len(REQUEST_PRIMARY)]
+              pattern = family // len(REQUEST_PRIMARY)
+              if kind == "str":
+                  expressions = [
+                      f"{field} === 'VALUE_{value}'",
+                      f"{field} !== 'VALUE_{value}'",
+                      f"!({field} === 'VALUE_{value}')",
+                      f"{field} === {auxiliary}",
+                      f"{field} === 'VALUE_{value}' && principal.id !== ''",
+                      f"{field} !== 'VALUE_{value}' || principal.role === 'ROLE_{value}'",
+                      f"({field} === 'VALUE_{value}' && principal.rank >= {value % 50})",
+                      f"{field} === 'VALUE_{value}' || principal.active === true",
+                      f"({field} !== 'VALUE_{value}' && principal.teamId !== 'TEAM_{value}') || principal.tenantId === 'TENANT_{value}'",
+                      f"{field} === {auxiliary} && principal.role !== 'GUEST_{value}'",
+                  ]
+              elif kind == "num":
+                  expressions = [
+                      f"{field} >= {value}",
+                      f"{field} < {value + 100}",
+                      f"{field} > {auxiliary}",
+                      f"{field} <= {auxiliary}",
+                      f"!({field} < {value})",
+                      f"{field} >= {value} && {field} < {value + 100}",
+                      f"({field} + {(value % 7) + 1}) >= {value + 10}",
+                      f"({field} * {(value % 5) + 2}) > {value + 20}",
+                      f"({field} % {(value % 7) + 2}) === {value % 2}",
+                      f"{field} >= {value} || principal.rank >= {value // 2}",
+                  ]
+              else:
+                  expressions = [
+                      f"{field} === true",
+                      f"{field} !== false",
+                      f"!({field} === false)",
+                      f"{field} === true && principal.id !== ''",
+                      f"{field} === false || request.method === 'METHOD_{value}'",
+                      f"{field} === true && principal.rank >= {value % 20}",
+                      f"{field} !== false || principal.role === 'ROLE_{value}'",
+                      f"{field} === true && principal.teamId !== 'TEAM_{value}'",
+                      f"{field} === false || principal.tenantId === 'TENANT_{value}'",
+                      f"!({field} === true && request.method === 'DENY_{value}')",
+                  ]
+              return f"export default ({{ request, principal }}) => {unique_guard(expressions[pattern], value)};"
+
+          def simple_object(i):
+              family = i % SIMPLE_FAMILIES
+              value = i + 1
+              field, kind, auxiliary = OBJECT_PRIMARY[family % len(OBJECT_PRIMARY)]
+              pattern = family // len(OBJECT_PRIMARY)
+              if kind == "str":
+                  expressions = [
+                      f"{field} === 'VALUE_{value}'",
+                      f"{field} !== 'VALUE_{value}'",
+                      f"!({field} === 'VALUE_{value}')",
+                      f"{field} === {auxiliary}",
+                      f"{field} === 'VALUE_{value}' && principal.id !== ''",
+                      f"{field} !== 'VALUE_{value}' || principal.role === 'ROLE_{value}'",
+                      f"({field} === 'VALUE_{value}' && principal.rank >= {value % 50})",
+                      f"{field} === 'VALUE_{value}' || principal.active === true",
+                      f"({field} !== 'VALUE_{value}' && principal.teamId !== 'TEAM_{value}') || {field} === 'ALT_{value}'",
+                      f"{field} === {auxiliary} && principal.role !== 'GUEST_{value}'",
+                  ]
+              elif kind == "num":
+                  expressions = [
+                      f"{field} >= {value}",
+                      f"{field} < {value + 100}",
+                      f"{field} > {auxiliary}",
+                      f"{field} <= {auxiliary}",
+                      f"!({field} < {value})",
+                      f"{field} >= {value} && {field} < {value + 100}",
+                      f"{field} >= ({auxiliary} + {(value % 7) + 1})",
+                      f"{field} < ({auxiliary} * {(value % 5) + 2} + {value})",
+                      f"({field} >= {value} && principal.active === true) || {field} < {(value // 2) + 1}",
+                      f"{field} >= {value} || principal.rank >= {value // 2}",
+                  ]
+              else:
+                  expressions = [
+                      f"{field} === true",
+                      f"{field} !== false",
+                      f"!({field} === false)",
+                      f"{field} === {auxiliary}",
+                      f"{field} === true && principal.id !== ''",
+                      f"{field} === false || principal.role === 'ROLE_{value}'",
+                      f"{field} === true && principal.rank >= {value % 50}",
+                      f"{field} !== false || principal.active === true",
+                      f"({field} === true && principal.teamId !== 'TEAM_{value}') || {field} === false",
+                      f"{field} === {auxiliary} && principal.role !== 'GUEST_{value}'",
+                  ]
+              return f"export default ({{ object, principal }}) => {unique_guard(expressions[pattern], value)};"
+
+          REQUEST_CONDITIONS = [
+              "request.method === expected",
+              "request.pathVariables.userId === principal.id",
+              "request.pathVariables.resourceId !== expected",
+              "principal.id !== ''",
+              "principal.role === expected",
+              "principal.rank >= threshold",
+              "principal.rank < threshold",
+              "request.version >= threshold",
+              "request.sequence < upper",
+              "!(request.method === expected)",
+              "request.method === expected && principal.id !== ''",
+              "request.pathVariables.userId === principal.id && principal.role !== alternate",
+              "request.pathVariables.resourceId === expected || principal.id === alternate",
+              "principal.rank >= threshold && principal.level < upper",
+              "request.version >= threshold || request.sequence < upper",
+              "request.pathVariables.ownerId === principal.id",
+              "request.pathVariables.projectId !== expected",
+              "request.pathVariables.taskId === expected",
+              "request.pathVariables.workspaceId === principal.tenantId",
+              "request.pathVariables.tenantId === principal.tenantId",
+              "request.pathVariables.scope !== alternate",
+              "request.pathVariables.region === expected",
+              "request.pathVariables.kind !== expected",
+              "(principal.rank + offset) >= threshold",
+              "(request.sequence % divisor) === remainder",
+          ]
+
+          REQUEST_RETURNS = [
+              "request.pathVariables.userId === principal.id",
+              "request.method !== alternate",
+              "principal.id === alternate",
+              "principal.role !== expected",
+              "principal.rank >= threshold",
+              "principal.level < upper",
+              "request.version >= threshold",
+              "request.sequence <= upper",
+              "request.pathVariables.resourceId === expected",
+              "request.pathVariables.ownerId !== alternate",
+              "request.pathVariables.projectId === expected && principal.id !== ''",
+              "request.pathVariables.taskId !== alternate || principal.role === expected",
+              "request.pathVariables.workspaceId === principal.tenantId",
+              "request.pathVariables.tenantId !== alternate",
+              "request.pathVariables.scope === expected",
+              "request.pathVariables.region !== alternate",
+              "request.pathVariables.kind === expected",
+              "!(principal.id === alternate)",
+              "(principal.rank * factor) >= threshold",
+              "(request.sequence + offset) < upper",
+              "request.method === expected && principal.role !== alternate",
+              "request.method !== alternate || principal.rank >= threshold",
+              "principal.tenantId === request.pathVariables.tenantId",
+              "principal.teamId !== alternate",
+              "principal.active === true",
+          ]
+
+          OBJECT_CONDITIONS = [
+              "object.enabled === true",
+              "object.ownerId === principal.id",
+              "object.status === expected",
+              "object.score >= threshold",
+              "object.kind !== alternate",
+              "object.version < upper",
+              "object.priority >= threshold",
+              "object.tenantId === principal.tenantId",
+              "object.visibility !== alternate",
+              "object.rank >= principal.rank",
+              "!(object.enabled === false)",
+              "object.ownerId === principal.id && principal.id !== ''",
+              "object.status === expected && principal.role !== alternate",
+              "object.score >= threshold && object.score < upper",
+              "object.kind === expected || principal.role === alternate",
+              "object.version >= threshold || principal.rank >= threshold",
+              "object.priority < upper && principal.level >= threshold",
+              "object.tenantId === principal.tenantId && principal.id !== ''",
+              "object.visibility === expected || principal.teamId === alternate",
+              "object.rank >= threshold && principal.active === true",
+              "object.ownerId !== alternate",
+              "object.status !== alternate",
+              "object.score > principal.rank",
+              "object.version >= principal.version",
+              "object.kind === principal.kind",
+          ]
+
+          OBJECT_RETURNS = [
+              "object.ownerId === principal.id",
+              "object.enabled !== false",
+              "object.status === expected",
+              "object.score >= threshold",
+              "object.kind !== alternate",
+              "object.version < upper",
+              "object.priority >= threshold",
+              "object.tenantId === principal.tenantId",
+              "object.visibility !== alternate",
+              "object.rank >= principal.rank",
+              "object.ownerId === principal.id && principal.id !== ''",
+              "object.status !== alternate || principal.role === expected",
+              "object.score >= threshold && object.score < upper",
+              "object.kind === expected && principal.active === true",
+              "object.version >= threshold || principal.rank >= threshold",
+              "object.priority < upper && principal.level >= threshold",
+              "object.tenantId === principal.tenantId && principal.teamId !== alternate",
+              "object.visibility === expected || principal.role === alternate",
+              "object.rank >= threshold && principal.active === true",
+              "!(object.enabled === false)",
+              "object.ownerId !== alternate",
+              "object.status !== alternate",
+              "object.score > principal.rank",
+              "object.version >= principal.version",
+              "object.kind === principal.kind",
+          ]
+
+          def complex_policy(scope, i):
+              family = i % COMPLEX_FAMILIES
+              value = i + 1
+              shape = family % 5
+              condition_index = family // 5
+              if scope == "request":
+                  args = "{ request, principal }"
+                  conditions = REQUEST_CONDITIONS
+                  returns = REQUEST_RETURNS
+              else:
+                  args = "{ object, principal }"
+                  conditions = OBJECT_CONDITIONS
+                  returns = OBJECT_RETURNS
+              c1 = conditions[condition_index]
+              c2 = conditions[(condition_index * 7 + 3) % len(conditions)]
+              c3 = conditions[(condition_index * 11 + 5) % len(conditions)]
+              r1 = returns[(condition_index * 5 + shape) % len(returns)]
+              r2 = returns[(condition_index * 9 + shape * 2 + 1) % len(returns)]
+              r3 = returns[(condition_index * 13 + shape * 3 + 2) % len(returns)]
+              prefix = (
+                  f"export default ({args}) => {{ "
+                  f"const expected = 'EXPECTED_{value}'; const alternate = 'ALTERNATE_{value}'; "
+                  f"const threshold = {(value % 97) + 3}; const upper = {(value % 97) + 103}; "
+                  f"const divisor = {(value % 7) + 2}; const remainder = {value % 2}; "
+                  f"const factor = {(value % 5) + 2}; const offset = {(value % 11) + 1}; "
+              )
+              if shape == 0:
+                  body = f"if ({c1}) {{ return {r1}; }} return false; }};"
+              elif shape == 1:
+                  body = f"if ({c1}) {{ if ({c2}) {{ return {r1}; }} return {r2}; }} return false; }};"
+              elif shape == 2:
+                  body = f"if ({c1}) {{ return {r1}; }} else {{ return {r2}; }} }};"
+              elif shape == 3:
+                  body = f"if ({c1} && {c2}) {{ return {r1}; }} if ({c3}) {{ return {r2}; }} return {r3}; }};"
+              else:
+                  body = f"if ({c1} || {c2}) {{ return ({r1}) && ({r2}); }} return {r3}; }};"
+              return prefix + body
+
+          STRING_LITERAL = re.compile(r"'(?:\\.|[^'\\])*'|\"(?:\\.|[^\"\\])*\"")
+          NUMBER_LITERAL = re.compile(r"\b\d+(?:\.\d+)?\b")
+
+          def fingerprint(source):
+              normalized = STRING_LITERAL.sub("'#'", source)
+              normalized = NUMBER_LITERAL.sub("#", normalized)
+              return " ".join(normalized.split())
+
+          def write_dataset(name, request_factory, object_factory, expected_families):
+              rows = [(f"{i:03d}", request_factory(i), object_factory(i)) for i in range(SIZE)]
+              assert len(rows) == SIZE
+              assert len({row[0] for row in rows}) == SIZE
+              assert len({row[1] for row in rows}) == SIZE
+              assert len({row[2] for row in rows}) == SIZE
+              assert len({fingerprint(row[1]) for row in rows}) == expected_families
+              assert len({fingerprint(row[2]) for row in rows}) == expected_families
+              assert all("\t" not in value and "\n" not in value for row in rows for value in row[1:])
+              target = root / name
+              with target.open("w", encoding="utf-8", newline="\n") as stream:
+                  stream.write("id\trequest\tobject\n")
+                  for row in rows:
+                      stream.write("\t".join(row) + "\n")
+              print(
+                  f"{name}: rows={len(rows)}, request_unique={len({row[1] for row in rows})}, "
+                  f"object_unique={len({row[2] for row in rows})}, structural_families={expected_families}"
+              )
+
+          write_dataset("simple-statements.tsv", simple_request, simple_object, SIMPLE_FAMILIES)
+          write_dataset(
+              "complex-statements.tsv",
+              lambda i: complex_policy("request", i),
+              lambda i: complex_policy("object", i),
+              COMPLEX_FAMILIES,
+          )
+          PY
+
+          dir="server/benchmarks/authorization/src/jmh/resources/io/taskmigo/benchmarks/authorization"
+          git add "$dir/simple-statements.tsv" "$dir/complex-statements.tsv"
+          git rm .github/workflows/generate-authorization-benchmark-data.yml
+
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git commit -m "Refresh fixed authorization benchmark datasets"
+          git push origin HEAD:feat/benchmark
