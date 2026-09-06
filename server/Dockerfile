@@ -8,6 +8,7 @@ COPY --chmod=755 gradlew ./
 COPY gradle ./gradle
 COPY settings.gradle.kts build.gradle.kts ./
 COPY modules/foundation/build.gradle.kts modules/foundation/build.gradle.kts
+COPY modules/policy/build.gradle.kts modules/policy/build.gradle.kts
 COPY modules/database/build.gradle.kts modules/database/build.gradle.kts
 COPY modules/auth/build.gradle.kts modules/auth/build.gradle.kts
 COPY benchmarks/authorization/build.gradle.kts benchmarks/authorization/build.gradle.kts
@@ -22,6 +23,7 @@ RUN --mount=type=cache,id=taskmigo-gradle,target=/root/.gradle,sharing=locked \
         :apps:worker:dependencies
 
 COPY modules/foundation/src modules/foundation/src
+COPY modules/policy/src modules/policy/src
 COPY modules/database/src modules/database/src
 COPY modules/auth/src modules/auth/src
 COPY benchmarks/authorization/src benchmarks/authorization/src

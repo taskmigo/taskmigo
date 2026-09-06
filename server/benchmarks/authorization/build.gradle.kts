@@ -3,10 +3,10 @@ plugins {
     alias(libs.plugins.jmh)
 }
 
-description = "JMH benchmarks for authorization compiler"
+description = "JMH benchmarks for the Taskmigo Policy Language compiler"
 
 dependencies {
-    jmhImplementation(project(":modules:auth"))
+    jmhImplementation(project(":modules:policy"))
 }
 
 jmh {

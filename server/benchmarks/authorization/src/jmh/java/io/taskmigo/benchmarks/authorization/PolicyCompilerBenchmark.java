@@ -3,14 +3,17 @@ package io.taskmigo.benchmarks.authorization;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.openjdk.jmh.annotations.Scope.Thread;
 
-import io.taskmigo.auth.authorization.policy.JavaScriptPolicyCompiler;
-import io.taskmigo.auth.authorization.policy.PolicyIr;
-import io.taskmigo.auth.authorization.statement.Scope;
+import io.taskmigo.policy.EnvironmentSchema;
+import io.taskmigo.policy.PolicyCompiler;
+import io.taskmigo.policy.PolicyIr;
+import io.taskmigo.policy.PolicyType;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
@@ -26,7 +29,7 @@ import org.openjdk.jmh.infra.Blackhole;
 /// Benchmarks compilation of representative request and object authorization policies.
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
-public class JavaScriptPolicyCompilerBenchmark {
+public class PolicyCompilerBenchmark {
 
     private static final int DATASET_SIZE = 500;
     private static final String DATASET_ROOT = "/io/taskmigo/benchmarks/authorization/";
@@ -38,7 +41,7 @@ public class JavaScriptPolicyCompilerBenchmark {
     public void compileBatch(BenchmarkState state, Blackhole blackhole) {
         List<PolicyIr> compiled = new ArrayList<>(state.policies.size());
         for (String source : state.policies) {
-            compiled.add(state.compiler.compile(source, state.scope));
+            compiled.add(state.compiler.compile(source, state.schema));
         }
         blackhole.consume(compiled);
     }
@@ -59,19 +62,19 @@ public class JavaScriptPolicyCompilerBenchmark {
         @SuppressWarnings({ "CanBeFinal", "FieldCanBeLocal", "FieldMayBeFinal" })
         private String statementCount = "500";
 
-        private final JavaScriptPolicyCompiler compiler = new JavaScriptPolicyCompiler();
-        private Scope scope = Scope.REQUEST;
+        private final PolicyCompiler compiler = new PolicyCompiler();
+        private EnvironmentSchema schema = schema("REQUEST");
         private List<String> policies = List.of();
 
         /// Loads deterministic policy sources before JMH starts measuring the benchmark.
         @Setup
         public void setUp() {
-            this.scope = Scope.valueOf(this.scopeName);
-            this.policies = policies(this.scope, this.policyType, Integer.parseInt(this.statementCount));
+            this.schema = schema(this.scopeName);
+            this.policies = policies(this.scopeName, this.policyType, Integer.parseInt(this.statementCount));
         }
     }
 
-    private static List<String> policies(Scope scope, String policyType, int count) {
+    private static List<String> policies(String scope, String policyType, int count) {
         if (count < 1 || count > DATASET_SIZE) {
             throw new IllegalArgumentException("statementCount must be between 1 and " + DATASET_SIZE);
         }
@@ -81,7 +84,7 @@ public class JavaScriptPolicyCompilerBenchmark {
         }
         IntStream.range(0, rows.size()).forEach(index -> validateRow(rows.get(index), index));
         validateDataset(rows, policyType);
-        int column = scope == Scope.REQUEST ? 1 : 2;
+        int column = "REQUEST".equals(scope) ? 1 : 2;
         List<String> policies = rows
             .subList(0, count)
             .stream()
@@ -110,7 +113,7 @@ public class JavaScriptPolicyCompilerBenchmark {
     }
 
     private static List<String[]> rows(String resource) {
-        var stream = JavaScriptPolicyCompilerBenchmark.class.getResourceAsStream(resource);
+        var stream = PolicyCompilerBenchmark.class.getResourceAsStream(resource);
         if (stream == null) {
             throw new IllegalStateException("Missing benchmark dataset: " + resource);
         }
@@ -169,6 +172,100 @@ public class JavaScriptPolicyCompilerBenchmark {
         }
         if (!row[0].equals("%03d".formatted(index))) {
             throw new IllegalStateException("Benchmark dataset IDs must be contiguous from 000 to 499");
+        }
+    }
+
+    private static EnvironmentSchema schema(String scope) {
+        MapBuilder roots = new MapBuilder();
+        roots.add(
+            "principal",
+            Map.of(
+                "id",
+                field(PolicyType.Scalar.STRING),
+                "username",
+                field(PolicyType.Scalar.STRING),
+                "role",
+                field(PolicyType.Scalar.STRING),
+                "tenantId",
+                field(PolicyType.Scalar.STRING),
+                "teamId",
+                field(PolicyType.Scalar.STRING),
+                "kind",
+                field(PolicyType.Scalar.STRING),
+                "active",
+                field(PolicyType.Scalar.BOOL),
+                "level",
+                field(PolicyType.Scalar.NUMBER),
+                "rank",
+                field(PolicyType.Scalar.NUMBER),
+                "version",
+                field(PolicyType.Scalar.NUMBER)
+            )
+        );
+        if ("REQUEST".equals(scope)) {
+            roots.add(
+                "request",
+                Map.of(
+                    "method",
+                    field(PolicyType.Scalar.STRING),
+                    "path",
+                    field(PolicyType.Scalar.STRING),
+                    "pathVariables",
+                    dynamicString(),
+                    "version",
+                    field(PolicyType.Scalar.NUMBER),
+                    "sequence",
+                    field(PolicyType.Scalar.NUMBER)
+                )
+            );
+        } else {
+            roots.add(
+                "object",
+                Map.of(
+                    "ownerId",
+                    field(PolicyType.Scalar.STRING),
+                    "status",
+                    field(PolicyType.Scalar.STRING),
+                    "kind",
+                    field(PolicyType.Scalar.STRING),
+                    "tenantId",
+                    field(PolicyType.Scalar.STRING),
+                    "visibility",
+                    field(PolicyType.Scalar.STRING),
+                    "enabled",
+                    field(PolicyType.Scalar.BOOL),
+                    "score",
+                    field(PolicyType.Scalar.NUMBER),
+                    "version",
+                    field(PolicyType.Scalar.NUMBER),
+                    "priority",
+                    field(PolicyType.Scalar.NUMBER),
+                    "rank",
+                    field(PolicyType.Scalar.NUMBER)
+                )
+            );
+        }
+        return new EnvironmentSchema("benchmark." + scope.toLowerCase(), roots.build());
+    }
+
+    private static EnvironmentSchema.Field field(PolicyType type) {
+        return new EnvironmentSchema.Field(type, false, true, true);
+    }
+
+    private static EnvironmentSchema.Field dynamicString() {
+        return new EnvironmentSchema.Field(PolicyType.Scalar.STRING, false, true, true, PolicyType.Scalar.STRING);
+    }
+
+    private static final class MapBuilder {
+
+        private final Map<String, EnvironmentSchema.Root> roots = new HashMap<>();
+
+        private void add(String name, Map<String, EnvironmentSchema.Field> fields) {
+            roots.put(name, new EnvironmentSchema.Root(field(PolicyType.Scalar.STRING), fields));
+        }
+
+        private Map<String, EnvironmentSchema.Root> build() {
+            return Map.copyOf(roots);
         }
     }
 }
