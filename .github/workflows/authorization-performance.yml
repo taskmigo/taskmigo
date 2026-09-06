@@ -33,6 +33,7 @@ env:
   JMH_WARMUP_TIME: 1s
   JMH_MEASUREMENT_ITERATIONS: "4"
   JMH_MEASUREMENT_TIME: 1s
+  JMH_PROFILER: jfr
   JMH_RESULTS_FILE: jmh-results.json
   JMH_HUMAN_OUTPUT_FILE: jmh-report.txt
   JMH_LOG_FILE: jmh.log
@@ -67,6 +68,7 @@ jobs:
         run: |
           set -euo pipefail
 
+          mkdir -p "$RUNNER_TEMP/jfr"
           jmh_jar="$(find benchmarks/authorization/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jmh_jar"
 
@@ -83,6 +85,7 @@ jobs:
             -p scopeName=REQUEST,OBJECT \
             -p policyType=SIMPLE,COMPLEX \
             -p statementCount="$JMH_STATEMENT_COUNT" \
+            -prof "$JMH_PROFILER:dir=$RUNNER_TEMP/jfr" \
             -rf JSON \
             -rff "$RUNNER_TEMP/$JMH_RESULTS_FILE" \
             -o "$RUNNER_TEMP/$JMH_HUMAN_OUTPUT_FILE" \
@@ -98,6 +101,7 @@ jobs:
             echo "Forks: $JMH_FORKS"
             echo "Warmup: $JMH_WARMUP_ITERATIONS × $JMH_WARMUP_TIME"
             echo "Measurement: $JMH_MEASUREMENT_ITERATIONS × $JMH_MEASUREMENT_TIME"
+            echo "Profiler: $JMH_PROFILER"
             if [[ -s "$RUNNER_TEMP/$JMH_HUMAN_OUTPUT_FILE" ]]; then
               echo
               echo '```text'
@@ -119,3 +123,4 @@ jobs:
             ${{ runner.temp }}/jmh-results.json
             ${{ runner.temp }}/jmh-report.txt
             ${{ runner.temp }}/jmh.log
+            ${{ runner.temp }}/jfr/**/*.jfr
