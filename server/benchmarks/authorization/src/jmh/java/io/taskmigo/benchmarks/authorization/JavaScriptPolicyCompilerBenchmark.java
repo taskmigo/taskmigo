@@ -62,38 +62,142 @@ public class JavaScriptPolicyCompilerBenchmark {
     }
 
     private static List<String> policies(Scope scope, String policyType, int count) {
-        return IntStream.range(0, count)
+        List<String> policies = IntStream.range(0, count)
             .mapToObj(index -> policy(scope, policyType, index))
             .toList();
+        if (policies.stream().distinct().count() != policies.size()) {
+            throw new IllegalStateException("Benchmark policy data must contain only unique statements");
+        }
+        return policies;
     }
 
     private static String policy(Scope scope, String policyType, int index) {
-        if ("SIMPLE".equals(policyType)) {
-            return scope == Scope.REQUEST
-                ? "export default ({ request }) => request.method === 'GET';"
-                : "export default ({ object }) => object.enabled === true;";
+        return switch (policyType) {
+            case "SIMPLE" -> simplePolicy(scope, index);
+            case "COMPLEX" -> complexPolicy(scope, index);
+            default -> throw new IllegalArgumentException("Unknown policy type: " + policyType);
+        };
+    }
+
+    private static String simplePolicy(Scope scope, int index) {
+        if (scope == Scope.REQUEST) {
+            return switch (index % 4) {
+                case 0 -> "export default ({ request }) => request.method === 'METHOD_%d';".formatted(index);
+                case 1 ->
+                    "export default ({ request }) => request.pathVariables.userId === 'USER_%d';".formatted(index);
+                case 2 -> "export default ({ principal }) => principal.id !== 'PRINCIPAL_%d';".formatted(index);
+                default ->
+                    "export default ({ request }) => request.pathVariables.resourceId !== 'RESOURCE_%d';".formatted(
+                        index
+                    );
+            };
         }
-        if ("COMPLEX".equals(policyType)) {
-            return scope == Scope.REQUEST
-                ? """
-                  export default ({ request, principal }) => {
-                    const expectedMethod = 'GET';
-                    if (request.method === expectedMethod && principal.id !== '') {
-                      return request.pathVariables.userId === principal.id && %d >= 0;
-                    }
-                    return false;
-                  };
-                  """.formatted(index)
-                : """
-                  export default ({ object, principal }) => {
-                    const threshold = 40 + 2;
-                    if (object.enabled === true) {
-                      return object.score >= threshold && object.ownerId === principal.id && %d >= 0;
-                    }
-                    return false;
-                  };
-                  """.formatted(index);
+        return switch (index % 4) {
+            case 0 -> "export default ({ object }) => object.score >= %d;".formatted(index);
+            case 1 -> "export default ({ object }) => object.ownerId === 'OWNER_%d';".formatted(index);
+            case 2 -> "export default ({ object }) => object.status !== 'STATUS_%d';".formatted(index);
+            default -> "export default ({ object }) => object.version < %d;".formatted(index + 1);
+        };
+    }
+
+    private static String complexPolicy(Scope scope, int index) {
+        if (scope == Scope.REQUEST) {
+            return complexRequestPolicy(index);
         }
-        throw new IllegalArgumentException("Unknown policy type: " + policyType);
+        return complexObjectPolicy(index);
+    }
+
+    private static String complexRequestPolicy(int index) {
+        return switch (index % 4) {
+            case 0 ->
+                """
+                export default ({ request, principal }) => {
+                  const expectedMethod = 'METHOD_%d';
+                  const reservedUser = 'USER_%d';
+                  if (request.method === expectedMethod && principal.id !== '') {
+                    return request.pathVariables.userId === principal.id
+                      && request.pathVariables.userId !== reservedUser;
+                  }
+                  return false;
+                };
+                """.formatted(index, index);
+            case 1 ->
+                """
+                export default ({ request, principal }) => {
+                  const expectedResource = 'RESOURCE_%d';
+                  if (request.pathVariables.resourceId === expectedResource) {
+                    return request.method !== 'DELETE_%d' && principal.id !== '';
+                  }
+                  return false;
+                };
+                """.formatted(index, index);
+            case 2 ->
+                """
+                export default ({ request, principal }) => {
+                  const lowerBound = %d;
+                  const upperBound = %d;
+                  if (principal.rank >= lowerBound) {
+                    return principal.rank < upperBound && request.method === 'PATCH_%d';
+                  }
+                  return false;
+                };
+                """.formatted(index, index + 100, index);
+            default ->
+                """
+                export default ({ request, principal }) => {
+                  const expectedOwner = 'OWNER_%d';
+                  if (request.pathVariables.ownerId === expectedOwner || principal.id === expectedOwner) {
+                    return request.method === 'GET_%d' && request.pathVariables.userId !== '';
+                  }
+                  return false;
+                };
+                """.formatted(index, index);
+        };
+    }
+
+    private static String complexObjectPolicy(int index) {
+        return switch (index % 4) {
+            case 0 ->
+                """
+                export default ({ object, principal }) => {
+                  const threshold = 40 + %d;
+                  if (object.enabled === true && object.ownerId === principal.id) {
+                    return object.score >= threshold && object.kind !== 'KIND_%d';
+                  }
+                  return false;
+                };
+                """.formatted(index, index);
+            case 1 ->
+                """
+                export default ({ object, principal }) => {
+                  const expectedStatus = 'STATUS_%d';
+                  if (object.status === expectedStatus) {
+                    return object.ownerId === principal.id && object.version >= %d;
+                  }
+                  return false;
+                };
+                """.formatted(index, index);
+            case 2 ->
+                """
+                export default ({ object, principal }) => {
+                  const minimumScore = %d;
+                  const maximumScore = %d;
+                  if (object.score >= minimumScore && object.score < maximumScore) {
+                    return object.enabled !== false && principal.id !== '';
+                  }
+                  return false;
+                };
+                """.formatted(index, index + 100);
+            default ->
+                """
+                export default ({ object, principal }) => {
+                  const expectedOwner = 'OWNER_%d';
+                  if (object.ownerId === expectedOwner || object.ownerId === principal.id) {
+                    return object.kind === 'KIND_%d' && object.enabled === true;
+                  }
+                  return false;
+                };
+                """.formatted(index, index);
+        };
     }
 }
