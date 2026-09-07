@@ -3,9 +3,8 @@ package io.taskmigo.embeddedlanguage;
 import io.taskmigo.embeddedlanguage.antlr.EmbeddedLanguageBaseListener;
 import io.taskmigo.embeddedlanguage.antlr.EmbeddedLanguageParser;
 import java.math.BigDecimal;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Deque;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -30,8 +29,11 @@ final class LanguageCompilerListener extends EmbeddedLanguageBaseListener {
     private final EnvironmentSchema schema;
     private final CompilerLimits limits;
     private final BooleanSupplier invalidSyntax;
-    private final Deque<Frame> frames = new ArrayDeque<>();
     private final List<Scope> scopes = new ArrayList<>();
+    private Object[] values = new Object[64];
+    private int[] marks = new int[64];
+    private int valueCount;
+    private int markCount;
     private @Nullable Program program;
     private int nodes;
     private int unaryDepth;
@@ -49,29 +51,31 @@ final class LanguageCompilerListener extends EmbeddedLanguageBaseListener {
 
     @Override
     public void enterEveryRule(ParserRuleContext context) {
-        this.frames.addLast(new Frame());
+        if (this.markCount == this.marks.length) this.marks = Arrays.copyOf(this.marks, this.marks.length * 2);
+        this.marks[this.markCount++] = this.valueCount;
     }
 
     @Override
     public void exitEveryRule(ParserRuleContext context) {
-        Frame frame = this.frames.removeLast();
-        if (this.invalidSyntax.getAsBoolean()) return;
-        SyntaxNode value = build(context, frame.items());
-        if (this.frames.isEmpty()) {
-            this.program = (Program) value;
-        } else {
-            this.frames.getLast().items().add(value);
+        int start = this.marks[--this.markCount];
+        if (this.invalidSyntax.getAsBoolean()) {
+            clearTo(start);
+            return;
         }
+        SyntaxNode value = build(context, start, this.valueCount);
+        clearTo(start);
+        if (this.markCount == 0) this.program = (Program) value;
+        else push(value);
     }
 
     @Override
     public void visitTerminal(TerminalNode node) {
-        if (!this.frames.isEmpty()) this.frames.getLast().items().add(node.getSymbol());
+        push(node.getSymbol());
     }
 
     @Override
     public void visitErrorNode(ErrorNode node) {
-        if (!this.frames.isEmpty()) this.frames.getLast().items().add(node.getSymbol());
+        push(node.getSymbol());
     }
 
     @Override
@@ -90,35 +94,49 @@ final class LanguageCompilerListener extends EmbeddedLanguageBaseListener {
         this.unaryDepth--;
     }
 
-    private SyntaxNode build(ParserRuleContext context, List<Object> items) {
+    private void push(Object value) {
+        if (this.valueCount == this.values.length) this.values = Arrays.copyOf(this.values, this.values.length * 2);
+        this.values[this.valueCount++] = value;
+    }
+
+    private void clearTo(int size) {
+        Arrays.fill(this.values, size, this.valueCount, null);
+        this.valueCount = size;
+    }
+
+    private SyntaxNode build(ParserRuleContext context, int start, int end) {
         return switch (context.getRuleIndex()) {
-            case EmbeddedLanguageParser.RULE_program -> new Program(statements(items));
-            case EmbeddedLanguageParser.RULE_statement -> first(items, Statement.class);
-            case EmbeddedLanguageParser.RULE_block -> new Block(statements(items));
+            case EmbeddedLanguageParser.RULE_program -> new Program(statements(start, end));
+            case EmbeddedLanguageParser.RULE_statement -> first(start, end, Statement.class);
+            case EmbeddedLanguageParser.RULE_block -> new Block(statements(start, end));
             case EmbeddedLanguageParser.RULE_constDecl -> new Constant(
-                token(items, EmbeddedLanguageParser.IDENT).getText(),
-                first(items, Expression.class),
+                token(start, end, EmbeddedLanguageParser.IDENT).getText(),
+                first(start, end, Expression.class),
                 span(context)
             );
             case EmbeddedLanguageParser.RULE_returnStatement -> new Returning(
-                first(items, Expression.class),
+                first(start, end, Expression.class),
                 span(context)
             );
-            case EmbeddedLanguageParser.RULE_ifStatement -> conditional(context, items);
+            case EmbeddedLanguageParser.RULE_ifStatement -> conditional(context, start, end);
             case EmbeddedLanguageParser.RULE_expression, EmbeddedLanguageParser.RULE_primary -> first(
-                items,
+                start,
+                end,
                 Expression.class
             );
             case EmbeddedLanguageParser.RULE_orExpression -> chain(
-                items,
+                start,
+                end,
                 token -> LanguageIr.BinaryOperator.OR
             );
             case EmbeddedLanguageParser.RULE_andExpression -> chain(
-                items,
+                start,
+                end,
                 token -> LanguageIr.BinaryOperator.AND
             );
             case EmbeddedLanguageParser.RULE_equalityExpression -> chain(
-                items,
+                start,
+                end,
                 token ->
                     switch (token.getType()) {
                         case EmbeddedLanguageParser.EQUAL -> LanguageIr.BinaryOperator.EQUAL;
@@ -127,7 +145,8 @@ final class LanguageCompilerListener extends EmbeddedLanguageBaseListener {
                     }
             );
             case EmbeddedLanguageParser.RULE_comparisonExpression -> chain(
-                items,
+                start,
+                end,
                 token ->
                     switch (token.getType()) {
                         case EmbeddedLanguageParser.LESS -> LanguageIr.BinaryOperator.LESS;
@@ -138,11 +157,13 @@ final class LanguageCompilerListener extends EmbeddedLanguageBaseListener {
                     }
             );
             case EmbeddedLanguageParser.RULE_membershipExpression -> chain(
-                items,
+                start,
+                end,
                 token -> LanguageIr.BinaryOperator.IN
             );
             case EmbeddedLanguageParser.RULE_additiveExpression -> chain(
-                items,
+                start,
+                end,
                 token ->
                     switch (token.getType()) {
                         case EmbeddedLanguageParser.PLUS -> LanguageIr.BinaryOperator.ADD;
@@ -151,7 +172,8 @@ final class LanguageCompilerListener extends EmbeddedLanguageBaseListener {
                     }
             );
             case EmbeddedLanguageParser.RULE_multiplicativeExpression -> chain(
-                items,
+                start,
+                end,
                 token ->
                     switch (token.getType()) {
                         case EmbeddedLanguageParser.STAR -> LanguageIr.BinaryOperator.MULTIPLY;
@@ -160,48 +182,49 @@ final class LanguageCompilerListener extends EmbeddedLanguageBaseListener {
                         default -> throw new IllegalStateException("unsupported multiplicative operator");
                     }
             );
-            case EmbeddedLanguageParser.RULE_unaryExpression -> unary(context, items);
-            case EmbeddedLanguageParser.RULE_reference -> reference(context, items);
-            case EmbeddedLanguageParser.RULE_listLiteral -> new ListExpression(expressions(items), span(context));
-            case EmbeddedLanguageParser.RULE_literal -> new Literal(first(items, Token.class));
+            case EmbeddedLanguageParser.RULE_unaryExpression -> unary(context, start, end);
+            case EmbeddedLanguageParser.RULE_reference -> reference(context, start, end);
+            case EmbeddedLanguageParser.RULE_listLiteral -> new ListExpression(expressions(start, end), span(context));
+            case EmbeddedLanguageParser.RULE_literal -> new Literal(first(start, end, Token.class));
             default -> throw new IllegalStateException("unsupported Embedded Language grammar rule");
         };
     }
 
-    private static Conditional conditional(ParserRuleContext context, List<Object> items) {
-        Expression condition = first(items, Expression.class);
-        List<SyntaxNode> nodes = syntaxNodes(items);
+    private Conditional conditional(ParserRuleContext context, int start, int end) {
+        Expression condition = first(start, end, Expression.class);
         Block whenTrue = null;
         @Nullable
         List<Statement> whenFalse = null;
         boolean afterTrue = false;
-        for (SyntaxNode node : nodes) {
-            if (node == condition) continue;
-            if (!afterTrue && node instanceof Block block) {
+        for (int index = start; index < end; index++) {
+            Object item = this.values[index];
+            if (item == condition) continue;
+            if (!afterTrue && item instanceof Block block) {
                 whenTrue = block;
                 afterTrue = true;
                 continue;
             }
             if (afterTrue) {
-                if (node instanceof Block block) whenFalse = block.statements();
-                else if (node instanceof Statement statement) whenFalse = List.of(statement);
+                if (item instanceof Block block) whenFalse = block.statements();
+                else if (item instanceof Statement statement) whenFalse = List.of(statement);
             }
         }
         Block trueBlock = Objects.requireNonNull(whenTrue);
         return new Conditional(condition, trueBlock.statements(), whenFalse, span(context));
     }
 
-    private static Reference reference(ParserRuleContext context, List<Object> items) {
+    private Reference reference(ParserRuleContext context, int start, int end) {
         List<String> names = new ArrayList<>();
-        for (Object item : items) {
+        for (int index = start; index < end; index++) {
+            Object item = this.values[index];
             if (item instanceof Token token && token.getType() == EmbeddedLanguageParser.IDENT) names.add(token.getText());
         }
         return new Reference(names.getFirst(), names.subList(1, names.size()), span(context));
     }
 
-    private static Expression unary(ParserRuleContext context, List<Object> items) {
-        Expression operand = first(items, Expression.class);
-        Token operator = firstOrNull(items, Token.class);
+    private Expression unary(ParserRuleContext context, int start, int end) {
+        Expression operand = first(start, end, Expression.class);
+        Token operator = firstOrNull(start, end, Token.class);
         if (operator == null || operator.getType() == Token.EOF) return operand;
         LanguageIr.UnaryOperator mapped = switch (operator.getType()) {
             case EmbeddedLanguageParser.NOT -> LanguageIr.UnaryOperator.NOT;
@@ -212,10 +235,15 @@ final class LanguageCompilerListener extends EmbeddedLanguageBaseListener {
         return mapped == null ? operand : new Unary(mapped, operand, span(context));
     }
 
-    private static Expression chain(List<Object> items, java.util.function.Function<Token, LanguageIr.BinaryOperator> op) {
+    private Expression chain(
+        int start,
+        int end,
+        java.util.function.Function<Token, LanguageIr.BinaryOperator> op
+    ) {
         Expression result = null;
         Token operator = null;
-        for (Object item : items) {
+        for (int index = start; index < end; index++) {
+            Object item = this.values[index];
             if (item instanceof Token token) {
                 if (token.getType() != Token.EOF) operator = token;
                 continue;
@@ -236,37 +264,43 @@ final class LanguageCompilerListener extends EmbeddedLanguageBaseListener {
         return Objects.requireNonNull(result);
     }
 
-    private static List<Statement> statements(List<Object> items) {
+    private List<Statement> statements(int start, int end) {
         List<Statement> result = new ArrayList<>();
-        for (Object item : items) if (item instanceof Statement statement) result.add(statement);
+        for (int index = start; index < end; index++) {
+            Object item = this.values[index];
+            if (item instanceof Statement statement) result.add(statement);
+        }
         return List.copyOf(result);
     }
 
-    private static List<Expression> expressions(List<Object> items) {
+    private List<Expression> expressions(int start, int end) {
         List<Expression> result = new ArrayList<>();
-        for (Object item : items) if (item instanceof Expression expression) result.add(expression);
+        for (int index = start; index < end; index++) {
+            Object item = this.values[index];
+            if (item instanceof Expression expression) result.add(expression);
+        }
         return List.copyOf(result);
     }
 
-    private static List<SyntaxNode> syntaxNodes(List<Object> items) {
-        List<SyntaxNode> result = new ArrayList<>();
-        for (Object item : items) if (item instanceof SyntaxNode node) result.add(node);
-        return result;
-    }
-
-    private static Token token(List<Object> items, int type) {
-        for (Object item : items) if (item instanceof Token token && token.getType() == type) return token;
+    private Token token(int start, int end, int type) {
+        for (int index = start; index < end; index++) {
+            Object item = this.values[index];
+            if (item instanceof Token token && token.getType() == type) return token;
+        }
         throw new IllegalStateException("expected parser token");
     }
 
-    private static <T> T first(List<Object> items, Class<T> type) {
-        T value = firstOrNull(items, type);
+    private <T> T first(int start, int end, Class<T> type) {
+        T value = firstOrNull(start, end, type);
         if (value == null) throw new IllegalStateException("expected parser value");
         return value;
     }
 
-    private static <T> @Nullable T firstOrNull(List<Object> items, Class<T> type) {
-        for (Object item : items) if (type.isInstance(item)) return type.cast(item);
+    private <T> @Nullable T firstOrNull(int start, int end, Class<T> type) {
+        for (int index = start; index < end; index++) {
+            Object item = this.values[index];
+            if (type.isInstance(item)) return type.cast(item);
+        }
         return null;
     }
 
@@ -497,7 +531,9 @@ final class LanguageCompilerListener extends EmbeddedLanguageBaseListener {
             return LanguageType.Scalar.NUMBER;
         }
         if (operator == LanguageIr.BinaryOperator.IN) {
-            if (!(right.type() instanceof LanguageType.ListType list) || !left.type().equals(list.elementType())) throw failure(
+            if (
+                !(right.type() instanceof LanguageType.ListType list) || !left.type().equals(list.elementType())
+            ) throw failure(
                 LanguageDiagnostic.Category.TypeError,
                 "in requires a value and a homogeneous List of that value type",
                 span
@@ -545,7 +581,9 @@ final class LanguageCompilerListener extends EmbeddedLanguageBaseListener {
                 binary.left() instanceof LanguageIr.Literal literal &&
                 literal.value() instanceof Boolean value
             ) return value ? literal : binary.right();
-            if (binary.left() instanceof LanguageIr.Literal left && binary.right() instanceof LanguageIr.Literal right) {
+            if (
+                binary.left() instanceof LanguageIr.Literal left && binary.right() instanceof LanguageIr.Literal right
+            ) {
                 try {
                     return literal(
                         EmbeddedLanguageEvaluator.compute(binary.operator(), left.value(), right.value()),
@@ -703,12 +741,6 @@ final class LanguageCompilerListener extends EmbeddedLanguageBaseListener {
         LanguageDiagnostic.SourceSpan span
     ) {
         return EmbeddedLanguageCompiler.failure(category, message, span);
-    }
-
-    private record Frame(List<Object> items) {
-        private Frame() {
-            this(new ArrayList<>());
-        }
     }
 
     private sealed interface SyntaxNode permits Program, Block, Statement, Expression {}
