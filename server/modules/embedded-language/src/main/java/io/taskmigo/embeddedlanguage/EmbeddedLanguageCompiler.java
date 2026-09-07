@@ -19,8 +19,8 @@ import org.jspecify.annotations.Nullable;
 
 /// Compiles direct-body Embedded Language source into typed immutable IR.
 ///
-/// The generated ANTLR lexer and parser implement the canonical grammar. The generated parse tree is converted through
-/// a language-owned visitor before semantic evaluation.
+/// The generated ANTLR lexer and parser implement the canonical grammar. A parse listener converts parser events into
+/// language-owned semantics without retaining an ANTLR parse tree.
 @SuppressWarnings("checkstyle:NeedBraces")
 public final class EmbeddedLanguageCompiler {
 
@@ -78,12 +78,19 @@ public final class EmbeddedLanguageCompiler {
         }
 
         EmbeddedLanguageParser parser = new EmbeddedLanguageParser(tokens);
+        parser.setBuildParseTree(false);
         parser.removeErrorListeners();
         parser.addErrorListener(errors);
-        EmbeddedLanguageParser.ProgramContext program = parser.program();
+        LanguageCompilerListener compiler = new LanguageCompilerListener(
+            schema,
+            this.limits,
+            () -> !errors.diagnostics.isEmpty()
+        );
+        parser.addParseListener(compiler);
+        parser.program();
         if (!errors.diagnostics.isEmpty()) throw new EmbeddedLanguageException(errors.diagnostics);
 
-        LanguageIr.Expression expression = new LanguageCompilerVisitor(schema, this.limits).compile(program);
+        LanguageIr.Expression expression = compiler.compile();
         if (expression.type() != LanguageType.Scalar.BOOL) {
             throw failure(LanguageDiagnostic.Category.TypeError, "program result must be Bool", expression.span());
         }
