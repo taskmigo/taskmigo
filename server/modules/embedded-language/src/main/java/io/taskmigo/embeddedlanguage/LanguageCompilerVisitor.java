@@ -1,5 +1,6 @@
 package io.taskmigo.embeddedlanguage;
 
+import io.taskmigo.embeddedlanguage.antlr.EmbeddedLanguageBaseVisitor;
 import io.taskmigo.embeddedlanguage.antlr.EmbeddedLanguageParser;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -9,245 +10,234 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.jspecify.annotations.Nullable;
 
-/// Converts the validated ANTLR token stream directly into language-owned IR.
+/// Converts the generated ANTLR parse tree into typed language-owned IR.
 ///
-/// This frontend deliberately does not retain or consume ANTLR parse-tree nodes. Its compact recursive-descent pass
-/// validates the token sequence and performs the semantic conversion needed by the compiler.
+/// Parsing remains owned by the canonical ANTLR grammar. This visitor builds a compact private syntax model and then
+/// performs binding, type checking, control-flow lowering, dependency analysis, and constant folding.
 @SuppressWarnings({
     "checkstyle:NeedBraces",
     "checkstyle:OverloadMethodsDeclarationOrder",
     "checkstyle:UnnecessaryFullyQualifiedType",
 })
-final class FastEmbeddedLanguageCompiler {
+final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> {
 
     private final EnvironmentSchema schema;
     private final CompilerLimits limits;
-    private final List<Token> tokens;
     private final List<Scope> scopes = new ArrayList<>();
-    private int cursor;
     private int nodes;
     private int syntaxNesting;
 
-    FastEmbeddedLanguageCompiler(EnvironmentSchema schema, CompilerLimits limits, CommonTokenStream stream) {
+    LanguageCompilerVisitor(EnvironmentSchema schema, CompilerLimits limits) {
         this.schema = schema;
         this.limits = limits;
-        this.tokens = new ArrayList<>();
-        for (int index = 0; index < stream.size(); index++) {
-            Token token = stream.get(index);
-            if (token.getChannel() == Token.DEFAULT_CHANNEL) this.tokens.add(token);
-        }
     }
 
-    LanguageIr.Expression compile() {
-        List<Statement> statements = new ArrayList<>();
-        while (!at(Token.EOF)) statements.add(statement());
-        return sequence(statements, new Scope(null), 0, null, new HashSet<>());
+    LanguageIr.Expression compile(EmbeddedLanguageParser.ProgramContext context) {
+        Program program = (Program) visitProgram(context);
+        return sequence(program.statements(), new Scope(null), 0, null, new HashSet<>());
     }
 
-    private Statement statement() {
-        return switch (current().getType()) {
-            case EmbeddedLanguageParser.CONST -> constant();
-            case EmbeddedLanguageParser.RETURN -> returning();
-            case EmbeddedLanguageParser.IF -> conditional();
-            default -> throw syntax("expected a statement", current());
-        };
+    @Override
+    public SyntaxNode visitProgram(EmbeddedLanguageParser.ProgramContext context) {
+        return new Program(context.statement().stream().map(this::statement).toList());
     }
 
-    private Constant constant() {
-        Token start = expect(EmbeddedLanguageParser.CONST);
-        Token name = expect(EmbeddedLanguageParser.IDENT);
-        expect(EmbeddedLanguageParser.ASSIGN);
-        Expression value = expression();
-        Token end = expect(EmbeddedLanguageParser.SEMICOLON);
-        return new Constant(name.getText(), value, sourceSpan(start, end));
+    @Override
+    public SyntaxNode visitStatement(EmbeddedLanguageParser.StatementContext context) {
+        return (SyntaxNode) visit(context.getChild(0));
     }
 
-    private Returning returning() {
-        Token start = expect(EmbeddedLanguageParser.RETURN);
-        Expression value = expression();
-        Token end = expect(EmbeddedLanguageParser.SEMICOLON);
-        return new Returning(value, sourceSpan(start, end));
+    @Override
+    public SyntaxNode visitBlock(EmbeddedLanguageParser.BlockContext context) {
+        return new Block(context.statement().stream().map(this::statement).toList());
     }
 
-    private Conditional conditional() {
-        Token start = expect(EmbeddedLanguageParser.IF);
-        expect(EmbeddedLanguageParser.LPAREN);
-        Expression condition = expression();
-        expect(EmbeddedLanguageParser.RPAREN);
-        List<Statement> whenTrue = block();
+    @Override
+    public SyntaxNode visitConstDecl(EmbeddedLanguageParser.ConstDeclContext context) {
+        return new Constant(context.IDENT().getText(), expression(context.expression()), span(context));
+    }
+
+    @Override
+    public SyntaxNode visitReturnStatement(EmbeddedLanguageParser.ReturnStatementContext context) {
+        return new Returning(expression(context.expression()), span(context));
+    }
+
+    @Override
+    public SyntaxNode visitIfStatement(EmbeddedLanguageParser.IfStatementContext context) {
+        Block whenTrue = (Block) visitBlock(context.block(0));
         @Nullable
         List<Statement> whenFalse = null;
-        if (accept(EmbeddedLanguageParser.ELSE)) {
-            whenFalse = current().getType() == EmbeddedLanguageParser.IF ? List.of(conditional()) : block();
+        if (context.ELSE() != null) {
+            if (context.ifStatement() != null) {
+                whenFalse = List.of((Statement) visitIfStatement(context.ifStatement()));
+            } else {
+                whenFalse = ((Block) visitBlock(context.block(1))).statements();
+            }
         }
-        Token end = previous();
-        return new Conditional(condition, whenTrue, whenFalse, sourceSpan(start, end));
+        return new Conditional(expression(context.expression()), whenTrue.statements(), whenFalse, span(context));
     }
 
-    private List<Statement> block() {
-        expect(EmbeddedLanguageParser.LBRACE);
-        List<Statement> statements = new ArrayList<>();
-        while (!at(EmbeddedLanguageParser.RBRACE) && !at(Token.EOF)) statements.add(statement());
-        expect(EmbeddedLanguageParser.RBRACE);
-        return List.copyOf(statements);
+    @Override
+    public SyntaxNode visitExpression(EmbeddedLanguageParser.ExpressionContext context) {
+        return visitOrExpression(context.orExpression());
     }
 
-    private Expression expression() {
-        return or();
+    @Override
+    public SyntaxNode visitOrExpression(EmbeddedLanguageParser.OrExpressionContext context) {
+        return chain(context.andExpression(), context, operator -> LanguageIr.BinaryOperator.OR);
     }
 
-    private Expression or() {
-        Expression result = and();
-        while (accept(EmbeddedLanguageParser.OR)) {
-            Expression right = and();
-            result = new Binary(LanguageIr.BinaryOperator.OR, result, right, sourceSpan(result.span(), right.span()));
-        }
-        return result;
+    @Override
+    public SyntaxNode visitAndExpression(EmbeddedLanguageParser.AndExpressionContext context) {
+        return chain(context.equalityExpression(), context, operator -> LanguageIr.BinaryOperator.AND);
     }
 
-    private Expression and() {
-        Expression result = equality();
-        while (accept(EmbeddedLanguageParser.AND)) {
-            Expression right = equality();
-            result = new Binary(LanguageIr.BinaryOperator.AND, result, right, sourceSpan(result.span(), right.span()));
-        }
-        return result;
+    @Override
+    public SyntaxNode visitEqualityExpression(EmbeddedLanguageParser.EqualityExpressionContext context) {
+        return chain(
+            context.comparisonExpression(),
+            context,
+            operator ->
+                switch (operator) {
+                    case "==" -> LanguageIr.BinaryOperator.EQUAL;
+                    case "!=" -> LanguageIr.BinaryOperator.NOT_EQUAL;
+                    default -> throw new IllegalStateException("unsupported equality operator");
+                }
+        );
     }
 
-    private Expression equality() {
-        Expression result = comparison();
-        while (at(EmbeddedLanguageParser.EQUAL) || at(EmbeddedLanguageParser.NOT_EQUAL)) {
-            LanguageIr.BinaryOperator operator =
-                take().getType() == EmbeddedLanguageParser.EQUAL
-                    ? LanguageIr.BinaryOperator.EQUAL
-                    : LanguageIr.BinaryOperator.NOT_EQUAL;
-            Expression right = comparison();
-            result = new Binary(operator, result, right, sourceSpan(result.span(), right.span()));
-        }
-        return result;
+    @Override
+    public SyntaxNode visitComparisonExpression(EmbeddedLanguageParser.ComparisonExpressionContext context) {
+        return chain(
+            context.membershipExpression(),
+            context,
+            operator ->
+                switch (operator) {
+                    case "<" -> LanguageIr.BinaryOperator.LESS;
+                    case "<=" -> LanguageIr.BinaryOperator.LESS_OR_EQUAL;
+                    case ">" -> LanguageIr.BinaryOperator.GREATER;
+                    case ">=" -> LanguageIr.BinaryOperator.GREATER_OR_EQUAL;
+                    default -> throw new IllegalStateException("unsupported comparison operator");
+                }
+        );
     }
 
-    private Expression comparison() {
-        Expression result = membership();
-        while (
-            at(EmbeddedLanguageParser.LESS) ||
-            at(EmbeddedLanguageParser.LESS_EQUAL) ||
-            at(EmbeddedLanguageParser.GREATER) ||
-            at(EmbeddedLanguageParser.GREATER_EQUAL)
-        ) {
-            LanguageIr.BinaryOperator operator = switch (take().getType()) {
-                case EmbeddedLanguageParser.LESS -> LanguageIr.BinaryOperator.LESS;
-                case EmbeddedLanguageParser.LESS_EQUAL -> LanguageIr.BinaryOperator.LESS_OR_EQUAL;
-                case EmbeddedLanguageParser.GREATER -> LanguageIr.BinaryOperator.GREATER;
-                default -> LanguageIr.BinaryOperator.GREATER_OR_EQUAL;
-            };
-            Expression right = membership();
-            result = new Binary(operator, result, right, sourceSpan(result.span(), right.span()));
-        }
-        return result;
+    @Override
+    public SyntaxNode visitMembershipExpression(EmbeddedLanguageParser.MembershipExpressionContext context) {
+        Expression left = expression(context.additiveExpression(0));
+        if (context.additiveExpression().size() == 1) return left;
+        Expression right = expression(context.additiveExpression(1));
+        return new Binary(LanguageIr.BinaryOperator.IN, left, right, sourceSpan(left.span(), right.span()));
     }
 
-    private Expression membership() {
-        Expression result = additive();
-        if (accept(EmbeddedLanguageParser.IN)) {
-            Expression right = additive();
-            result = new Binary(LanguageIr.BinaryOperator.IN, result, right, sourceSpan(result.span(), right.span()));
-        }
-        return result;
+    @Override
+    public SyntaxNode visitAdditiveExpression(EmbeddedLanguageParser.AdditiveExpressionContext context) {
+        return chain(
+            context.multiplicativeExpression(),
+            context,
+            operator ->
+                switch (operator) {
+                    case "+" -> LanguageIr.BinaryOperator.ADD;
+                    case "-" -> LanguageIr.BinaryOperator.SUBTRACT;
+                    default -> throw new IllegalStateException("unsupported additive operator");
+                }
+        );
     }
 
-    private Expression additive() {
-        Expression result = multiplicative();
-        while (at(EmbeddedLanguageParser.PLUS) || at(EmbeddedLanguageParser.MINUS)) {
-            LanguageIr.BinaryOperator operator =
-                take().getType() == EmbeddedLanguageParser.PLUS
-                    ? LanguageIr.BinaryOperator.ADD
-                    : LanguageIr.BinaryOperator.SUBTRACT;
-            Expression right = multiplicative();
-            result = new Binary(operator, result, right, sourceSpan(result.span(), right.span()));
-        }
-        return result;
+    @Override
+    public SyntaxNode visitMultiplicativeExpression(EmbeddedLanguageParser.MultiplicativeExpressionContext context) {
+        return chain(
+            context.unaryExpression(),
+            context,
+            operator ->
+                switch (operator) {
+                    case "*" -> LanguageIr.BinaryOperator.MULTIPLY;
+                    case "/" -> LanguageIr.BinaryOperator.DIVIDE;
+                    case "%" -> LanguageIr.BinaryOperator.MODULO;
+                    default -> throw new IllegalStateException("unsupported multiplicative operator");
+                }
+        );
     }
 
-    private Expression multiplicative() {
-        Expression result = unary();
-        while (
-            at(EmbeddedLanguageParser.STAR) || at(EmbeddedLanguageParser.SLASH) || at(EmbeddedLanguageParser.PERCENT)
-        ) {
-            LanguageIr.BinaryOperator operator = switch (take().getType()) {
-                case EmbeddedLanguageParser.STAR -> LanguageIr.BinaryOperator.MULTIPLY;
-                case EmbeddedLanguageParser.SLASH -> LanguageIr.BinaryOperator.DIVIDE;
-                default -> LanguageIr.BinaryOperator.MODULO;
-            };
-            Expression right = unary();
-            result = new Binary(operator, result, right, sourceSpan(result.span(), right.span()));
-        }
-        return result;
-    }
-
-    private Expression unary() {
-        if (++syntaxNesting > limits.maxSyntaxDepth()) {
+    @Override
+    public SyntaxNode visitUnaryExpression(EmbeddedLanguageParser.UnaryExpressionContext context) {
+        if (++syntaxNesting > this.limits.maxSyntaxDepth()) {
             throw failure(
                 LanguageDiagnostic.Category.ComplexityError,
                 "program syntax depth exceeds the limit",
-                span(current())
+                span(context)
             );
         }
         try {
-            if (at(EmbeddedLanguageParser.NOT) || at(EmbeddedLanguageParser.PLUS) || at(EmbeddedLanguageParser.MINUS)) {
-                Token operator = take();
-                Expression operand = unary();
-                return new Unary(
-                    switch (operator.getType()) {
-                        case EmbeddedLanguageParser.NOT -> LanguageIr.UnaryOperator.NOT;
-                        case EmbeddedLanguageParser.PLUS -> LanguageIr.UnaryOperator.PLUS;
-                        default -> LanguageIr.UnaryOperator.MINUS;
-                    },
-                    operand,
-                    sourceSpan(span(operator), operand.span())
-                );
-            }
-            return primary();
+            if (context.primary() != null) return visitPrimary(context.primary());
+            LanguageIr.UnaryOperator operator = switch (context.getChild(0).getText()) {
+                case "!" -> LanguageIr.UnaryOperator.NOT;
+                case "+" -> LanguageIr.UnaryOperator.PLUS;
+                case "-" -> LanguageIr.UnaryOperator.MINUS;
+                default -> throw new IllegalStateException("unsupported unary operator");
+            };
+            return new Unary(operator, expression(context.unaryExpression()), span(context));
         } finally {
             syntaxNesting--;
         }
     }
 
-    private Expression primary() {
-        if (accept(EmbeddedLanguageParser.LPAREN)) {
-            Expression result = expression();
-            expect(EmbeddedLanguageParser.RPAREN);
-            return result;
-        }
-        if (at(EmbeddedLanguageParser.LBRACKET)) return listExpression();
-        if (at(EmbeddedLanguageParser.TRUE) || at(EmbeddedLanguageParser.FALSE) || at(EmbeddedLanguageParser.NULL)) {
-            return new Literal(take());
-        }
-        if (at(EmbeddedLanguageParser.NUMBER) || at(EmbeddedLanguageParser.STRING)) return new Literal(take());
-        if (at(EmbeddedLanguageParser.IDENT)) return reference();
-        throw syntax("mismatched input '" + current().getText() + "' expecting an expression", current());
+    @Override
+    public SyntaxNode visitPrimary(EmbeddedLanguageParser.PrimaryContext context) {
+        if (context.literal() != null) return visitLiteral(context.literal());
+        if (context.listLiteral() != null) return visitListLiteral(context.listLiteral());
+        if (context.reference() != null) return visitReference(context.reference());
+        return visitExpression(context.expression());
     }
 
-    private Expression reference() {
-        Token start = expect(EmbeddedLanguageParser.IDENT);
-        List<String> path = new ArrayList<>();
-        while (accept(EmbeddedLanguageParser.DOT)) path.add(expect(EmbeddedLanguageParser.IDENT).getText());
-        return new Reference(start.getText(), List.copyOf(path), sourceSpan(start, previous()));
+    @Override
+    public SyntaxNode visitReference(EmbeddedLanguageParser.ReferenceContext context) {
+        List<String> names = context
+            .IDENT()
+            .stream()
+            .map(node -> node.getText())
+            .toList();
+        return new Reference(names.getFirst(), names.subList(1, names.size()), span(context));
     }
 
-    private Expression listExpression() {
-        Token start = expect(EmbeddedLanguageParser.LBRACKET);
-        List<Expression> values = new ArrayList<>();
-        if (!at(EmbeddedLanguageParser.RBRACKET)) {
-            values.add(expression());
-            while (accept(EmbeddedLanguageParser.COMMA)) values.add(expression());
+    @Override
+    public SyntaxNode visitListLiteral(EmbeddedLanguageParser.ListLiteralContext context) {
+        return new ListExpression(context.expression().stream().map(this::expression).toList(), span(context));
+    }
+
+    @Override
+    public SyntaxNode visitLiteral(EmbeddedLanguageParser.LiteralContext context) {
+        return new Literal(context.getStart());
+    }
+
+    private Statement statement(EmbeddedLanguageParser.StatementContext context) {
+        return (Statement) visitStatement(context);
+    }
+
+    private Expression expression(ParserRuleContext context) {
+        return (Expression) visit(context);
+    }
+
+    private Expression chain(
+        List<? extends ParserRuleContext> operands,
+        ParserRuleContext context,
+        java.util.function.Function<String, LanguageIr.BinaryOperator> operator
+    ) {
+        Expression result = expression(operands.getFirst());
+        for (int index = 1; index < operands.size(); index++) {
+            Expression right = expression(operands.get(index));
+            result = new Binary(
+                operator.apply(context.getChild(index * 2 - 1).getText()),
+                result,
+                right,
+                sourceSpan(result.span(), right.span())
+            );
         }
-        Token end = expect(EmbeddedLanguageParser.RBRACKET);
-        return new ListExpression(List.copyOf(values), sourceSpan(start, end));
+        return result;
     }
 
     private LanguageIr.Expression sequence(
@@ -639,35 +629,12 @@ final class FastEmbeddedLanguageCompiler {
         return result.toString();
     }
 
-    private Token current() {
-        return this.tokens.get(this.cursor);
-    }
-
-    private Token previous() {
-        return this.tokens.get(this.cursor - 1);
-    }
-
-    private Token take() {
-        return this.tokens.get(this.cursor++);
-    }
-
-    private boolean at(int type) {
-        return current().getType() == type;
-    }
-
-    private boolean accept(int type) {
-        if (!at(type)) return false;
-        cursor++;
-        return true;
-    }
-
-    private Token expect(int type) {
-        if (!at(type)) throw syntax("unexpected token", current());
-        return take();
-    }
-
     private static EmbeddedLanguageException syntax(String message, Token token) {
         return failure(LanguageDiagnostic.Category.SyntaxError, message, span(token));
+    }
+
+    private static LanguageDiagnostic.SourceSpan span(ParserRuleContext context) {
+        return sourceSpan(context.getStart(), context.getStop());
     }
 
     private static LanguageDiagnostic.SourceSpan span(Token token) {
@@ -712,7 +679,21 @@ final class FastEmbeddedLanguageCompiler {
         return EmbeddedLanguageCompiler.failure(category, message, span);
     }
 
-    private sealed interface Statement permits Constant, Returning, Conditional {
+    private sealed interface SyntaxNode permits Program, Block, Statement, Expression {}
+
+    private record Program(List<Statement> statements) implements SyntaxNode {
+        private Program {
+            statements = List.copyOf(statements);
+        }
+    }
+
+    private record Block(List<Statement> statements) implements SyntaxNode {
+        private Block {
+            statements = List.copyOf(statements);
+        }
+    }
+
+    private sealed interface Statement extends SyntaxNode permits Constant, Returning, Conditional {
         LanguageDiagnostic.SourceSpan span();
     }
 
@@ -725,26 +706,35 @@ final class FastEmbeddedLanguageCompiler {
         List<Statement> whenTrue,
         @Nullable List<Statement> whenFalse,
         LanguageDiagnostic.SourceSpan span
-    ) implements Statement {}
+    ) implements Statement {
+        private Conditional {
+            whenTrue = List.copyOf(whenTrue);
+            whenFalse = whenFalse == null ? null : List.copyOf(whenFalse);
+        }
+    }
 
-    private sealed interface Expression permits Literal, Reference, ListExpression, Unary, Binary {
+    private sealed interface Expression extends SyntaxNode permits Literal, Reference, ListExpression, Unary, Binary {
         LanguageDiagnostic.SourceSpan span();
     }
 
     private record Literal(Token token) implements Expression {
         @Override
         public LanguageDiagnostic.SourceSpan span() {
-            return FastEmbeddedLanguageCompiler.span(this.token);
+            return LanguageCompilerVisitor.span(this.token);
         }
     }
 
-    private record Reference(
-        String root,
-        List<String> path,
-        LanguageDiagnostic.SourceSpan span
-    ) implements Expression {}
+    private record Reference(String root, List<String> path, LanguageDiagnostic.SourceSpan span) implements Expression {
+        private Reference {
+            path = List.copyOf(path);
+        }
+    }
 
-    private record ListExpression(List<Expression> values, LanguageDiagnostic.SourceSpan span) implements Expression {}
+    private record ListExpression(List<Expression> values, LanguageDiagnostic.SourceSpan span) implements Expression {
+        private ListExpression {
+            values = List.copyOf(values);
+        }
+    }
 
     private record Unary(
         LanguageIr.UnaryOperator operator,

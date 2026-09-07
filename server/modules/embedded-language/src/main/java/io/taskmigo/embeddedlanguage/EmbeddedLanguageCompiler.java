@@ -1,6 +1,7 @@
 package io.taskmigo.embeddedlanguage;
 
 import io.taskmigo.embeddedlanguage.antlr.EmbeddedLanguageLexer;
+import io.taskmigo.embeddedlanguage.antlr.EmbeddedLanguageParser;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -18,8 +19,8 @@ import org.jspecify.annotations.Nullable;
 
 /// Compiles direct-body Embedded Language source into typed immutable IR.
 ///
-/// The generated ANTLR lexer supplies the canonical tokenization. Syntax validation and semantic lowering are
-/// performed by the allocation-conscious token frontend so ANTLR parse-tree objects are not created at runtime.
+/// The generated ANTLR lexer and parser implement the canonical grammar. The generated parse tree is converted through
+/// a language-owned visitor before semantic evaluation.
 @SuppressWarnings("checkstyle:NeedBraces")
 public final class EmbeddedLanguageCompiler {
 
@@ -76,7 +77,13 @@ public final class EmbeddedLanguageCompiler {
             );
         }
 
-        LanguageIr.Expression expression = new FastEmbeddedLanguageCompiler(schema, this.limits, tokens).compile();
+        EmbeddedLanguageParser parser = new EmbeddedLanguageParser(tokens);
+        parser.removeErrorListeners();
+        parser.addErrorListener(errors);
+        EmbeddedLanguageParser.ProgramContext program = parser.program();
+        if (!errors.diagnostics.isEmpty()) throw new EmbeddedLanguageException(errors.diagnostics);
+
+        LanguageIr.Expression expression = new LanguageCompilerVisitor(schema, this.limits).compile(program);
         if (expression.type() != LanguageType.Scalar.BOOL) {
             throw failure(LanguageDiagnostic.Category.TypeError, "program result must be Bool", expression.span());
         }
