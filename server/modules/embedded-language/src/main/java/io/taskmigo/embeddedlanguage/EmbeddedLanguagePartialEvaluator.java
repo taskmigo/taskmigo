@@ -1,46 +1,79 @@
 package io.taskmigo.embeddedlanguage;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
-/// Partially evaluates policies using only the roots known to the consumer.
+/// Partially evaluates Semantic AST using only the roots known to the consumer.
 @SuppressWarnings("checkstyle:NeedBraces")
 public final class EmbeddedLanguagePartialEvaluator {
 
-    /// Produces a concrete boolean or a typed residual expression.
-    public PartialProgram partial(LanguageIr program, Map<String, ?> knownRoots) {
+    /// Produces a concrete typed value or a typed residual Semantic AST expression.
+    public PartialProgram partial(SemanticAst program, Map<String, ?> knownRoots) {
         Objects.requireNonNull(program);
         Objects.requireNonNull(knownRoots);
-        LanguageIr.Expression residual = simplify(program.expression(), knownRoots);
-        if (
-            residual instanceof LanguageIr.Literal literal && literal.value() instanceof Boolean value
-        ) return new PartialProgram(value, (LanguageIr.@Nullable Expression) null);
-        if (!residual.type().equals(LanguageType.Scalar.BOOL)) throw new EmbeddedLanguageException(
-            new LanguageDiagnostic(LanguageDiagnostic.Category.TypeError, "partial result is not Bool", residual.span())
-        );
-        return new PartialProgram(null, residual);
+        requireSymbolicUnknowns(program.expression(), knownRoots.keySet());
+        SemanticAst.Expression residual = simplify(program.expression(), knownRoots);
+        if (residual instanceof SemanticAst.Literal literal) {
+            if (!conforms(literal.value(), program)) throw incompatible(residual.span());
+            return new PartialProgram.Concrete(literal.value(), program.resultType());
+        }
+        if (!residual.type().equals(program.resultType())) throw incompatible(residual.span());
+        if (residual.nullable() && !program.resultNullable()) throw incompatible(residual.span());
+        return new PartialProgram.Residual(residual);
     }
 
-    private static LanguageIr.Expression simplify(LanguageIr.Expression expression, Map<String, ?> knownRoots) {
+    private static SemanticAst.Expression simplify(SemanticAst.Expression expression, Map<String, ?> knownRoots) {
+        if (Collections.disjoint(expression.dependencies(), knownRoots.keySet())) return expression;
         return switch (expression) {
-            case LanguageIr.Literal literal -> literal;
-            case LanguageIr.Reference reference when !knownRoots.containsKey(reference.root()) -> reference;
-            case LanguageIr.Reference reference -> {
-                Object value = EmbeddedLanguageEvaluator.read(reference, knownRoots);
-                yield literal(value, value == null ? LanguageType.Scalar.NULL : reference.type(), reference.span());
+            case SemanticAst.Literal literal -> literal;
+            case SemanticAst.Reference reference when !knownRoots.containsKey(reference.root()) -> reference;
+            case SemanticAst.Reference reference -> {
+                @Nullable Object value = EmbeddedLanguageEvaluator.read(reference, knownRoots);
+                yield literal(value, reference.type(), reference.span());
             }
-            case LanguageIr.ListLiteral list -> list(list, knownRoots);
-            case LanguageIr.Unary unary -> unary(unary, knownRoots);
-            case LanguageIr.Binary binary -> binary(binary, knownRoots);
-            case LanguageIr.Conditional conditional -> conditional(conditional, knownRoots);
+            case SemanticAst.ListLiteral list -> list(list, knownRoots);
+            case SemanticAst.Unary unary -> unary(unary, knownRoots);
+            case SemanticAst.Binary binary -> binary(binary, knownRoots);
+            case SemanticAst.Conditional conditional -> conditional(conditional, knownRoots);
         };
     }
 
-    private static LanguageIr.Expression list(LanguageIr.ListLiteral expression, Map<String, ?> roots) {
-        List<LanguageIr.Expression> values = expression
+    private static void requireSymbolicUnknowns(SemanticAst.Expression expression, Set<String> knownRoots) {
+        switch (expression) {
+            case SemanticAst.Literal _ -> {
+            }
+            case SemanticAst.Reference reference -> {
+                if (!knownRoots.contains(reference.root()) && !reference.symbolic()) {
+                    throw new EmbeddedLanguageException(
+                        new LanguageDiagnostic(
+                            LanguageDiagnostic.Category.TypeError,
+                            "program reference may not remain symbolic: " + reference.root() +
+                            (reference.path().isEmpty() ? "" : "." + String.join(".", reference.path())),
+                            reference.span()
+                        )
+                    );
+                }
+            }
+            case SemanticAst.ListLiteral list -> list.values().forEach(value -> requireSymbolicUnknowns(value, knownRoots));
+            case SemanticAst.Unary unary -> requireSymbolicUnknowns(unary.operand(), knownRoots);
+            case SemanticAst.Binary binary -> {
+                requireSymbolicUnknowns(binary.left(), knownRoots);
+                requireSymbolicUnknowns(binary.right(), knownRoots);
+            }
+            case SemanticAst.Conditional conditional -> {
+                requireSymbolicUnknowns(conditional.condition(), knownRoots);
+                requireSymbolicUnknowns(conditional.whenTrue(), knownRoots);
+                requireSymbolicUnknowns(conditional.whenFalse(), knownRoots);
+            }
+        }
+    }
+
+    private static SemanticAst.Expression list(SemanticAst.ListLiteral expression, Map<String, ?> roots) {
+        List<SemanticAst.Expression> values = expression
             .values()
             .stream()
             .map(value -> simplify(value, roots))
@@ -49,20 +82,20 @@ public final class EmbeddedLanguagePartialEvaluator {
             return literal(
                 values
                     .stream()
-                    .map(value -> ((LanguageIr.Literal) value).value())
+                    .map(value -> ((SemanticAst.Literal) value).value())
                     .toList(),
                 expression.type(),
                 expression.span()
             );
         }
-        return new LanguageIr.ListLiteral(values, expression.type(), dependencies(values), expression.span());
+        return new SemanticAst.ListLiteral(values, expression.type(), dependencies(values), expression.span());
     }
 
-    private static LanguageIr.Expression unary(LanguageIr.Unary expression, Map<String, ?> roots) {
-        LanguageIr.Expression operand = simplify(expression.operand(), roots);
-        return operand instanceof LanguageIr.Literal literal
+    private static SemanticAst.Expression unary(SemanticAst.Unary expression, Map<String, ?> roots) {
+        SemanticAst.Expression operand = simplify(expression.operand(), roots);
+        return operand instanceof SemanticAst.Literal literal
             ? literal(EmbeddedLanguageEvaluator.compute(expression.operator(), literal.value()), expression.span())
-            : new LanguageIr.Unary(
+            : new SemanticAst.Unary(
                   expression.operator(),
                   operand,
                   expression.type(),
@@ -71,32 +104,32 @@ public final class EmbeddedLanguagePartialEvaluator {
               );
     }
 
-    private static LanguageIr.Expression binary(LanguageIr.Binary expression, Map<String, ?> roots) {
-        LanguageIr.Expression left = simplify(expression.left(), roots);
+    private static SemanticAst.Expression binary(SemanticAst.Binary expression, Map<String, ?> roots) {
+        SemanticAst.Expression left = simplify(expression.left(), roots);
         if (
-            expression.operator() == LanguageIr.BinaryOperator.AND &&
-            left instanceof LanguageIr.Literal literal &&
+            expression.operator() == SemanticAst.BinaryOperator.AND &&
+            left instanceof SemanticAst.Literal literal &&
             literal.value() instanceof Boolean value
         ) {
             if (!value) return literal(false, expression.span());
             return simplify(expression.right(), roots);
         }
         if (
-            expression.operator() == LanguageIr.BinaryOperator.OR &&
-            left instanceof LanguageIr.Literal literal &&
+            expression.operator() == SemanticAst.BinaryOperator.OR &&
+            left instanceof SemanticAst.Literal literal &&
             literal.value() instanceof Boolean value
         ) {
             if (value) return literal(true, expression.span());
             return simplify(expression.right(), roots);
         }
-        LanguageIr.Expression right = simplify(expression.right(), roots);
+        SemanticAst.Expression right = simplify(expression.right(), roots);
         if (
-            left instanceof LanguageIr.Literal leftLiteral && right instanceof LanguageIr.Literal rightLiteral
+            left instanceof SemanticAst.Literal leftLiteral && right instanceof SemanticAst.Literal rightLiteral
         ) return literal(
             EmbeddedLanguageEvaluator.compute(expression.operator(), leftLiteral.value(), rightLiteral.value()),
             expression.span()
         );
-        return new LanguageIr.Binary(
+        return new SemanticAst.Binary(
             expression.operator(),
             left,
             right,
@@ -106,14 +139,14 @@ public final class EmbeddedLanguagePartialEvaluator {
         );
     }
 
-    private static LanguageIr.Expression conditional(LanguageIr.Conditional expression, Map<String, ?> roots) {
-        LanguageIr.Expression condition = simplify(expression.condition(), roots);
+    private static SemanticAst.Expression conditional(SemanticAst.Conditional expression, Map<String, ?> roots) {
+        SemanticAst.Expression condition = simplify(expression.condition(), roots);
         if (
-            condition instanceof LanguageIr.Literal literal && literal.value() instanceof Boolean value
+            condition instanceof SemanticAst.Literal literal && literal.value() instanceof Boolean value
         ) return simplify(value ? expression.whenTrue() : expression.whenFalse(), roots);
-        LanguageIr.Expression whenTrue = simplify(expression.whenTrue(), roots);
-        LanguageIr.Expression whenFalse = simplify(expression.whenFalse(), roots);
-        return new LanguageIr.Conditional(
+        SemanticAst.Expression whenTrue = simplify(expression.whenTrue(), roots);
+        SemanticAst.Expression whenFalse = simplify(expression.whenFalse(), roots);
+        return new SemanticAst.Conditional(
             condition,
             whenTrue,
             whenFalse,
@@ -123,19 +156,19 @@ public final class EmbeddedLanguagePartialEvaluator {
         );
     }
 
-    private static boolean literalValue(LanguageIr.Expression expression) {
-        return expression instanceof LanguageIr.Literal;
+    private static boolean literalValue(SemanticAst.Expression expression) {
+        return expression instanceof SemanticAst.Literal;
     }
 
-    private static LanguageIr.Expression literal(
+    private static SemanticAst.Expression literal(
         @Nullable Object value,
         LanguageType type,
         LanguageDiagnostic.SourceSpan span
     ) {
-        return new LanguageIr.Literal(value, type, Set.of(), span);
+        return new SemanticAst.Literal(value, type, Set.of(), span);
     }
 
-    private static LanguageIr.Expression literal(@Nullable Object value, LanguageDiagnostic.SourceSpan span) {
+    private static SemanticAst.Expression literal(@Nullable Object value, LanguageDiagnostic.SourceSpan span) {
         return literal(value, typeOf(value), span);
     }
 
@@ -162,13 +195,24 @@ public final class EmbeddedLanguagePartialEvaluator {
         };
     }
 
-    private static Set<String> dependencies(Iterable<LanguageIr.Expression> values) {
+    private static boolean conforms(@Nullable Object value, SemanticAst program) {
+        if (value == null) return program.resultNullable() || program.resultType() == LanguageType.Scalar.NULL;
+        return EmbeddedLanguageEvaluator.matchesType(value, program.resultType());
+    }
+
+    private static EmbeddedLanguageException incompatible(LanguageDiagnostic.SourceSpan span) {
+        return new EmbeddedLanguageException(
+            new LanguageDiagnostic(LanguageDiagnostic.Category.TypeError, "partial result has an incompatible type", span)
+        );
+    }
+
+    private static Set<String> dependencies(Iterable<SemanticAst.Expression> values) {
         return java.util.stream.StreamSupport.stream(values.spliterator(), false)
             .flatMap(value -> value.dependencies().stream())
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
     }
 
-    private static Set<String> union(LanguageIr.Expression... values) {
+    private static Set<String> union(SemanticAst.Expression... values) {
         return java.util.Arrays.stream(values)
             .flatMap(value -> value.dependencies().stream())
             .collect(java.util.stream.Collectors.toUnmodifiableSet());

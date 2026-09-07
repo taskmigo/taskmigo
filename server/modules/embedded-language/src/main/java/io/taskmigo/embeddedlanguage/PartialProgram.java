@@ -3,20 +3,32 @@ package io.taskmigo.embeddedlanguage;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
-/// Holds either a concrete boolean or a typed residual program expression.
-@SuppressWarnings("checkstyle:NeedBraces")
-public record PartialProgram(@Nullable Boolean value, LanguageIr.@Nullable Expression residual) {
-    public PartialProgram(@Nullable Boolean value, LanguageIr.@Nullable Expression residual) {
-        this.value = value;
-        this.residual = residual;
-        if ((value == null) == (residual == null)) throw new IllegalArgumentException(
-            "partial program must have one result"
-        );
-        if (residual != null) Objects.requireNonNull(residual);
+/// Represents either a concrete partially evaluated value or a residual typed Semantic AST expression.
+public sealed interface PartialProgram permits PartialProgram.Concrete, PartialProgram.Residual {
+    /// Returns the static program result type represented by this result.
+    LanguageType type();
+
+    /// Returns whether partial evaluation produced a concrete value.
+    default boolean isConcrete() {
+        return this instanceof Concrete;
     }
 
-    /// Returns whether partial evaluation produced a concrete result.
-    public boolean isConcrete() {
-        return this.value != null;
+    /// Holds a concrete value, including a concrete null value.
+    record Concrete(@Nullable Object value, LanguageType type) implements PartialProgram {
+        public Concrete {
+            Objects.requireNonNull(type);
+        }
+    }
+
+    /// Holds a residual Semantic AST expression.
+    record Residual(SemanticAst.Expression expression) implements PartialProgram {
+        public Residual {
+            Objects.requireNonNull(expression);
+        }
+
+        @Override
+        public LanguageType type() {
+            return this.expression.type();
+        }
     }
 }

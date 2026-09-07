@@ -17,7 +17,7 @@ public final class AuthorizationEmbeddedLanguageSchemas {
     /// Returns the request-only schema required by the authorization specification.
     public static EnvironmentSchema request() {
         return new EnvironmentSchema(
-            "taskmigo.authorization.request.0.3.1",
+            "taskmigo.authorization.request.0.3.2",
             Map.of(
                 "principal",
                 root(Map.of("id", string(), "username", string())),
@@ -34,7 +34,7 @@ public final class AuthorizationEmbeddedLanguageSchemas {
             dialect.fields().forEach((name, type) -> fields.putIfAbsent(name, field(name, type, dialect)));
         }
         return new EnvironmentSchema(
-            "taskmigo.authorization.object.0.3.1",
+            "taskmigo.authorization.object.0.3.2",
             Map.of(
                 "principal",
                 root(Map.of("id", string(), "username", string())),
@@ -51,7 +51,7 @@ public final class AuthorizationEmbeddedLanguageSchemas {
         Map<String, EnvironmentSchema.Field> fields = new HashMap<>();
         dialect.fields().forEach((name, type) -> fields.put(name, field(name, type, dialect)));
         return new EnvironmentSchema(
-            "taskmigo.authorization.object.0.3.1." + dialect.method() + dialect.path(),
+            "taskmigo.authorization.object.0.3.2." + dialect.method() + dialect.path(),
             Map.of(
                 "principal",
                 root(Map.of("id", string(), "username", string())),
@@ -69,15 +69,15 @@ public final class AuthorizationEmbeddedLanguageSchemas {
 
     private static EnvironmentSchema.Field field(String name, Class<?> type, FilterSchema schema) {
         boolean nullable = schema.nullableFields().contains(name);
-        return new EnvironmentSchema.Field(policyType(type), nullable, true, true);
+        return new EnvironmentSchema.Field(policyType(type), nullable, true);
     }
 
     private static EnvironmentSchema.Field string() {
-        return new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, false, false);
+        return new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, false);
     }
 
     private static EnvironmentSchema.Field dynamicString() {
-        return new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, false, false, LanguageType.Scalar.STRING);
+        return new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, false, LanguageType.Scalar.STRING);
     }
 
     private static LanguageType policyType(Class<?> type) {

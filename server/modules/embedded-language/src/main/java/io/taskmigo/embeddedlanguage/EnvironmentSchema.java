@@ -57,7 +57,7 @@ public final class EnvironmentSchema {
         for (int index = path.size() - 1; index >= 0; index--) {
             Field prefix = indexedFields.get(path.subList(0, index));
             if (prefix != null && prefix.dynamicMemberType() != null && index < path.size()) {
-                return new Field(prefix.dynamicMemberType(), false, prefix.symbolic(), prefix.queryable());
+                return new Field(prefix.dynamicMemberType(), false, prefix.symbolic());
             }
         }
         return null;
@@ -98,16 +98,15 @@ public final class EnvironmentSchema {
         }
     }
 
-    /// Describes a typed path and its evaluation/query properties.
+    /// Describes one typed path and whether its value may be null or remain symbolic.
     public record Field(
         LanguageType type,
         boolean nullable,
         boolean symbolic,
-        boolean queryable,
         @Nullable LanguageType dynamicMemberType
     ) {
-        public Field(LanguageType type, boolean nullable, boolean symbolic, boolean queryable) {
-            this(type, nullable, symbolic, queryable, null);
+        public Field(LanguageType type, boolean nullable, boolean symbolic) {
+            this(type, nullable, symbolic, null);
         }
 
         public Field {

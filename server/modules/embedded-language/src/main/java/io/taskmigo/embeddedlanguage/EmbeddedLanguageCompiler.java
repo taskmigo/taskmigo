@@ -17,10 +17,10 @@ import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.Token;
 import org.jspecify.annotations.Nullable;
 
-/// Compiles direct-body Embedded Language source into typed immutable IR.
+/// Compiles direct-body Embedded Language source into an immutable typed Semantic AST.
 ///
-/// The generated ANTLR lexer and parser implement the canonical grammar. A parse listener converts parser events into
-/// language-owned semantics without retaining an ANTLR parse tree.
+/// The generated ANTLR lexer and parser implement the canonical grammar. The generated parse tree is converted into
+/// the language-owned Semantic AST before evaluation or partial evaluation.
 @SuppressWarnings("checkstyle:NeedBraces")
 public final class EmbeddedLanguageCompiler {
 
@@ -35,7 +35,7 @@ public final class EmbeddedLanguageCompiler {
     /// Creates a compiler with explicit finite limits.
     public EmbeddedLanguageCompiler(CompilerLimits limits) {
         this.limits = Objects.requireNonNull(limits);
-        this.compilerFingerprint = this.limits.fingerprint() + ":" + LanguageIr.LANGUAGE_VERSION;
+        this.compilerFingerprint = this.limits.fingerprint() + ":" + SemanticAst.LANGUAGE_VERSION;
     }
 
     /// Returns the identity of the compiler limits and language contract.
@@ -44,7 +44,7 @@ public final class EmbeddedLanguageCompiler {
     }
 
     /// Compiles source against a consumer-owned environment schema.
-    public LanguageIr compile(String source, EnvironmentSchema schema) {
+    public SemanticAst compile(String source, EnvironmentSchema schema) {
         Objects.requireNonNull(source);
         Objects.requireNonNull(schema);
         if (source.length() > this.limits.maxSourceCharacters()) {
@@ -78,26 +78,16 @@ public final class EmbeddedLanguageCompiler {
         }
 
         EmbeddedLanguageParser parser = new EmbeddedLanguageParser(tokens);
-        parser.setBuildParseTree(false);
         parser.removeErrorListeners();
         parser.addErrorListener(errors);
-        LanguageCompilerListener compiler = new LanguageCompilerListener(
-            schema,
-            this.limits,
-            () -> !errors.diagnostics.isEmpty()
-        );
-        parser.addParseListener(compiler);
-        parser.program();
+        EmbeddedLanguageParser.ProgramContext program = parser.program();
         if (!errors.diagnostics.isEmpty()) throw new EmbeddedLanguageException(errors.diagnostics);
 
-        LanguageIr.Expression expression = compiler.compile();
-        if (expression.type() != LanguageType.Scalar.BOOL) {
-            throw failure(LanguageDiagnostic.Category.TypeError, "program result must be Bool", expression.span());
-        }
-        return new LanguageIr(
+        SemanticAst.Expression expression = new LanguageCompilerVisitor(schema, this.limits).compile(program);
+        return new SemanticAst(
             expression,
             fingerprint(source),
-            LanguageIr.LANGUAGE_VERSION,
+            SemanticAst.LANGUAGE_VERSION,
             schema.fingerprint(),
             compilerFingerprint
         );

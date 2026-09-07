@@ -14,10 +14,10 @@ import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
 import org.jspecify.annotations.Nullable;
 
-/// Converts the generated ANTLR parse tree into typed language-owned IR.
+/// Converts the generated ANTLR parse tree into the typed language-owned Semantic AST.
 ///
 /// Parsing remains owned by the canonical ANTLR grammar. This visitor builds a compact private syntax model and then
-/// performs binding, type checking, control-flow lowering, dependency analysis, and constant folding.
+/// performs binding, type checking, control-flow normalization, dependency analysis, and constant folding.
 @SuppressWarnings({
     "checkstyle:NeedBraces",
     "checkstyle:OverloadMethodsDeclarationOrder",
@@ -36,7 +36,7 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         this.limits = limits;
     }
 
-    LanguageIr.Expression compile(EmbeddedLanguageParser.ProgramContext context) {
+    SemanticAst.Expression compile(EmbeddedLanguageParser.ProgramContext context) {
         Program program = (Program) visitProgram(context);
         return sequence(program.statements(), new Scope(null), 0, null, new HashSet<>());
     }
@@ -88,12 +88,12 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
 
     @Override
     public SyntaxNode visitOrExpression(EmbeddedLanguageParser.OrExpressionContext context) {
-        return chain(context.andExpression(), context, operator -> LanguageIr.BinaryOperator.OR);
+        return chain(context.andExpression(), context, operator -> SemanticAst.BinaryOperator.OR);
     }
 
     @Override
     public SyntaxNode visitAndExpression(EmbeddedLanguageParser.AndExpressionContext context) {
-        return chain(context.equalityExpression(), context, operator -> LanguageIr.BinaryOperator.AND);
+        return chain(context.equalityExpression(), context, operator -> SemanticAst.BinaryOperator.AND);
     }
 
     @Override
@@ -103,8 +103,8 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
             context,
             operator ->
                 switch (operator) {
-                    case "==" -> LanguageIr.BinaryOperator.EQUAL;
-                    case "!=" -> LanguageIr.BinaryOperator.NOT_EQUAL;
+                    case "==" -> SemanticAst.BinaryOperator.EQUAL;
+                    case "!=" -> SemanticAst.BinaryOperator.NOT_EQUAL;
                     default -> throw new IllegalStateException("unsupported equality operator");
                 }
         );
@@ -117,10 +117,10 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
             context,
             operator ->
                 switch (operator) {
-                    case "<" -> LanguageIr.BinaryOperator.LESS;
-                    case "<=" -> LanguageIr.BinaryOperator.LESS_OR_EQUAL;
-                    case ">" -> LanguageIr.BinaryOperator.GREATER;
-                    case ">=" -> LanguageIr.BinaryOperator.GREATER_OR_EQUAL;
+                    case "<" -> SemanticAst.BinaryOperator.LESS;
+                    case "<=" -> SemanticAst.BinaryOperator.LESS_OR_EQUAL;
+                    case ">" -> SemanticAst.BinaryOperator.GREATER;
+                    case ">=" -> SemanticAst.BinaryOperator.GREATER_OR_EQUAL;
                     default -> throw new IllegalStateException("unsupported comparison operator");
                 }
         );
@@ -131,7 +131,7 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         Expression left = expression(context.additiveExpression(0));
         if (context.additiveExpression().size() == 1) return left;
         Expression right = expression(context.additiveExpression(1));
-        return new Binary(LanguageIr.BinaryOperator.IN, left, right, sourceSpan(left.span(), right.span()));
+        return new Binary(SemanticAst.BinaryOperator.IN, left, right, sourceSpan(left.span(), right.span()));
     }
 
     @Override
@@ -141,8 +141,8 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
             context,
             operator ->
                 switch (operator) {
-                    case "+" -> LanguageIr.BinaryOperator.ADD;
-                    case "-" -> LanguageIr.BinaryOperator.SUBTRACT;
+                    case "+" -> SemanticAst.BinaryOperator.ADD;
+                    case "-" -> SemanticAst.BinaryOperator.SUBTRACT;
                     default -> throw new IllegalStateException("unsupported additive operator");
                 }
         );
@@ -155,9 +155,9 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
             context,
             operator ->
                 switch (operator) {
-                    case "*" -> LanguageIr.BinaryOperator.MULTIPLY;
-                    case "/" -> LanguageIr.BinaryOperator.DIVIDE;
-                    case "%" -> LanguageIr.BinaryOperator.MODULO;
+                    case "*" -> SemanticAst.BinaryOperator.MULTIPLY;
+                    case "/" -> SemanticAst.BinaryOperator.DIVIDE;
+                    case "%" -> SemanticAst.BinaryOperator.MODULO;
                     default -> throw new IllegalStateException("unsupported multiplicative operator");
                 }
         );
@@ -174,10 +174,10 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         }
         try {
             if (context.primary() != null) return visitPrimary(context.primary());
-            LanguageIr.UnaryOperator operator = switch (context.getChild(0).getText()) {
-                case "!" -> LanguageIr.UnaryOperator.NOT;
-                case "+" -> LanguageIr.UnaryOperator.PLUS;
-                case "-" -> LanguageIr.UnaryOperator.MINUS;
+            SemanticAst.UnaryOperator operator = switch (context.getChild(0).getText()) {
+                case "!" -> SemanticAst.UnaryOperator.NOT;
+                case "+" -> SemanticAst.UnaryOperator.PLUS;
+                case "-" -> SemanticAst.UnaryOperator.MINUS;
                 default -> throw new IllegalStateException("unsupported unary operator");
             };
             return new Unary(operator, expression(context.unaryExpression()), span(context));
@@ -225,7 +225,7 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
     private Expression chain(
         List<? extends ParserRuleContext> operands,
         ParserRuleContext context,
-        java.util.function.Function<String, LanguageIr.BinaryOperator> operator
+        java.util.function.Function<String, SemanticAst.BinaryOperator> operator
     ) {
         Expression result = expression(operands.getFirst());
         for (int index = 1; index < operands.size(); index++) {
@@ -240,11 +240,11 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         return result;
     }
 
-    private LanguageIr.Expression sequence(
+    private SemanticAst.Expression sequence(
         List<Statement> statements,
         Scope environment,
         int blockDepth,
-        LanguageIr.@Nullable Expression continuation,
+        SemanticAst.@Nullable Expression continuation,
         Set<String> declared
     ) {
         if (blockDepth > limits.maxBlockDepth()) throw failure(
@@ -269,7 +269,7 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
                 Conditional conditional = (Conditional) statement;
                 boolean hasElse = conditional.whenFalse() != null;
                 boolean hasFollowing = index + 1 < statements.size();
-                LanguageIr.Expression rest =
+                SemanticAst.Expression rest =
                     hasFollowing || !hasElse
                         ? sequence(
                               statements.subList(index + 1, statements.size()),
@@ -279,24 +279,24 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
                               new HashSet<>(declared)
                           )
                         : continuation;
-                LanguageIr.Expression whenTrue = sequence(
+                SemanticAst.Expression whenTrue = sequence(
                     conditional.whenTrue(),
                     new Scope(environment),
                     blockDepth + 1,
                     rest,
                     new HashSet<>()
                 );
-                LanguageIr.Expression whenFalse = hasElse
+                SemanticAst.Expression whenFalse = hasElse
                     ? lowerElse(Objects.requireNonNull(conditional.whenFalse()), environment, blockDepth + 1, rest)
                     : requireExpression(rest);
-                LanguageIr.Expression condition = lower(conditional.condition());
+                SemanticAst.Expression condition = lower(conditional.condition());
                 require(condition, LanguageType.Scalar.BOOL, "if condition must be Bool");
                 requireMatchingBranches(whenTrue, whenFalse);
-                return folded(node(new LanguageIr.Conditional(condition, whenTrue, whenFalse)));
+                return folded(node(new SemanticAst.Conditional(condition, whenTrue, whenFalse)));
             }
             if (continuation == null) throw failure(
                 LanguageDiagnostic.Category.ControlFlowError,
-                "program must return a boolean on every path",
+                "program must return a value on every path",
                 unknown()
             );
             return continuation;
@@ -305,11 +305,11 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         }
     }
 
-    private LanguageIr.Expression lowerElse(
+    private SemanticAst.Expression lowerElse(
         List<Statement> statements,
         Scope environment,
         int blockDepth,
-        LanguageIr.@Nullable Expression continuation
+        SemanticAst.@Nullable Expression continuation
     ) {
         if (statements.size() == 1 && statements.getFirst() instanceof Conditional conditional) {
             return lowerConditional(conditional, environment, blockDepth, continuation);
@@ -317,30 +317,30 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         return sequence(statements, new Scope(environment), blockDepth, continuation, new HashSet<>());
     }
 
-    private LanguageIr.Expression lowerConditional(
+    private SemanticAst.Expression lowerConditional(
         Conditional conditional,
         Scope environment,
         int blockDepth,
-        LanguageIr.@Nullable Expression continuation
+        SemanticAst.@Nullable Expression continuation
     ) {
-        LanguageIr.Expression whenTrue = sequence(
+        SemanticAst.Expression whenTrue = sequence(
             conditional.whenTrue(),
             new Scope(environment),
             blockDepth + 1,
             continuation,
             new HashSet<>()
         );
-        LanguageIr.Expression whenFalse =
+        SemanticAst.Expression whenFalse =
             conditional.whenFalse() == null
                 ? requireExpression(continuation)
                 : lowerElse(Objects.requireNonNull(conditional.whenFalse()), environment, blockDepth + 1, continuation);
-        LanguageIr.Expression condition = lower(conditional.condition());
+        SemanticAst.Expression condition = lower(conditional.condition());
         require(condition, LanguageType.Scalar.BOOL, "if condition must be Bool");
         requireMatchingBranches(whenTrue, whenFalse);
-        return folded(node(new LanguageIr.Conditional(condition, whenTrue, whenFalse)));
+        return folded(node(new SemanticAst.Conditional(condition, whenTrue, whenFalse)));
     }
 
-    private LanguageIr.Expression lower(Expression expression) {
+    private SemanticAst.Expression lower(Expression expression) {
         return switch (expression) {
             case Literal literal -> literal(literal.token());
             case Reference reference -> reference(reference);
@@ -350,7 +350,7 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         };
     }
 
-    private LanguageIr.Expression literal(Token token) {
+    private SemanticAst.Expression literal(Token token) {
         Object value = switch (token.getType()) {
             case EmbeddedLanguageParser.TRUE -> true;
             case EmbeddedLanguageParser.FALSE -> false;
@@ -359,12 +359,12 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
             case EmbeddedLanguageParser.STRING -> parseString(token);
             default -> throw syntax("invalid literal", token);
         };
-        return node(new LanguageIr.Literal(value, typeOf(value), Set.of(), span(token)));
+        return node(new SemanticAst.Literal(value, typeOf(value), Set.of(), span(token)));
     }
 
-    private LanguageIr.Expression reference(Reference reference) {
+    private SemanticAst.Expression reference(Reference reference) {
         if (reference.path().isEmpty()) {
-            LanguageIr.@Nullable Expression local = scopes.getLast().lookup(reference.root());
+            SemanticAst.@Nullable Expression local = scopes.getLast().lookup(reference.root());
             if (local != null) return local;
         }
         EnvironmentSchema.Field field = schema.resolve(reference.root(), reference.path());
@@ -374,39 +374,40 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
             reference.span()
         );
         return node(
-            new LanguageIr.Reference(
+            new SemanticAst.Reference(
                 reference.root(),
                 reference.path(),
                 field.type(),
                 field.nullable(),
+                field.symbolic(),
                 Set.of(reference.root()),
                 reference.span()
             )
         );
     }
 
-    private LanguageIr.Expression list(ListExpression expression) {
+    private SemanticAst.Expression list(ListExpression expression) {
         if (expression.values().size() > limits.maxListElements()) throw failure(
             LanguageDiagnostic.Category.ComplexityError,
             "list literal exceeds the element limit",
             expression.span()
         );
-        List<LanguageIr.Expression> values = new ArrayList<>(expression.values().size());
+        List<SemanticAst.Expression> values = new ArrayList<>(expression.values().size());
         Set<String> dependencies = new HashSet<>();
         for (Expression value : expression.values()) {
-            LanguageIr.Expression lowered = lower(value);
+            SemanticAst.Expression lowered = lower(value);
             values.add(lowered);
             dependencies.addAll(lowered.dependencies());
         }
         LanguageType element = values.isEmpty() ? LanguageType.Scalar.NULL : values.getFirst().type();
-        for (LanguageIr.Expression value : values)
+        for (SemanticAst.Expression value : values)
             if (!value.type().equals(element)) throw failure(
                 LanguageDiagnostic.Category.TypeError,
                 "list elements must have one homogeneous type",
                 value.span()
             );
         return node(
-            new LanguageIr.ListLiteral(
+            new SemanticAst.ListLiteral(
                 values,
                 new LanguageType.ListType(element),
                 Set.copyOf(dependencies),
@@ -415,20 +416,20 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         );
     }
 
-    private LanguageIr.Expression unary(Unary expression) {
-        LanguageIr.Expression operand = lower(expression.operand());
-        LanguageIr.UnaryOperator operator = expression.operator();
+    private SemanticAst.Expression unary(Unary expression) {
+        SemanticAst.Expression operand = lower(expression.operand());
+        SemanticAst.UnaryOperator operator = expression.operator();
         require(
             operand,
-            operator == LanguageIr.UnaryOperator.NOT ? LanguageType.Scalar.BOOL : LanguageType.Scalar.NUMBER,
+            operator == SemanticAst.UnaryOperator.NOT ? LanguageType.Scalar.BOOL : LanguageType.Scalar.NUMBER,
             "unary operator has an incompatible operand"
         );
         return folded(
             node(
-                new LanguageIr.Unary(
+                new SemanticAst.Unary(
                     operator,
                     operand,
-                    operator == LanguageIr.UnaryOperator.NOT ? LanguageType.Scalar.BOOL : LanguageType.Scalar.NUMBER,
+                    operator == SemanticAst.UnaryOperator.NOT ? LanguageType.Scalar.BOOL : LanguageType.Scalar.NUMBER,
                     operand.dependencies(),
                     expression.span()
                 )
@@ -436,37 +437,37 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         );
     }
 
-    private LanguageIr.Expression binary(Binary expression) {
-        LanguageIr.Expression left = lower(expression.left());
-        LanguageIr.Expression right = lower(expression.right());
-        LanguageIr.BinaryOperator operator = expression.operator();
+    private SemanticAst.Expression binary(Binary expression) {
+        SemanticAst.Expression left = lower(expression.left());
+        SemanticAst.Expression right = lower(expression.right());
+        SemanticAst.BinaryOperator operator = expression.operator();
         LanguageType type = validate(operator, left, right, expression.span());
-        return folded(node(new LanguageIr.Binary(operator, left, right, type, union(left, right), expression.span())));
+        return folded(node(new SemanticAst.Binary(operator, left, right, type, union(left, right), expression.span())));
     }
 
     private static LanguageType validate(
-        LanguageIr.BinaryOperator operator,
-        LanguageIr.Expression left,
-        LanguageIr.Expression right,
+        SemanticAst.BinaryOperator operator,
+        SemanticAst.Expression left,
+        SemanticAst.Expression right,
         LanguageDiagnostic.SourceSpan span
     ) {
-        if (operator == LanguageIr.BinaryOperator.AND || operator == LanguageIr.BinaryOperator.OR) {
+        if (operator == SemanticAst.BinaryOperator.AND || operator == SemanticAst.BinaryOperator.OR) {
             require(left, LanguageType.Scalar.BOOL, "boolean operators require Bool");
             require(right, LanguageType.Scalar.BOOL, "boolean operators require Bool");
             return LanguageType.Scalar.BOOL;
         }
         if (
-            operator == LanguageIr.BinaryOperator.ADD ||
-            operator == LanguageIr.BinaryOperator.SUBTRACT ||
-            operator == LanguageIr.BinaryOperator.MULTIPLY ||
-            operator == LanguageIr.BinaryOperator.DIVIDE ||
-            operator == LanguageIr.BinaryOperator.MODULO
+            operator == SemanticAst.BinaryOperator.ADD ||
+            operator == SemanticAst.BinaryOperator.SUBTRACT ||
+            operator == SemanticAst.BinaryOperator.MULTIPLY ||
+            operator == SemanticAst.BinaryOperator.DIVIDE ||
+            operator == SemanticAst.BinaryOperator.MODULO
         ) {
             require(left, LanguageType.Scalar.NUMBER, "arithmetic requires Number");
             require(right, LanguageType.Scalar.NUMBER, "arithmetic requires Number");
             return LanguageType.Scalar.NUMBER;
         }
-        if (operator == LanguageIr.BinaryOperator.IN) {
+        if (operator == SemanticAst.BinaryOperator.IN) {
             if (
                 !(right.type() instanceof LanguageType.ListType list) || !left.type().equals(list.elementType())
             ) throw failure(
@@ -477,10 +478,10 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
             return LanguageType.Scalar.BOOL;
         }
         if (
-            operator == LanguageIr.BinaryOperator.GREATER ||
-            operator == LanguageIr.BinaryOperator.GREATER_OR_EQUAL ||
-            operator == LanguageIr.BinaryOperator.LESS ||
-            operator == LanguageIr.BinaryOperator.LESS_OR_EQUAL
+            operator == SemanticAst.BinaryOperator.GREATER ||
+            operator == SemanticAst.BinaryOperator.GREATER_OR_EQUAL ||
+            operator == SemanticAst.BinaryOperator.LESS ||
+            operator == SemanticAst.BinaryOperator.LESS_OR_EQUAL
         ) {
             if (!left.type().equals(right.type()) || !left.type().ordered()) throw failure(
                 LanguageDiagnostic.Category.TypeError,
@@ -491,8 +492,8 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         }
         if (
             left.type().equals(right.type()) ||
-            (left.type() == LanguageType.Scalar.NULL && nullable(right)) ||
-            (right.type() == LanguageType.Scalar.NULL && nullable(left))
+            (left.type() == LanguageType.Scalar.NULL && right.nullable()) ||
+            (right.type() == LanguageType.Scalar.NULL && left.nullable())
         ) return LanguageType.Scalar.BOOL;
         throw failure(
             LanguageDiagnostic.Category.TypeError,
@@ -501,24 +502,20 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         );
     }
 
-    private static boolean nullable(LanguageIr.Expression expression) {
-        return expression instanceof LanguageIr.Reference reference && reference.nullable();
-    }
-
-    private LanguageIr.Expression folded(LanguageIr.Expression expression) {
-        if (expression instanceof LanguageIr.Binary binary) {
+    private SemanticAst.Expression folded(SemanticAst.Expression expression) {
+        if (expression instanceof SemanticAst.Binary binary) {
             if (
-                binary.operator() == LanguageIr.BinaryOperator.AND &&
-                binary.left() instanceof LanguageIr.Literal literal &&
+                binary.operator() == SemanticAst.BinaryOperator.AND &&
+                binary.left() instanceof SemanticAst.Literal literal &&
                 literal.value() instanceof Boolean value
             ) return value ? binary.right() : literal;
             if (
-                binary.operator() == LanguageIr.BinaryOperator.OR &&
-                binary.left() instanceof LanguageIr.Literal literal &&
+                binary.operator() == SemanticAst.BinaryOperator.OR &&
+                binary.left() instanceof SemanticAst.Literal literal &&
                 literal.value() instanceof Boolean value
             ) return value ? literal : binary.right();
             if (
-                binary.left() instanceof LanguageIr.Literal left && binary.right() instanceof LanguageIr.Literal right
+                binary.left() instanceof SemanticAst.Literal left && binary.right() instanceof SemanticAst.Literal right
             ) {
                 try {
                     return literal(
@@ -530,7 +527,7 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
                 }
             }
         }
-        if (expression instanceof LanguageIr.Unary unary && unary.operand() instanceof LanguageIr.Literal literal) {
+        if (expression instanceof SemanticAst.Unary unary && unary.operand() instanceof SemanticAst.Literal literal) {
             try {
                 return literal(EmbeddedLanguageEvaluator.compute(unary.operator(), literal.value()), unary.span());
             } catch (IllegalArgumentException ignored) {
@@ -538,33 +535,33 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
             }
         }
         if (
-            expression instanceof LanguageIr.Conditional conditional &&
-            conditional.condition() instanceof LanguageIr.Literal literal &&
+            expression instanceof SemanticAst.Conditional conditional &&
+            conditional.condition() instanceof SemanticAst.Literal literal &&
             literal.value() instanceof Boolean value
         ) return value ? conditional.whenTrue() : conditional.whenFalse();
         return expression;
     }
 
-    private LanguageIr.Expression literal(@Nullable Object value, LanguageDiagnostic.SourceSpan span) {
-        return node(new LanguageIr.Literal(value, typeOf(value), Set.of(), span));
+    private SemanticAst.Expression literal(@Nullable Object value, LanguageDiagnostic.SourceSpan span) {
+        return node(new SemanticAst.Literal(value, typeOf(value), Set.of(), span));
     }
 
-    private LanguageIr.Expression node(LanguageIr.Expression expression) {
-        if (++nodes > limits.maxIrNodes()) throw failure(
+    private SemanticAst.Expression node(SemanticAst.Expression expression) {
+        if (++nodes > limits.maxSemanticAstNodes()) throw failure(
             LanguageDiagnostic.Category.ComplexityError,
-            "program IR node count exceeds the limit",
+            "program Semantic AST node count exceeds the limit",
             expression.span()
         );
         return expression;
     }
 
-    private static Set<String> union(LanguageIr.Expression left, LanguageIr.Expression right) {
+    private static Set<String> union(SemanticAst.Expression left, SemanticAst.Expression right) {
         Set<String> result = new HashSet<>(left.dependencies());
         result.addAll(right.dependencies());
         return Set.copyOf(result);
     }
 
-    private static void require(LanguageIr.Expression expression, LanguageType expected, String message) {
+    private static void require(SemanticAst.Expression expression, LanguageType expected, String message) {
         if (!expression.type().equals(expected)) throw failure(
             LanguageDiagnostic.Category.TypeError,
             message,
@@ -572,14 +569,18 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         );
     }
 
-    private static LanguageIr.Expression requireExpression(LanguageIr.@Nullable Expression expression) {
+    private static SemanticAst.Expression requireExpression(SemanticAst.@Nullable Expression expression) {
         return Objects.requireNonNull(expression);
     }
 
-    private static void requireMatchingBranches(LanguageIr.Expression whenTrue, LanguageIr.Expression whenFalse) {
-        if (!whenTrue.type().equals(whenFalse.type())) throw failure(
+    private static void requireMatchingBranches(SemanticAst.Expression whenTrue, SemanticAst.Expression whenFalse) {
+        if (
+            !whenTrue.type().equals(whenFalse.type()) &&
+            whenTrue.type() != LanguageType.Scalar.NULL &&
+            whenFalse.type() != LanguageType.Scalar.NULL
+        ) throw failure(
             LanguageDiagnostic.Category.TypeError,
-            "if branches must return the same type",
+            "if branches must return compatible types",
             whenFalse.span()
         );
     }
@@ -737,13 +738,13 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
     }
 
     private record Unary(
-        LanguageIr.UnaryOperator operator,
+        SemanticAst.UnaryOperator operator,
         Expression operand,
         LanguageDiagnostic.SourceSpan span
     ) implements Expression {}
 
     private record Binary(
-        LanguageIr.BinaryOperator operator,
+        SemanticAst.BinaryOperator operator,
         Expression left,
         Expression right,
         LanguageDiagnostic.SourceSpan span
@@ -752,18 +753,18 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
     private static final class Scope {
 
         private final @Nullable Scope parent;
-        private final Map<String, LanguageIr.Expression> values = new HashMap<>();
+        private final Map<String, SemanticAst.Expression> values = new HashMap<>();
 
         private Scope(@Nullable Scope parent) {
             this.parent = parent;
         }
 
-        private void put(String name, LanguageIr.Expression value) {
+        private void put(String name, SemanticAst.Expression value) {
             this.values.put(name, value);
         }
 
-        private LanguageIr.@Nullable Expression lookup(String name) {
-            LanguageIr.Expression value = this.values.get(name);
+        private SemanticAst.@Nullable Expression lookup(String name) {
+            SemanticAst.Expression value = this.values.get(name);
             return value != null ? value : this.parent == null ? null : this.parent.lookup(name);
         }
     }

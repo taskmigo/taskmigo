@@ -10,7 +10,7 @@ public class EmbeddedLanguageCompilerProperties {
     private int maxSourceCharacters = 16_000;
     private int maxTokens = 4_096;
     private int maxSyntaxDepth = 40;
-    private int maxIrNodes = 500;
+    private int maxSemanticAstNodes = 500;
     private int maxBlockDepth = 40;
     private int maxListElements = 100;
 
@@ -44,14 +44,14 @@ public class EmbeddedLanguageCompilerProperties {
         this.maxSyntaxDepth = value;
     }
 
-    /// Returns the configured IR-node limit.
-    public int getMaxIrNodes() {
-        return this.maxIrNodes;
+    /// Returns the configured Semantic AST node limit.
+    public int getMaxSemanticAstNodes() {
+        return this.maxSemanticAstNodes;
     }
 
-    /// Sets the configured IR-node limit.
-    public void setMaxIrNodes(int value) {
-        this.maxIrNodes = value;
+    /// Sets the configured Semantic AST node limit.
+    public void setMaxSemanticAstNodes(int value) {
+        this.maxSemanticAstNodes = value;
     }
 
     /// Returns the configured block-depth limit.
@@ -80,7 +80,7 @@ public class EmbeddedLanguageCompilerProperties {
             this.maxSourceCharacters,
             this.maxTokens,
             this.maxSyntaxDepth,
-            this.maxIrNodes,
+            this.maxSemanticAstNodes,
             this.maxBlockDepth,
             this.maxListElements
         );

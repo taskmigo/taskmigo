@@ -5,16 +5,16 @@ import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
-/// Evaluates typed Embedded Language IR against an immutable approved environment.
+/// Evaluates typed Embedded Language Semantic AST against an immutable approved environment.
 @SuppressWarnings("checkstyle:NeedBraces")
 public final class EmbeddedLanguageEvaluator {
 
-    /// Evaluates a program and returns its required boolean result.
-    public boolean evaluate(LanguageIr program, Map<String, ?> roots) {
+    /// Evaluates a program and returns a value conforming to its static result contract.
+    public @Nullable Object evaluate(SemanticAst program, Map<String, ?> roots) {
         try {
-            Object value = value(program.expression(), roots);
-            if (!(value instanceof Boolean result)) {
-                throw failure("program result is not Bool", program.expression().span());
+            @Nullable Object result = value(program.expression(), roots);
+            if (!conforms(result, program.resultType(), program.resultNullable())) {
+                throw failure("program result has an incompatible runtime type", program.expression().span());
             }
             return result;
         } catch (EmbeddedLanguageException exception) {
@@ -28,14 +28,14 @@ public final class EmbeddedLanguageEvaluator {
     }
 
     /// Evaluates a program after checking that its schema identity is unchanged.
-    public boolean evaluate(LanguageIr program, EnvironmentSchema schema, Map<String, ?> roots) {
+    public @Nullable Object evaluate(SemanticAst program, EnvironmentSchema schema, Map<String, ?> roots) {
         if (!program.schemaFingerprint().isEmpty() && !program.schemaFingerprint().equals(schema.fingerprint())) {
             throw failure("compiled program schema does not match the evaluation schema", program.expression().span());
         }
         return evaluate(program, roots);
     }
 
-    static Object compute(LanguageIr.UnaryOperator operator, @Nullable Object operand) {
+    static Object compute(SemanticAst.UnaryOperator operator, @Nullable Object operand) {
         return switch (operator) {
             case NOT -> !requireBoolean(operand);
             case PLUS -> number(operand);
@@ -43,7 +43,7 @@ public final class EmbeddedLanguageEvaluator {
         };
     }
 
-    static Object compute(LanguageIr.BinaryOperator operator, @Nullable Object left, @Nullable Object right) {
+    static Object compute(SemanticAst.BinaryOperator operator, @Nullable Object left, @Nullable Object right) {
         return switch (operator) {
             case EQUAL -> equal(left, right);
             case NOT_EQUAL -> !equal(left, right);
@@ -78,41 +78,41 @@ public final class EmbeddedLanguageEvaluator {
         return left == null ? right == null : left.equals(right);
     }
 
-    private static @Nullable Object value(LanguageIr.Expression expression, Map<String, ?> roots) {
+    private static @Nullable Object value(SemanticAst.Expression expression, Map<String, ?> roots) {
         return switch (expression) {
-            case LanguageIr.Literal literal -> literal.value();
-            case LanguageIr.Reference reference -> read(reference, roots);
-            case LanguageIr.ListLiteral list -> list.values()
+            case SemanticAst.Literal literal -> literal.value();
+            case SemanticAst.Reference reference -> read(reference, roots);
+            case SemanticAst.ListLiteral list -> list.values()
                 .stream()
                 .map(value -> value(value, roots))
                 .toList();
-            case LanguageIr.Unary unary -> compute(unary.operator(), value(unary.operand(), roots));
-            case LanguageIr.Binary binary -> binary(binary, roots);
-            case LanguageIr.Conditional conditional -> requireBoolean(value(conditional.condition(), roots))
+            case SemanticAst.Unary unary -> compute(unary.operator(), value(unary.operand(), roots));
+            case SemanticAst.Binary binary -> binary(binary, roots);
+            case SemanticAst.Conditional conditional -> requireBoolean(value(conditional.condition(), roots))
                 ? value(conditional.whenTrue(), roots)
                 : value(conditional.whenFalse(), roots);
         };
     }
 
-    private static @Nullable Object binary(LanguageIr.Binary binary, Map<String, ?> roots) {
-        Object left = value(binary.left(), roots);
-        if (binary.operator() == LanguageIr.BinaryOperator.AND && left instanceof Boolean bool) {
+    private static @Nullable Object binary(SemanticAst.Binary binary, Map<String, ?> roots) {
+        @Nullable Object left = value(binary.left(), roots);
+        if (binary.operator() == SemanticAst.BinaryOperator.AND && left instanceof Boolean bool) {
             if (!bool) return false;
             return requireBoolean(value(binary.right(), roots));
         }
-        if (binary.operator() == LanguageIr.BinaryOperator.OR && left instanceof Boolean bool) {
+        if (binary.operator() == SemanticAst.BinaryOperator.OR && left instanceof Boolean bool) {
             if (bool) return true;
             return requireBoolean(value(binary.right(), roots));
         }
         return compute(binary.operator(), left, value(binary.right(), roots));
     }
 
-    static @Nullable Object read(LanguageIr.Reference reference, Map<String, ?> roots) {
+    static @Nullable Object read(SemanticAst.Reference reference, Map<String, ?> roots) {
         if (!roots.containsKey(reference.root())) throw failure(
             "missing program root: " + reference.root(),
             reference.span()
         );
-        Object current = roots.get(reference.root());
+        @Nullable Object current = roots.get(reference.root());
         for (String name : reference.path()) {
             if (!(current instanceof Map<?, ?> map) || !map.containsKey(name)) {
                 throw failure(
@@ -142,8 +142,12 @@ public final class EmbeddedLanguageEvaluator {
                 case NULL -> value == null;
             };
             case LanguageType.ListType list -> value instanceof List<?> values &&
-                values.stream().allMatch(item -> item != null && matchesType(item, list.elementType()));
+                values.stream().allMatch(item -> matchesType(item, list.elementType()));
         };
+    }
+
+    private static boolean conforms(@Nullable Object value, LanguageType type, boolean nullable) {
+        return value == null ? nullable || type == LanguageType.Scalar.NULL : matchesType(value, type);
     }
 
     private static boolean finite(Number number) {

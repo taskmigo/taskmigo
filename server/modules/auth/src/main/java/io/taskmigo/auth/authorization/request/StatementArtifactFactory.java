@@ -8,7 +8,7 @@ import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
 import io.taskmigo.embeddedlanguage.EmbeddedLanguageException;
 import io.taskmigo.embeddedlanguage.EnvironmentSchema;
-import io.taskmigo.embeddedlanguage.LanguageIr;
+import io.taskmigo.embeddedlanguage.SemanticAst;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -83,7 +83,7 @@ public final class StatementArtifactFactory {
         append(state, statement.target().api().method());
         append(state, statement.target().api().path());
         append(state, statement.policy());
-        append(state, LanguageIr.LANGUAGE_VERSION);
+        append(state, SemanticAst.LANGUAGE_VERSION);
         append(state, schema.fingerprint());
         append(state, this.compiler.contractFingerprint());
         if (statement.scope() == io.taskmigo.auth.authorization.statement.Scope.OBJECT) {
@@ -117,5 +117,5 @@ public final class StatementArtifactFactory {
 
     private record CacheKey(UUID statementId, String schemaFingerprint, String statementFingerprint) {}
 
-    private record DerivedArtifacts(LanguageIr policy, Pattern pathMatcher) {}
+    private record DerivedArtifacts(SemanticAst policy, Pattern pathMatcher) {}
 }

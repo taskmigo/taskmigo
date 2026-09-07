@@ -6,9 +6,9 @@ import java.util.Objects;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
-/// Represents immutable typed Embedded Language intermediate representation.
+/// Represents the immutable typed Semantic AST of one compiled Embedded Language program.
 @SuppressWarnings({ "checkstyle:NeedBraces", "checkstyle:DeclarationOrder" })
-public record LanguageIr(
+public record SemanticAst(
     Expression expression,
     String sourceFingerprint,
     String languageVersion,
@@ -16,9 +16,9 @@ public record LanguageIr(
     String compilerFingerprint
 ) {
     /// The current Embedded Language contract version.
-    public static final String LANGUAGE_VERSION = "0.2.0";
+    public static final String LANGUAGE_VERSION = "0.3.0";
 
-    public LanguageIr {
+    public SemanticAst {
         Objects.requireNonNull(expression);
         Objects.requireNonNull(sourceFingerprint);
         Objects.requireNonNull(languageVersion);
@@ -26,12 +26,22 @@ public record LanguageIr(
         Objects.requireNonNull(compilerFingerprint);
     }
 
-    /// Creates metadata-free IR for focused tests.
-    public LanguageIr(Expression expression) {
+    /// Creates a metadata-free Semantic AST for focused tests.
+    public SemanticAst(Expression expression) {
         this(expression, "", LANGUAGE_VERSION, "", "");
     }
 
-    /// Represents one typed expression.
+    /// Returns the statically determined program result type.
+    public LanguageType resultType() {
+        return this.expression.type();
+    }
+
+    /// Returns whether the statically determined program result may be null.
+    public boolean resultNullable() {
+        return this.expression.nullable();
+    }
+
+    /// Represents one typed semantic expression.
     public sealed interface Expression permits Literal, Reference, ListLiteral, Binary, Unary, Conditional {
         /// Returns the static type.
         LanguageType type();
@@ -39,6 +49,10 @@ public record LanguageIr(
         Set<String> dependencies();
         /// Returns the source span.
         LanguageDiagnostic.SourceSpan span();
+        /// Returns whether this expression may evaluate to null.
+        default boolean nullable() {
+            return type() == LanguageType.Scalar.NULL;
+        }
     }
 
     /// Represents an immutable literal.
@@ -62,6 +76,11 @@ public record LanguageIr(
             dependencies = Set.copyOf(dependencies);
             Objects.requireNonNull(span);
         }
+
+        @Override
+        public boolean nullable() {
+            return this.value == null;
+        }
     }
 
     /// Represents a statically resolved schema path.
@@ -70,11 +89,12 @@ public record LanguageIr(
         List<String> path,
         LanguageType type,
         boolean nullable,
+        boolean symbolic,
         Set<String> dependencies,
         LanguageDiagnostic.SourceSpan span
     ) implements Expression {
         public Reference(String root, List<String> path) {
-            this(root, path, LanguageType.Scalar.STRING, false, Set.of(root), UNKNOWN_SPAN);
+            this(root, path, LanguageType.Scalar.STRING, false, false, Set.of(root), UNKNOWN_SPAN);
         }
 
         public Reference(
@@ -82,9 +102,10 @@ public record LanguageIr(
             List<String> path,
             LanguageType type,
             boolean nullable,
+            boolean symbolic,
             LanguageDiagnostic.SourceSpan span
         ) {
-            this(root, path, type, nullable, Set.of(root), span);
+            this(root, path, type, nullable, symbolic, Set.of(root), span);
         }
 
         public Reference {
@@ -155,7 +176,7 @@ public record LanguageIr(
         }
     }
 
-    /// Represents conditional control flow.
+    /// Represents conditional control flow after semantic analysis.
     public record Conditional(
         Expression condition,
         Expression whenTrue,
@@ -169,7 +190,7 @@ public record LanguageIr(
                 condition,
                 whenTrue,
                 whenFalse,
-                whenTrue.type(),
+                compatibleResultType(whenTrue, whenFalse),
                 union(condition, whenTrue, whenFalse),
                 condition.span()
             );
@@ -182,6 +203,11 @@ public record LanguageIr(
             Objects.requireNonNull(type);
             dependencies = Set.copyOf(dependencies);
             Objects.requireNonNull(span);
+        }
+
+        @Override
+        public boolean nullable() {
+            return this.whenTrue.nullable() || this.whenFalse.nullable();
         }
     }
 
@@ -235,6 +261,13 @@ public record LanguageIr(
         return operator == UnaryOperator.NOT ? LanguageType.Scalar.BOOL : LanguageType.Scalar.NUMBER;
     }
 
+    private static LanguageType compatibleResultType(Expression left, Expression right) {
+        if (left.type().equals(right.type())) return left.type();
+        if (left.type() == LanguageType.Scalar.NULL) return right.type();
+        if (right.type() == LanguageType.Scalar.NULL) return left.type();
+        throw new IllegalArgumentException("conditional branches have incompatible result types");
+    }
+
     private static Set<String> union(Expression... expressions) {
         HashSet<String> result = new HashSet<>();
         for (Expression expression : expressions) result.addAll(expression.dependencies());
@@ -242,6 +275,6 @@ public record LanguageIr(
     }
 
     private static @Nullable Object immutableValue(@Nullable Object value) {
-        return value instanceof List<?> list ? list.stream().map(LanguageIr::immutableValue).toList() : value;
+        return value instanceof List<?> list ? list.stream().map(SemanticAst::immutableValue).toList() : value;
     }
 }

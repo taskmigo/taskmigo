@@ -2,6 +2,7 @@ package io.taskmigo.auth.authorization.object;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
+import io.taskmigo.auth.authorization.embeddedlanguage.AuthorizationSemanticAstQueryability;
 import io.taskmigo.auth.authorization.embeddedlanguage.EmbeddedLanguageFilterLowerer;
 import io.taskmigo.auth.authorization.filter.FilterAst;
 import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
@@ -9,9 +10,7 @@ import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
-import io.taskmigo.embeddedlanguage.LanguageIr;
-import io.taskmigo.embeddedlanguage.LanguageQueryability;
-import io.taskmigo.embeddedlanguage.QueryCapability;
+import io.taskmigo.embeddedlanguage.SemanticAst;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -19,7 +18,6 @@ import jakarta.persistence.criteria.Root;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.jpa.domain.Specification;
@@ -54,35 +52,9 @@ public class ObjectAuthorizationService {
             throw new AuthorizationException("No object authorization query dialect matches " + method + " " + path);
         }
         for (AuthorizationObjectQueryDialect dialect : matching) {
-            LanguageIr compiled = this.compiler.compile(policy, AuthorizationEmbeddedLanguageSchemas.object(dialect));
-            LanguageQueryability.validate(compiled, capability(dialect));
+            SemanticAst compiled = this.compiler.compile(policy, AuthorizationEmbeddedLanguageSchemas.object(dialect));
+            AuthorizationSemanticAstQueryability.validate(compiled, dialect);
         }
-    }
-
-    private static QueryCapability capability(AuthorizationObjectQueryDialect dialect) {
-        Set<io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator> binary = Set.of(
-            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.OR,
-            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.AND,
-            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.EQUAL,
-            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.NOT_EQUAL,
-            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.GREATER,
-            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.GREATER_OR_EQUAL,
-            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.LESS,
-            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.LESS_OR_EQUAL,
-            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.ADD,
-            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.SUBTRACT,
-            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.MULTIPLY,
-            io.taskmigo.embeddedlanguage.LanguageIr.BinaryOperator.DIVIDE
-        );
-        return new QueryCapability(
-            Set.of("object"),
-            dialect.fields().keySet(),
-            binary,
-            Set.of(
-                io.taskmigo.embeddedlanguage.LanguageIr.UnaryOperator.NOT,
-                io.taskmigo.embeddedlanguage.LanguageIr.UnaryOperator.MINUS
-            )
-        );
     }
 
     /// Builds an object plan from the effective Statements already captured for an operation.
@@ -119,8 +91,8 @@ public class ObjectAuthorizationService {
         return new ObjectAuthorizationPlan(new FilterAst(predicate), List.copyOf(matched), dialect.fields());
     }
 
-    private static boolean constantTrue(LanguageIr policy) {
-        return policy.expression() instanceof LanguageIr.Literal literal && Boolean.TRUE.equals(literal.value());
+    private static boolean constantTrue(SemanticAst policy) {
+        return policy.expression() instanceof SemanticAst.Literal literal && Boolean.TRUE.equals(literal.value());
     }
 
     private AuthorizationObjectQueryDialect dialect(String method, String path) {

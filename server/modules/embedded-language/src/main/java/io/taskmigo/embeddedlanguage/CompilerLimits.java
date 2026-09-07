@@ -10,7 +10,7 @@ public record CompilerLimits(
     int maxSourceCharacters,
     int maxTokens,
     int maxSyntaxDepth,
-    int maxIrNodes,
+    int maxSemanticAstNodes,
     int maxBlockDepth,
     int maxListElements
 ) {
@@ -19,7 +19,7 @@ public record CompilerLimits(
             maxSourceCharacters <= 0 ||
             maxTokens <= 0 ||
             maxSyntaxDepth <= 0 ||
-            maxIrNodes <= 0 ||
+            maxSemanticAstNodes <= 0 ||
             maxBlockDepth <= 0 ||
             maxListElements <= 0
         ) {

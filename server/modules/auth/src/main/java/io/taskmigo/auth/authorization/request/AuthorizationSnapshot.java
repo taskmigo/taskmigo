@@ -2,7 +2,7 @@ package io.taskmigo.auth.authorization.request;
 
 import io.taskmigo.auth.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
-import io.taskmigo.embeddedlanguage.LanguageIr;
+import io.taskmigo.embeddedlanguage.SemanticAst;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,8 +32,8 @@ public record AuthorizationSnapshot(
         roots = immutableMap(roots);
     }
 
-    /// Returns the compiled Language IR associated with an effective Statement.
-    public LanguageIr compiledPolicy(StatementInfo statement) {
+    /// Returns the compiled Semantic AST associated with an effective Statement.
+    public SemanticAst compiledPolicy(StatementInfo statement) {
         return this.executableStatements
             .stream()
             .filter(artifact -> artifact.statement().id().equals(statement.id()))

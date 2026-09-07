@@ -9,7 +9,6 @@ public record LanguageDiagnostic(Category category, String message, SourceSpan s
         ControlFlowError,
         TypeError,
         ComplexityError,
-        QueryabilityError,
     }
 
     /// Identifies the source range associated with a diagnostic.

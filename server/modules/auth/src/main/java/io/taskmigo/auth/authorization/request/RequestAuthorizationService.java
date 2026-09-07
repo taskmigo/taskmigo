@@ -7,11 +7,13 @@ import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.auth.user.UserException;
 import io.taskmigo.embeddedlanguage.EmbeddedLanguageEvaluator;
-import io.taskmigo.embeddedlanguage.LanguageIr;
+import io.taskmigo.embeddedlanguage.EmbeddedLanguageException;
+import io.taskmigo.embeddedlanguage.SemanticAst;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 /// Evaluates request-targeted authorization Statements independently of the web security framework.
@@ -72,14 +74,10 @@ public class RequestAuthorizationService {
         for (var artifact : snapshot.executableStatements()) {
             StatementInfo statement = artifact.statement();
             if (statement.scope() == Scope.REQUEST && artifact.matches(method, path)) {
-                try {
-                    if (statement.effect() == Effect.DENY && constantTrue(artifact.policy())) {
-                        return new RequestAuthorizationDecision(false);
-                    }
-                    evaluations.add(new Evaluation(statement, artifact.policy()));
-                } catch (AuthorizationException exception) {
+                if (statement.effect() == Effect.DENY && constantTrue(artifact.policy())) {
                     return new RequestAuthorizationDecision(false);
                 }
+                evaluations.add(new Evaluation(statement, artifact.policy()));
             }
         }
 
@@ -87,27 +85,30 @@ public class RequestAuthorizationService {
         for (Evaluation evaluation : evaluations) {
             StatementInfo statement = evaluation.statement();
             try {
-                boolean matches = this.embeddedLanguageEvaluator.evaluate(
+                @Nullable Object value = this.embeddedLanguageEvaluator.evaluate(
                     evaluation.policy(),
                     AuthorizationEmbeddedLanguageSchemas.request(),
                     approvedRoots
                 );
+                if (!(value instanceof Boolean matches)) {
+                    throw new AuthorizationException("Request authorization policy result is not Bool");
+                }
                 if (matches) {
                     if (statement.effect() == Effect.DENY) {
                         return new RequestAuthorizationDecision(false);
                     }
                     allowed = true;
                 }
-            } catch (AuthorizationException exception) {
+            } catch (AuthorizationException | EmbeddedLanguageException exception) {
                 return new RequestAuthorizationDecision(false);
             }
         }
         return new RequestAuthorizationDecision(allowed);
     }
 
-    private static boolean constantTrue(LanguageIr policy) {
-        return policy.expression() instanceof LanguageIr.Literal literal && Boolean.TRUE.equals(literal.value());
+    private static boolean constantTrue(SemanticAst policy) {
+        return policy.expression() instanceof SemanticAst.Literal literal && Boolean.TRUE.equals(literal.value());
     }
 
-    private record Evaluation(StatementInfo statement, LanguageIr policy) {}
+    private record Evaluation(StatementInfo statement, SemanticAst policy) {}
 }

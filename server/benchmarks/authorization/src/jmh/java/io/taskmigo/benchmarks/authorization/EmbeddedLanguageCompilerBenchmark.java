@@ -5,8 +5,8 @@ import static org.openjdk.jmh.annotations.Scope.Thread;
 
 import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
 import io.taskmigo.embeddedlanguage.EnvironmentSchema;
-import io.taskmigo.embeddedlanguage.LanguageIr;
 import io.taskmigo.embeddedlanguage.LanguageType;
+import io.taskmigo.embeddedlanguage.SemanticAst;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -39,7 +39,7 @@ public class EmbeddedLanguageCompilerBenchmark {
     /// Measures compiling one deterministic batch of authorization policies.
     @Benchmark
     public void compileBatch(BenchmarkState state, Blackhole blackhole) {
-        List<LanguageIr> compiled = new ArrayList<>(state.policies.size());
+        List<SemanticAst> compiled = new ArrayList<>(state.policies.size());
         for (String source : state.policies) {
             compiled.add(state.compiler.compile(source, state.schema));
         }
@@ -138,13 +138,7 @@ public class EmbeddedLanguageCompilerBenchmark {
     }
 
     private static void validateDatasetColumn(List<String[]> rows, int column, int expectedFamilies) {
-        if (
-            rows
-                .stream()
-                .map(row -> row[column])
-                .distinct()
-                .count() != DATASET_SIZE
-        ) {
+        if (rows.stream().map(row -> row[column]).distinct().count() != DATASET_SIZE) {
             throw new IllegalStateException("Benchmark dataset must contain only unique statements");
         }
         long families = rows
@@ -180,68 +174,43 @@ public class EmbeddedLanguageCompilerBenchmark {
         roots.add(
             "principal",
             Map.of(
-                "id",
-                field(LanguageType.Scalar.STRING),
-                "username",
-                field(LanguageType.Scalar.STRING),
-                "role",
-                field(LanguageType.Scalar.STRING),
-                "tenantId",
-                field(LanguageType.Scalar.STRING),
-                "teamId",
-                field(LanguageType.Scalar.STRING),
-                "kind",
-                field(LanguageType.Scalar.STRING),
-                "active",
-                field(LanguageType.Scalar.BOOL),
-                "level",
-                field(LanguageType.Scalar.NUMBER),
-                "rank",
-                field(LanguageType.Scalar.NUMBER),
-                "version",
-                field(LanguageType.Scalar.NUMBER)
+                "id", field(LanguageType.Scalar.STRING),
+                "username", field(LanguageType.Scalar.STRING),
+                "role", field(LanguageType.Scalar.STRING),
+                "tenantId", field(LanguageType.Scalar.STRING),
+                "teamId", field(LanguageType.Scalar.STRING),
+                "kind", field(LanguageType.Scalar.STRING),
+                "active", field(LanguageType.Scalar.BOOL),
+                "level", field(LanguageType.Scalar.NUMBER),
+                "rank", field(LanguageType.Scalar.NUMBER),
+                "version", field(LanguageType.Scalar.NUMBER)
             )
         );
         if ("REQUEST".equals(scope)) {
             roots.add(
                 "request",
                 Map.of(
-                    "method",
-                    field(LanguageType.Scalar.STRING),
-                    "path",
-                    field(LanguageType.Scalar.STRING),
-                    "pathVariables",
-                    dynamicString(),
-                    "version",
-                    field(LanguageType.Scalar.NUMBER),
-                    "sequence",
-                    field(LanguageType.Scalar.NUMBER)
+                    "method", field(LanguageType.Scalar.STRING),
+                    "path", field(LanguageType.Scalar.STRING),
+                    "pathVariables", dynamicString(),
+                    "version", field(LanguageType.Scalar.NUMBER),
+                    "sequence", field(LanguageType.Scalar.NUMBER)
                 )
             );
         } else {
             roots.add(
                 "object",
                 Map.of(
-                    "ownerId",
-                    field(LanguageType.Scalar.STRING),
-                    "status",
-                    field(LanguageType.Scalar.STRING),
-                    "kind",
-                    field(LanguageType.Scalar.STRING),
-                    "tenantId",
-                    field(LanguageType.Scalar.STRING),
-                    "visibility",
-                    field(LanguageType.Scalar.STRING),
-                    "enabled",
-                    field(LanguageType.Scalar.BOOL),
-                    "score",
-                    field(LanguageType.Scalar.NUMBER),
-                    "version",
-                    field(LanguageType.Scalar.NUMBER),
-                    "priority",
-                    field(LanguageType.Scalar.NUMBER),
-                    "rank",
-                    field(LanguageType.Scalar.NUMBER)
+                    "ownerId", field(LanguageType.Scalar.STRING),
+                    "status", field(LanguageType.Scalar.STRING),
+                    "kind", field(LanguageType.Scalar.STRING),
+                    "tenantId", field(LanguageType.Scalar.STRING),
+                    "visibility", field(LanguageType.Scalar.STRING),
+                    "enabled", field(LanguageType.Scalar.BOOL),
+                    "score", field(LanguageType.Scalar.NUMBER),
+                    "version", field(LanguageType.Scalar.NUMBER),
+                    "priority", field(LanguageType.Scalar.NUMBER),
+                    "rank", field(LanguageType.Scalar.NUMBER)
                 )
             );
         }
@@ -249,11 +218,11 @@ public class EmbeddedLanguageCompilerBenchmark {
     }
 
     private static EnvironmentSchema.Field field(LanguageType type) {
-        return new EnvironmentSchema.Field(type, false, true, true);
+        return new EnvironmentSchema.Field(type, false, true);
     }
 
     private static EnvironmentSchema.Field dynamicString() {
-        return new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, true, true, LanguageType.Scalar.STRING);
+        return new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, true, LanguageType.Scalar.STRING);
     }
 
     private static final class MapBuilder {
