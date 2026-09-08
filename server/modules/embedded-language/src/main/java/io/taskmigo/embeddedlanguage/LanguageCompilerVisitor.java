@@ -27,18 +27,31 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
 
     private final EnvironmentSchema schema;
     private final CompilerLimits limits;
+    private final CompilationProfile profile;
     private final List<Scope> scopes = new ArrayList<>();
     private int nodes;
     private int syntaxNesting;
+    private int quantifierNesting;
+    private int lambdaNesting;
 
-    LanguageCompilerVisitor(EnvironmentSchema schema, CompilerLimits limits) {
+    LanguageCompilerVisitor(EnvironmentSchema schema, CompilerLimits limits, CompilationProfile profile) {
         this.schema = schema;
         this.limits = limits;
+        this.profile = profile;
     }
 
     SemanticAst.Expression compile(EmbeddedLanguageParser.ProgramContext context) {
         Program program = (Program) visitProgram(context);
         return sequence(program.statements(), new Scope(null), 0, null, new HashSet<>());
+    }
+
+    SemanticAst.Expression compile(EmbeddedLanguageParser.ExpressionSourceContext context) {
+        scopes.add(new Scope(null));
+        try {
+            return lower(expression(context.expression()));
+        } finally {
+            scopes.removeLast();
+        }
     }
 
     @Override
@@ -58,6 +71,7 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
 
     @Override
     public SyntaxNode visitConstDecl(EmbeddedLanguageParser.ConstDeclContext context) {
+        requireFeature(CompilationFeature.LOCAL_BINDINGS, context.getStart());
         return new Constant(context.IDENT().getText(), expression(context.expression()), span(context));
     }
 
@@ -68,6 +82,7 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
 
     @Override
     public SyntaxNode visitIfStatement(EmbeddedLanguageParser.IfStatementContext context) {
+        requireFeature(CompilationFeature.CONDITIONAL_CONTROL_FLOW, context.getStart());
         Block whenTrue = (Block) visitBlock(context.block(0));
         @Nullable
         List<Statement> whenFalse = null;
@@ -191,7 +206,40 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         if (context.literal() != null) return visitLiteral(context.literal());
         if (context.listLiteral() != null) return visitListLiteral(context.listLiteral());
         if (context.reference() != null) return visitReference(context.reference());
+        if (context.quantifierExpression() != null) return visitQuantifierExpression(context.quantifierExpression());
+        if (context.lengthExpression() != null) return visitLengthExpression(context.lengthExpression());
         return visitExpression(context.expression());
+    }
+
+    @Override
+    public SyntaxNode visitQuantifierExpression(EmbeddedLanguageParser.QuantifierExpressionContext context) {
+        requireFeature(CompilationFeature.COLLECTION_QUANTIFIERS, context.getStart());
+        if (++quantifierNesting > limits.maxQuantifierDepth()) {
+            throw failure(LanguageDiagnostic.Category.ComplexityError, "quantifier nesting exceeds the limit", span(context));
+        }
+        try {
+            SemanticAst.QuantifierOperator operator = switch (context.quantifier().getStart().getType()) {
+                case EmbeddedLanguageParser.ALL -> SemanticAst.QuantifierOperator.ALL;
+                case EmbeddedLanguageParser.ANY -> SemanticAst.QuantifierOperator.ANY;
+                case EmbeddedLanguageParser.NONE -> SemanticAst.QuantifierOperator.NONE;
+                default -> throw syntax("invalid quantifier", context.getStart());
+            };
+            return new Quantifier(
+                operator,
+                expression(context.expression(0)),
+                context.IDENT().getText(),
+                expression(context.expression(1)),
+                span(context)
+            );
+        } finally {
+            quantifierNesting--;
+        }
+    }
+
+    @Override
+    public SyntaxNode visitLengthExpression(EmbeddedLanguageParser.LengthExpressionContext context) {
+        requireFeature(CompilationFeature.LENGTH_INTRINSIC, context.getStart());
+        return new LengthExpression(expression(context.expression()), span(context));
     }
 
     @Override
@@ -347,6 +395,8 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
             case ListExpression list -> list(list);
             case Unary unary -> unary(unary);
             case Binary binary -> binary(binary);
+            case Quantifier quantifier -> quantifier(quantifier);
+            case LengthExpression length -> length(length);
         };
     }
 
@@ -363,9 +413,17 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
     }
 
     private SemanticAst.Expression reference(Reference reference) {
-        if (reference.path().isEmpty()) {
-            SemanticAst.@Nullable Expression local = scopes.getLast().lookup(reference.root());
-            if (local != null) return local;
+        SemanticAst.@Nullable Expression local = scopes.getLast().lookup(reference.root());
+        if (local != null) {
+            if (reference.path().isEmpty()) return local;
+            if (local instanceof SemanticAst.Reference localReference && localReference.root().equals("__lambda__")) {
+                List<String> path = new ArrayList<>(localReference.path());
+                path.addAll(reference.path());
+                return node(new SemanticAst.Reference(
+                    localReference.root(), path, resolveLocalPath(localReference.type(), reference.path()),
+                    localReference.nullable(), true, Set.of(), reference.span()
+                ));
+            }
         }
         EnvironmentSchema.Field field = schema.resolve(reference.root(), reference.path());
         if (field == null) throw failure(
@@ -387,6 +445,7 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
     }
 
     private SemanticAst.Expression list(ListExpression expression) {
+        requireFeature(CompilationFeature.LIST_LITERALS, expression.span());
         if (expression.values().size() > limits.maxListElements()) throw failure(
             LanguageDiagnostic.Category.ComplexityError,
             "list literal exceeds the element limit",
@@ -419,6 +478,12 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
     private SemanticAst.Expression unary(Unary expression) {
         SemanticAst.Expression operand = lower(expression.operand());
         SemanticAst.UnaryOperator operator = expression.operator();
+        requireFeature(
+            operator == SemanticAst.UnaryOperator.NOT
+                ? CompilationFeature.LOGICAL_OPERATORS
+                : CompilationFeature.ARITHMETIC_OPERATORS,
+            expression.span()
+        );
         require(
             operand,
             operator == SemanticAst.UnaryOperator.NOT ? LanguageType.Scalar.BOOL : LanguageType.Scalar.NUMBER,
@@ -441,8 +506,78 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         SemanticAst.Expression left = lower(expression.left());
         SemanticAst.Expression right = lower(expression.right());
         SemanticAst.BinaryOperator operator = expression.operator();
+        requireFeature(feature(operator), expression.span());
         LanguageType type = validate(operator, left, right, expression.span());
         return folded(node(new SemanticAst.Binary(operator, left, right, type, union(left, right), expression.span())));
+    }
+
+    private SemanticAst.Expression quantifier(Quantifier expression) {
+        SemanticAst.Expression collection = lower(expression.collection());
+        if (!(collection.type() instanceof LanguageType.ListType list)) {
+            throw failure(LanguageDiagnostic.Category.TypeError, "quantifier requires a List", expression.span());
+        }
+        SemanticAst.Expression predicate;
+        scopes.add(new Scope(scopes.isEmpty() ? null : scopes.getLast()));
+        lambdaNesting++;
+        try {
+            if (lambdaNesting > limits.maxLambdaDepth()) {
+                throw failure(LanguageDiagnostic.Category.ComplexityError, "lambda nesting exceeds the limit", expression.span());
+            }
+            scopes.getLast().put(
+                expression.elementName(),
+                new SemanticAst.Reference(
+                    "__lambda__",
+                    List.of(expression.elementName()),
+                    list.elementType(),
+                    false,
+                    false,
+                    Set.of(),
+                    expression.span()
+                )
+            );
+            predicate = lower(expression.predicate());
+        } finally {
+            lambdaNesting--;
+            scopes.removeLast();
+        }
+        require(predicate, LanguageType.Scalar.BOOL, "quantifier predicate must be Bool");
+        return folded(node(new SemanticAst.Quantifier(
+            expression.operator(), collection, expression.elementName(), predicate, LanguageType.Scalar.BOOL,
+            union(collection, predicate), expression.span()
+        )));
+    }
+
+    private SemanticAst.Expression length(LengthExpression expression) {
+        SemanticAst.Expression operand = lower(expression.operand());
+        if (
+            operand.type() != LanguageType.Scalar.STRING &&
+            !(operand.type() instanceof LanguageType.ListType)
+        ) throw failure(LanguageDiagnostic.Category.TypeError, "len requires a String or List", expression.span());
+        if (operand.nullable()) throw failure(LanguageDiagnostic.Category.TypeError, "len does not accept nullable values", expression.span());
+        return node(new SemanticAst.Length(operand, LanguageType.Scalar.NUMBER, operand.dependencies(), expression.span()));
+    }
+
+    private static LanguageType resolveLocalPath(LanguageType type, List<String> path) {
+        LanguageType current = type;
+        for (String segment : path) {
+            if (!(current instanceof LanguageType.StructuredType structured)) {
+                throw failure(LanguageDiagnostic.Category.BindingError, "unknown lambda path: " + segment, unknown());
+            }
+            EnvironmentSchema.Field field = structured.field(segment);
+            if (field == null) throw failure(LanguageDiagnostic.Category.BindingError, "unknown lambda path: " + segment, unknown());
+            current = field.type();
+        }
+        return current;
+    }
+
+    private CompilationFeature feature(SemanticAst.BinaryOperator operator) {
+        return switch (operator) {
+            case AND, OR -> CompilationFeature.LOGICAL_OPERATORS;
+            case EQUAL, NOT_EQUAL -> CompilationFeature.EQUALITY_OPERATORS;
+            case GREATER, GREATER_OR_EQUAL, LESS, LESS_OR_EQUAL -> CompilationFeature.ORDERING_OPERATORS;
+            case IN -> CompilationFeature.MEMBERSHIP;
+            case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO -> CompilationFeature.ARITHMETIC_OPERATORS;
+        };
     }
 
     private static LanguageType validate(
@@ -634,6 +769,22 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         return failure(LanguageDiagnostic.Category.SyntaxError, message, span(token));
     }
 
+    private void requireFeature(CompilationFeature feature, Token token) {
+        if (!profile.enables(feature)) throw failure(
+            LanguageDiagnostic.Category.FeatureError,
+            "feature is disabled: " + feature,
+            span(token)
+        );
+    }
+
+    private void requireFeature(CompilationFeature feature, LanguageDiagnostic.SourceSpan span) {
+        if (!profile.enables(feature)) throw failure(
+            LanguageDiagnostic.Category.FeatureError,
+            "feature is disabled: " + feature,
+            span
+        );
+    }
+
     private static LanguageDiagnostic.SourceSpan span(ParserRuleContext context) {
         return sourceSpan(context.getStart(), context.getStop());
     }
@@ -714,7 +865,7 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         }
     }
 
-    private sealed interface Expression extends SyntaxNode permits Literal, Reference, ListExpression, Unary, Binary {
+    private sealed interface Expression extends SyntaxNode permits Literal, Reference, ListExpression, Unary, Binary, Quantifier, LengthExpression {
         LanguageDiagnostic.SourceSpan span();
     }
 
@@ -749,6 +900,16 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         Expression right,
         LanguageDiagnostic.SourceSpan span
     ) implements Expression {}
+
+    private record Quantifier(
+        SemanticAst.QuantifierOperator operator,
+        Expression collection,
+        String elementName,
+        Expression predicate,
+        LanguageDiagnostic.SourceSpan span
+    ) implements Expression {}
+
+    private record LengthExpression(Expression operand, LanguageDiagnostic.SourceSpan span) implements Expression {}
 
     private static final class Scope {
 

@@ -4,10 +4,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
-import io.taskmigo.auth.authorization.request.AuthorizationOperation;
 import io.taskmigo.auth.group.GroupInfo;
 import io.taskmigo.auth.group.GroupService;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.query.AuthorizedQuery;
 import io.taskmigo.rest.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.rest.api.v0.support.response.ApiResponse;
 import io.taskmigo.rest.api.v0.support.response.ApiResponseFactory;
@@ -46,12 +46,15 @@ class GroupController {
     @Operation(summary = "List groups")
     ResponseEntity<ApiResponse<List<GroupInfo>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
-        AuthorizationOperation authorization
+        AuthorizedQuery<GroupInfo> authorization
     ) {
         OffsetPage<GroupInfo> groups = this.groups.list(
             pagination.page(),
             pagination.pageSize(),
-            this.objectAuthorization.plan(authorization.snapshot(), authorization.method(), authorization.path())
+            this.objectAuthorization.legacyPlan(
+                authorization.predicate(),
+                Map.of("id", UUID.class, "name", String.class, "description", String.class)
+            )
         );
         return this.responses.ok(
             groups.items(),

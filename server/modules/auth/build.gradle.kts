@@ -9,6 +9,7 @@ dependencies {
     api(libs.spring.modulith.starter.core)
     api(project(":modules:foundation"))
     api(project(":modules:embedded-language"))
+    api(project(":modules:query-filtering"))
 
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.jackson.databind)

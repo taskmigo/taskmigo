@@ -54,6 +54,26 @@ public final class EnvironmentSchema {
         Map<List<String>, Field> indexedFields = Objects.requireNonNull(this.fieldsByPath.get(rootName));
         Field exact = indexedFields.get(path);
         if (exact != null) return exact;
+        Field current = root.fields().get(path.getFirst());
+        boolean nullable = current != null && current.nullable();
+        if (current != null) {
+            for (int index = 1; index < path.size(); index++) {
+                if (!(current.type() instanceof LanguageType.StructuredType structured)) {
+                    current = null;
+                    break;
+                }
+                Field next = structured.field(path.get(index));
+                if (next == null) {
+                    current = null;
+                    break;
+                }
+                nullable = nullable || next.nullable();
+                current = next;
+            }
+        }
+        if (current != null && path.size() > 1) {
+            return new Field(current.type(), nullable, current.symbolic(), current.dynamicMemberType());
+        }
         for (int index = path.size() - 1; index >= 0; index--) {
             Field prefix = indexedFields.get(path.subList(0, index));
             if (prefix != null && prefix.dynamicMemberType() != null && index < path.size()) {

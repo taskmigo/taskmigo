@@ -1,6 +1,7 @@
 package io.taskmigo.embeddedlanguage;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -39,6 +40,8 @@ public final class EmbeddedLanguagePartialEvaluator {
             case SemanticAst.Unary unary -> unary(unary, knownRoots);
             case SemanticAst.Binary binary -> binary(binary, knownRoots);
             case SemanticAst.Conditional conditional -> conditional(conditional, knownRoots);
+            case SemanticAst.Quantifier quantifier -> quantifier(quantifier, knownRoots);
+            case SemanticAst.Length length -> length(length, knownRoots);
         };
     }
 
@@ -47,7 +50,7 @@ public final class EmbeddedLanguagePartialEvaluator {
             case SemanticAst.Literal _ -> {
             }
             case SemanticAst.Reference reference -> {
-                if (!knownRoots.contains(reference.root()) && !reference.symbolic()) {
+                if (!knownRoots.contains(reference.root()) && !reference.symbolic() && !reference.root().equals("__lambda__")) {
                     throw new EmbeddedLanguageException(
                         new LanguageDiagnostic(
                             LanguageDiagnostic.Category.TypeError,
@@ -69,6 +72,11 @@ public final class EmbeddedLanguagePartialEvaluator {
                 requireSymbolicUnknowns(conditional.whenTrue(), knownRoots);
                 requireSymbolicUnknowns(conditional.whenFalse(), knownRoots);
             }
+            case SemanticAst.Quantifier quantifier -> {
+                requireSymbolicUnknowns(quantifier.collection(), knownRoots);
+                requireSymbolicUnknowns(quantifier.predicate(), knownRoots);
+            }
+            case SemanticAst.Length length -> requireSymbolicUnknowns(length.operand(), knownRoots);
         }
     }
 
@@ -154,6 +162,44 @@ public final class EmbeddedLanguagePartialEvaluator {
             union(condition, whenTrue, whenFalse),
             expression.span()
         );
+    }
+
+    private static SemanticAst.Expression quantifier(SemanticAst.Quantifier expression, Map<String, ?> roots) {
+        SemanticAst.Expression collection = simplify(expression.collection(), roots);
+        if (collection instanceof SemanticAst.Literal literal && literal.value() instanceof List<?> values) {
+            for (Object element : values) {
+                Map<String, Object> scoped = new HashMap<>(roots);
+                Map<String, Object> binding = new HashMap<>();
+                binding.put(expression.elementName(), element);
+                scoped.put("__lambda__", binding);
+                SemanticAst.Expression predicate = simplify(expression.predicate(), scoped);
+                if (predicate instanceof SemanticAst.Literal result && result.value() instanceof Boolean matches) {
+                    if (expression.operator() == SemanticAst.QuantifierOperator.ALL && !matches) return literal(false, expression.span());
+                    if (expression.operator() == SemanticAst.QuantifierOperator.ANY && matches) return literal(true, expression.span());
+                    if (expression.operator() == SemanticAst.QuantifierOperator.NONE && matches) return literal(false, expression.span());
+                } else {
+                    return new SemanticAst.Quantifier(
+                        expression.operator(), collection, expression.elementName(), predicate,
+                        LanguageType.Scalar.BOOL, union(collection, predicate), expression.span()
+                    );
+                }
+            }
+            return literal(expression.operator() != SemanticAst.QuantifierOperator.ANY, expression.span());
+        }
+        SemanticAst.Expression predicate = simplify(expression.predicate(), roots);
+        return new SemanticAst.Quantifier(
+            expression.operator(), collection, expression.elementName(), predicate,
+            LanguageType.Scalar.BOOL, union(collection, predicate), expression.span()
+        );
+    }
+
+    private static SemanticAst.Expression length(SemanticAst.Length expression, Map<String, ?> roots) {
+        SemanticAst.Expression operand = simplify(expression.operand(), roots);
+        if (operand instanceof SemanticAst.Literal literal) {
+            if (literal.value() instanceof String text) return literal(java.math.BigDecimal.valueOf(text.length()), expression.span());
+            if (literal.value() instanceof List<?> list) return literal(java.math.BigDecimal.valueOf(list.size()), expression.span());
+        }
+        return new SemanticAst.Length(operand, expression.type(), operand.dependencies(), expression.span());
     }
 
     private static boolean literalValue(SemanticAst.Expression expression) {

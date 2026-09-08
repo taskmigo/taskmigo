@@ -45,12 +45,18 @@ public final class EmbeddedLanguageCompiler {
 
     /// Compiles source against a consumer-owned environment schema.
     public SemanticAst compile(String source, EnvironmentSchema schema) {
+        return this.compile(source, schema, CompilationProfile.program());
+    }
+
+    /// Compiles source against a schema and explicit language compilation profile.
+    public SemanticAst compile(String source, EnvironmentSchema schema, CompilationProfile profile) {
         Objects.requireNonNull(source);
         Objects.requireNonNull(schema);
+        Objects.requireNonNull(profile);
         if (source.length() > this.limits.maxSourceCharacters()) {
             throw failure(
                 LanguageDiagnostic.Category.ComplexityError,
-                "program source exceeds the source-size limit",
+                "source exceeds the source-size limit",
                 unknown()
             );
         }
@@ -80,16 +86,25 @@ public final class EmbeddedLanguageCompiler {
         EmbeddedLanguageParser parser = new EmbeddedLanguageParser(tokens);
         parser.removeErrorListeners();
         parser.addErrorListener(errors);
-        EmbeddedLanguageParser.ProgramContext program = parser.program();
-        if (!errors.diagnostics.isEmpty()) throw new EmbeddedLanguageException(errors.diagnostics);
-
-        SemanticAst.Expression expression = new LanguageCompilerVisitor(schema, this.limits).compile(program);
+        LanguageCompilerVisitor visitor = new LanguageCompilerVisitor(schema, this.limits, profile);
+        SemanticAst.Expression expression;
+        if (profile.mode() == CompilationMode.PROGRAM) {
+            EmbeddedLanguageParser.ProgramContext program = parser.program();
+            if (!errors.diagnostics.isEmpty()) throw new EmbeddedLanguageException(errors.diagnostics);
+            expression = visitor.compile(program);
+        } else {
+            EmbeddedLanguageParser.ExpressionSourceContext expressionSource = parser.expressionSource();
+            if (!errors.diagnostics.isEmpty()) throw new EmbeddedLanguageException(errors.diagnostics);
+            expression = visitor.compile(expressionSource);
+        }
         return new SemanticAst(
             expression,
             fingerprint(source),
             SemanticAst.LANGUAGE_VERSION,
             schema.fingerprint(),
-            compilerFingerprint
+            compilerFingerprint,
+            profile.mode(),
+            profile.fingerprint()
         );
     }
 

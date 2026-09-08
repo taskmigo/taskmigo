@@ -5,12 +5,22 @@ import io.taskmigo.auth.authorization.embeddedlanguage.AuthorizationEmbeddedLang
 import io.taskmigo.auth.authorization.embeddedlanguage.AuthorizationSemanticAstQueryability;
 import io.taskmigo.auth.authorization.embeddedlanguage.EmbeddedLanguageFilterLowerer;
 import io.taskmigo.auth.authorization.filter.FilterAst;
+import io.taskmigo.auth.authorization.request.AuthorizationContext;
+import io.taskmigo.auth.authorization.request.AuthorizationOperation;
 import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
 import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
+import io.taskmigo.embeddedlanguage.EmbeddedLanguageException;
+import io.taskmigo.embeddedlanguage.LanguageDiagnostic;
+import io.taskmigo.embeddedlanguage.LanguageType;
 import io.taskmigo.embeddedlanguage.SemanticAst;
+import io.taskmigo.query.QueryPredicate;
+import io.taskmigo.query.QueryPredicateFactory;
+import io.taskmigo.query.QueryPredicates;
+import io.taskmigo.query.QuerySchema;
+import io.taskmigo.query.QuerySchemaValidator;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
@@ -25,7 +35,8 @@ import org.springframework.stereotype.Service;
 
 /// Builds database-side object authorization plans from effective object Statements.
 @Service
-public class ObjectAuthorizationService {
+@SuppressWarnings({ "checkstyle:NeedBraces", "checkstyle:UnnecessaryFullyQualifiedType" })
+public class ObjectAuthorizationService implements ObjectAuthorization {
 
     private final EmbeddedLanguageFilterLowerer partialEvaluator;
     private final EmbeddedLanguageCompiler compiler;
@@ -39,6 +50,87 @@ public class ObjectAuthorizationService {
         this.partialEvaluator = partialEvaluator;
         this.compiler = compiler;
         this.dialects = List.copyOf(dialects);
+    }
+
+    /// Produces a typed logical predicate using the immutable context from Request Authorization.
+    @Override
+    public <Q> QueryPredicate<Q> authorize(AuthorizationContext context, QuerySchema<Q> schema) {
+        if (!(context instanceof AuthorizationOperation operation)) {
+            throw new AuthorizationException("authorization context is not valid for this operation");
+        }
+        try {
+            var environment = AuthorizationEmbeddedLanguageSchemas.object(schema);
+            QueryPredicate<Q> allows = constant(schema, false);
+            QueryPredicate<Q> denies = constant(schema, false);
+            for (var artifact : operation.snapshot().executableStatements()) {
+                StatementInfo statement = artifact.statement();
+                if (statement.scope() != Scope.OBJECT || !artifact.matches(operation.method(), operation.path())) continue;
+                SemanticAst policy = this.compiler.compile(statement.policy(), environment);
+                QuerySchemaValidator.validate(policy.expression(), schema);
+                PartialProgramResult partial = partial(policy, operation.snapshot().roots());
+                QueryPredicate<Q> predicate = QueryPredicateFactory.from(schema, partial.expression());
+                if (statement.effect() == Effect.ALLOW) allows = QueryPredicates.standard().or(allows, predicate);
+                else denies = QueryPredicates.standard().or(denies, predicate);
+            }
+            return QueryPredicates.standard().and(allows, QueryPredicates.standard().not(denies));
+        } catch (EmbeddedLanguageException | IllegalArgumentException exception) {
+            throw new AuthorizationException("Invalid Object authorization policy: " + exception.getMessage());
+        }
+    }
+
+    private PartialProgramResult partial(SemanticAst policy, Map<String, ?> roots) {
+        var result = new io.taskmigo.embeddedlanguage.EmbeddedLanguagePartialEvaluator().partial(policy, roots);
+        if (result instanceof io.taskmigo.embeddedlanguage.PartialProgram.Concrete concrete) {
+            if (!(concrete.value() instanceof Boolean value)) throw new AuthorizationException("Object authorization policy result is not Bool");
+            return new PartialProgramResult(new SemanticAst.Literal(value, LanguageType.Scalar.BOOL, new LanguageDiagnostic.SourceSpan(1, 0, 1, 0)));
+        }
+        var residual = ((io.taskmigo.embeddedlanguage.PartialProgram.Residual) result).expression();
+        if (residual.type() != LanguageType.Scalar.BOOL) throw new AuthorizationException("Object authorization policy result is not Bool");
+        return new PartialProgramResult(residual);
+    }
+
+    private static <Q> QueryPredicate<Q> constant(QuerySchema<Q> schema, boolean value) {
+        return QueryPredicateFactory.from(schema, new SemanticAst.Literal(
+            value, LanguageType.Scalar.BOOL, new LanguageDiagnostic.SourceSpan(1, 0, 1, 0)
+        ));
+    }
+
+    /// Adapts a flat legacy resource mapping while resource repositories migrate to Query Predicate binders.
+    public ObjectAuthorizationPlan legacyPlan(QueryPredicate<?> predicate, Map<String, Class<?>> fields) {
+        return new ObjectAuthorizationPlan(new FilterAst(legacyExpression(QueryPredicateFactory.expression(predicate))), List.of(), fields);
+    }
+
+    private static FilterAst.Expression legacyExpression(SemanticAst.Expression expression) {
+        return switch (expression) {
+            case SemanticAst.Literal literal -> new FilterAst.Literal(literal.value());
+            case SemanticAst.Reference reference when reference.root().equals("object") && reference.path().size() == 1 ->
+                new FilterAst.Field(reference.path().getFirst());
+            case SemanticAst.Reference _ -> throw new AuthorizationException("nested Query Predicate requires a resource binder");
+            case SemanticAst.ListLiteral _ -> throw new AuthorizationException("collection Query Predicate requires a resource binder");
+            case SemanticAst.Unary unary -> new FilterAst.Unary(
+                unary.operator() == SemanticAst.UnaryOperator.NOT ? FilterAst.Operator.NOT : FilterAst.Operator.NEGATE,
+                legacyExpression(unary.operand())
+            );
+            case SemanticAst.Binary binary -> new FilterAst.Binary(
+                legacyOperator(binary.operator()), legacyExpression(binary.left()), legacyExpression(binary.right())
+            );
+            case SemanticAst.Conditional conditional -> FilterAst.or(
+                FilterAst.and(legacyExpression(conditional.condition()), legacyExpression(conditional.whenTrue())),
+                FilterAst.and(FilterAst.not(legacyExpression(conditional.condition())), legacyExpression(conditional.whenFalse()))
+            );
+            case SemanticAst.Quantifier _ -> throw new AuthorizationException("collection Query Predicate requires a resource binder");
+            case SemanticAst.Length _ -> throw new AuthorizationException("collection Query Predicate requires a resource binder");
+        };
+    }
+
+    private static FilterAst.Operator legacyOperator(SemanticAst.BinaryOperator operator) {
+        return switch (operator) {
+            case AND -> FilterAst.Operator.AND; case OR -> FilterAst.Operator.OR; case EQUAL -> FilterAst.Operator.EQ;
+            case NOT_EQUAL -> FilterAst.Operator.NE; case GREATER -> FilterAst.Operator.GT; case GREATER_OR_EQUAL -> FilterAst.Operator.GE;
+            case LESS -> FilterAst.Operator.LT; case LESS_OR_EQUAL -> FilterAst.Operator.LE; case ADD -> FilterAst.Operator.ADD;
+            case SUBTRACT -> FilterAst.Operator.SUBTRACT; case MULTIPLY -> FilterAst.Operator.MULTIPLY; case DIVIDE -> FilterAst.Operator.DIVIDE;
+            case IN, MODULO -> throw new AuthorizationException("operator requires a resource binder");
+        };
     }
 
     /// Validates an object policy against every registered dialect matching its target.
@@ -403,4 +495,6 @@ public class ObjectAuthorizationService {
             return this.predicate.expression() instanceof FilterAst.None;
         }
     }
+
+    private record PartialProgramResult(SemanticAst.Expression expression) {}
 }

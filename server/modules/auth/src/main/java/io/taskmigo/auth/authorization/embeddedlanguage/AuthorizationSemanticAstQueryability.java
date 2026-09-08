@@ -6,6 +6,7 @@ import io.taskmigo.auth.authorization.object.FilterSchema;
 import io.taskmigo.embeddedlanguage.SemanticAst;
 
 /// Validates the object-dependent portion of an Embedded Language Semantic AST against an Authorization Filter Schema.
+@SuppressWarnings("checkstyle:NeedBraces")
 public final class AuthorizationSemanticAstQueryability {
 
     private AuthorizationSemanticAstQueryability() {}
@@ -63,6 +64,8 @@ public final class AuthorizationSemanticAstQueryability {
                 validate(conditional.whenTrue(), schema);
                 validate(conditional.whenFalse(), schema);
             }
+            case SemanticAst.Quantifier _ -> throw invalid("collection quantifiers are not supported by the legacy Filter AST");
+            case SemanticAst.Length _ -> throw invalid("length is not supported by the legacy Filter AST");
         }
     }
 

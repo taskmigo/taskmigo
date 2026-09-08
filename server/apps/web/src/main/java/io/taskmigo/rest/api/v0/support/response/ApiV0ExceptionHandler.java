@@ -1,5 +1,6 @@
 package io.taskmigo.rest.api.v0.support.response;
 
+import io.taskmigo.query.FilterByException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -49,6 +50,17 @@ final class ApiV0ExceptionHandler {
             "request.malformed",
             message,
             new ApiResponse.Error("MALFORMED_REQUEST", message, null)
+        );
+    }
+
+    @ExceptionHandler(FilterByException.class)
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleFilterBy(FilterByException exception) {
+        String message = exception.getMessage() == null ? "filterBy is invalid" : exception.getMessage();
+        return this.responses.failure(
+            HttpStatus.BAD_REQUEST,
+            "query.filter.invalid",
+            message,
+            new ApiResponse.Error("INVALID_FILTER", message, null)
         );
     }
 

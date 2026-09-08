@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
@@ -71,7 +72,7 @@ class EmbeddedLanguageCompilerTest {
     @DisplayName("supports nullable program results")
     void shouldEvaluateNullableProgramResult() {
         SemanticAst program = new EmbeddedLanguageCompiler().compile("return request.optional;", schema);
-        Map<String, Object> request = new java.util.HashMap<>();
+        Map<String, Object> request = new HashMap<>();
         request.put("optional", null);
 
         Object result = new EmbeddedLanguageEvaluator().evaluate(program, Map.of("request", request));

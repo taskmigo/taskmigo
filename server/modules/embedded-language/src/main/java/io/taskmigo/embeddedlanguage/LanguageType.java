@@ -1,9 +1,12 @@
 package io.taskmigo.embeddedlanguage;
 
+import java.util.Map;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /// Represents a statically checked Embedded Language value type.
-public sealed interface LanguageType permits LanguageType.Scalar, LanguageType.ListType {
+@SuppressWarnings("checkstyle:NeedBraces")
+public sealed interface LanguageType permits LanguageType.Scalar, LanguageType.ListType, LanguageType.StructuredType {
     /// Primitive language types.
     enum Scalar implements LanguageType {
         BOOL,
@@ -16,6 +19,20 @@ public sealed interface LanguageType permits LanguageType.Scalar, LanguageType.L
     record ListType(LanguageType elementType) implements LanguageType {
         public ListType {
             Objects.requireNonNull(elementType);
+        }
+    }
+
+    /// A schema-defined structured value with statically declared properties.
+    record StructuredType(String name, Map<String, EnvironmentSchema.Field> fields) implements LanguageType {
+        public StructuredType {
+            Objects.requireNonNull(name);
+            if (name.isBlank()) throw new IllegalArgumentException("structured type name must not be blank");
+            fields = Map.copyOf(fields);
+        }
+
+        /// Returns the schema field for a statically declared property.
+        public EnvironmentSchema.@Nullable Field field(String property) {
+            return this.fields.get(property);
         }
     }
 

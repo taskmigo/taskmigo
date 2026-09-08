@@ -13,6 +13,8 @@ public class EmbeddedLanguageCompilerProperties {
     private int maxSemanticAstNodes = 500;
     private int maxBlockDepth = 40;
     private int maxListElements = 100;
+    private int maxQuantifierDepth = 20;
+    private int maxLambdaDepth = 20;
 
     /// Returns the configured source-size limit.
     public int getMaxSourceCharacters() {
@@ -74,6 +76,26 @@ public class EmbeddedLanguageCompilerProperties {
         this.maxListElements = value;
     }
 
+    /// Returns the configured collection-quantifier nesting limit.
+    public int getMaxQuantifierDepth() {
+        return this.maxQuantifierDepth;
+    }
+
+    /// Sets the collection-quantifier nesting limit.
+    public void setMaxQuantifierDepth(int value) {
+        this.maxQuantifierDepth = value;
+    }
+
+    /// Returns the configured restricted-lambda nesting limit.
+    public int getMaxLambdaDepth() {
+        return this.maxLambdaDepth;
+    }
+
+    /// Sets the restricted-lambda nesting limit.
+    public void setMaxLambdaDepth(int value) {
+        this.maxLambdaDepth = value;
+    }
+
     /// Converts application properties into the language module's immutable contract.
     public CompilerLimits limits() {
         return new CompilerLimits(
@@ -82,7 +104,9 @@ public class EmbeddedLanguageCompilerProperties {
             this.maxSyntaxDepth,
             this.maxSemanticAstNodes,
             this.maxBlockDepth,
-            this.maxListElements
+            this.maxListElements,
+            this.maxQuantifierDepth,
+            this.maxLambdaDepth
         );
     }
 }

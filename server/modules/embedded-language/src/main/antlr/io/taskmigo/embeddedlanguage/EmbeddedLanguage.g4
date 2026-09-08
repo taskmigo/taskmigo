@@ -3,6 +3,7 @@ grammar EmbeddedLanguage;
 @header { package io.taskmigo.embeddedlanguage.antlr; }
 
 program: statement* EOF;
+expressionSource: expression EOF;
 statement: constDecl | ifStatement | returnStatement;
 block: LBRACE statement* RBRACE;
 constDecl: CONST IDENT ASSIGN expression SEMICOLON;
@@ -17,14 +18,18 @@ membershipExpression: additiveExpression (IN additiveExpression)?;
 additiveExpression: multiplicativeExpression ((PLUS | MINUS) multiplicativeExpression)*;
 multiplicativeExpression: unaryExpression ((STAR | SLASH | PERCENT) unaryExpression)*;
 unaryExpression: (NOT | PLUS | MINUS) unaryExpression | primary;
-primary: literal | listLiteral | reference | LPAREN expression RPAREN;
+primary: literal | listLiteral | reference | quantifierExpression | lengthExpression | LPAREN expression RPAREN;
 reference: IDENT (DOT IDENT)*;
 listLiteral: LBRACKET (expression (COMMA expression)*)? RBRACKET;
+quantifierExpression: quantifier LPAREN expression COMMA IDENT ARROW expression RPAREN;
+quantifier: ALL | ANY | NONE;
+lengthExpression: LEN LPAREN expression RPAREN;
 literal: TRUE | FALSE | NULL | NUMBER | STRING;
 
 CONST: 'const'; IF: 'if'; ELSE: 'else'; RETURN: 'return'; IN: 'in'; TRUE: 'true'; FALSE: 'false'; NULL: 'null';
+ALL: 'all'; ANY: 'any'; NONE: 'none'; LEN: 'len';
 EQUAL: '=='; NOT_EQUAL: '!='; LESS_EQUAL: '<='; GREATER_EQUAL: '>='; AND: '&&'; OR: '||'; LESS: '<'; GREATER: '>';
-ASSIGN: '='; PLUS: '+'; MINUS: '-'; STAR: '*'; SLASH: '/'; PERCENT: '%'; NOT: '!'; LPAREN: '('; RPAREN: ')';
+ASSIGN: '='; ARROW: '=>'; PLUS: '+'; MINUS: '-'; STAR: '*'; SLASH: '/'; PERCENT: '%'; NOT: '!'; LPAREN: '('; RPAREN: ')';
 LBRACE: '{'; RBRACE: '}'; LBRACKET: '['; RBRACKET: ']'; DOT: '.'; COMMA: ','; SEMICOLON: ';';
 NUMBER: [0-9]+ ('.' [0-9]+)? ([eE] [+-]? [0-9]+)?;
 STRING: '"' (ESCAPE | ~["\\\r\n])* '"';

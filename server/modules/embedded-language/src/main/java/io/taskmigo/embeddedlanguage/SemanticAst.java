@@ -13,10 +13,12 @@ public record SemanticAst(
     String sourceFingerprint,
     String languageVersion,
     String schemaFingerprint,
-    String compilerFingerprint
+    String compilerFingerprint,
+    CompilationMode mode,
+    String profileFingerprint
 ) {
     /// The current Embedded Language contract version.
-    public static final String LANGUAGE_VERSION = "0.3.0";
+    public static final String LANGUAGE_VERSION = "0.4.0";
 
     public SemanticAst {
         Objects.requireNonNull(expression);
@@ -24,11 +26,32 @@ public record SemanticAst(
         Objects.requireNonNull(languageVersion);
         Objects.requireNonNull(schemaFingerprint);
         Objects.requireNonNull(compilerFingerprint);
+        Objects.requireNonNull(mode);
+        Objects.requireNonNull(profileFingerprint);
     }
 
     /// Creates a metadata-free Semantic AST for focused tests.
     public SemanticAst(Expression expression) {
-        this(expression, "", LANGUAGE_VERSION, "", "");
+        this(expression, "", LANGUAGE_VERSION, "", "", CompilationMode.PROGRAM, "");
+    }
+
+    /// Creates an artifact with explicit compilation metadata.
+    public SemanticAst(
+        Expression expression,
+        String sourceFingerprint,
+        String languageVersion,
+        String schemaFingerprint,
+        String compilerFingerprint
+    ) {
+        this(
+            expression,
+            sourceFingerprint,
+            languageVersion,
+            schemaFingerprint,
+            compilerFingerprint,
+            CompilationMode.PROGRAM,
+            ""
+        );
     }
 
     /// Returns the statically determined program result type.
@@ -42,7 +65,7 @@ public record SemanticAst(
     }
 
     /// Represents one typed semantic expression.
-    public sealed interface Expression permits Literal, Reference, ListLiteral, Binary, Unary, Conditional {
+    public sealed interface Expression permits Literal, Reference, ListLiteral, Binary, Unary, Conditional, Quantifier, Length {
         /// Returns the static type.
         LanguageType type();
         /// Returns dependent schema roots.
@@ -114,6 +137,11 @@ public record SemanticAst(
             Objects.requireNonNull(type);
             dependencies = Set.copyOf(dependencies);
             Objects.requireNonNull(span);
+        }
+
+        @Override
+        public boolean nullable() {
+            return this.nullable;
         }
     }
 
@@ -211,6 +239,48 @@ public record SemanticAst(
         }
     }
 
+    /// Represents a bounded collection quantifier with one lexical element binding.
+    public record Quantifier(
+        QuantifierOperator operator,
+        Expression collection,
+        String elementName,
+        Expression predicate,
+        LanguageType type,
+        Set<String> dependencies,
+        LanguageDiagnostic.SourceSpan span
+    ) implements Expression {
+        public Quantifier {
+            Objects.requireNonNull(operator);
+            Objects.requireNonNull(collection);
+            Objects.requireNonNull(elementName);
+            if (elementName.isBlank()) throw new IllegalArgumentException("quantifier element name must not be blank");
+            Objects.requireNonNull(predicate);
+            Objects.requireNonNull(type);
+            dependencies = Set.copyOf(dependencies);
+            Objects.requireNonNull(span);
+        }
+
+        @Override
+        public boolean nullable() {
+            return false;
+        }
+    }
+
+    /// Represents the bounded `len` intrinsic.
+    public record Length(
+        Expression operand,
+        LanguageType type,
+        Set<String> dependencies,
+        LanguageDiagnostic.SourceSpan span
+    ) implements Expression {
+        public Length {
+            Objects.requireNonNull(operand);
+            Objects.requireNonNull(type);
+            dependencies = Set.copyOf(dependencies);
+            Objects.requireNonNull(span);
+        }
+    }
+
     /// Supported binary operations.
     public enum BinaryOperator {
         OR,
@@ -234,6 +304,13 @@ public record SemanticAst(
         NOT,
         PLUS,
         MINUS,
+    }
+
+    /// Identifies the three supported collection quantifiers.
+    public enum QuantifierOperator {
+        ALL,
+        ANY,
+        NONE,
     }
 
     private static final LanguageDiagnostic.SourceSpan UNKNOWN_SPAN = new LanguageDiagnostic.SourceSpan(1, 0, 1, 0);

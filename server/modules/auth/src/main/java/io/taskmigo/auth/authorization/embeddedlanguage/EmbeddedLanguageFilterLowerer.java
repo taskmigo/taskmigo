@@ -69,6 +69,8 @@ public final class EmbeddedLanguageFilterLowerer {
                 FilterAst.and(filter(conditional.condition()), filter(conditional.whenTrue())),
                 FilterAst.and(FilterAst.not(filter(conditional.condition())), filter(conditional.whenFalse()))
             );
+            case SemanticAst.Quantifier _ -> throw invalid("collection quantifiers are not supported by the legacy Filter AST");
+            case SemanticAst.Length _ -> throw invalid("length is not supported by the legacy Filter AST");
         };
     }
 

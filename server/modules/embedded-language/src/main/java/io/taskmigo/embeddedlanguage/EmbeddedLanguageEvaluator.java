@@ -1,6 +1,7 @@
 package io.taskmigo.embeddedlanguage;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
@@ -91,7 +92,31 @@ public final class EmbeddedLanguageEvaluator {
             case SemanticAst.Conditional conditional -> requireBoolean(value(conditional.condition(), roots))
                 ? value(conditional.whenTrue(), roots)
                 : value(conditional.whenFalse(), roots);
+            case SemanticAst.Quantifier quantifier -> quantifier(quantifier, roots);
+            case SemanticAst.Length length -> length(length, roots);
         };
+    }
+
+    private static boolean quantifier(SemanticAst.Quantifier expression, Map<String, ?> roots) {
+        List<?> values = list(value(expression.collection(), roots));
+        for (Object element : values) {
+            Map<String, Object> scoped = new HashMap<>(roots);
+            Map<String, Object> binding = new HashMap<>();
+            binding.put(expression.elementName(), element);
+            scoped.put("__lambda__", binding);
+            boolean matches = requireBoolean(value(expression.predicate(), scoped));
+            if (expression.operator() == SemanticAst.QuantifierOperator.ALL && !matches) return false;
+            if (expression.operator() == SemanticAst.QuantifierOperator.ANY && matches) return true;
+            if (expression.operator() == SemanticAst.QuantifierOperator.NONE && matches) return false;
+        }
+        return expression.operator() != SemanticAst.QuantifierOperator.ANY;
+    }
+
+    private static BigDecimal length(SemanticAst.Length expression, Map<String, ?> roots) {
+        Object value = value(expression.operand(), roots);
+        if (value instanceof String text) return BigDecimal.valueOf(text.length());
+        if (value instanceof List<?> list) return BigDecimal.valueOf(list.size());
+        throw failure("len requires a String or List", expression.span());
     }
 
     private static @Nullable Object binary(SemanticAst.Binary binary, Map<String, ?> roots) {
@@ -143,6 +168,13 @@ public final class EmbeddedLanguageEvaluator {
             };
             case LanguageType.ListType list -> value instanceof List<?> values &&
                 values.stream().allMatch(item -> matchesType(item, list.elementType()));
+            case LanguageType.StructuredType structured -> value instanceof Map<?, ?> map &&
+                structured.fields().entrySet().stream().allMatch(entry -> {
+                    Object nested = map.get(entry.getKey());
+                    return nested != null
+                        ? matchesType(nested, entry.getValue().type())
+                        : entry.getValue().nullable() || entry.getValue().type() == LanguageType.Scalar.NULL;
+                });
         };
     }
 

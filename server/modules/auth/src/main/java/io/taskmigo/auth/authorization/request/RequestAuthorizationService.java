@@ -18,7 +18,8 @@ import org.springframework.stereotype.Service;
 
 /// Evaluates request-targeted authorization Statements independently of the web security framework.
 @Service
-public class RequestAuthorizationService {
+@SuppressWarnings("checkstyle:OverloadMethodsDeclarationOrder")
+public class RequestAuthorizationService implements RequestAuthorization {
 
     private final EffectiveStatementResolver statements;
     private final EmbeddedLanguageEvaluator embeddedLanguageEvaluator;
@@ -32,6 +33,23 @@ public class RequestAuthorizationService {
         this.statements = statements;
         this.embeddedLanguageEvaluator = embeddedLanguageEvaluator;
         this.artifacts = artifacts;
+    }
+
+    /// Authorizes typed request inputs and returns the same operation context used by the decision.
+    @Override
+    public RequestAuthorizationResult authorize(AuthorizationPrincipal principal, AuthorizationRequest request) {
+        Map<String, ?> roots = Map.of(
+            "principal", Map.of("id", principal.id().toString(), "username", principal.username()),
+            "request", Map.of("method", request.method(), "path", request.path(), "pathVariables", request.pathVariables())
+        );
+        try {
+            AuthorizationSnapshot snapshot = this.snapshot(principal.id(), roots);
+            AuthorizationOperation operation = new AuthorizationOperation(snapshot, request.method(), request.path());
+            boolean granted = this.authorize(operation.snapshot(), operation.method(), operation.path()).allowed();
+            return new RequestAuthorizationResult(granted, operation);
+        } catch (AuthorizationException | UserException exception) {
+            return new RequestAuthorizationResult(false, new FailedAuthorizationContext());
+        }
     }
 
     /// Creates the one authorization snapshot used by a request operation.
@@ -111,4 +129,6 @@ public class RequestAuthorizationService {
     }
 
     private record Evaluation(StatementInfo statement, SemanticAst policy) {}
+
+    private static final class FailedAuthorizationContext implements AuthorizationContext {}
 }

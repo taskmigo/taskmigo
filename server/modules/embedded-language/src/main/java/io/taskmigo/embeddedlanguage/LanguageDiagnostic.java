@@ -6,6 +6,7 @@ public record LanguageDiagnostic(Category category, String message, SourceSpan s
     public enum Category {
         SyntaxError,
         BindingError,
+        FeatureError,
         ControlFlowError,
         TypeError,
         ComplexityError,
