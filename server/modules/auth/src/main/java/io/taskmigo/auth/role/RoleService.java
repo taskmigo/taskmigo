@@ -2,8 +2,11 @@ package io.taskmigo.auth.role;
 
 import io.taskmigo.auth.authorization.AuthorizationName;
 import io.taskmigo.auth.authorization.HierarchyClosureWriter;
-import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.auth.resourcequery.ObjectAuthorizationPredicateBinder;
+import io.taskmigo.auth.resourcequery.QueryPredicateBinder;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.query.QueryPredicate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -22,16 +25,19 @@ public class RoleService {
 
     private final RoleRepository roles;
     private final HierarchyClosureWriter closureWriter;
-    private final ObjectAuthorizationService objectAuthorization;
+    private final QueryPredicateBinder<RoleInfo, RoleEntity> queryBinder;
+    private final ObjectAuthorizationPredicateBinder<RoleInfo, RoleEntity> objectBinder;
 
     RoleService(
         RoleRepository roles,
         HierarchyClosureWriter closureWriter,
-        ObjectAuthorizationService objectAuthorization
+        QueryPredicateBinder<RoleInfo, RoleEntity> queryBinder,
+        ObjectAuthorizationPredicateBinder<RoleInfo, RoleEntity> objectBinder
     ) {
         this.roles = roles;
         this.closureWriter = closureWriter;
-        this.objectAuthorization = objectAuthorization;
+        this.queryBinder = queryBinder;
+        this.objectBinder = objectBinder;
     }
 
     /// Creates a Role and its direct child-Role relationships as one atomic operation.
@@ -83,21 +89,16 @@ public class RoleService {
             );
     }
 
-    /// Lists Roles using an optional database-side object authorization predicate.
+    /// Lists Roles by binding both opaque predicates before pagination.
     @Transactional(readOnly = true)
     public OffsetPage<RoleInfo> listRoles(
         int page,
         int perPage,
-        ObjectAuthorizationService.@Nullable ObjectAuthorizationPlan authorization
+        QueryPredicate<RoleInfo> filter,
+        ObjectAuthorizationPredicate<RoleInfo> authorization
     ) {
-        if (authorization != null && authorization.deniesAll()) {
-            return new OffsetPage<>(List.of(), 0, 0);
-        }
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
-        var roles =
-            authorization == null
-                ? this.roles.findAllBy(pageable)
-                : this.roles.findAll(this.objectAuthorization.specification(authorization), pageable);
+        var roles = this.roles.findAll(this.queryBinder.bind(filter).and(this.objectBinder.bind(authorization)), pageable);
         return new OffsetPage<>(
             roles.map(RoleService::info).getContent(),
             roles.getTotalElements(),
@@ -128,7 +129,7 @@ public class RoleService {
 
     /// Resolves every transitive descendant of a Role once, in deterministic id order.
     ///
-    /// Traversal terminates even if legacy or externally corrupted persistence contains a cycle.
+    /// Traversal terminates even if externally corrupted persistence contains a cycle.
     ///
     /// @param roleId the Role at the root of the downward traversal
     /// @return all descendants, excluding the root Role

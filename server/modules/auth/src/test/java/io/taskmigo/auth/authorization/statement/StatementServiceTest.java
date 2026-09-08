@@ -10,6 +10,8 @@ import static org.mockito.Mockito.when;
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
 import io.taskmigo.auth.authorization.request.StatementArtifactFactory;
+import io.taskmigo.auth.resourcequery.ObjectAuthorizationPredicateBinder;
+import io.taskmigo.auth.resourcequery.QueryPredicateBinder;
 import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
 import io.taskmigo.embeddedlanguage.EnvironmentSchema;
 import java.util.List;
@@ -24,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings("checkstyle:UnusedPrivateField")
 class StatementServiceTest {
 
     private static final String VALID_POLICY = "return true;";
@@ -33,6 +36,12 @@ class StatementServiceTest {
 
     @Mock
     private EmbeddedLanguageCompiler embeddedLanguageCompiler;
+
+    @Mock
+    private QueryPredicateBinder<StatementInfo, StatementEntity> queryBinder;
+
+    @Mock
+    private ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> objectBinder;
 
     @InjectMocks
     private StatementService service;
@@ -109,7 +118,9 @@ class StatementServiceTest {
         StatementService activation = new StatementService(
             this.statements,
             mock(ObjectAuthorizationService.class),
-            new EmbeddedLanguageCompiler()
+            new EmbeddedLanguageCompiler(),
+            mock(QueryPredicateBinder.class),
+            mock(ObjectAuthorizationPredicateBinder.class)
         );
 
         // Act + Assert

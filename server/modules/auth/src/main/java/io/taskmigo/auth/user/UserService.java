@@ -1,7 +1,10 @@
 package io.taskmigo.auth.user;
 
-import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.auth.resourcequery.ObjectAuthorizationPredicateBinder;
+import io.taskmigo.auth.resourcequery.QueryPredicateBinder;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
 import java.util.Locale;
 import java.util.Optional;
@@ -21,11 +24,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository users;
-    private final ObjectAuthorizationService objectAuthorization;
+    private final QueryPredicateBinder<UserInfo, UserEntity> queryBinder;
+    private final ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> objectBinder;
 
-    UserService(UserRepository users, ObjectAuthorizationService objectAuthorization) {
+    UserService(
+        UserRepository users,
+        QueryPredicateBinder<UserInfo, UserEntity> queryBinder,
+        ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> objectBinder
+    ) {
         this.users = users;
-        this.objectAuthorization = objectAuthorization;
+        this.queryBinder = queryBinder;
+        this.objectBinder = objectBinder;
     }
 
     /// Creates a user with optional direct Role assignments.
@@ -100,21 +109,16 @@ public class UserService {
             );
     }
 
-    /// Lists Users using an optional database-side object authorization predicate.
+    /// Lists Users by binding both opaque predicates before pagination.
     @Transactional(readOnly = true)
     public OffsetPage<UserInfo> list(
         int page,
         int perPage,
-        ObjectAuthorizationService.@Nullable ObjectAuthorizationPlan authorization
+        QueryPredicate<UserInfo> filter,
+        ObjectAuthorizationPredicate<UserInfo> authorization
     ) {
-        if (authorization != null && authorization.deniesAll()) {
-            return new OffsetPage<>(java.util.List.of(), 0, 0);
-        }
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
-        var result =
-            authorization == null
-                ? this.users.findAll(pageable)
-                : this.users.findAll(this.objectAuthorization.specification(authorization), pageable);
+        var result = this.users.findAll(this.queryBinder.bind(filter).and(this.objectBinder.bind(authorization)), pageable);
         return new OffsetPage<>(
             result.map(UserService::info).getContent(),
             result.getTotalElements(),

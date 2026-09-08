@@ -5,6 +5,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
+import io.taskmigo.auth.resourcequery.ObjectAuthorizationPredicateBinder;
+import io.taskmigo.auth.resourcequery.QueryPredicateBinder;
 import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,7 +21,9 @@ class StatementActivationResultTypeTest {
         StatementService service = new StatementService(
             repository,
             mock(ObjectAuthorizationService.class),
-            new EmbeddedLanguageCompiler()
+            new EmbeddedLanguageCompiler(),
+            mock(QueryPredicateBinder.class),
+            mock(ObjectAuthorizationPredicateBinder.class)
         );
 
         service.create(

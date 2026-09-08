@@ -3,14 +3,16 @@ package io.taskmigo.rest.api.v0.auth.authorization;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
+import io.taskmigo.auth.authorization.request.AuthorizationOperation;
 import io.taskmigo.auth.authorization.statement.ApiInfo;
 import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.auth.authorization.statement.StatementService;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.query.AuthorizedQuery;
+import io.taskmigo.query.FilteredQuery;
 import io.taskmigo.rest.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.rest.api.v0.support.response.ApiResponse;
 import io.taskmigo.rest.api.v0.support.response.ApiResponseFactory;
@@ -37,15 +39,18 @@ class StatementController {
 
     private final StatementService statements;
     private final ObjectAuthorizationService objectAuthorization;
+    private final ObjectAuthorizationSchema<StatementInfo> objectSchema;
     private final ApiResponseFactory responses;
 
     StatementController(
         StatementService statements,
         ObjectAuthorizationService objectAuthorization,
+        ObjectAuthorizationSchema<StatementInfo> objectSchema,
         ApiResponseFactory responses
     ) {
         this.statements = statements;
         this.objectAuthorization = objectAuthorization;
+        this.objectSchema = objectSchema;
         this.responses = responses;
     }
 
@@ -73,21 +78,14 @@ class StatementController {
     @Operation(summary = "List authorization statements")
     ResponseEntity<ApiResponse<List<StatementInfo>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
-        AuthorizedQuery<StatementInfo> authorization
+        FilteredQuery<StatementInfo> filter,
+        AuthorizationOperation operation
     ) {
         OffsetPage<StatementInfo> page = this.statements.list(
             pagination.page(),
             pagination.pageSize(),
-            this.objectAuthorization.legacyPlan(
-                authorization.predicate(),
-                Map.of(
-                    "id", UUID.class,
-                    "name", String.class,
-                    "description", String.class,
-                    "method", String.class,
-                    "path", String.class
-                )
-            )
+            filter.predicate(),
+            this.objectAuthorization.authorize(operation, this.objectSchema)
         );
         return this.responses.ok(
             page.items(),

@@ -2,14 +2,13 @@ plugins {
     `java-library`
 }
 
-description = "Authentication and authorization"
+description = "Authentication, authorization persistence, and resource query integration"
 
 dependencies {
     api(libs.jspecify)
     api(libs.spring.modulith.starter.core)
     api(project(":modules:foundation"))
     api(project(":modules:embedded-language"))
-    api(project(":modules:query-filtering"))
 
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.jackson.databind)

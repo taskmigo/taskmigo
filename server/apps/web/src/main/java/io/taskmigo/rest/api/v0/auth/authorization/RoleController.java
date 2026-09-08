@@ -3,13 +3,15 @@ package io.taskmigo.rest.api.v0.auth.authorization;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
+import io.taskmigo.auth.authorization.request.AuthorizationOperation;
 import io.taskmigo.auth.authorization.statement.StatementService;
 import io.taskmigo.auth.role.RoleAuthorizationService;
 import io.taskmigo.auth.role.RoleInfo;
 import io.taskmigo.auth.role.RoleService;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.query.AuthorizedQuery;
+import io.taskmigo.query.FilteredQuery;
 import io.taskmigo.rest.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.rest.api.v0.support.response.ApiResponse;
 import io.taskmigo.rest.api.v0.support.response.ApiResponseFactory;
@@ -41,6 +43,7 @@ class RoleController {
     private final RoleAuthorizationService roleAuthorization;
     private final StatementService statements;
     private final ObjectAuthorizationService objectAuthorization;
+    private final ObjectAuthorizationSchema<RoleInfo> objectSchema;
     private final ApiResponseFactory responses;
 
     RoleController(
@@ -48,12 +51,14 @@ class RoleController {
         RoleAuthorizationService roleAuthorization,
         StatementService statements,
         ObjectAuthorizationService objectAuthorization,
+        ObjectAuthorizationSchema<RoleInfo> objectSchema,
         ApiResponseFactory responses
     ) {
         this.access = access;
         this.roleAuthorization = roleAuthorization;
         this.statements = statements;
         this.objectAuthorization = objectAuthorization;
+        this.objectSchema = objectSchema;
         this.responses = responses;
     }
 
@@ -74,15 +79,14 @@ class RoleController {
     @Operation(summary = "List roles")
     ResponseEntity<ApiResponse<List<RoleInfo>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
-        AuthorizedQuery<RoleInfo> authorization
+        FilteredQuery<RoleInfo> filter,
+        AuthorizationOperation operation
     ) {
         OffsetPage<RoleInfo> roles = this.access.listRoles(
             pagination.page(),
             pagination.pageSize(),
-            this.objectAuthorization.legacyPlan(
-                authorization.predicate(),
-                Map.of("id", UUID.class, "name", String.class, "description", String.class)
-            )
+            filter.predicate(),
+            this.objectAuthorization.authorize(operation, this.objectSchema)
         );
         return this.responses.ok(
             roles.items(),

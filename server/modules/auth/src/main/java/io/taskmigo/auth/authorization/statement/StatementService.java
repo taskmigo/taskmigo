@@ -3,12 +3,15 @@ package io.taskmigo.auth.authorization.statement;
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.AuthorizationName;
 import io.taskmigo.auth.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
+import io.taskmigo.auth.resourcequery.ObjectAuthorizationPredicateBinder;
+import io.taskmigo.auth.resourcequery.QueryPredicateBinder;
 import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
 import io.taskmigo.embeddedlanguage.EmbeddedLanguageException;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -26,15 +29,21 @@ public class StatementService {
     private final StatementRepository statements;
     private final ObjectAuthorizationService objectAuthorization;
     private final EmbeddedLanguageCompiler embeddedLanguageCompiler;
+    private final QueryPredicateBinder<StatementInfo, StatementEntity> queryBinder;
+    private final ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> objectBinder;
 
     StatementService(
         StatementRepository statements,
         ObjectAuthorizationService objectAuthorization,
-        EmbeddedLanguageCompiler embeddedLanguageCompiler
+        EmbeddedLanguageCompiler embeddedLanguageCompiler,
+        QueryPredicateBinder<StatementInfo, StatementEntity> queryBinder,
+        ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> objectBinder
     ) {
         this.statements = statements;
         this.objectAuthorization = objectAuthorization;
         this.embeddedLanguageCompiler = embeddedLanguageCompiler;
+        this.queryBinder = queryBinder;
+        this.objectBinder = objectBinder;
     }
 
     /// Validates and persists a Statement with a server-assigned stable identifier.
@@ -153,24 +162,24 @@ public class StatementService {
     /// Lists Statements in stable identifier order for offset pagination.
     @Transactional(readOnly = true)
     public OffsetPage<StatementInfo> list(int page, int perPage) {
-        return this.list(page, perPage, null);
+        var result = this.statements.findAllBy(PageRequest.of(page - 1, perPage, Sort.by("id")));
+        return new OffsetPage<>(
+            result.map(StatementEntity::info).getContent(),
+            result.getTotalElements(),
+            result.getTotalPages()
+        );
     }
 
-    /// Lists Statements using an optional database-side object authorization predicate.
+    /// Lists Statements by binding both opaque predicates before pagination.
     @Transactional(readOnly = true)
     public OffsetPage<StatementInfo> list(
         int page,
         int perPage,
-        ObjectAuthorizationService.@Nullable ObjectAuthorizationPlan authorization
+        QueryPredicate<StatementInfo> filter,
+        ObjectAuthorizationPredicate<StatementInfo> authorization
     ) {
-        if (authorization != null && authorization.deniesAll()) {
-            return new OffsetPage<>(List.of(), 0, 0);
-        }
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
-        var result =
-            authorization == null
-                ? this.statements.findAllBy(pageable)
-                : this.statements.findAll(this.objectAuthorization.specification(authorization), pageable);
+        var result = this.statements.findAll(this.queryBinder.bind(filter).and(this.objectBinder.bind(authorization)), pageable);
         return new OffsetPage<>(
             result.map(StatementEntity::info).getContent(),
             result.getTotalElements(),

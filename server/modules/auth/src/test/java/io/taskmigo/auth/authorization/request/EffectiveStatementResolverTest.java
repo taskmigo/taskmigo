@@ -51,7 +51,7 @@ class EffectiveStatementResolverTest {
     private final GroupRepository groups = mock(GroupRepository.class);
     private final RoleRepository roles = mock(RoleRepository.class);
     private final StatementRepository statements = mock(StatementRepository.class);
-    private final EffectiveStatementResolver resolver = new EffectiveStatementResolver(
+    private final DatabaseEffectiveStatementResolver resolver = new DatabaseEffectiveStatementResolver(
         this.users,
         this.groups,
         this.roles,

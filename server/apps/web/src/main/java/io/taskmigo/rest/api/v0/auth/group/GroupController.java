@@ -3,11 +3,13 @@ package io.taskmigo.rest.api.v0.auth.group;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
+import io.taskmigo.auth.authorization.request.AuthorizationOperation;
 import io.taskmigo.auth.group.GroupInfo;
 import io.taskmigo.auth.group.GroupService;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.query.AuthorizedQuery;
+import io.taskmigo.query.FilteredQuery;
 import io.taskmigo.rest.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.rest.api.v0.support.response.ApiResponse;
 import io.taskmigo.rest.api.v0.support.response.ApiResponseFactory;
@@ -34,11 +36,18 @@ class GroupController {
 
     private final GroupService groups;
     private final ObjectAuthorizationService objectAuthorization;
+    private final ObjectAuthorizationSchema<GroupInfo> objectSchema;
     private final ApiResponseFactory responses;
 
-    GroupController(GroupService groups, ObjectAuthorizationService objectAuthorization, ApiResponseFactory responses) {
+    GroupController(
+        GroupService groups,
+        ObjectAuthorizationService objectAuthorization,
+        ObjectAuthorizationSchema<GroupInfo> objectSchema,
+        ApiResponseFactory responses
+    ) {
         this.groups = groups;
         this.objectAuthorization = objectAuthorization;
+        this.objectSchema = objectSchema;
         this.responses = responses;
     }
 
@@ -46,15 +55,14 @@ class GroupController {
     @Operation(summary = "List groups")
     ResponseEntity<ApiResponse<List<GroupInfo>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
-        AuthorizedQuery<GroupInfo> authorization
+        FilteredQuery<GroupInfo> filter,
+        AuthorizationOperation operation
     ) {
         OffsetPage<GroupInfo> groups = this.groups.list(
             pagination.page(),
             pagination.pageSize(),
-            this.objectAuthorization.legacyPlan(
-                authorization.predicate(),
-                Map.of("id", UUID.class, "name", String.class, "description", String.class)
-            )
+            filter.predicate(),
+            this.objectAuthorization.authorize(operation, this.objectSchema)
         );
         return this.responses.ok(
             groups.items(),

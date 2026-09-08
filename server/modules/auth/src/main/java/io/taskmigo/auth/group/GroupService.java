@@ -1,11 +1,14 @@
 package io.taskmigo.auth.group;
 
 import io.taskmigo.auth.authorization.HierarchyClosureWriter;
-import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.auth.resourcequery.ObjectAuthorizationPredicateBinder;
+import io.taskmigo.auth.resourcequery.QueryPredicateBinder;
 import io.taskmigo.auth.role.RoleInfo;
 import io.taskmigo.auth.role.RoleService;
 import io.taskmigo.auth.user.UserService;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.query.QueryPredicate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -26,37 +29,35 @@ public class GroupService {
     private final HierarchyClosureWriter closureWriter;
     private final UserService users;
     private final RoleService access;
-    private final ObjectAuthorizationService objectAuthorization;
+    private final QueryPredicateBinder<GroupInfo, GroupEntity> queryBinder;
+    private final ObjectAuthorizationPredicateBinder<GroupInfo, GroupEntity> objectBinder;
 
     GroupService(
         GroupRepository groups,
         HierarchyClosureWriter closureWriter,
         UserService users,
         RoleService access,
-        ObjectAuthorizationService objectAuthorization
+        QueryPredicateBinder<GroupInfo, GroupEntity> queryBinder,
+        ObjectAuthorizationPredicateBinder<GroupInfo, GroupEntity> objectBinder
     ) {
         this.groups = groups;
         this.closureWriter = closureWriter;
         this.users = users;
         this.access = access;
-        this.objectAuthorization = objectAuthorization;
+        this.queryBinder = queryBinder;
+        this.objectBinder = objectBinder;
     }
 
-    /// Lists Groups using an optional database-side object authorization predicate.
+    /// Lists Groups by binding both opaque predicates before pagination.
     @Transactional(readOnly = true)
     public OffsetPage<GroupInfo> list(
         int page,
         int perPage,
-        ObjectAuthorizationService.@Nullable ObjectAuthorizationPlan authorization
+        QueryPredicate<GroupInfo> filter,
+        ObjectAuthorizationPredicate<GroupInfo> authorization
     ) {
-        if (authorization != null && authorization.deniesAll()) {
-            return new OffsetPage<>(List.of(), 0, 0);
-        }
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
-        var groups =
-            authorization == null
-                ? this.groups.findAll(pageable)
-                : this.groups.findAll(this.objectAuthorization.specification(authorization), pageable);
+        var groups = this.groups.findAll(this.queryBinder.bind(filter).and(this.objectBinder.bind(authorization)), pageable);
         return new OffsetPage<>(
             groups.map(GroupService::info).getContent(),
             groups.getTotalElements(),

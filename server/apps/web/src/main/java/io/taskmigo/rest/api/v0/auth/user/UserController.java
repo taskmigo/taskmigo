@@ -3,14 +3,16 @@ package io.taskmigo.rest.api.v0.auth.user;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
+import io.taskmigo.auth.authorization.request.AuthorizationOperation;
 import io.taskmigo.auth.authorization.statement.StatementService;
 import io.taskmigo.auth.group.GroupService;
 import io.taskmigo.auth.role.RoleService;
 import io.taskmigo.auth.user.UserInfo;
 import io.taskmigo.auth.user.UserService;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.query.AuthorizedQuery;
+import io.taskmigo.query.FilteredQuery;
 import io.taskmigo.rest.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.rest.api.v0.support.response.ApiResponse;
 import io.taskmigo.rest.api.v0.support.response.ApiResponseFactory;
@@ -44,6 +46,7 @@ class UserController {
     private final GroupService groups;
     private final StatementService statements;
     private final ObjectAuthorizationService objectAuthorization;
+    private final ObjectAuthorizationSchema<UserInfo> objectSchema;
     private final ApiResponseFactory responses;
 
     UserController(
@@ -52,6 +55,7 @@ class UserController {
         GroupService groups,
         StatementService statements,
         ObjectAuthorizationService objectAuthorization,
+        ObjectAuthorizationSchema<UserInfo> objectSchema,
         ApiResponseFactory responses
     ) {
         this.users = users;
@@ -59,6 +63,7 @@ class UserController {
         this.groups = groups;
         this.statements = statements;
         this.objectAuthorization = objectAuthorization;
+        this.objectSchema = objectSchema;
         this.responses = responses;
     }
 
@@ -66,15 +71,14 @@ class UserController {
     @Operation(summary = "List users")
     ResponseEntity<ApiResponse<List<UserInfo>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
-        AuthorizedQuery<UserInfo> authorization
+        FilteredQuery<UserInfo> filter,
+        AuthorizationOperation operation
     ) {
         OffsetPage<UserInfo> users = this.users.list(
             pagination.page(),
             pagination.pageSize(),
-            this.objectAuthorization.legacyPlan(
-                authorization.predicate(),
-                Map.of("id", UUID.class, "username", String.class, "firstName", String.class, "lastName", String.class)
-            )
+            filter.predicate(),
+            this.objectAuthorization.authorize(operation, this.objectSchema)
         );
         return this.responses.ok(
             users.items(),
