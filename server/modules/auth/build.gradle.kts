@@ -12,6 +12,7 @@ dependencies {
     api(project(":modules:query"))
     api(project(":modules:authorization"))
 
+    implementation(project(":modules:identity"))
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.jackson.databind)
     implementation(libs.spring.boot.core.starter)

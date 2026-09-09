@@ -1,11 +1,10 @@
 package io.taskmigo.auth.group;
 
-import io.taskmigo.auth.authorization.HierarchyClosureWriter;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.auth.resourcequery.ObjectAuthorizationPredicateBinder;
-import io.taskmigo.auth.resourcequery.QueryPredicateBinder;
+import io.taskmigo.auth.identityquery.ObjectAuthorizationPredicateBinder;
+import io.taskmigo.auth.identityquery.QueryPredicateBinder;
+import io.taskmigo.auth.role.RoleAccess;
 import io.taskmigo.auth.role.RoleInfo;
-import io.taskmigo.auth.role.RoleService;
 import io.taskmigo.auth.user.UserService;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.QueryPredicate;
@@ -26,17 +25,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class GroupService {
 
     private final GroupRepository groups;
-    private final HierarchyClosureWriter closureWriter;
+    private final GroupHierarchyClosureWriter closureWriter;
     private final UserService users;
-    private final RoleService access;
+    private final RoleAccess access;
     private final QueryPredicateBinder<GroupInfo, GroupEntity> queryBinder;
     private final ObjectAuthorizationPredicateBinder<GroupInfo, GroupEntity> objectBinder;
 
     GroupService(
         GroupRepository groups,
-        HierarchyClosureWriter closureWriter,
+        GroupHierarchyClosureWriter closureWriter,
         UserService users,
-        RoleService access,
+        RoleAccess access,
         QueryPredicateBinder<GroupInfo, GroupEntity> queryBinder,
         ObjectAuthorizationPredicateBinder<GroupInfo, GroupEntity> objectBinder
     ) {
@@ -197,7 +196,7 @@ public class GroupService {
 
         Set<UUID> roleIds = new HashSet<>();
         for (GroupEntity group : this.groups.findDistinctByIdIn(reachableGroupIds)) {
-            roleIds.addAll(group.roleIds);
+            roleIds.addAll(group.roleIds());
         }
         return this.access.effectiveRoles(roleIds);
     }
@@ -229,13 +228,7 @@ public class GroupService {
 
     private void refreshClosure(Collection<GroupEntity> allGroups) {
         GroupHierarchy hierarchy = GroupHierarchy.from(allGroups);
-        this.closureWriter.replace(
-            allGroups,
-            GroupEntity::id,
-            groupId -> hierarchy.reachableFrom(Set.of(groupId)),
-            GroupHierarchyClosureEntity::new,
-            GroupHierarchyClosureEntity.class
-        );
+        this.closureWriter.replace(allGroups, groupId -> hierarchy.reachableFrom(Set.of(groupId)));
     }
 
     private static GroupInfo info(GroupEntity group) {

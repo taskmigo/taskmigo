@@ -1,8 +1,8 @@
 package io.taskmigo.auth.user;
 
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.auth.resourcequery.ObjectAuthorizationPredicateBinder;
-import io.taskmigo.auth.resourcequery.QueryPredicateBinder;
+import io.taskmigo.auth.identityquery.ObjectAuthorizationPredicateBinder;
+import io.taskmigo.auth.identityquery.QueryPredicateBinder;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;

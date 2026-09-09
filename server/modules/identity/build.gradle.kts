@@ -10,7 +10,6 @@ dependencies {
     api(project(":modules:foundation"))
     api(project(":modules:query"))
     api(project(":modules:authorization"))
-    api(project(":modules:auth"))
 
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.jackson.databind)

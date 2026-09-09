@@ -1,6 +1,6 @@
-package io.taskmigo.auth.resourcequery;
+package io.taskmigo.auth.identityquery;
 
-import io.taskmigo.auth.authorization.object.JpaObjectAuthorizationPredicateBinder;
+import io.taskmigo.auth.authorization.object.IdentityJpaObjectAuthorizationPredicateBinder;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationField;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationPath;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchema;
@@ -20,7 +20,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.ResolvableType;
 
-/// Registers query and Object Authorization contracts owned by the Identity capability.
+/// Registers query, authorization, and persistence mappings owned by the Identity capability.
 @Configuration(proxyBeanMethods = false)
 public class IdentityResourceSchemas {
 
@@ -67,7 +67,12 @@ public class IdentityResourceSchemas {
     /// Registers the trusted User object-policy-to-entity mapping.
     @Bean
     ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> userObjectAuthorizationPredicateBinder() {
-        return new JpaObjectAuthorizationPredicateBinder<>(UserInfo.class, UserEntity.class, userPaths(), userTypes());
+        return new IdentityJpaObjectAuthorizationPredicateBinder<>(
+            UserInfo.class,
+            UserEntity.class,
+            userPaths(),
+            userTypes()
+        );
     }
 
     /// Registers the trusted Group query-to-entity mapping.
@@ -79,7 +84,12 @@ public class IdentityResourceSchemas {
     /// Registers the trusted Group object-policy-to-entity mapping.
     @Bean
     ObjectAuthorizationPredicateBinder<GroupInfo, GroupEntity> groupObjectAuthorizationPredicateBinder() {
-        return new JpaObjectAuthorizationPredicateBinder<>(GroupInfo.class, GroupEntity.class, simplePaths("id", "name", "description"), simpleTypes());
+        return new IdentityJpaObjectAuthorizationPredicateBinder<>(
+            GroupInfo.class,
+            GroupEntity.class,
+            simplePaths("id", "name", "description"),
+            simpleTypes()
+        );
     }
 
     private static QueryField field(String path, ResolvableType type) {
