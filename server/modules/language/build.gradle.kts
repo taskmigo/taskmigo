@@ -18,7 +18,7 @@ tasks.withType<org.gradle.api.plugins.quality.Checkstyle>().configureEach {
     exclude("**/EmbeddedLanguage*.java")
 }
 
-description = "Taskmigo Embedded Language"
+description = "Taskmigo Language"
 
 dependencies {
     api(libs.jspecify)

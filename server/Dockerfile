@@ -8,9 +8,12 @@ COPY --chmod=755 gradlew ./
 COPY gradle ./gradle
 COPY settings.gradle.kts build.gradle.kts ./
 COPY modules/foundation/build.gradle.kts modules/foundation/build.gradle.kts
-COPY modules/embedded-language/build.gradle.kts modules/embedded-language/build.gradle.kts
+COPY modules/language/build.gradle.kts modules/language/build.gradle.kts
+COPY modules/query/build.gradle.kts modules/query/build.gradle.kts
+COPY modules/authorization/build.gradle.kts modules/authorization/build.gradle.kts
 COPY modules/database/build.gradle.kts modules/database/build.gradle.kts
 COPY modules/auth/build.gradle.kts modules/auth/build.gradle.kts
+COPY modules/identity/build.gradle.kts modules/identity/build.gradle.kts
 COPY benchmarks/authorization/build.gradle.kts benchmarks/authorization/build.gradle.kts
 COPY apps/bootstrap/build.gradle.kts apps/bootstrap/build.gradle.kts
 COPY apps/web/build.gradle.kts apps/web/build.gradle.kts
@@ -23,9 +26,12 @@ RUN --mount=type=cache,id=taskmigo-gradle,target=/root/.gradle,sharing=locked \
         :apps:worker:dependencies
 
 COPY modules/foundation/src modules/foundation/src
-COPY modules/embedded-language/src modules/embedded-language/src
+COPY modules/language/src modules/language/src
+COPY modules/query/src modules/query/src
+COPY modules/authorization/src modules/authorization/src
 COPY modules/database/src modules/database/src
 COPY modules/auth/src modules/auth/src
+COPY modules/identity/src modules/identity/src
 COPY benchmarks/authorization/src benchmarks/authorization/src
 COPY apps/bootstrap/src apps/bootstrap/src
 COPY apps/web/src apps/web/src

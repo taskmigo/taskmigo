@@ -1,4 +1,4 @@
-/// Provides shared domain, authorization-core, Query Filtering, and offset-pagination contracts.
+/// Provides framework-neutral primitives and contracts shared across independent Taskmigo capabilities.
 @NullMarked
 package io.taskmigo.foundation;
 

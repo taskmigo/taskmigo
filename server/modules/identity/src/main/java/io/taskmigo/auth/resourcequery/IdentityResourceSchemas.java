@@ -4,10 +4,10 @@ import io.taskmigo.auth.authorization.object.JpaObjectAuthorizationPredicateBind
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationField;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationPath;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchema;
-import io.taskmigo.auth.authorization.statement.StatementEntity;
-import io.taskmigo.auth.authorization.statement.StatementInfo;
-import io.taskmigo.auth.role.RoleEntity;
-import io.taskmigo.auth.role.RoleInfo;
+import io.taskmigo.auth.group.GroupEntity;
+import io.taskmigo.auth.group.GroupInfo;
+import io.taskmigo.auth.user.UserEntity;
+import io.taskmigo.auth.user.UserInfo;
 import io.taskmigo.query.QueryField;
 import io.taskmigo.query.QueryPath;
 import io.taskmigo.query.QuerySchema;
@@ -20,67 +20,66 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.ResolvableType;
 
-/// Registers query and Object Authorization contracts for Authorization-owned resources.
+/// Registers query and Object Authorization contracts owned by the Identity capability.
 @Configuration(proxyBeanMethods = false)
-public class AuthorizationResourceSchemas {
+public class IdentityResourceSchemas {
 
     private static final ResolvableType STRING_TYPE = ResolvableType.forClass(String.class);
     private static final ResolvableType UUID_TYPE = ResolvableType.forClass(UUID.class);
 
-    /// Registers the role collection query contract.
+    /// Registers the user collection query contract.
     @Bean
-    QuerySchema<RoleInfo> roleQuerySchema() {
-        return schema(RoleInfo.class, List.of(field("id", UUID_TYPE), field("name", STRING_TYPE), nullable("description")));
+    QuerySchema<UserInfo> userQuerySchema() {
+        return schema(UserInfo.class, List.of(
+            field("id", UUID_TYPE), field("username", STRING_TYPE), field("firstName", STRING_TYPE), field("lastName", STRING_TYPE)
+        ));
     }
 
-    /// Registers the role Object Authorization contract.
+    /// Registers the user Object Authorization contract.
     @Bean
-    ObjectAuthorizationSchema<RoleInfo> roleObjectAuthorizationSchema() {
-        return objectSchema(RoleInfo.class, List.of(
+    ObjectAuthorizationSchema<UserInfo> userObjectAuthorizationSchema() {
+        return objectSchema(UserInfo.class, List.of(
+            objectField("id", UUID_TYPE), objectField("username", STRING_TYPE),
+            objectField("firstName", STRING_TYPE), objectField("lastName", STRING_TYPE)
+        ));
+    }
+
+    /// Registers the group collection query contract.
+    @Bean
+    QuerySchema<GroupInfo> groupQuerySchema() {
+        return schema(GroupInfo.class, List.of(field("id", UUID_TYPE), field("name", STRING_TYPE), nullable("description")));
+    }
+
+    /// Registers the group Object Authorization contract.
+    @Bean
+    ObjectAuthorizationSchema<GroupInfo> groupObjectAuthorizationSchema() {
+        return objectSchema(GroupInfo.class, List.of(
             objectField("id", UUID_TYPE), objectField("name", STRING_TYPE), objectNullable("description")
         ));
     }
 
-    /// Registers the statement collection query contract, including composed API target paths.
+    /// Registers the trusted User query-to-entity mapping.
     @Bean
-    QuerySchema<StatementInfo> statementQuerySchema() {
-        return schema(StatementInfo.class, List.of(
-            field("id", UUID_TYPE), field("name", STRING_TYPE), nullable("description"),
-            field("method", STRING_TYPE), field("path", STRING_TYPE)
-        ));
+    QueryPredicateBinder<UserInfo, UserEntity> userQueryPredicateBinder() {
+        return new JpaQueryPredicateBinder<>(UserInfo.class, UserEntity.class, userPaths(), userTypes());
     }
 
-    /// Registers the Statement Object Authorization contract.
+    /// Registers the trusted User object-policy-to-entity mapping.
     @Bean
-    ObjectAuthorizationSchema<StatementInfo> statementObjectAuthorizationSchema() {
-        return objectSchema(StatementInfo.class, List.of(
-            objectField("id", UUID_TYPE), objectField("name", STRING_TYPE), objectNullable("description"),
-            objectField("method", STRING_TYPE), objectField("path", STRING_TYPE)
-        ));
+    ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> userObjectAuthorizationPredicateBinder() {
+        return new JpaObjectAuthorizationPredicateBinder<>(UserInfo.class, UserEntity.class, userPaths(), userTypes());
     }
 
-    /// Registers the trusted Role query-to-entity mapping.
+    /// Registers the trusted Group query-to-entity mapping.
     @Bean
-    QueryPredicateBinder<RoleInfo, RoleEntity> roleQueryPredicateBinder() {
-        return new JpaQueryPredicateBinder<>(RoleInfo.class, RoleEntity.class, simplePaths("id", "name", "description"), simpleTypes());
+    QueryPredicateBinder<GroupInfo, GroupEntity> groupQueryPredicateBinder() {
+        return new JpaQueryPredicateBinder<>(GroupInfo.class, GroupEntity.class, simplePaths("id", "name", "description"), simpleTypes());
     }
 
-    /// Registers the trusted Role object-policy-to-entity mapping.
+    /// Registers the trusted Group object-policy-to-entity mapping.
     @Bean
-    ObjectAuthorizationPredicateBinder<RoleInfo, RoleEntity> roleObjectAuthorizationPredicateBinder() {
-        return new JpaObjectAuthorizationPredicateBinder<>(RoleInfo.class, RoleEntity.class, simplePaths("id", "name", "description"), simpleTypes());
-    }
-
-    /// Registers the trusted Statement query-to-entity mapping.
-    @Bean
-    QueryPredicateBinder<StatementInfo, StatementEntity> statementQueryPredicateBinder() {
-        return new JpaQueryPredicateBinder<>(StatementInfo.class, StatementEntity.class, simplePaths("id", "name", "description", "method", "path"), simpleTypes());
-    }
-
-    /// Registers the trusted Statement object-policy-to-entity mapping.
-    @Bean
-    ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> statementObjectAuthorizationPredicateBinder() {
-        return new JpaObjectAuthorizationPredicateBinder<>(StatementInfo.class, StatementEntity.class, simplePaths("id", "name", "description", "method", "path"), simpleTypes());
+    ObjectAuthorizationPredicateBinder<GroupInfo, GroupEntity> groupObjectAuthorizationPredicateBinder() {
+        return new JpaObjectAuthorizationPredicateBinder<>(GroupInfo.class, GroupEntity.class, simplePaths("id", "name", "description"), simpleTypes());
     }
 
     private static QueryField field(String path, ResolvableType type) {
@@ -99,12 +98,20 @@ public class AuthorizationResourceSchemas {
         return new ObjectAuthorizationField(ObjectAuthorizationPath.parse(path), STRING_TYPE, true);
     }
 
+    private static Map<String, String> userPaths() {
+        return simplePaths("id", "username", "firstName", "lastName");
+    }
+
+    private static Map<String, Class<?>> userTypes() {
+        return Map.of("id", UUID.class, "username", String.class, "firstName", String.class, "lastName", String.class);
+    }
+
     private static Map<String, String> simplePaths(String... fields) {
         return java.util.Arrays.stream(fields).collect(java.util.stream.Collectors.toUnmodifiableMap(field -> field, field -> field));
     }
 
     private static Map<String, Class<?>> simpleTypes() {
-        return Map.of("id", UUID.class, "name", String.class, "description", String.class, "method", String.class, "path", String.class);
+        return Map.of("id", UUID.class, "name", String.class, "description", String.class);
     }
 
     private static <Q> QuerySchema<Q> schema(Class<Q> type, Collection<QueryField> fields) {

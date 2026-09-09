@@ -15,6 +15,7 @@ dependencies {
     implementation(libs.jspecify)
     implementation(project(":modules:database"))
     implementation(project(":modules:auth"))
+    implementation(project(":modules:identity"))
     implementation(libs.spring.boot.core.starter)
     implementation(libs.spring.boot.starter.jdbc)
     implementation(libs.spring.boot.starter.flyway)

@@ -3,10 +3,10 @@ plugins {
     alias(libs.plugins.jmh)
 }
 
-description = "JMH benchmarks for the Taskmigo Embedded Language compiler"
+description = "JMH benchmarks for the Taskmigo Language compiler"
 
 dependencies {
-    jmhImplementation(project(":modules:embedded-language"))
+    jmhImplementation(project(":modules:language"))
 }
 
 jmh {
