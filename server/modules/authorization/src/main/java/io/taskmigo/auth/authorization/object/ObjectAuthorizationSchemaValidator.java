@@ -6,18 +6,25 @@ import io.taskmigo.embeddedlanguage.SemanticAst;
 /// Validates symbolic Object Authorization paths and operators against one logical schema.
 @SuppressWarnings("checkstyle:NeedBraces")
 final class ObjectAuthorizationSchemaValidator {
+
     private ObjectAuthorizationSchemaValidator() {}
 
     static <Q> void validate(SemanticAst.Expression expression, ObjectAuthorizationSchema<Q> schema) {
         switch (expression) {
-            case SemanticAst.Literal _ -> { }
+            case SemanticAst.Literal _ -> {
+            }
             case SemanticAst.Reference reference -> validateReference(reference, schema);
             case SemanticAst.ListLiteral list -> list.values().forEach(value -> validate(value, schema));
             case SemanticAst.Unary unary -> {
                 validate(unary.operand(), schema);
                 if (unary.operand() instanceof SemanticAst.Reference reference && reference.root().equals("object")) {
-                    requireOperator(reference, unary.operator() == SemanticAst.UnaryOperator.MINUS
-                        ? ObjectAuthorizationOperator.NOT : ObjectAuthorizationOperator.NOT, schema);
+                    requireOperator(
+                        reference,
+                        unary.operator() == SemanticAst.UnaryOperator.MINUS
+                            ? ObjectAuthorizationOperator.NOT
+                            : ObjectAuthorizationOperator.NOT,
+                        schema
+                    );
                 }
             }
             case SemanticAst.Length length -> {
@@ -53,7 +60,8 @@ final class ObjectAuthorizationSchemaValidator {
 
     private static <Q> void validateReference(SemanticAst.Reference reference, ObjectAuthorizationSchema<Q> schema) {
         if (reference.root().equals("object")) {
-            schema.field(new ObjectAuthorizationPath(reference.path()))
+            schema
+                .field(new ObjectAuthorizationPath(reference.path()))
                 .orElseThrow(() -> invalid("object path is not queryable"));
         }
     }
@@ -74,9 +82,12 @@ final class ObjectAuthorizationSchemaValidator {
         ObjectAuthorizationOperator operator,
         ObjectAuthorizationSchema<Q> schema
     ) {
-        ObjectAuthorizationField field = schema.field(new ObjectAuthorizationPath(reference.path()))
+        ObjectAuthorizationField field = schema
+            .field(new ObjectAuthorizationPath(reference.path()))
             .orElseThrow(() -> invalid("object path is not queryable"));
-        if (!field.operators().contains(operator)) throw invalid("operator is not supported for object path " + field.path().text());
+        if (!field.operators().contains(operator)) throw invalid(
+            "operator is not supported for object path " + field.path().text()
+        );
     }
 
     private static ObjectAuthorizationOperator operator(SemanticAst.BinaryOperator operator) {

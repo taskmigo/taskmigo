@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 @Service
 @SuppressWarnings({ "checkstyle:NeedBraces", "checkstyle:OneStatementPerLine", "checkstyle:UnusedLocalVariable" })
 public class FilterByCompiler {
+
     private final EmbeddedLanguageCompiler compiler;
 
     /// Creates a filter compiler using the default Embedded Language limits.
@@ -54,7 +55,9 @@ public class FilterByCompiler {
                 )
             );
             SemanticAst compiled = this.compiler.compile(source, environment, profile);
-            if (compiled.resultType() != LanguageType.Scalar.BOOL) throw new FilterByException("filterBy expression must return Bool");
+            if (compiled.resultType() != LanguageType.Scalar.BOOL) throw new FilterByException(
+                "filterBy expression must return Bool"
+            );
             QuerySchemaValidator.validate(compiled.expression(), schema);
             return QueryPredicateFactory.from(schema, compiled.expression());
         } catch (FilterByException exception) {
@@ -83,24 +86,33 @@ public class FilterByCompiler {
         }
         return new EnvironmentSchema(
             "query-filter:" + schema.identity(),
-            Map.of("object", new EnvironmentSchema.Root(
-                new EnvironmentSchema.Field(structured(schema), false, true), fields
-            ))
+            Map.of(
+                "object",
+                new EnvironmentSchema.Root(new EnvironmentSchema.Field(structured(schema), false, true), fields)
+            )
         );
     }
 
     private static <Q> EnvironmentSchema.Field nestedField(QuerySchema<Q> schema, String prefix) {
         List<String> prefixSegments = List.of(prefix.split("\\."));
-        Map<String, EnvironmentSchema.Field> children = schema.fields().stream()
-            .filter(field -> field.path().segments().size() > prefixSegments.size()
-                && field.path().segments().subList(0, prefixSegments.size()).equals(prefixSegments))
-            .collect(Collectors.toMap(
-                field -> field.path().segments().get(prefixSegments.size()),
-                field -> field.path().segments().size() == prefixSegments.size() + 1
-                    ? toField(field)
-                    : nestedField(schema, prefix + "." + field.path().segments().get(prefixSegments.size())),
-                (left, right) -> left
-            ));
+        Map<String, EnvironmentSchema.Field> children = schema
+            .fields()
+            .stream()
+            .filter(
+                field ->
+                    field.path().segments().size() > prefixSegments.size() &&
+                    field.path().segments().subList(0, prefixSegments.size()).equals(prefixSegments)
+            )
+            .collect(
+                Collectors.toMap(
+                    field -> field.path().segments().get(prefixSegments.size()),
+                    field ->
+                        field.path().segments().size() == prefixSegments.size() + 1
+                            ? toField(field)
+                            : nestedField(schema, prefix + "." + field.path().segments().get(prefixSegments.size())),
+                    (left, right) -> left
+                )
+            );
         return new EnvironmentSchema.Field(new LanguageType.StructuredType(prefix, children), false, true);
     }
 
@@ -119,11 +131,14 @@ public class FilterByCompiler {
 
     private static LanguageType toLanguageType(ResolvableType type) {
         Class<?> raw = type.resolve(Object.class);
-        if (raw == String.class || raw == Character.class || raw == char.class || raw == UUID.class) return LanguageType.Scalar.STRING;
+        if (
+            raw == String.class || raw == Character.class || raw == char.class || raw == UUID.class
+        ) return LanguageType.Scalar.STRING;
         if (raw == Boolean.class || raw == boolean.class) return LanguageType.Scalar.BOOL;
         if (Number.class.isAssignableFrom(raw) || raw.isPrimitive()) return LanguageType.Scalar.NUMBER;
-        if (Collection.class.isAssignableFrom(raw)) return new LanguageType.ListType(toLanguageType(type.getGeneric(0)));
+        if (Collection.class.isAssignableFrom(raw)) return new LanguageType.ListType(
+            toLanguageType(type.getGeneric(0))
+        );
         return new LanguageType.StructuredType(raw.getName(), Map.of());
     }
-
 }

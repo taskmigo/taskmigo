@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.core.ResolvableType;
 
 class ObjectAuthorizationServiceTest {
+
     private final ObjectAuthorizationSchema<TestObject> schema = schema();
     private final StatementArtifactFactory artifacts = new StatementArtifactFactory(
         new EmbeddedLanguageCompiler(),

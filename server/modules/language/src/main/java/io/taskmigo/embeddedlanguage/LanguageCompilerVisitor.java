@@ -215,7 +215,11 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
     public SyntaxNode visitQuantifierExpression(EmbeddedLanguageParser.QuantifierExpressionContext context) {
         requireFeature(CompilationFeature.COLLECTION_QUANTIFIERS, context.getStart());
         if (++quantifierNesting > limits.maxQuantifierDepth()) {
-            throw failure(LanguageDiagnostic.Category.ComplexityError, "quantifier nesting exceeds the limit", span(context));
+            throw failure(
+                LanguageDiagnostic.Category.ComplexityError,
+                "quantifier nesting exceeds the limit",
+                span(context)
+            );
         }
         try {
             SemanticAst.QuantifierOperator operator = switch (context.quantifier().getStart().getType()) {
@@ -419,10 +423,17 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
             if (local instanceof SemanticAst.Reference localReference && localReference.root().equals("__lambda__")) {
                 List<String> path = new ArrayList<>(localReference.path());
                 path.addAll(reference.path());
-                return node(new SemanticAst.Reference(
-                    localReference.root(), path, resolveLocalPath(localReference.type(), reference.path()),
-                    localReference.nullable(), true, Set.of(), reference.span()
-                ));
+                return node(
+                    new SemanticAst.Reference(
+                        localReference.root(),
+                        path,
+                        resolveLocalPath(localReference.type(), reference.path()),
+                        localReference.nullable(),
+                        true,
+                        Set.of(),
+                        reference.span()
+                    )
+                );
             }
         }
         EnvironmentSchema.Field field = schema.resolve(reference.root(), reference.path());
@@ -521,40 +532,60 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         lambdaNesting++;
         try {
             if (lambdaNesting > limits.maxLambdaDepth()) {
-                throw failure(LanguageDiagnostic.Category.ComplexityError, "lambda nesting exceeds the limit", expression.span());
-            }
-            scopes.getLast().put(
-                expression.elementName(),
-                new SemanticAst.Reference(
-                    "__lambda__",
-                    List.of(expression.elementName()),
-                    list.elementType(),
-                    false,
-                    false,
-                    Set.of(),
+                throw failure(
+                    LanguageDiagnostic.Category.ComplexityError,
+                    "lambda nesting exceeds the limit",
                     expression.span()
-                )
-            );
+                );
+            }
+            scopes
+                .getLast()
+                .put(
+                    expression.elementName(),
+                    new SemanticAst.Reference(
+                        "__lambda__",
+                        List.of(expression.elementName()),
+                        list.elementType(),
+                        false,
+                        false,
+                        Set.of(),
+                        expression.span()
+                    )
+                );
             predicate = lower(expression.predicate());
         } finally {
             lambdaNesting--;
             scopes.removeLast();
         }
         require(predicate, LanguageType.Scalar.BOOL, "quantifier predicate must be Bool");
-        return folded(node(new SemanticAst.Quantifier(
-            expression.operator(), collection, expression.elementName(), predicate, LanguageType.Scalar.BOOL,
-            union(collection, predicate), expression.span()
-        )));
+        return folded(
+            node(
+                new SemanticAst.Quantifier(
+                    expression.operator(),
+                    collection,
+                    expression.elementName(),
+                    predicate,
+                    LanguageType.Scalar.BOOL,
+                    union(collection, predicate),
+                    expression.span()
+                )
+            )
+        );
     }
 
     private SemanticAst.Expression length(LengthExpression expression) {
         SemanticAst.Expression operand = lower(expression.operand());
         if (
-            operand.type() != LanguageType.Scalar.STRING &&
-            !(operand.type() instanceof LanguageType.ListType)
+            operand.type() != LanguageType.Scalar.STRING && !(operand.type() instanceof LanguageType.ListType)
         ) throw failure(LanguageDiagnostic.Category.TypeError, "len requires a String or List", expression.span());
-        if (operand.nullable()) throw failure(LanguageDiagnostic.Category.TypeError, "len does not accept nullable values", expression.span());
-        return node(new SemanticAst.Length(operand, LanguageType.Scalar.NUMBER, operand.dependencies(), expression.span()));
+        if (operand.nullable()) throw failure(
+            LanguageDiagnostic.Category.TypeError,
+            "len does not accept nullable values",
+            expression.span()
+        );
+        return node(
+            new SemanticAst.Length(operand, LanguageType.Scalar.NUMBER, operand.dependencies(), expression.span())
+        );
     }
 
     private static LanguageType resolveLocalPath(LanguageType type, List<String> path) {
@@ -564,7 +595,11 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
                 throw failure(LanguageDiagnostic.Category.BindingError, "unknown lambda path: " + segment, unknown());
             }
             EnvironmentSchema.Field field = structured.field(segment);
-            if (field == null) throw failure(LanguageDiagnostic.Category.BindingError, "unknown lambda path: " + segment, unknown());
+            if (field == null) throw failure(
+                LanguageDiagnostic.Category.BindingError,
+                "unknown lambda path: " + segment,
+                unknown()
+            );
             current = field.type();
         }
         return current;
@@ -865,7 +900,10 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         }
     }
 
-    private sealed interface Expression extends SyntaxNode permits Literal, Reference, ListExpression, Unary, Binary, Quantifier, LengthExpression {
+    private sealed interface Expression
+        extends SyntaxNode
+        permits Literal, Reference, ListExpression, Unary, Binary, Quantifier, LengthExpression
+    {
         LanguageDiagnostic.SourceSpan span();
     }
 

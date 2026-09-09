@@ -36,12 +36,12 @@ public final class AuthorizationEmbeddedLanguageSchemas {
         for (ObjectAuthorizationSchema<?> schema : schemas) {
             for (ObjectAuthorizationField field : schema.fields()) {
                 String first = field.path().segments().getFirst();
-                fields.putIfAbsent(first, field.path().segments().size() == 1
-                    ? field(field) : nested(schema, first));
+                fields.putIfAbsent(first, field.path().segments().size() == 1 ? field(field) : nested(schema, first));
             }
         }
         return new EnvironmentSchema(
-            "taskmigo.authorization.object.0.4.0:" + schemas.stream().map(ObjectAuthorizationSchema::identity).sorted().toList(),
+            "taskmigo.authorization.object.0.4.0:" +
+                schemas.stream().map(ObjectAuthorizationSchema::identity).sorted().toList(),
             Map.of(
                 "principal",
                 root(Map.of("id", string(), "username", string())),
@@ -63,11 +63,19 @@ public final class AuthorizationEmbeddedLanguageSchemas {
         return new EnvironmentSchema(
             "taskmigo.authorization.object.0.4.0:" + schema.identity(),
             Map.of(
-                "principal", root(Map.of("id", string(), "username", string())),
-                "request", root(Map.of("method", string(), "path", string(), "pathVariables", dynamicString())),
-                "object", new EnvironmentSchema.Root(new EnvironmentSchema.Field(
-                    new LanguageType.StructuredType(schema.objectType().getName(), fields), false, true
-                ), fields)
+                "principal",
+                root(Map.of("id", string(), "username", string())),
+                "request",
+                root(Map.of("method", string(), "path", string(), "pathVariables", dynamicString())),
+                "object",
+                new EnvironmentSchema.Root(
+                    new EnvironmentSchema.Field(
+                        new LanguageType.StructuredType(schema.objectType().getName(), fields),
+                        false,
+                        true
+                    ),
+                    fields
+                )
             )
         );
     }
@@ -81,11 +89,15 @@ public final class AuthorizationEmbeddedLanguageSchemas {
         Map<String, EnvironmentSchema.Field> children = new HashMap<>();
         for (ObjectAuthorizationField field : schema.fields()) {
             List<String> segments = field.path().segments();
-            if (segments.size() > prefixSegments.size()
-                && segments.subList(0, prefixSegments.size()).equals(prefixSegments)) {
+            if (
+                segments.size() > prefixSegments.size() &&
+                segments.subList(0, prefixSegments.size()).equals(prefixSegments)
+            ) {
                 String child = segments.get(prefixSegments.size());
-                children.put(child, segments.size() == prefixSegments.size() + 1
-                    ? field(field) : nested(schema, prefix + "." + child));
+                children.put(
+                    child,
+                    segments.size() == prefixSegments.size() + 1 ? field(field) : nested(schema, prefix + "." + child)
+                );
             }
         }
         return new EnvironmentSchema.Field(new LanguageType.StructuredType(prefix, children), false, true);
@@ -93,7 +105,9 @@ public final class AuthorizationEmbeddedLanguageSchemas {
 
     private static LanguageType languageType(ResolvableType type) {
         Class<?> raw = type.resolve(Object.class);
-        if (raw == String.class || raw == UUID.class || raw == Character.class || raw == char.class) return LanguageType.Scalar.STRING;
+        if (
+            raw == String.class || raw == UUID.class || raw == Character.class || raw == char.class
+        ) return LanguageType.Scalar.STRING;
         if (raw == Boolean.class || raw == boolean.class) return LanguageType.Scalar.BOOL;
         if (Number.class.isAssignableFrom(raw) || raw.isPrimitive()) return LanguageType.Scalar.NUMBER;
         if (Collection.class.isAssignableFrom(raw)) return new LanguageType.ListType(languageType(type.getGeneric(0)));
@@ -111,5 +125,4 @@ public final class AuthorizationEmbeddedLanguageSchemas {
     private static EnvironmentSchema.Field dynamicString() {
         return new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, false, LanguageType.Scalar.STRING);
     }
-
 }

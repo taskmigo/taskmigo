@@ -14,9 +14,19 @@ public record QueryField(QueryPath path, ResolvableType type, boolean nullable, 
 
     /// Creates a field with the standard scalar operators.
     public QueryField(QueryPath path, ResolvableType type, boolean nullable) {
-        this(path, type, nullable, Set.of(
-            QueryOperator.EQ, QueryOperator.NE, QueryOperator.GT, QueryOperator.GE,
-            QueryOperator.LT, QueryOperator.LE, QueryOperator.IN
-        ));
+        this(
+            path,
+            type,
+            nullable,
+            Set.of(
+                QueryOperator.EQ,
+                QueryOperator.NE,
+                QueryOperator.GT,
+                QueryOperator.GE,
+                QueryOperator.LT,
+                QueryOperator.LE,
+                QueryOperator.IN
+            )
+        );
     }
 }

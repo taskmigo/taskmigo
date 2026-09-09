@@ -17,6 +17,7 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 /// Resolves generic FilteredQuery arguments from registered Query Schemas and client filterBy input.
 @Component
 public final class FilteredQueryArgumentResolver implements HandlerMethodArgumentResolver {
+
     private final List<QuerySchema<?>> schemas;
     private final FilterByCompiler filters;
 
@@ -40,12 +41,15 @@ public final class FilteredQueryArgumentResolver implements HandlerMethodArgumen
     ) {
         ResolvableType type = ResolvableType.forMethodParameter(parameter).getGeneric(0);
         Class<?> queryType = type.resolve();
-        QuerySchema<?> schema = this.schemas.stream()
+        QuerySchema<?> schema = this.schemas
+            .stream()
             .filter(candidate -> candidate.queryType().equals(queryType))
             .findFirst()
-            .orElseThrow(() -> new IllegalStateException(
-                "No Query Schema registered for " + Objects.requireNonNull(queryType).getName()
-            ));
+            .orElseThrow(() ->
+                new IllegalStateException(
+                    "No Query Schema registered for " + Objects.requireNonNull(queryType).getName()
+                )
+            );
         return new FilteredQuery<>(this.filters.compileUntyped(schema, webRequest.getParameter("filterBy")));
     }
 }

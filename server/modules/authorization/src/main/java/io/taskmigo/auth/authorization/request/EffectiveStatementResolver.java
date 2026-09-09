@@ -6,7 +6,6 @@ import java.util.UUID;
 
 /// Resolves the effective authorization Statements for a principal.
 public interface EffectiveStatementResolver {
-
     /// Returns the deduplicated Statements effective for the supplied user.
     ///
     /// Resource modules provide the persistence-backed implementation. The authorization core only depends on this

@@ -11,6 +11,7 @@ import java.util.Set;
 
 /// Creates opaque Object Authorization predicates for trusted resource binders.
 final class ObjectAuthorizationPredicateFactory {
+
     private ObjectAuthorizationPredicateFactory() {}
 
     static <Q> ObjectAuthorizationPredicate<Q> from(
@@ -29,10 +30,7 @@ final class ObjectAuthorizationPredicateFactory {
         return from(schema, new SemanticAst.Literal(value, LanguageType.Scalar.BOOL, Set.of(), span()));
     }
 
-    static <Q> ObjectAuthorizationPredicate<Q> constantLike(
-        ObjectAuthorizationPredicate<?> predicate,
-        boolean value
-    ) {
+    static <Q> ObjectAuthorizationPredicate<Q> constantLike(ObjectAuthorizationPredicate<?> predicate, boolean value) {
         return from(
             new IdentityObjectAuthorizationSchema<>(schemaIdentity(predicate)),
             new SemanticAst.Literal(value, LanguageType.Scalar.BOOL, Set.of(), span())
@@ -57,8 +55,10 @@ final class ObjectAuthorizationPredicateFactory {
         return new SourceSpan(1, 0, 1, 0);
     }
 
-    private record LogicalObjectAuthorizationPredicate<Q>(String schemaIdentity, SemanticAst.Expression expression)
-        implements ObjectAuthorizationPredicate<Q> {
+    private record LogicalObjectAuthorizationPredicate<Q>(
+        String schemaIdentity,
+        SemanticAst.Expression expression
+    ) implements ObjectAuthorizationPredicate<Q> {
         @Override
         public boolean isAlwaysTrue() {
             return this.expression instanceof SemanticAst.Literal literal && Boolean.TRUE.equals(literal.value());
@@ -72,8 +72,19 @@ final class ObjectAuthorizationPredicateFactory {
 
     private record IdentityObjectAuthorizationSchema<Q>(String identity) implements ObjectAuthorizationSchema<Q> {
         @SuppressWarnings("unchecked")
-        @Override public Class<Q> objectType() { return (Class<Q>) Object.class; }
-        @Override public Optional<ObjectAuthorizationField> field(ObjectAuthorizationPath path) { return Optional.empty(); }
-        @Override public Collection<ObjectAuthorizationField> fields() { return List.of(); }
+        @Override
+        public Class<Q> objectType() {
+            return (Class<Q>) Object.class;
+        }
+
+        @Override
+        public Optional<ObjectAuthorizationField> field(ObjectAuthorizationPath path) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Collection<ObjectAuthorizationField> fields() {
+            return List.of();
+        }
     }
 }

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 /// Creates a resource-owned Query Predicate binder for a flat or nested entity mapping.
 public final class JpaQueryPredicateBinder<Q, E> implements QueryPredicateBinder<Q, E> {
+
     private final Class<Q> queryType;
     private final Class<E> domainType;
     private final Map<String, String> paths;

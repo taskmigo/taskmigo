@@ -65,13 +65,16 @@ public record SemanticAst(
     }
 
     /// Represents one typed semantic expression.
-    public sealed interface Expression permits Literal, Reference, ListLiteral, Binary, Unary, Conditional, Quantifier, Length {
+    public sealed interface Expression
+        permits Literal, Reference, ListLiteral, Binary, Unary, Conditional, Quantifier, Length
+    {
         /// Returns the static type.
         LanguageType type();
         /// Returns dependent schema roots.
         Set<String> dependencies();
         /// Returns the source span.
         LanguageDiagnostic.SourceSpan span();
+
         /// Returns whether this expression may evaluate to null.
         default boolean nullable() {
             return type() == LanguageType.Scalar.NULL;

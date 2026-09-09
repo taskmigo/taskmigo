@@ -98,7 +98,10 @@ public class RoleService {
         ObjectAuthorizationPredicate<RoleInfo> authorization
     ) {
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
-        var roles = this.roles.findAll(this.queryBinder.bind(filter).and(this.objectBinder.bind(authorization)), pageable);
+        var roles = this.roles.findAll(
+            this.queryBinder.bind(filter).and(this.objectBinder.bind(authorization)),
+            pageable
+        );
         return new OffsetPage<>(
             roles.map(RoleService::info).getContent(),
             roles.getTotalElements(),

@@ -8,8 +8,10 @@ import org.springframework.data.jpa.domain.Specification;
 
 /// Creates an Identity-owned Object Authorization predicate binder for an entity mapping.
 @NullMarked
-public final class IdentityJpaObjectAuthorizationPredicateBinder<Q, E>
-    implements ObjectAuthorizationPredicateBinder<Q, E> {
+public final class IdentityJpaObjectAuthorizationPredicateBinder<
+    Q,
+    E
+> implements ObjectAuthorizationPredicateBinder<Q, E> {
 
     private final Class<Q> objectType;
     private final Class<E> domainType;
@@ -41,6 +43,10 @@ public final class IdentityJpaObjectAuthorizationPredicateBinder<Q, E>
 
     @Override
     public Specification<E> bind(ObjectAuthorizationPredicate<Q> predicate) {
-        return JpaSemanticPredicateBinder.bind(ObjectAuthorizationPredicateFactory.expression(predicate), this.paths, this.types);
+        return JpaSemanticPredicateBinder.bind(
+            ObjectAuthorizationPredicateFactory.expression(predicate),
+            this.paths,
+            this.types
+        );
     }
 }

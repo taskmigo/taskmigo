@@ -179,7 +179,10 @@ public class StatementService {
         ObjectAuthorizationPredicate<StatementInfo> authorization
     ) {
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
-        var result = this.statements.findAll(this.queryBinder.bind(filter).and(this.objectBinder.bind(authorization)), pageable);
+        var result = this.statements.findAll(
+            this.queryBinder.bind(filter).and(this.objectBinder.bind(authorization)),
+            pageable
+        );
         return new OffsetPage<>(
             result.map(StatementEntity::info).getContent(),
             result.getTotalElements(),

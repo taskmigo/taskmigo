@@ -9,18 +9,25 @@ import java.util.Set;
 /// Default Boolean-algebra implementation for opaque Query Predicates.
 @SuppressWarnings("checkstyle:NeedBraces")
 final class DefaultQueryPredicates implements QueryPredicates {
+
     static final DefaultQueryPredicates INSTANCE = new DefaultQueryPredicates();
 
     private DefaultQueryPredicates() {}
 
     @Override
     public <Q> QueryPredicate<Q> alwaysTrue() {
-        return QueryPredicateFactory.wrap("", new SemanticAst.Literal(true, LanguageType.Scalar.BOOL, Set.of(), span()));
+        return QueryPredicateFactory.wrap(
+            "",
+            new SemanticAst.Literal(true, LanguageType.Scalar.BOOL, Set.of(), span())
+        );
     }
 
     @Override
     public <Q> QueryPredicate<Q> alwaysFalse() {
-        return QueryPredicateFactory.wrap("", new SemanticAst.Literal(false, LanguageType.Scalar.BOOL, Set.of(), span()));
+        return QueryPredicateFactory.wrap(
+            "",
+            new SemanticAst.Literal(false, LanguageType.Scalar.BOOL, Set.of(), span())
+        );
     }
 
     @Override
@@ -48,16 +55,28 @@ final class DefaultQueryPredicates implements QueryPredicates {
         if (predicate.isAlwaysTrue()) return QueryPredicateFactory.constantLike(predicate, false);
         if (predicate.isAlwaysFalse()) return QueryPredicateFactory.constantLike(predicate, true);
         SemanticAst.Expression expression = QueryPredicateFactory.expression(predicate);
-        return QueryPredicateFactory.wrap(schema(predicate), new SemanticAst.Unary(
-            SemanticAst.UnaryOperator.NOT, expression, LanguageType.Scalar.BOOL, expression.dependencies(), span()
-        ));
+        return QueryPredicateFactory.wrap(
+            schema(predicate),
+            new SemanticAst.Unary(
+                SemanticAst.UnaryOperator.NOT,
+                expression,
+                LanguageType.Scalar.BOOL,
+                expression.dependencies(),
+                span()
+            )
+        );
     }
 
-    private static <Q> SemanticAst.Expression binary(SemanticAst.BinaryOperator operator, QueryPredicate<Q> left, QueryPredicate<Q> right) {
+    private static <Q> SemanticAst.Expression binary(
+        SemanticAst.BinaryOperator operator,
+        QueryPredicate<Q> left,
+        QueryPredicate<Q> right
+    ) {
         SemanticAst.Expression l = QueryPredicateFactory.expression(left);
         SemanticAst.Expression r = QueryPredicateFactory.expression(right);
         Set<String> dependencies = java.util.stream.Stream.of(l, r)
-            .flatMap(expression -> expression.dependencies().stream()).collect(java.util.stream.Collectors.toUnmodifiableSet());
+            .flatMap(expression -> expression.dependencies().stream())
+            .collect(java.util.stream.Collectors.toUnmodifiableSet());
         return new SemanticAst.Binary(operator, l, r, LanguageType.Scalar.BOOL, dependencies, span());
     }
 

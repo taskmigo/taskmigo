@@ -6,7 +6,6 @@ import java.util.Set;
 
 /// Defines the Embedded Language source mode and enabled feature families for one compilation.
 public record CompilationProfile(CompilationMode mode, Set<CompilationFeature> features) {
-
     /// Creates a profile with an immutable feature set.
     public CompilationProfile {
         Objects.requireNonNull(mode);

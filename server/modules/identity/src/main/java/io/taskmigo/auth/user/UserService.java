@@ -118,7 +118,10 @@ public class UserService {
         ObjectAuthorizationPredicate<UserInfo> authorization
     ) {
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
-        var result = this.users.findAll(this.queryBinder.bind(filter).and(this.objectBinder.bind(authorization)), pageable);
+        var result = this.users.findAll(
+            this.queryBinder.bind(filter).and(this.objectBinder.bind(authorization)),
+            pageable
+        );
         return new OffsetPage<>(
             result.map(UserService::info).getContent(),
             result.getTotalElements(),

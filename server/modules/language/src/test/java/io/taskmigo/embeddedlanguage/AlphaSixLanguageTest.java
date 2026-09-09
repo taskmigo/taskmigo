@@ -20,9 +20,7 @@ class AlphaSixLanguageTest {
                 new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, true),
                 Map.of(
                     "emails",
-                    new EnvironmentSchema.Field(
-                        new LanguageType.ListType(LanguageType.Scalar.STRING), false, true
-                    )
+                    new EnvironmentSchema.Field(new LanguageType.ListType(LanguageType.Scalar.STRING), false, true)
                 )
             )
         )

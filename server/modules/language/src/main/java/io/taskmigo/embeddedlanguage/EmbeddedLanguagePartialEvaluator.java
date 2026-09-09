@@ -33,7 +33,8 @@ public final class EmbeddedLanguagePartialEvaluator {
             case SemanticAst.Literal literal -> literal;
             case SemanticAst.Reference reference when !knownRoots.containsKey(reference.root()) -> reference;
             case SemanticAst.Reference reference -> {
-                @Nullable Object value = EmbeddedLanguageEvaluator.read(reference, knownRoots);
+                @Nullable
+                Object value = EmbeddedLanguageEvaluator.read(reference, knownRoots);
                 yield literal(value, reference.type(), reference.span());
             }
             case SemanticAst.ListLiteral list -> list(list, knownRoots);
@@ -50,18 +51,25 @@ public final class EmbeddedLanguagePartialEvaluator {
             case SemanticAst.Literal _ -> {
             }
             case SemanticAst.Reference reference -> {
-                if (!knownRoots.contains(reference.root()) && !reference.symbolic() && !reference.root().equals("__lambda__")) {
+                if (
+                    !knownRoots.contains(reference.root()) &&
+                    !reference.symbolic() &&
+                    !reference.root().equals("__lambda__")
+                ) {
                     throw new EmbeddedLanguageException(
                         new LanguageDiagnostic(
                             LanguageDiagnostic.Category.TypeError,
-                            "program reference may not remain symbolic: " + reference.root() +
-                            (reference.path().isEmpty() ? "" : "." + String.join(".", reference.path())),
+                            "program reference may not remain symbolic: " +
+                                reference.root() +
+                                (reference.path().isEmpty() ? "" : "." + String.join(".", reference.path())),
                             reference.span()
                         )
                     );
                 }
             }
-            case SemanticAst.ListLiteral list -> list.values().forEach(value -> requireSymbolicUnknowns(value, knownRoots));
+            case SemanticAst.ListLiteral list -> list.values().forEach(value ->
+                requireSymbolicUnknowns(value, knownRoots)
+            );
             case SemanticAst.Unary unary -> requireSymbolicUnknowns(unary.operand(), knownRoots);
             case SemanticAst.Binary binary -> {
                 requireSymbolicUnknowns(binary.left(), knownRoots);
@@ -174,13 +182,27 @@ public final class EmbeddedLanguagePartialEvaluator {
                 scoped.put("__lambda__", binding);
                 SemanticAst.Expression predicate = simplify(expression.predicate(), scoped);
                 if (predicate instanceof SemanticAst.Literal result && result.value() instanceof Boolean matches) {
-                    if (expression.operator() == SemanticAst.QuantifierOperator.ALL && !matches) return literal(false, expression.span());
-                    if (expression.operator() == SemanticAst.QuantifierOperator.ANY && matches) return literal(true, expression.span());
-                    if (expression.operator() == SemanticAst.QuantifierOperator.NONE && matches) return literal(false, expression.span());
+                    if (expression.operator() == SemanticAst.QuantifierOperator.ALL && !matches) return literal(
+                        false,
+                        expression.span()
+                    );
+                    if (expression.operator() == SemanticAst.QuantifierOperator.ANY && matches) return literal(
+                        true,
+                        expression.span()
+                    );
+                    if (expression.operator() == SemanticAst.QuantifierOperator.NONE && matches) return literal(
+                        false,
+                        expression.span()
+                    );
                 } else {
                     return new SemanticAst.Quantifier(
-                        expression.operator(), collection, expression.elementName(), predicate,
-                        LanguageType.Scalar.BOOL, union(collection, predicate), expression.span()
+                        expression.operator(),
+                        collection,
+                        expression.elementName(),
+                        predicate,
+                        LanguageType.Scalar.BOOL,
+                        union(collection, predicate),
+                        expression.span()
                     );
                 }
             }
@@ -188,16 +210,27 @@ public final class EmbeddedLanguagePartialEvaluator {
         }
         SemanticAst.Expression predicate = simplify(expression.predicate(), roots);
         return new SemanticAst.Quantifier(
-            expression.operator(), collection, expression.elementName(), predicate,
-            LanguageType.Scalar.BOOL, union(collection, predicate), expression.span()
+            expression.operator(),
+            collection,
+            expression.elementName(),
+            predicate,
+            LanguageType.Scalar.BOOL,
+            union(collection, predicate),
+            expression.span()
         );
     }
 
     private static SemanticAst.Expression length(SemanticAst.Length expression, Map<String, ?> roots) {
         SemanticAst.Expression operand = simplify(expression.operand(), roots);
         if (operand instanceof SemanticAst.Literal literal) {
-            if (literal.value() instanceof String text) return literal(java.math.BigDecimal.valueOf(text.length()), expression.span());
-            if (literal.value() instanceof List<?> list) return literal(java.math.BigDecimal.valueOf(list.size()), expression.span());
+            if (literal.value() instanceof String text) return literal(
+                java.math.BigDecimal.valueOf(text.length()),
+                expression.span()
+            );
+            if (literal.value() instanceof List<?> list) return literal(
+                java.math.BigDecimal.valueOf(list.size()),
+                expression.span()
+            );
         }
         return new SemanticAst.Length(operand, expression.type(), operand.dependencies(), expression.span());
     }
@@ -248,7 +281,11 @@ public final class EmbeddedLanguagePartialEvaluator {
 
     private static EmbeddedLanguageException incompatible(LanguageDiagnostic.SourceSpan span) {
         return new EmbeddedLanguageException(
-            new LanguageDiagnostic(LanguageDiagnostic.Category.TypeError, "partial result has an incompatible type", span)
+            new LanguageDiagnostic(
+                LanguageDiagnostic.Category.TypeError,
+                "partial result has an incompatible type",
+                span
+            )
         );
     }
 

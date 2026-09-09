@@ -14,7 +14,12 @@ import org.springframework.core.ResolvableType;
 class FilterByCompilerTest {
 
     private final QuerySchema<CustomerQuery> schema = new QuerySchema<>() {
-        private final QueryField name = new QueryField(QueryPath.of("name"), ResolvableType.forClass(String.class), false, Set.of(QueryOperator.EQ));
+        private final QueryField name = new QueryField(
+            QueryPath.of("name"),
+            ResolvableType.forClass(String.class),
+            false,
+            Set.of(QueryOperator.EQ)
+        );
 
         @Override
         public Class<CustomerQuery> queryType() {
@@ -23,7 +28,10 @@ class FilterByCompilerTest {
 
         @Override
         public Optional<QueryField> field(QueryPath path) {
-            return this.fields().stream().filter(field -> field.path().equals(path)).findFirst();
+            return this.fields()
+                .stream()
+                .filter(field -> field.path().equals(path))
+                .findFirst();
         }
 
         @Override
@@ -84,8 +92,9 @@ class FilterByCompilerTest {
         FilterByCompiler compiler = new FilterByCompiler();
 
         // Act + Assert
-        assertThatThrownBy(() -> compiler.compile(this.schema, "object.email == \"a@example.com\""))
-            .isInstanceOf(FilterByException.class);
+        assertThatThrownBy(() -> compiler.compile(this.schema, "object.email == \"a@example.com\"")).isInstanceOf(
+            FilterByException.class
+        );
     }
 
     /**
@@ -106,14 +115,27 @@ class FilterByCompilerTest {
 
             @Override
             public Optional<QueryField> field(QueryPath path) {
-                return this.fields().stream().filter(field -> field.path().equals(path)).findFirst();
+                return this.fields()
+                    .stream()
+                    .filter(field -> field.path().equals(path))
+                    .findFirst();
             }
 
             @Override
             public Collection<QueryField> fields() {
                 return List.of(
-                    new QueryField(QueryPath.of("name"), ResolvableType.forClass(String.class), false, Set.of(QueryOperator.EQ)),
-                    new QueryField(QueryPath.of("email"), ResolvableType.forClass(String.class), false, Set.of(QueryOperator.EQ))
+                    new QueryField(
+                        QueryPath.of("name"),
+                        ResolvableType.forClass(String.class),
+                        false,
+                        Set.of(QueryOperator.EQ)
+                    ),
+                    new QueryField(
+                        QueryPath.of("email"),
+                        ResolvableType.forClass(String.class),
+                        false,
+                        Set.of(QueryOperator.EQ)
+                    )
                 );
             }
         };
@@ -148,12 +170,21 @@ class FilterByCompilerTest {
 
             @Override
             public Optional<QueryField> field(QueryPath path) {
-                return Optional.of(new QueryField(path, ResolvableType.forClass(String.class), true, Set.of(QueryOperator.EQ)));
+                return Optional.of(
+                    new QueryField(path, ResolvableType.forClass(String.class), true, Set.of(QueryOperator.EQ))
+                );
             }
 
             @Override
             public Collection<QueryField> fields() {
-                return List.of(new QueryField(QueryPath.of("name"), ResolvableType.forClass(String.class), true, Set.of(QueryOperator.EQ)));
+                return List.of(
+                    new QueryField(
+                        QueryPath.of("name"),
+                        ResolvableType.forClass(String.class),
+                        true,
+                        Set.of(QueryOperator.EQ)
+                    )
+                );
             }
         };
         QueryPredicate<CustomerQuery> right = new FilterByCompiler().compile(incompatible, "object.name == \"Phong\"");

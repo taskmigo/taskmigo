@@ -13,7 +13,8 @@ public final class EmbeddedLanguageEvaluator {
     /// Evaluates a program and returns a value conforming to its static result contract.
     public @Nullable Object evaluate(SemanticAst program, Map<String, ?> roots) {
         try {
-            @Nullable Object result = value(program.expression(), roots);
+            @Nullable
+            Object result = value(program.expression(), roots);
             if (!conforms(result, program.resultType(), program.resultNullable())) {
                 throw failure("program result has an incompatible runtime type", program.expression().span());
             }
@@ -120,7 +121,8 @@ public final class EmbeddedLanguageEvaluator {
     }
 
     private static @Nullable Object binary(SemanticAst.Binary binary, Map<String, ?> roots) {
-        @Nullable Object left = value(binary.left(), roots);
+        @Nullable
+        Object left = value(binary.left(), roots);
         if (binary.operator() == SemanticAst.BinaryOperator.AND && left instanceof Boolean bool) {
             if (!bool) return false;
             return requireBoolean(value(binary.right(), roots));
@@ -137,7 +139,8 @@ public final class EmbeddedLanguageEvaluator {
             "missing program root: " + reference.root(),
             reference.span()
         );
-        @Nullable Object current = roots.get(reference.root());
+        @Nullable
+        Object current = roots.get(reference.root());
         for (String name : reference.path()) {
             if (!(current instanceof Map<?, ?> map) || !map.containsKey(name)) {
                 throw failure(
@@ -169,12 +172,16 @@ public final class EmbeddedLanguageEvaluator {
             case LanguageType.ListType list -> value instanceof List<?> values &&
                 values.stream().allMatch(item -> matchesType(item, list.elementType()));
             case LanguageType.StructuredType structured -> value instanceof Map<?, ?> map &&
-                structured.fields().entrySet().stream().allMatch(entry -> {
-                    Object nested = map.get(entry.getKey());
-                    return nested != null
-                        ? matchesType(nested, entry.getValue().type())
-                        : entry.getValue().nullable() || entry.getValue().type() == LanguageType.Scalar.NULL;
-                });
+                structured
+                    .fields()
+                    .entrySet()
+                    .stream()
+                    .allMatch(entry -> {
+                        Object nested = map.get(entry.getKey());
+                        return nested != null
+                            ? matchesType(nested, entry.getValue().type())
+                            : entry.getValue().nullable() || entry.getValue().type() == LanguageType.Scalar.NULL;
+                    });
         };
     }
 

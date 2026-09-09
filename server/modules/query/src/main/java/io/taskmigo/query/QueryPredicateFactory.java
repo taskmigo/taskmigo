@@ -9,13 +9,16 @@ import java.util.Set;
 /// Creates and composes opaque predicates at the logical query boundary.
 @SuppressWarnings("checkstyle:NeedBraces")
 public final class QueryPredicateFactory {
+
     private QueryPredicateFactory() {}
 
     /// Wraps a typed Boolean Semantic AST expression for a compatible Query Schema.
     public static <Q> QueryPredicate<Q> from(QuerySchema<Q> schema, SemanticAst.Expression expression) {
         Objects.requireNonNull(schema);
         Objects.requireNonNull(expression);
-        if (expression.type() != LanguageType.Scalar.BOOL) throw new IllegalArgumentException("query predicate must be Bool");
+        if (expression.type() != LanguageType.Scalar.BOOL) throw new IllegalArgumentException(
+            "query predicate must be Bool"
+        );
         return new LogicalQueryPredicate<>(schema.identity(), expression);
     }
 
@@ -38,7 +41,9 @@ public final class QueryPredicateFactory {
     }
 
     static String schemaIdentity(QueryPredicate<?> predicate) {
-        if (!(predicate instanceof LogicalQueryPredicate<?> logical)) throw new IllegalArgumentException("unsupported Query Predicate implementation");
+        if (!(predicate instanceof LogicalQueryPredicate<?> logical)) throw new IllegalArgumentException(
+            "unsupported Query Predicate implementation"
+        );
         return logical.schemaIdentity();
     }
 
@@ -47,14 +52,20 @@ public final class QueryPredicateFactory {
     }
 
     static <Q> QueryPredicate<Q> constantLike(QueryPredicate<?> predicate, boolean value) {
-        return wrap(schemaIdentity(predicate), new SemanticAst.Literal(value, LanguageType.Scalar.BOOL, Set.of(), span()));
+        return wrap(
+            schemaIdentity(predicate),
+            new SemanticAst.Literal(value, LanguageType.Scalar.BOOL, Set.of(), span())
+        );
     }
 
     private static SourceSpan span() {
         return new SourceSpan(1, 0, 1, 0);
     }
 
-    private record LogicalQueryPredicate<Q>(String schemaIdentity, SemanticAst.Expression expression) implements QueryPredicate<Q> {
+    private record LogicalQueryPredicate<Q>(
+        String schemaIdentity,
+        SemanticAst.Expression expression
+    ) implements QueryPredicate<Q> {
         private LogicalQueryPredicate {
             Objects.requireNonNull(schemaIdentity);
             Objects.requireNonNull(expression);

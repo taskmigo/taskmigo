@@ -30,32 +30,47 @@ public class IdentityResourceSchemas {
     /// Registers the user collection query contract.
     @Bean
     QuerySchema<UserInfo> userQuerySchema() {
-        return schema(UserInfo.class, List.of(
-            field("id", UUID_TYPE), field("username", STRING_TYPE), field("firstName", STRING_TYPE), field("lastName", STRING_TYPE)
-        ));
+        return schema(
+            UserInfo.class,
+            List.of(
+                field("id", UUID_TYPE),
+                field("username", STRING_TYPE),
+                field("firstName", STRING_TYPE),
+                field("lastName", STRING_TYPE)
+            )
+        );
     }
 
     /// Registers the user Object Authorization contract.
     @Bean
     ObjectAuthorizationSchema<UserInfo> userObjectAuthorizationSchema() {
-        return objectSchema(UserInfo.class, List.of(
-            objectField("id", UUID_TYPE), objectField("username", STRING_TYPE),
-            objectField("firstName", STRING_TYPE), objectField("lastName", STRING_TYPE)
-        ));
+        return objectSchema(
+            UserInfo.class,
+            List.of(
+                objectField("id", UUID_TYPE),
+                objectField("username", STRING_TYPE),
+                objectField("firstName", STRING_TYPE),
+                objectField("lastName", STRING_TYPE)
+            )
+        );
     }
 
     /// Registers the group collection query contract.
     @Bean
     QuerySchema<GroupInfo> groupQuerySchema() {
-        return schema(GroupInfo.class, List.of(field("id", UUID_TYPE), field("name", STRING_TYPE), nullable("description")));
+        return schema(
+            GroupInfo.class,
+            List.of(field("id", UUID_TYPE), field("name", STRING_TYPE), nullable("description"))
+        );
     }
 
     /// Registers the group Object Authorization contract.
     @Bean
     ObjectAuthorizationSchema<GroupInfo> groupObjectAuthorizationSchema() {
-        return objectSchema(GroupInfo.class, List.of(
-            objectField("id", UUID_TYPE), objectField("name", STRING_TYPE), objectNullable("description")
-        ));
+        return objectSchema(
+            GroupInfo.class,
+            List.of(objectField("id", UUID_TYPE), objectField("name", STRING_TYPE), objectNullable("description"))
+        );
     }
 
     /// Registers the trusted User query-to-entity mapping.
@@ -78,7 +93,12 @@ public class IdentityResourceSchemas {
     /// Registers the trusted Group query-to-entity mapping.
     @Bean
     QueryPredicateBinder<GroupInfo, GroupEntity> groupQueryPredicateBinder() {
-        return new JpaQueryPredicateBinder<>(GroupInfo.class, GroupEntity.class, simplePaths("id", "name", "description"), simpleTypes());
+        return new JpaQueryPredicateBinder<>(
+            GroupInfo.class,
+            GroupEntity.class,
+            simplePaths("id", "name", "description"),
+            simpleTypes()
+        );
     }
 
     /// Registers the trusted Group object-policy-to-entity mapping.
@@ -117,7 +137,9 @@ public class IdentityResourceSchemas {
     }
 
     private static Map<String, String> simplePaths(String... fields) {
-        return java.util.Arrays.stream(fields).collect(java.util.stream.Collectors.toUnmodifiableMap(field -> field, field -> field));
+        return java.util.Arrays.stream(fields).collect(
+            java.util.stream.Collectors.toUnmodifiableMap(field -> field, field -> field)
+        );
     }
 
     private static Map<String, Class<?>> simpleTypes() {
@@ -134,7 +156,10 @@ public class IdentityResourceSchemas {
 
             @Override
             public Optional<QueryField> field(QueryPath path) {
-                return declared.stream().filter(field -> field.path().equals(path)).findFirst();
+                return declared
+                    .stream()
+                    .filter(field -> field.path().equals(path))
+                    .findFirst();
             }
 
             @Override
@@ -157,7 +182,10 @@ public class IdentityResourceSchemas {
 
             @Override
             public Optional<ObjectAuthorizationField> field(ObjectAuthorizationPath path) {
-                return declared.stream().filter(field -> field.path().equals(path)).findFirst();
+                return declared
+                    .stream()
+                    .filter(field -> field.path().equals(path))
+                    .findFirst();
             }
 
             @Override

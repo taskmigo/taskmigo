@@ -24,12 +24,7 @@ class EmbeddedLanguageCompilerTest {
                     "optional",
                     new EnvironmentSchema.Field(LanguageType.Scalar.STRING, true, false),
                     "pathVariables",
-                    new EnvironmentSchema.Field(
-                        LanguageType.Scalar.STRING,
-                        false,
-                        false,
-                        LanguageType.Scalar.STRING
-                    )
+                    new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, false, LanguageType.Scalar.STRING)
                 )
             )
         )

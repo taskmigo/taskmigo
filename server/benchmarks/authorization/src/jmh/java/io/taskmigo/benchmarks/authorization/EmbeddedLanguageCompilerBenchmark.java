@@ -138,7 +138,13 @@ public class EmbeddedLanguageCompilerBenchmark {
     }
 
     private static void validateDatasetColumn(List<String[]> rows, int column, int expectedFamilies) {
-        if (rows.stream().map(row -> row[column]).distinct().count() != DATASET_SIZE) {
+        if (
+            rows
+                .stream()
+                .map(row -> row[column])
+                .distinct()
+                .count() != DATASET_SIZE
+        ) {
             throw new IllegalStateException("Benchmark dataset must contain only unique statements");
         }
         long families = rows
@@ -174,43 +180,68 @@ public class EmbeddedLanguageCompilerBenchmark {
         roots.add(
             "principal",
             Map.of(
-                "id", field(LanguageType.Scalar.STRING),
-                "username", field(LanguageType.Scalar.STRING),
-                "role", field(LanguageType.Scalar.STRING),
-                "tenantId", field(LanguageType.Scalar.STRING),
-                "teamId", field(LanguageType.Scalar.STRING),
-                "kind", field(LanguageType.Scalar.STRING),
-                "active", field(LanguageType.Scalar.BOOL),
-                "level", field(LanguageType.Scalar.NUMBER),
-                "rank", field(LanguageType.Scalar.NUMBER),
-                "version", field(LanguageType.Scalar.NUMBER)
+                "id",
+                field(LanguageType.Scalar.STRING),
+                "username",
+                field(LanguageType.Scalar.STRING),
+                "role",
+                field(LanguageType.Scalar.STRING),
+                "tenantId",
+                field(LanguageType.Scalar.STRING),
+                "teamId",
+                field(LanguageType.Scalar.STRING),
+                "kind",
+                field(LanguageType.Scalar.STRING),
+                "active",
+                field(LanguageType.Scalar.BOOL),
+                "level",
+                field(LanguageType.Scalar.NUMBER),
+                "rank",
+                field(LanguageType.Scalar.NUMBER),
+                "version",
+                field(LanguageType.Scalar.NUMBER)
             )
         );
         if ("REQUEST".equals(scope)) {
             roots.add(
                 "request",
                 Map.of(
-                    "method", field(LanguageType.Scalar.STRING),
-                    "path", field(LanguageType.Scalar.STRING),
-                    "pathVariables", dynamicString(),
-                    "version", field(LanguageType.Scalar.NUMBER),
-                    "sequence", field(LanguageType.Scalar.NUMBER)
+                    "method",
+                    field(LanguageType.Scalar.STRING),
+                    "path",
+                    field(LanguageType.Scalar.STRING),
+                    "pathVariables",
+                    dynamicString(),
+                    "version",
+                    field(LanguageType.Scalar.NUMBER),
+                    "sequence",
+                    field(LanguageType.Scalar.NUMBER)
                 )
             );
         } else {
             roots.add(
                 "object",
                 Map.of(
-                    "ownerId", field(LanguageType.Scalar.STRING),
-                    "status", field(LanguageType.Scalar.STRING),
-                    "kind", field(LanguageType.Scalar.STRING),
-                    "tenantId", field(LanguageType.Scalar.STRING),
-                    "visibility", field(LanguageType.Scalar.STRING),
-                    "enabled", field(LanguageType.Scalar.BOOL),
-                    "score", field(LanguageType.Scalar.NUMBER),
-                    "version", field(LanguageType.Scalar.NUMBER),
-                    "priority", field(LanguageType.Scalar.NUMBER),
-                    "rank", field(LanguageType.Scalar.NUMBER)
+                    "ownerId",
+                    field(LanguageType.Scalar.STRING),
+                    "status",
+                    field(LanguageType.Scalar.STRING),
+                    "kind",
+                    field(LanguageType.Scalar.STRING),
+                    "tenantId",
+                    field(LanguageType.Scalar.STRING),
+                    "visibility",
+                    field(LanguageType.Scalar.STRING),
+                    "enabled",
+                    field(LanguageType.Scalar.BOOL),
+                    "score",
+                    field(LanguageType.Scalar.NUMBER),
+                    "version",
+                    field(LanguageType.Scalar.NUMBER),
+                    "priority",
+                    field(LanguageType.Scalar.NUMBER),
+                    "rank",
+                    field(LanguageType.Scalar.NUMBER)
                 )
             );
         }

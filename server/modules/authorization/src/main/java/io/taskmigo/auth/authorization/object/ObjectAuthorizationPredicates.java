@@ -9,7 +9,10 @@ public interface ObjectAuthorizationPredicates {
     <Q> ObjectAuthorizationPredicate<Q> alwaysFalse();
 
     /// Conjoins compatible Object Authorization predicates.
-    <Q> ObjectAuthorizationPredicate<Q> and(ObjectAuthorizationPredicate<Q> left, ObjectAuthorizationPredicate<Q> right);
+    <Q> ObjectAuthorizationPredicate<Q> and(
+        ObjectAuthorizationPredicate<Q> left,
+        ObjectAuthorizationPredicate<Q> right
+    );
 
     /// Disjoins compatible Object Authorization predicates.
     <Q> ObjectAuthorizationPredicate<Q> or(ObjectAuthorizationPredicate<Q> left, ObjectAuthorizationPredicate<Q> right);

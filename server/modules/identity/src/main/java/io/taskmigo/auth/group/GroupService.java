@@ -56,7 +56,10 @@ public class GroupService {
         ObjectAuthorizationPredicate<GroupInfo> authorization
     ) {
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
-        var groups = this.groups.findAll(this.queryBinder.bind(filter).and(this.objectBinder.bind(authorization)), pageable);
+        var groups = this.groups.findAll(
+            this.queryBinder.bind(filter).and(this.objectBinder.bind(authorization)),
+            pageable
+        );
         return new OffsetPage<>(
             groups.map(GroupService::info).getContent(),
             groups.getTotalElements(),

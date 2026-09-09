@@ -5,12 +5,14 @@ import io.taskmigo.embeddedlanguage.SemanticAst;
 /// Validates that symbolic object paths and operators belong to an explicit Query Schema.
 @SuppressWarnings({ "checkstyle:NeedBraces", "checkstyle:UnusedLocalVariable" })
 public final class QuerySchemaValidator {
+
     private QuerySchemaValidator() {}
 
     /// Rejects unknown API paths and operators not allowed by their registered fields.
     public static <Q> void validate(SemanticAst.Expression expression, QuerySchema<Q> schema) {
         switch (expression) {
-            case SemanticAst.Literal ignored -> { }
+            case SemanticAst.Literal ignored -> {
+            }
             case SemanticAst.Reference reference -> validateReference(reference, schema);
             case SemanticAst.ListLiteral list -> list.values().forEach(value -> validate(value, schema));
             case SemanticAst.Unary unary -> validate(unary.operand(), schema);
@@ -56,8 +58,12 @@ public final class QuerySchemaValidator {
     ) {
         if (expression instanceof SemanticAst.Reference reference && reference.root().equals("object")) {
             if (operator == QueryOperator.AND || operator == QueryOperator.OR) return;
-            QueryField field = schema.field(new QueryPath(reference.path())).orElseThrow(() -> invalid("unknown query path"));
-            if (!field.operators().contains(operator)) throw invalid("operator is not supported for query path " + field.path().text());
+            QueryField field = schema
+                .field(new QueryPath(reference.path()))
+                .orElseThrow(() -> invalid("unknown query path"));
+            if (!field.operators().contains(operator)) throw invalid(
+                "operator is not supported for query path " + field.path().text()
+            );
         }
     }
 

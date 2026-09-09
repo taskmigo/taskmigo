@@ -2,6 +2,7 @@ package io.taskmigo.query;
 
 /// Identifies invalid client-supplied filterBy input.
 public class FilterByException extends RuntimeException {
+
     public FilterByException(String message) {
         super(message);
     }

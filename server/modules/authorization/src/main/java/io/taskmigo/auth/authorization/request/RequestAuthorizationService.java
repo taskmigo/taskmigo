@@ -38,8 +38,10 @@ public class RequestAuthorizationService implements RequestAuthorization {
     @Override
     public RequestAuthorizationResult authorize(AuthorizationPrincipal principal, AuthorizationRequest request) {
         Map<String, ?> roots = Map.of(
-            "principal", Map.of("id", principal.id().toString(), "username", principal.username()),
-            "request", Map.of("method", request.method(), "path", request.path(), "pathVariables", request.pathVariables())
+            "principal",
+            Map.of("id", principal.id().toString(), "username", principal.username()),
+            "request",
+            Map.of("method", request.method(), "path", request.path(), "pathVariables", request.pathVariables())
         );
         try {
             AuthorizationSnapshot snapshot = this.snapshot(principal.id(), roots);
@@ -102,7 +104,8 @@ public class RequestAuthorizationService implements RequestAuthorization {
         for (Evaluation evaluation : evaluations) {
             StatementInfo statement = evaluation.statement();
             try {
-                @Nullable Object value = this.embeddedLanguageEvaluator.evaluate(
+                @Nullable
+                Object value = this.embeddedLanguageEvaluator.evaluate(
                     evaluation.policy(),
                     AuthorizationEmbeddedLanguageSchemas.request(),
                     approvedRoots

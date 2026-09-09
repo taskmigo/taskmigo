@@ -11,6 +11,7 @@ import java.util.Set;
 /// Applies Boolean identities while composing Object Authorization predicates.
 @SuppressWarnings({ "checkstyle:NeedBraces", "unchecked" })
 final class DefaultObjectAuthorizationPredicates implements ObjectAuthorizationPredicates {
+
     static final DefaultObjectAuthorizationPredicates INSTANCE = new DefaultObjectAuthorizationPredicates();
 
     private DefaultObjectAuthorizationPredicates() {}
@@ -65,7 +66,11 @@ final class DefaultObjectAuthorizationPredicates implements ObjectAuthorizationP
         return ObjectAuthorizationPredicateFactory.from(
             new IdentityObjectAuthorizationSchema<>(ObjectAuthorizationPredicateFactory.schemaIdentity(predicate)),
             new SemanticAst.Unary(
-                SemanticAst.UnaryOperator.NOT, expression, LanguageType.Scalar.BOOL, expression.dependencies(), span()
+                SemanticAst.UnaryOperator.NOT,
+                expression,
+                LanguageType.Scalar.BOOL,
+                expression.dependencies(),
+                span()
             )
         );
     }
@@ -79,8 +84,16 @@ final class DefaultObjectAuthorizationPredicates implements ObjectAuthorizationP
         SemanticAst.Expression r = ObjectAuthorizationPredicateFactory.expression(right);
         return ObjectAuthorizationPredicateFactory.from(
             new IdentityObjectAuthorizationSchema<>(ObjectAuthorizationPredicateFactory.schemaIdentity(left)),
-            new SemanticAst.Binary(operator, l, r, LanguageType.Scalar.BOOL,
-                java.util.stream.Stream.of(l, r).flatMap(value -> value.dependencies().stream()).collect(java.util.stream.Collectors.toUnmodifiableSet()), span())
+            new SemanticAst.Binary(
+                operator,
+                l,
+                r,
+                LanguageType.Scalar.BOOL,
+                java.util.stream.Stream.of(l, r)
+                    .flatMap(value -> value.dependencies().stream())
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet()),
+                span()
+            )
         );
     }
 
@@ -97,15 +110,42 @@ final class DefaultObjectAuthorizationPredicates implements ObjectAuthorizationP
     }
 
     private record IdentityObjectAuthorizationSchema<Q>(String identity) implements ObjectAuthorizationSchema<Q> {
-        @Override public Class<Q> objectType() { return (Class<Q>) Object.class; }
-        @Override public Optional<ObjectAuthorizationField> field(ObjectAuthorizationPath path) { return Optional.empty(); }
-        @Override public Collection<ObjectAuthorizationField> fields() { return List.of(); }
+        @Override
+        public Class<Q> objectType() {
+            return (Class<Q>) Object.class;
+        }
+
+        @Override
+        public Optional<ObjectAuthorizationField> field(ObjectAuthorizationPath path) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Collection<ObjectAuthorizationField> fields() {
+            return List.of();
+        }
     }
 
     private static final class UnboundObjectAuthorizationSchema<Q> implements ObjectAuthorizationSchema<Q> {
-        @Override public Class<Q> objectType() { return (Class<Q>) Object.class; }
-        @Override public Optional<ObjectAuthorizationField> field(ObjectAuthorizationPath path) { return Optional.empty(); }
-        @Override public Collection<ObjectAuthorizationField> fields() { return List.of(); }
-        @Override public String identity() { return ""; }
+
+        @Override
+        public Class<Q> objectType() {
+            return (Class<Q>) Object.class;
+        }
+
+        @Override
+        public Optional<ObjectAuthorizationField> field(ObjectAuthorizationPath path) {
+            return Optional.empty();
+        }
+
+        @Override
+        public Collection<ObjectAuthorizationField> fields() {
+            return List.of();
+        }
+
+        @Override
+        public String identity() {
+            return "";
+        }
     }
 }

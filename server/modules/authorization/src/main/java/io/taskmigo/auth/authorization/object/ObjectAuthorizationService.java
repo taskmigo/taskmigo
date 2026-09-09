@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 /// Evaluates effective object Statements into opaque Object Authorization predicates.
 @Service
 public class ObjectAuthorizationService implements ObjectAuthorization {
+
     private final EmbeddedLanguagePartialEvaluator partialEvaluator;
     private final EmbeddedLanguageCompiler compiler;
     private final List<ObjectAuthorizationSchema<?>> schemas;

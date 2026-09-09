@@ -15,6 +15,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 /// Implements the trusted logical-to-JPA step owned by resource persistence adapters.
 public final class JpaSemanticPredicateBinder {
+
     private JpaSemanticPredicateBinder() {}
 
     public static <E> Specification<E> bind(
@@ -34,7 +35,8 @@ public final class JpaSemanticPredicateBinder {
     ) {
         return switch (expression) {
             case SemanticAst.Literal literal when literal.value() instanceof Boolean value -> value
-                ? builder.conjunction() : builder.disjunction();
+                ? builder.conjunction()
+                : builder.disjunction();
             case SemanticAst.Unary unary when unary.operator() == SemanticAst.UnaryOperator.NOT -> builder.not(
                 predicate(unary.operand(), root, builder, paths, types)
             );
@@ -47,7 +49,11 @@ public final class JpaSemanticPredicateBinder {
                 predicate(binary.right(), root, builder, paths, types)
             );
             case SemanticAst.Binary binary when binary.operator() == SemanticAst.BinaryOperator.IN -> in(
-                binary, root, builder, paths, types
+                binary,
+                root,
+                builder,
+                paths,
+                types
             );
             case SemanticAst.Binary binary -> comparison(binary, root, builder, paths, types);
             default -> throw unsupported("predicate");
@@ -65,8 +71,10 @@ public final class JpaSemanticPredicateBinder {
         boolean leftNull = isNull(binary.left());
         boolean rightNull = isNull(binary.right());
         if (leftNull || rightNull) {
-            if (binary.operator() != SemanticAst.BinaryOperator.EQUAL
-                && binary.operator() != SemanticAst.BinaryOperator.NOT_EQUAL) {
+            if (
+                binary.operator() != SemanticAst.BinaryOperator.EQUAL &&
+                binary.operator() != SemanticAst.BinaryOperator.NOT_EQUAL
+            ) {
                 throw unsupported("null comparison");
             }
             Expression<?> value = value(leftNull ? binary.right() : binary.left(), root, builder, paths, types);
@@ -94,15 +102,20 @@ public final class JpaSemanticPredicateBinder {
     ) {
         Expression<?> left = value(binary.left(), root, builder, paths, types);
         CriteriaBuilder.In<Object> predicate = builder.in(left);
-        String logical = binary.left() instanceof SemanticAst.Reference reference
-            ? String.join(".", reference.path()) : null;
+        String logical =
+            binary.left() instanceof SemanticAst.Reference reference ? String.join(".", reference.path()) : null;
         Class<?> type = logical == null ? null : types.get(logical);
         switch (binary.right()) {
-            case SemanticAst.ListLiteral list -> list.values().forEach(item -> predicate.value(item instanceof SemanticAst.Literal literal
-                ? literal(coerce(literal.value(), type), builder)
-                : value(item, root, builder, paths, types)));
+            case SemanticAst.ListLiteral list -> list.values().forEach(item ->
+                predicate.value(
+                    item instanceof SemanticAst.Literal literal
+                        ? literal(coerce(literal.value(), type), builder)
+                        : value(item, root, builder, paths, types)
+                )
+            );
             case SemanticAst.Literal literal when literal.value() instanceof List<?> values -> values.forEach(item ->
-                predicate.value(literal(coerce(item, type), builder)));
+                predicate.value(literal(coerce(item, type), builder))
+            );
             default -> throw unsupported("IN values");
         }
         return predicate;
@@ -134,16 +147,24 @@ public final class JpaSemanticPredicateBinder {
             case SemanticAst.Literal literal -> literal(literal.value(), builder);
             case SemanticAst.ListLiteral _ -> throw unsupported("list value");
             case SemanticAst.Binary binary when binary.operator() == SemanticAst.BinaryOperator.ADD -> builder.sum(
-                numeric(binary.left(), root, builder, paths, types), numeric(binary.right(), root, builder, paths, types)
+                numeric(binary.left(), root, builder, paths, types),
+                numeric(binary.right(), root, builder, paths, types)
             );
-            case SemanticAst.Binary binary when binary.operator() == SemanticAst.BinaryOperator.SUBTRACT -> builder.diff(
-                numeric(binary.left(), root, builder, paths, types), numeric(binary.right(), root, builder, paths, types)
+            case SemanticAst.Binary binary when (
+                binary.operator() == SemanticAst.BinaryOperator.SUBTRACT
+            ) -> builder.diff(
+                numeric(binary.left(), root, builder, paths, types),
+                numeric(binary.right(), root, builder, paths, types)
             );
-            case SemanticAst.Binary binary when binary.operator() == SemanticAst.BinaryOperator.MULTIPLY -> builder.prod(
-                numeric(binary.left(), root, builder, paths, types), numeric(binary.right(), root, builder, paths, types)
+            case SemanticAst.Binary binary when (
+                binary.operator() == SemanticAst.BinaryOperator.MULTIPLY
+            ) -> builder.prod(
+                numeric(binary.left(), root, builder, paths, types),
+                numeric(binary.right(), root, builder, paths, types)
             );
             case SemanticAst.Binary binary when binary.operator() == SemanticAst.BinaryOperator.DIVIDE -> builder.quot(
-                numeric(binary.left(), root, builder, paths, types), numeric(binary.right(), root, builder, paths, types)
+                numeric(binary.left(), root, builder, paths, types),
+                numeric(binary.right(), root, builder, paths, types)
             );
             case SemanticAst.Unary unary when unary.operator() == SemanticAst.UnaryOperator.MINUS -> builder.neg(
                 numeric(unary.operand(), root, builder, paths, types)

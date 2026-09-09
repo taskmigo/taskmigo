@@ -30,57 +30,93 @@ public class AuthorizationResourceSchemas {
     /// Registers the role collection query contract.
     @Bean
     QuerySchema<RoleInfo> roleQuerySchema() {
-        return schema(RoleInfo.class, List.of(field("id", UUID_TYPE), field("name", STRING_TYPE), nullable("description")));
+        return schema(
+            RoleInfo.class,
+            List.of(field("id", UUID_TYPE), field("name", STRING_TYPE), nullable("description"))
+        );
     }
 
     /// Registers the role Object Authorization contract.
     @Bean
     ObjectAuthorizationSchema<RoleInfo> roleObjectAuthorizationSchema() {
-        return objectSchema(RoleInfo.class, List.of(
-            objectField("id", UUID_TYPE), objectField("name", STRING_TYPE), objectNullable("description")
-        ));
+        return objectSchema(
+            RoleInfo.class,
+            List.of(objectField("id", UUID_TYPE), objectField("name", STRING_TYPE), objectNullable("description"))
+        );
     }
 
     /// Registers the statement collection query contract, including composed API target paths.
     @Bean
     QuerySchema<StatementInfo> statementQuerySchema() {
-        return schema(StatementInfo.class, List.of(
-            field("id", UUID_TYPE), field("name", STRING_TYPE), nullable("description"),
-            field("method", STRING_TYPE), field("path", STRING_TYPE)
-        ));
+        return schema(
+            StatementInfo.class,
+            List.of(
+                field("id", UUID_TYPE),
+                field("name", STRING_TYPE),
+                nullable("description"),
+                field("method", STRING_TYPE),
+                field("path", STRING_TYPE)
+            )
+        );
     }
 
     /// Registers the Statement Object Authorization contract.
     @Bean
     ObjectAuthorizationSchema<StatementInfo> statementObjectAuthorizationSchema() {
-        return objectSchema(StatementInfo.class, List.of(
-            objectField("id", UUID_TYPE), objectField("name", STRING_TYPE), objectNullable("description"),
-            objectField("method", STRING_TYPE), objectField("path", STRING_TYPE)
-        ));
+        return objectSchema(
+            StatementInfo.class,
+            List.of(
+                objectField("id", UUID_TYPE),
+                objectField("name", STRING_TYPE),
+                objectNullable("description"),
+                objectField("method", STRING_TYPE),
+                objectField("path", STRING_TYPE)
+            )
+        );
     }
 
     /// Registers the trusted Role query-to-entity mapping.
     @Bean
     QueryPredicateBinder<RoleInfo, RoleEntity> roleQueryPredicateBinder() {
-        return new JpaQueryPredicateBinder<>(RoleInfo.class, RoleEntity.class, simplePaths("id", "name", "description"), simpleTypes());
+        return new JpaQueryPredicateBinder<>(
+            RoleInfo.class,
+            RoleEntity.class,
+            simplePaths("id", "name", "description"),
+            simpleTypes()
+        );
     }
 
     /// Registers the trusted Role object-policy-to-entity mapping.
     @Bean
     ObjectAuthorizationPredicateBinder<RoleInfo, RoleEntity> roleObjectAuthorizationPredicateBinder() {
-        return new JpaObjectAuthorizationPredicateBinder<>(RoleInfo.class, RoleEntity.class, simplePaths("id", "name", "description"), simpleTypes());
+        return new JpaObjectAuthorizationPredicateBinder<>(
+            RoleInfo.class,
+            RoleEntity.class,
+            simplePaths("id", "name", "description"),
+            simpleTypes()
+        );
     }
 
     /// Registers the trusted Statement query-to-entity mapping.
     @Bean
     QueryPredicateBinder<StatementInfo, StatementEntity> statementQueryPredicateBinder() {
-        return new JpaQueryPredicateBinder<>(StatementInfo.class, StatementEntity.class, simplePaths("id", "name", "description", "method", "path"), simpleTypes());
+        return new JpaQueryPredicateBinder<>(
+            StatementInfo.class,
+            StatementEntity.class,
+            simplePaths("id", "name", "description", "method", "path"),
+            simpleTypes()
+        );
     }
 
     /// Registers the trusted Statement object-policy-to-entity mapping.
     @Bean
     ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> statementObjectAuthorizationPredicateBinder() {
-        return new JpaObjectAuthorizationPredicateBinder<>(StatementInfo.class, StatementEntity.class, simplePaths("id", "name", "description", "method", "path"), simpleTypes());
+        return new JpaObjectAuthorizationPredicateBinder<>(
+            StatementInfo.class,
+            StatementEntity.class,
+            simplePaths("id", "name", "description", "method", "path"),
+            simpleTypes()
+        );
     }
 
     private static QueryField field(String path, ResolvableType type) {
@@ -100,11 +136,24 @@ public class AuthorizationResourceSchemas {
     }
 
     private static Map<String, String> simplePaths(String... fields) {
-        return java.util.Arrays.stream(fields).collect(java.util.stream.Collectors.toUnmodifiableMap(field -> field, field -> field));
+        return java.util.Arrays.stream(fields).collect(
+            java.util.stream.Collectors.toUnmodifiableMap(field -> field, field -> field)
+        );
     }
 
     private static Map<String, Class<?>> simpleTypes() {
-        return Map.of("id", UUID.class, "name", String.class, "description", String.class, "method", String.class, "path", String.class);
+        return Map.of(
+            "id",
+            UUID.class,
+            "name",
+            String.class,
+            "description",
+            String.class,
+            "method",
+            String.class,
+            "path",
+            String.class
+        );
     }
 
     private static <Q> QuerySchema<Q> schema(Class<Q> type, Collection<QueryField> fields) {
@@ -117,7 +166,10 @@ public class AuthorizationResourceSchemas {
 
             @Override
             public Optional<QueryField> field(QueryPath path) {
-                return declared.stream().filter(field -> field.path().equals(path)).findFirst();
+                return declared
+                    .stream()
+                    .filter(field -> field.path().equals(path))
+                    .findFirst();
             }
 
             @Override
@@ -140,7 +192,10 @@ public class AuthorizationResourceSchemas {
 
             @Override
             public Optional<ObjectAuthorizationField> field(ObjectAuthorizationPath path) {
-                return declared.stream().filter(field -> field.path().equals(path)).findFirst();
+                return declared
+                    .stream()
+                    .filter(field -> field.path().equals(path))
+                    .findFirst();
             }
 
             @Override

@@ -87,7 +87,11 @@ public final class StatementArtifactFactory {
         append(state, schema.fingerprint());
         append(state, this.compiler.contractFingerprint());
         if (statement.scope() == io.taskmigo.auth.authorization.statement.Scope.OBJECT) {
-            this.schemas.stream().map(ObjectAuthorizationSchema::identity).sorted().forEach(identity -> append(state, identity));
+            this.schemas
+                .stream()
+                .map(ObjectAuthorizationSchema::identity)
+                .sorted()
+                .forEach(identity -> append(state, identity));
         }
         try {
             return HexFormat.of().formatHex(

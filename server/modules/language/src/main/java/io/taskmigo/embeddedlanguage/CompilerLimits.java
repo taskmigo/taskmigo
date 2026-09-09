@@ -25,7 +25,16 @@ public record CompilerLimits(
         int maxBlockDepth,
         int maxListElements
     ) {
-        this(maxSourceCharacters, maxTokens, maxSyntaxDepth, maxSemanticAstNodes, maxBlockDepth, maxListElements, 20, 20);
+        this(
+            maxSourceCharacters,
+            maxTokens,
+            maxSyntaxDepth,
+            maxSemanticAstNodes,
+            maxBlockDepth,
+            maxListElements,
+            20,
+            20
+        );
     }
 
     public CompilerLimits {
