@@ -37,21 +37,8 @@ jobs:
             exit 0
           fi
 
-          git diff --binary > "$RUNNER_TEMP/formatting.patch"
-          git diff --name-only -z | tar --null --files-from=- -czf "$RUNNER_TEMP/formatted-files.tar.gz"
-
           echo "::group::Formatting patch for AI agents"
           git --no-pager diff --no-ext-diff --unified=3
           echo "::endgroup::"
           echo "::error::Formatting differs. Apply the patch shown above."
           exit 1
-
-      - name: Upload formatting fix
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@v7.0.1
-        with:
-          name: formatting-fix
-          if-no-files-found: ignore
-          path: |
-            ${{ runner.temp }}/formatting.patch
-            ${{ runner.temp }}/formatted-files.tar.gz
