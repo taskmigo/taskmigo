@@ -1,6 +1,6 @@
 package io.taskmigo.rest.support.objectauthorization;
 
-import io.taskmigo.auth.authorization.request.AuthorizationOperation;
+import io.taskmigo.auth.authorization.request.AuthorizationContext;
 import org.jspecify.annotations.Nullable;
 import org.springframework.core.MethodParameter;
 import org.springframework.stereotype.Component;
@@ -10,26 +10,26 @@ import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
-/// Resolves the complete authorization operation transported from Spring Security into a typed MVC controller argument.
+/// Resolves the opaque authorization context established by Spring Security into a controller argument.
 @Component
-public final class AuthorizationOperationArgumentResolver implements HandlerMethodArgumentResolver {
+public final class AuthorizationContextArgumentResolver implements HandlerMethodArgumentResolver {
 
     @Override
     public boolean supportsParameter(MethodParameter parameter) {
-        return parameter.getParameterType() == AuthorizationOperation.class;
+        return parameter.getParameterType() == AuthorizationContext.class;
     }
 
     @Override
-    public AuthorizationOperation resolveArgument(
+    public AuthorizationContext resolveArgument(
         MethodParameter parameter,
         @Nullable ModelAndViewContainer container,
         NativeWebRequest webRequest,
         @Nullable WebDataBinderFactory binderFactory
     ) {
-        Object value = webRequest.getAttribute(AuthorizationOperation.ATTRIBUTE, RequestAttributes.SCOPE_REQUEST);
-        if (!(value instanceof AuthorizationOperation operation)) {
-            throw new IllegalStateException("authorization operation is missing for object access");
+        Object value = webRequest.getAttribute(AuthorizationContext.ATTRIBUTE, RequestAttributes.SCOPE_REQUEST);
+        if (!(value instanceof AuthorizationContext context)) {
+            throw new IllegalStateException("authorization context is missing for object access");
         }
-        return operation;
+        return context;
     }
 }

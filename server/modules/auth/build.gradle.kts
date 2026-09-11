@@ -6,6 +6,8 @@ description = "Authorization resource persistence and query integration"
 
 dependencies {
     api(libs.jspecify)
+    implementation(platform(libs.spring.boot.bom))
+    implementation(platform(libs.spring.modulith.bom))
     api(libs.spring.modulith.starter.core)
     api(project(":modules:foundation"))
     api(project(":modules:language"))

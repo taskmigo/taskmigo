@@ -2,6 +2,8 @@ package io.taskmigo.auth.authorization.request;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.taskmigo.auth.authorization.embeddedlanguage.AuthorizationCompilationProfile;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchemaRegistry;
 import io.taskmigo.auth.authorization.statement.ApiInfo;
 import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
@@ -18,7 +20,8 @@ class StatementArtifactFactoryTest {
 
     private final StatementArtifactFactory factory = new StatementArtifactFactory(
         new EmbeddedLanguageCompiler(),
-        List.of()
+        List.of(),
+        ObjectAuthorizationSchemaRegistry.all(List.of())
     );
 
     /**
@@ -46,6 +49,28 @@ class StatementArtifactFactoryTest {
         assertThat(second.pathMatcher()).isSameAs(first.pathMatcher());
         assertThat(different.policy()).isNotSameAs(first.policy());
         assertThat(different.pathMatcher()).isNotSameAs(first.pathMatcher());
+    }
+
+    /**
+     * Verifies that compiled Statement artifacts carry the current Language and Authorization profile contracts.
+     *
+     * Given: one request Statement compiled by the artifact factory.
+     * Expect: its metadata records Language v0.5.0 and the Authorization-owned profile fingerprint.
+     */
+    @Test
+    @DisplayName("includes language and authorization profile identity in artifacts")
+    void shouldIncludeLanguageAndProfileIdentityWhenStatementIsCompiled() {
+        // Arrange
+        StatementInfo statement = statement(UUID.randomUUID(), Effect.ALLOW, "/api/v0/users");
+
+        // Act
+        StatementExecutionArtifact artifact = this.factory.build(List.of(statement)).getFirst();
+
+        // Assert
+        assertThat(artifact.policy().languageVersion()).isEqualTo("0.5.0");
+        assertThat(artifact.policy().profileFingerprint()).isEqualTo(
+            AuthorizationCompilationProfile.policy().fingerprint()
+        );
     }
 
     private static StatementInfo statement(UUID id, Effect effect, String path) {

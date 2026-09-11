@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -129,7 +130,21 @@ def main() -> int:
             print(f"- {error}", file=sys.stderr)
         return 1
 
-    print("Module architecture verification passed for foundation, language, query, authorization, identity, and database.")
+    resolved = subprocess.run(
+        ["./gradlew", "--no-daemon", "verifyResolvedModuleArchitecture", "--console=plain"],
+        cwd=SERVER,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if resolved.returncode != 0:
+        print("Resolved module architecture verification failed:", file=sys.stderr)
+        output = (resolved.stdout + "\n" + resolved.stderr).splitlines()
+        for line in output[-200:]:
+            print(line, file=sys.stderr)
+        return resolved.returncode
+
+    print("Module architecture verification passed for the static and resolved dependency graphs.")
     return 0
 
 

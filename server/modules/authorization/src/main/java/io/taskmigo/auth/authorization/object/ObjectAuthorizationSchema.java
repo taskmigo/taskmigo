@@ -2,6 +2,7 @@ package io.taskmigo.auth.authorization.object;
 
 import java.util.Collection;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /// Defines the persistence-neutral, explicitly allow-listed object policy surface.
 public interface ObjectAuthorizationSchema<Q> {
@@ -16,6 +17,31 @@ public interface ObjectAuthorizationSchema<Q> {
 
     /// Returns a stable identity for paths, types, nullability, and operators.
     default String identity() {
-        return this.objectType().getName() + ":" + this.fields().stream().map(Object::toString).sorted().toList();
+        return (
+            this.objectType().getName() +
+            ":" +
+            this.fields()
+                .stream()
+                .map(ObjectAuthorizationSchema::canonicalField)
+                .sorted()
+                .collect(Collectors.joining("|", "[", "]"))
+        );
+    }
+
+    private static String canonicalField(ObjectAuthorizationField field) {
+        return (
+            field.path().text() +
+            ":" +
+            field.type().getType().getTypeName() +
+            ":" +
+            field.nullable() +
+            ":" +
+            field
+                .operators()
+                .stream()
+                .map(Enum::name)
+                .sorted()
+                .collect(Collectors.joining(",", "[", "]"))
+        );
     }
 }

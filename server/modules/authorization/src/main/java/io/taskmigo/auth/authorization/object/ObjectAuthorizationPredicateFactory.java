@@ -10,11 +10,16 @@ import java.util.Optional;
 import java.util.Set;
 
 /// Creates opaque Object Authorization predicates for trusted resource binders.
-final class ObjectAuthorizationPredicateFactory {
+public final class ObjectAuthorizationPredicateFactory {
 
     private ObjectAuthorizationPredicateFactory() {}
 
-    static <Q> ObjectAuthorizationPredicate<Q> from(
+    /// Creates an opaque predicate from a trusted Boolean Language expression.
+    ///
+    /// @param schema the logical object contract the expression is bound to
+    /// @param expression the validated Boolean expression
+    /// @return an opaque predicate for the supplied schema
+    public static <Q> ObjectAuthorizationPredicate<Q> from(
         ObjectAuthorizationSchema<Q> schema,
         SemanticAst.Expression expression
     ) {
@@ -26,25 +31,46 @@ final class ObjectAuthorizationPredicateFactory {
         return new LogicalObjectAuthorizationPredicate<>(schema.identity(), expression);
     }
 
-    static <Q> ObjectAuthorizationPredicate<Q> constant(ObjectAuthorizationSchema<Q> schema, boolean value) {
+    /// Creates an opaque constant predicate for a logical object contract.
+    ///
+    /// @param schema the logical object contract
+    /// @param value the constant authorization result
+    /// @return an opaque constant predicate
+    public static <Q> ObjectAuthorizationPredicate<Q> constant(ObjectAuthorizationSchema<Q> schema, boolean value) {
         return from(schema, new SemanticAst.Literal(value, LanguageType.Scalar.BOOL, Set.of(), span()));
     }
 
-    static <Q> ObjectAuthorizationPredicate<Q> constantLike(ObjectAuthorizationPredicate<?> predicate, boolean value) {
+    /// Creates a constant predicate that preserves another predicate's schema identity.
+    ///
+    /// @param predicate the predicate whose schema identity is retained
+    /// @param value the constant authorization result
+    /// @return an opaque constant predicate
+    public static <Q> ObjectAuthorizationPredicate<Q> constantLike(
+        ObjectAuthorizationPredicate<?> predicate,
+        boolean value
+    ) {
         return from(
             new IdentityObjectAuthorizationSchema<>(schemaIdentity(predicate)),
             new SemanticAst.Literal(value, LanguageType.Scalar.BOOL, Set.of(), span())
         );
     }
 
-    static SemanticAst.Expression expression(ObjectAuthorizationPredicate<?> predicate) {
+    /// Extracts the trusted Language expression for a persistence binder.
+    ///
+    /// @param predicate the predicate produced by this factory
+    /// @return the predicate's Language expression
+    public static SemanticAst.Expression expression(ObjectAuthorizationPredicate<?> predicate) {
         if (!(predicate instanceof LogicalObjectAuthorizationPredicate<?> logical)) {
             throw new IllegalArgumentException("unsupported Object Authorization Predicate implementation");
         }
         return logical.expression();
     }
 
-    static String schemaIdentity(ObjectAuthorizationPredicate<?> predicate) {
+    /// Returns the stable logical schema identity carried by a predicate.
+    ///
+    /// @param predicate the predicate produced by this factory
+    /// @return the predicate's schema identity
+    public static String schemaIdentity(ObjectAuthorizationPredicate<?> predicate) {
         if (!(predicate instanceof LogicalObjectAuthorizationPredicate<?> logical)) {
             throw new IllegalArgumentException("unsupported Object Authorization Predicate implementation");
         }

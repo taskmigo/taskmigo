@@ -3,9 +3,9 @@ package io.taskmigo.rest.api.v0.auth.authorization;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.taskmigo.auth.authorization.object.ObjectAuthorization;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchema;
-import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
-import io.taskmigo.auth.authorization.request.AuthorizationOperation;
+import io.taskmigo.auth.authorization.request.AuthorizationContext;
 import io.taskmigo.auth.authorization.statement.StatementService;
 import io.taskmigo.auth.role.RoleAuthorizationService;
 import io.taskmigo.auth.role.RoleInfo;
@@ -42,7 +42,7 @@ class RoleController {
     private final RoleService access;
     private final RoleAuthorizationService roleAuthorization;
     private final StatementService statements;
-    private final ObjectAuthorizationService objectAuthorization;
+    private final ObjectAuthorization objectAuthorization;
     private final ObjectAuthorizationSchema<RoleInfo> objectSchema;
     private final ApiResponseFactory responses;
 
@@ -50,7 +50,7 @@ class RoleController {
         RoleService access,
         RoleAuthorizationService roleAuthorization,
         StatementService statements,
-        ObjectAuthorizationService objectAuthorization,
+        ObjectAuthorization objectAuthorization,
         ObjectAuthorizationSchema<RoleInfo> objectSchema,
         ApiResponseFactory responses
     ) {
@@ -80,13 +80,13 @@ class RoleController {
     ResponseEntity<ApiResponse<List<RoleInfo>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         FilteredQuery<RoleInfo> filter,
-        AuthorizationOperation operation
+        AuthorizationContext context
     ) {
         OffsetPage<RoleInfo> roles = this.access.listRoles(
             pagination.page(),
             pagination.pageSize(),
             filter.predicate(),
-            this.objectAuthorization.authorize(operation, this.objectSchema)
+            this.objectAuthorization.authorize(context, this.objectSchema)
         );
         return this.responses.ok(
             roles.items(),

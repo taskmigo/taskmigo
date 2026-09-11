@@ -54,8 +54,8 @@ public class AuthorizationResourceSchemas {
                 field("id", UUID_TYPE),
                 field("name", STRING_TYPE),
                 nullable("description"),
-                field("method", STRING_TYPE),
-                field("path", STRING_TYPE)
+                field("target.api.method", STRING_TYPE),
+                field("target.api.path", STRING_TYPE)
             )
         );
     }
@@ -69,8 +69,8 @@ public class AuthorizationResourceSchemas {
                 objectField("id", UUID_TYPE),
                 objectField("name", STRING_TYPE),
                 objectNullable("description"),
-                objectField("method", STRING_TYPE),
-                objectField("path", STRING_TYPE)
+                objectField("target.api.method", STRING_TYPE),
+                objectField("target.api.path", STRING_TYPE)
             )
         );
     }
@@ -103,8 +103,8 @@ public class AuthorizationResourceSchemas {
         return new JpaQueryPredicateBinder<>(
             StatementInfo.class,
             StatementEntity.class,
-            simplePaths("id", "name", "description", "method", "path"),
-            simpleTypes()
+            statementPaths(),
+            statementTypes()
         );
     }
 
@@ -114,8 +114,8 @@ public class AuthorizationResourceSchemas {
         return new JpaObjectAuthorizationPredicateBinder<>(
             StatementInfo.class,
             StatementEntity.class,
-            simplePaths("id", "name", "description", "method", "path"),
-            simpleTypes()
+            statementPaths(),
+            statementTypes()
         );
     }
 
@@ -142,6 +142,10 @@ public class AuthorizationResourceSchemas {
     }
 
     private static Map<String, Class<?>> simpleTypes() {
+        return Map.of("id", UUID.class, "name", String.class, "description", String.class);
+    }
+
+    private static Map<String, Class<?>> statementTypes() {
         return Map.of(
             "id",
             UUID.class,
@@ -149,10 +153,25 @@ public class AuthorizationResourceSchemas {
             String.class,
             "description",
             String.class,
-            "method",
+            "target.api.method",
             String.class,
-            "path",
+            "target.api.path",
             String.class
+        );
+    }
+
+    private static Map<String, String> statementPaths() {
+        return Map.of(
+            "id",
+            "id",
+            "name",
+            "name",
+            "description",
+            "description",
+            "target.api.method",
+            "method",
+            "target.api.path",
+            "path"
         );
     }
 

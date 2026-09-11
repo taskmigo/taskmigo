@@ -3,9 +3,9 @@ package io.taskmigo.rest.api.v0.auth.authorization;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.taskmigo.auth.authorization.object.ObjectAuthorization;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchema;
-import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
-import io.taskmigo.auth.authorization.request.AuthorizationOperation;
+import io.taskmigo.auth.authorization.request.AuthorizationContext;
 import io.taskmigo.auth.authorization.statement.ApiInfo;
 import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
@@ -38,13 +38,13 @@ import org.springframework.web.bind.annotation.RestController;
 class StatementController {
 
     private final StatementService statements;
-    private final ObjectAuthorizationService objectAuthorization;
+    private final ObjectAuthorization objectAuthorization;
     private final ObjectAuthorizationSchema<StatementInfo> objectSchema;
     private final ApiResponseFactory responses;
 
     StatementController(
         StatementService statements,
-        ObjectAuthorizationService objectAuthorization,
+        ObjectAuthorization objectAuthorization,
         ObjectAuthorizationSchema<StatementInfo> objectSchema,
         ApiResponseFactory responses
     ) {
@@ -79,13 +79,13 @@ class StatementController {
     ResponseEntity<ApiResponse<List<StatementInfo>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         FilteredQuery<StatementInfo> filter,
-        AuthorizationOperation operation
+        AuthorizationContext context
     ) {
         OffsetPage<StatementInfo> page = this.statements.list(
             pagination.page(),
             pagination.pageSize(),
             filter.predicate(),
-            this.objectAuthorization.authorize(operation, this.objectSchema)
+            this.objectAuthorization.authorize(context, this.objectSchema)
         );
         return this.responses.ok(
             page.items(),

@@ -13,6 +13,8 @@ description = "Taskmigo HTTP and OAuth application"
 
 dependencies {
     implementation(libs.jspecify)
+    implementation(platform(libs.spring.boot.bom))
+    implementation(platform(libs.spring.modulith.bom))
     implementation(project(":modules:foundation"))
     implementation(project(":modules:query"))
     implementation(project(":modules:authorization"))

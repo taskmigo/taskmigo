@@ -13,6 +13,8 @@ description = "Taskmigo background worker application"
 
 dependencies {
     implementation(libs.jspecify)
+    implementation(platform(libs.spring.boot.bom))
+    implementation(platform(libs.spring.modulith.bom))
     implementation(project(":modules:database"))
     implementation(project(":modules:auth"))
     implementation(project(":modules:identity"))

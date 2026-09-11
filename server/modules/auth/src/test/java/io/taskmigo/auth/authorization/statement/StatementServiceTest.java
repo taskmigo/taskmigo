@@ -8,7 +8,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
-import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
+import io.taskmigo.auth.authorization.object.ObjectAuthorization;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchemaRegistry;
 import io.taskmigo.auth.authorization.request.StatementArtifactFactory;
 import io.taskmigo.auth.resourcequery.ObjectAuthorizationPredicateBinder;
 import io.taskmigo.auth.resourcequery.QueryPredicateBinder;
@@ -117,7 +118,7 @@ class StatementServiceTest {
         when(this.statements.existsByName("invalid_policy")).thenReturn(false);
         StatementService activation = new StatementService(
             this.statements,
-            mock(ObjectAuthorizationService.class),
+            mock(ObjectAuthorization.class),
             new EmbeddedLanguageCompiler(),
             mock(QueryPredicateBinder.class),
             mock(ObjectAuthorizationPredicateBinder.class)
@@ -238,7 +239,11 @@ class StatementServiceTest {
     }
 
     private static StatementExecutionArtifact executable(StatementInfo statement) {
-        return new StatementArtifactFactory(new EmbeddedLanguageCompiler(), List.of())
+        return new StatementArtifactFactory(
+            new EmbeddedLanguageCompiler(),
+            List.of(),
+            ObjectAuthorizationSchemaRegistry.all(List.of())
+        )
             .build(List.of(statement))
             .getFirst();
     }

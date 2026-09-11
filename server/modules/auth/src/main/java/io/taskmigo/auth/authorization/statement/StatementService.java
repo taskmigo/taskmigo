@@ -2,9 +2,10 @@ package io.taskmigo.auth.authorization.statement;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
 import io.taskmigo.auth.authorization.AuthorizationName;
+import io.taskmigo.auth.authorization.embeddedlanguage.AuthorizationCompilationProfile;
 import io.taskmigo.auth.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
+import io.taskmigo.auth.authorization.object.ObjectAuthorization;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
 import io.taskmigo.auth.resourcequery.ObjectAuthorizationPredicateBinder;
 import io.taskmigo.auth.resourcequery.QueryPredicateBinder;
 import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
@@ -27,14 +28,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class StatementService {
 
     private final StatementRepository statements;
-    private final ObjectAuthorizationService objectAuthorization;
+    private final ObjectAuthorization objectAuthorization;
     private final EmbeddedLanguageCompiler embeddedLanguageCompiler;
     private final QueryPredicateBinder<StatementInfo, StatementEntity> queryBinder;
     private final ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> objectBinder;
 
     StatementService(
         StatementRepository statements,
-        ObjectAuthorizationService objectAuthorization,
+        ObjectAuthorization objectAuthorization,
         EmbeddedLanguageCompiler embeddedLanguageCompiler,
         QueryPredicateBinder<StatementInfo, StatementEntity> queryBinder,
         ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> objectBinder
@@ -85,7 +86,11 @@ public class StatementService {
         String validPolicy = requiredPolicy(policy);
         try {
             if (validScope == Scope.REQUEST) {
-                this.embeddedLanguageCompiler.compile(validPolicy, AuthorizationEmbeddedLanguageSchemas.request());
+                this.embeddedLanguageCompiler.compile(
+                    validPolicy,
+                    AuthorizationEmbeddedLanguageSchemas.request(),
+                    AuthorizationCompilationProfile.policy()
+                );
             } else {
                 this.objectAuthorization.validatePolicy(validPolicy, validMethod, validPath);
             }
@@ -142,7 +147,11 @@ public class StatementService {
         String validPolicy = requiredPolicy(policy);
         try {
             if (validScope == Scope.REQUEST) {
-                this.embeddedLanguageCompiler.compile(validPolicy, AuthorizationEmbeddedLanguageSchemas.request());
+                this.embeddedLanguageCompiler.compile(
+                    validPolicy,
+                    AuthorizationEmbeddedLanguageSchemas.request(),
+                    AuthorizationCompilationProfile.policy()
+                );
             } else {
                 this.objectAuthorization.validatePolicy(validPolicy, validMethod, validPath);
             }

@@ -6,6 +6,8 @@ description = "Taskmigo identity resources, persistence, and authorization integ
 
 dependencies {
     api(libs.jspecify)
+    implementation(platform(libs.spring.boot.bom))
+    implementation(platform(libs.spring.modulith.bom))
     api(libs.spring.modulith.starter.core)
     api(project(":modules:foundation"))
     api(project(":modules:query"))

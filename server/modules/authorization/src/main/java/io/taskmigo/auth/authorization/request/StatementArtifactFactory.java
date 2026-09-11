@@ -1,8 +1,10 @@
 package io.taskmigo.auth.authorization.request;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
+import io.taskmigo.auth.authorization.embeddedlanguage.AuthorizationCompilationProfile;
 import io.taskmigo.auth.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
 import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchemaRegistry;
 import io.taskmigo.auth.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
@@ -30,12 +32,18 @@ public final class StatementArtifactFactory {
 
     private final EmbeddedLanguageCompiler compiler;
     private final List<ObjectAuthorizationSchema<?>> schemas;
+    private final ObjectAuthorizationSchemaRegistry schemaRegistry;
     private final ConcurrentMap<CacheKey, CachedArtifacts> derived = new ConcurrentHashMap<>();
 
     /// Creates a factory whose cache contains only compiled policy and matcher derivatives.
-    public StatementArtifactFactory(EmbeddedLanguageCompiler compiler, List<ObjectAuthorizationSchema<?>> schemas) {
+    public StatementArtifactFactory(
+        EmbeddedLanguageCompiler compiler,
+        List<ObjectAuthorizationSchema<?>> schemas,
+        ObjectAuthorizationSchemaRegistry schemaRegistry
+    ) {
         this.compiler = compiler;
         this.schemas = List.copyOf(schemas);
+        this.schemaRegistry = schemaRegistry;
     }
 
     /// Derives executable Statements from the exact rows returned by the current authorization resolution.
@@ -63,7 +71,7 @@ public final class StatementArtifactFactory {
     private DerivedArtifacts compile(StatementInfo statement, EnvironmentSchema schema) {
         try {
             return new DerivedArtifacts(
-                this.compiler.compile(statement.policy(), schema),
+                this.compiler.compile(statement.policy(), schema, AuthorizationCompilationProfile.policy()),
                 Pattern.compile(statement.target().api().path())
             );
         } catch (PatternSyntaxException exception) {
@@ -86,8 +94,10 @@ public final class StatementArtifactFactory {
         append(state, SemanticAst.LANGUAGE_VERSION);
         append(state, schema.fingerprint());
         append(state, this.compiler.contractFingerprint());
+        append(state, AuthorizationCompilationProfile.policy().fingerprint());
         if (statement.scope() == io.taskmigo.auth.authorization.statement.Scope.OBJECT) {
-            this.schemas
+            this.schemaRegistry
+                .applicable(statement.target().api().method(), statement.target().api().path())
                 .stream()
                 .map(ObjectAuthorizationSchema::identity)
                 .sorted()

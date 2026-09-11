@@ -5,11 +5,15 @@ import io.taskmigo.embeddedlanguage.SemanticAst;
 
 /// Validates symbolic Object Authorization paths and operators against one logical schema.
 @SuppressWarnings("checkstyle:NeedBraces")
-final class ObjectAuthorizationSchemaValidator {
+public final class ObjectAuthorizationSchemaValidator {
 
     private ObjectAuthorizationSchemaValidator() {}
 
-    static <Q> void validate(SemanticAst.Expression expression, ObjectAuthorizationSchema<Q> schema) {
+    /// Validates every path and operator in an expression against one logical schema.
+    ///
+    /// @param expression the compiled policy expression
+    /// @param schema the logical object contract
+    public static <Q> void validate(SemanticAst.Expression expression, ObjectAuthorizationSchema<Q> schema) {
         switch (expression) {
             case SemanticAst.Literal _ -> {
             }

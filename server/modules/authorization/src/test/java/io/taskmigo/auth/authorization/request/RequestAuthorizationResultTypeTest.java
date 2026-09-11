@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchemaRegistry;
 import io.taskmigo.auth.authorization.statement.ApiInfo;
 import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
@@ -44,7 +45,11 @@ class RequestAuthorizationResultTypeTest {
         RequestAuthorizationService service = new RequestAuthorizationService(
             resolver,
             new EmbeddedLanguageEvaluator(),
-            new StatementArtifactFactory(new EmbeddedLanguageCompiler(), List.of())
+            new StatementArtifactFactory(
+                new EmbeddedLanguageCompiler(),
+                List.of(),
+                ObjectAuthorizationSchemaRegistry.all(List.of())
+            )
         );
 
         // Act

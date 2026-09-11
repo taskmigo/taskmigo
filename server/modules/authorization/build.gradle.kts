@@ -6,6 +6,8 @@ description = "Taskmigo Authorization semantics and public contracts"
 
 dependencies {
     api(libs.jspecify)
+    implementation(platform(libs.spring.boot.bom))
+    implementation(platform(libs.spring.modulith.bom))
     api(libs.spring.boot.core.starter)
     api(libs.spring.modulith.starter.core)
     api("com.fasterxml.jackson.core:jackson-annotations")

@@ -152,6 +152,54 @@ class FilterByCompilerTest {
     }
 
     /**
+     * Verifies that nested Statement fields are addressed by their public API paths.
+     *
+     * Given: a schema exposing `target.api.method` and `target.api.path`.
+     * Expect: the composed path compiles while persistence-shaped `object.method` is rejected.
+     */
+    @Test
+    @DisplayName("should use API-visible nested paths for Statement filtering")
+    void shouldCompileApiVisibleStatementPathWhenFilterReferencesTarget() {
+        // Arrange
+        QuerySchema<StatementQuery> statementSchema = new QuerySchema<>() {
+            private final List<QueryField> fields = List.of(
+                new QueryField(QueryPath.parse("target.api.method"), ResolvableType.forClass(String.class), false),
+                new QueryField(QueryPath.parse("target.api.path"), ResolvableType.forClass(String.class), false)
+            );
+
+            @Override
+            public Class<StatementQuery> queryType() {
+                return StatementQuery.class;
+            }
+
+            @Override
+            public Optional<QueryField> field(QueryPath path) {
+                return this.fields
+                    .stream()
+                    .filter(field -> field.path().equals(path))
+                    .findFirst();
+            }
+
+            @Override
+            public Collection<QueryField> fields() {
+                return this.fields;
+            }
+        };
+
+        // Act
+        QueryPredicate<StatementQuery> result = new FilterByCompiler().compile(
+            statementSchema,
+            "object.target.api.method == \"GET\""
+        );
+
+        // Assert
+        assertThat(result.isAlwaysTrue()).isFalse();
+        assertThatThrownBy(() ->
+            new FilterByCompiler().compile(statementSchema, "object.method == \"GET\"")
+        ).isInstanceOf(FilterByException.class);
+    }
+
+    /**
      * Verifies that Query Predicate composition rejects predicates from different schema revisions.
      *
      * Given: one predicate bound to the current schema and one bound to a schema with a different field contract.
@@ -196,4 +244,6 @@ class FilterByCompilerTest {
     }
 
     private static final class CustomerQuery {}
+
+    private static final class StatementQuery {}
 }

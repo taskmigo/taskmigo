@@ -12,7 +12,7 @@ import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /// Captures the immutable authorization state used throughout one request or authorization operation.
-public record AuthorizationSnapshot(
+record AuthorizationSnapshot(
     UUID userId,
     List<StatementInfo> statements,
     List<StatementExecutionArtifact> executableStatements,

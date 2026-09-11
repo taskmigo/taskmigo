@@ -2,6 +2,7 @@ package io.taskmigo.auth.authorization.request;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchemaRegistry;
 import io.taskmigo.auth.authorization.statement.StatementInfo;
 import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
 import java.util.ArrayList;
@@ -33,7 +34,11 @@ class AuthorizationSnapshotTest {
         AuthorizationSnapshot snapshot = new AuthorizationSnapshot(
             UUID.randomUUID(),
             statements,
-            new StatementArtifactFactory(new EmbeddedLanguageCompiler(), List.of()).build(statements),
+            new StatementArtifactFactory(
+                new EmbeddedLanguageCompiler(),
+                List.of(),
+                ObjectAuthorizationSchemaRegistry.all(List.of())
+            ).build(statements),
             roots
         );
 

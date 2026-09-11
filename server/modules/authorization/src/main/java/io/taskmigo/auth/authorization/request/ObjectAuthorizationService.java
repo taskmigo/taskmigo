@@ -1,9 +1,15 @@
-package io.taskmigo.auth.authorization.object;
+package io.taskmigo.auth.authorization.request;
 
 import io.taskmigo.auth.authorization.AuthorizationException;
+import io.taskmigo.auth.authorization.embeddedlanguage.AuthorizationCompilationProfile;
 import io.taskmigo.auth.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
-import io.taskmigo.auth.authorization.request.AuthorizationContext;
-import io.taskmigo.auth.authorization.request.AuthorizationOperation;
+import io.taskmigo.auth.authorization.object.ObjectAuthorization;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationPredicateFactory;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationPredicates;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchemaRegistry;
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchemaValidator;
 import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
 import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
@@ -23,17 +29,17 @@ public class ObjectAuthorizationService implements ObjectAuthorization {
 
     private final EmbeddedLanguagePartialEvaluator partialEvaluator;
     private final EmbeddedLanguageCompiler compiler;
-    private final List<ObjectAuthorizationSchema<?>> schemas;
+    private final ObjectAuthorizationSchemaRegistry schemaRegistry;
 
-    /// Creates the service with the compiler and registered logical object contracts.
+    /// Creates the service with the compiler and application-owned object route registry.
     public ObjectAuthorizationService(
         EmbeddedLanguagePartialEvaluator partialEvaluator,
         EmbeddedLanguageCompiler compiler,
-        List<ObjectAuthorizationSchema<?>> schemas
+        ObjectAuthorizationSchemaRegistry schemaRegistry
     ) {
         this.partialEvaluator = partialEvaluator;
         this.compiler = compiler;
-        this.schemas = List.copyOf(schemas);
+        this.schemaRegistry = schemaRegistry;
     }
 
     @Override
@@ -73,15 +79,21 @@ public class ObjectAuthorizationService implements ObjectAuthorization {
         }
     }
 
-    /// Validates an object policy against the registered logical object contract.
+    /// Validates an object policy independently against every schema governed by its target.
+    @Override
     public void validatePolicy(String policy, String method, String path) {
         try {
-            SemanticAst compiled = this.compiler.compile(
-                policy,
-                AuthorizationEmbeddedLanguageSchemas.object(this.schemas)
-            );
-            if (compiled.resultType() != LanguageType.Scalar.BOOL) {
-                throw new AuthorizationException("Object authorization policy must return Bool");
+            List<ObjectAuthorizationSchema<?>> applicable = this.schemaRegistry.applicable(method, path);
+            if (applicable.isEmpty()) {
+                throw new AuthorizationException("Object Statement target matches no registered object schema route");
+            }
+            for (ObjectAuthorizationSchema<?> schema : applicable) {
+                SemanticAst compiled = this.compiler.compile(
+                    policy,
+                    AuthorizationEmbeddedLanguageSchemas.object(schema),
+                    AuthorizationCompilationProfile.policy()
+                );
+                ObjectAuthorizationSchemaValidator.validate(compiled.expression(), schema);
             }
         } catch (EmbeddedLanguageException exception) {
             throw exception;

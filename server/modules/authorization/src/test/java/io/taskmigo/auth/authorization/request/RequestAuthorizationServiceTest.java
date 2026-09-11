@@ -7,6 +7,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchemaRegistry;
 import io.taskmigo.auth.authorization.statement.ApiInfo;
 import io.taskmigo.auth.authorization.statement.Effect;
 import io.taskmigo.auth.authorization.statement.Scope;
@@ -26,7 +27,11 @@ class RequestAuthorizationServiceTest {
     private final RequestAuthorizationService service = new RequestAuthorizationService(
         this.statements,
         new EmbeddedLanguageEvaluator(),
-        new StatementArtifactFactory(new EmbeddedLanguageCompiler(), List.of())
+        new StatementArtifactFactory(
+            new EmbeddedLanguageCompiler(),
+            List.of(),
+            ObjectAuthorizationSchemaRegistry.all(List.of())
+        )
     );
 
     /**
@@ -238,7 +243,11 @@ class RequestAuthorizationServiceTest {
         AuthorizationSnapshot snapshot = new AuthorizationSnapshot(
             userId,
             statements,
-            new StatementArtifactFactory(new EmbeddedLanguageCompiler(), List.of()).build(statements),
+            new StatementArtifactFactory(
+                new EmbeddedLanguageCompiler(),
+                List.of(),
+                ObjectAuthorizationSchemaRegistry.all(List.of())
+            ).build(statements),
             Map.of("request", Map.of("method", "GET"))
         );
 
@@ -269,6 +278,31 @@ class RequestAuthorizationServiceTest {
 
         // Assert
         verify(this.statements, times(2)).resolve(userId);
+    }
+
+    /**
+     * Verifies that the typed public API returns the opaque context for the operation it evaluated.
+     *
+     * Given: a typed principal/request pair and one matching allow Statement.
+     * Expect: the result is granted, carries an Authorization Context, and resolves effective state once.
+     */
+    @Test
+    @DisplayName("returns a reusable opaque context from typed request authorization")
+    void shouldReturnReusableContextWhenTypedRequestAuthorizationSucceeds() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        when(this.statements.resolve(userId)).thenReturn(List.of(statement(Effect.ALLOW)));
+
+        // Act
+        RequestAuthorizationResult result = this.service.authorize(
+            new AuthorizationPrincipal(userId, "alice"),
+            new AuthorizationRequest("GET", "/api/v0/users", Map.of())
+        );
+
+        // Assert
+        assertThat(result.granted()).isTrue();
+        assertThat(result.context()).isInstanceOf(AuthorizationContext.class);
+        verify(this.statements, times(1)).resolve(userId);
     }
 
     /**

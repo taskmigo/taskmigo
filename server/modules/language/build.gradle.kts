@@ -24,6 +24,7 @@ dependencies {
     api(libs.jspecify)
     implementation(libs.antlr.runtime)
     antlr(libs.antlr.tool)
+    testImplementation(platform(libs.spring.boot.bom))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.assertj:assertj-core")
 }

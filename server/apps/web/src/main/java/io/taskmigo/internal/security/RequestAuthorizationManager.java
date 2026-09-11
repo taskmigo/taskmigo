@@ -1,11 +1,11 @@
 package io.taskmigo.internal.security;
 
-import io.taskmigo.auth.authorization.AuthorizationException;
-import io.taskmigo.auth.authorization.request.AuthorizationOperation;
-import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
-import io.taskmigo.auth.authorization.request.RequestAuthorizationService;
+import io.taskmigo.auth.authorization.request.AuthorizationContext;
+import io.taskmigo.auth.authorization.request.AuthorizationPrincipal;
+import io.taskmigo.auth.authorization.request.AuthorizationRequest;
+import io.taskmigo.auth.authorization.request.RequestAuthorization;
+import io.taskmigo.auth.authorization.request.RequestAuthorizationResult;
 import io.taskmigo.auth.user.UserException;
-import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
@@ -26,9 +26,11 @@ final class RequestAuthorizationManager implements AuthorizationManager<RequestA
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RequestAuthorizationManager.class);
 
-    private final RequestAuthorizationService authorization;
+    private static final String DECISION_ATTRIBUTE = "taskmigo.authorization.request.decision";
 
-    RequestAuthorizationManager(RequestAuthorizationService authorization) {
+    private final RequestAuthorization authorization;
+
+    RequestAuthorizationManager(RequestAuthorization authorization) {
         this.authorization = authorization;
     }
 
@@ -66,29 +68,20 @@ final class RequestAuthorizationManager implements AuthorizationManager<RequestA
             return new AuthorizationDecision(false);
         }
         try {
+            Object cachedDecision = context.getRequest().getAttribute(DECISION_ATTRIBUTE);
+            if (cachedDecision instanceof Boolean decision) {
+                return new AuthorizationDecision(decision);
+            }
             String method = context.getRequest().getMethod();
             String path = context.getRequest().getRequestURI();
-            Map<String, ?> roots = Map.of(
-                "principal",
-                Map.of("id", userId, "username", principalUsername(jwt, current)),
-                "request",
-                Map.of("method", method, "path", path, "pathVariables", Map.copyOf(context.getVariables()))
+            RequestAuthorizationResult result = this.authorization.authorize(
+                new AuthorizationPrincipal(id, principalUsername(jwt, current)),
+                new AuthorizationRequest(method, path, context.getVariables())
             );
-            Object currentOperation = context.getRequest().getAttribute(AuthorizationOperation.ATTRIBUTE);
-            AuthorizationOperation operation;
-            if (
-                currentOperation instanceof AuthorizationOperation existing && existing.snapshot().userId().equals(id)
-            ) {
-                operation = existing;
-            } else {
-                AuthorizationSnapshot snapshot = this.authorization.snapshot(id, roots);
-                operation = new AuthorizationOperation(snapshot, method, path);
-                context.getRequest().setAttribute(AuthorizationOperation.ATTRIBUTE, operation);
-            }
-            return new AuthorizationDecision(
-                this.authorization.authorize(operation.snapshot(), operation.method(), operation.path()).allowed()
-            );
-        } catch (AuthorizationException | UserException exception) {
+            context.getRequest().setAttribute(AuthorizationContext.ATTRIBUTE, result.context());
+            context.getRequest().setAttribute(DECISION_ATTRIBUTE, result.granted());
+            return new AuthorizationDecision(result.granted());
+        } catch (UserException exception) {
             LOGGER.warn("Request authorization failed closed for principal {}", userId, exception);
             return new AuthorizationDecision(false);
         }

@@ -24,7 +24,12 @@ public class RequestAuthorizationService implements RequestAuthorization {
     private final EmbeddedLanguageEvaluator embeddedLanguageEvaluator;
     private final StatementArtifactFactory artifacts;
 
-    RequestAuthorizationService(
+    /// Creates Request Authorization with effective-state resolution and compiled artifact services.
+    ///
+    /// @param statements resolves committed effective Statements
+    /// @param embeddedLanguageEvaluator evaluates compiled request policies
+    /// @param artifacts builds reusable compiled Statement artifacts
+    public RequestAuthorizationService(
         EffectiveStatementResolver statements,
         EmbeddedLanguageEvaluator embeddedLanguageEvaluator,
         StatementArtifactFactory artifacts
@@ -58,7 +63,7 @@ public class RequestAuthorizationService implements RequestAuthorization {
     /// @param userId the user whose effective authorization state is captured
     /// @param roots the approved principal and request values for the operation
     /// @return an immutable authorization snapshot
-    public AuthorizationSnapshot snapshot(UUID userId, Map<String, ?> roots) {
+    AuthorizationSnapshot snapshot(UUID userId, Map<String, ?> roots) {
         List<StatementInfo> effectiveStatements = this.statements.resolve(userId);
         return new AuthorizationSnapshot(userId, effectiveStatements, this.artifacts.build(effectiveStatements), roots);
     }
@@ -73,7 +78,7 @@ public class RequestAuthorizationService implements RequestAuthorization {
     /// @param path the request path without a query string
     /// @param roots the principal and request values exposed to authorization policies
     /// @return the transport-neutral authorization decision
-    public RequestAuthorizationDecision authorize(UUID userId, String method, String path, Map<String, ?> roots) {
+    RequestAuthorizationDecision authorize(UUID userId, String method, String path, Map<String, ?> roots) {
         try {
             return this.authorize(this.snapshot(userId, roots), method, path);
         } catch (AuthorizationException exception) {
@@ -87,7 +92,7 @@ public class RequestAuthorizationService implements RequestAuthorization {
     /// @param method the HTTP method of the request
     /// @param path the request path without a query string
     /// @return the transport-neutral authorization decision
-    public RequestAuthorizationDecision authorize(AuthorizationSnapshot snapshot, String method, String path) {
+    RequestAuthorizationDecision authorize(AuthorizationSnapshot snapshot, String method, String path) {
         Map<String, ?> approvedRoots = snapshot.roots();
         List<Evaluation> evaluations = new ArrayList<>();
         for (var artifact : snapshot.executableStatements()) {

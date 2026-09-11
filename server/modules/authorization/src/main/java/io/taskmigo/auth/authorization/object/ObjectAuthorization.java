@@ -6,4 +6,7 @@ import io.taskmigo.auth.authorization.request.AuthorizationContext;
 public interface ObjectAuthorization {
     /// Partially evaluates object Statements against the selected Object Authorization Schema.
     <Q> ObjectAuthorizationPredicate<Q> authorize(AuthorizationContext context, ObjectAuthorizationSchema<Q> schema);
+
+    /// Validates an Object Statement independently against every route schema governed by its target.
+    void validatePolicy(String policy, String method, String path);
 }

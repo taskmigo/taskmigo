@@ -18,7 +18,7 @@ public record SemanticAst(
     String profileFingerprint
 ) {
     /// The current Embedded Language contract version.
-    public static final String LANGUAGE_VERSION = "0.4.0";
+    public static final String LANGUAGE_VERSION = "0.5.0";
 
     public SemanticAst {
         Objects.requireNonNull(expression);
