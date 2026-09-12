@@ -1,5 +1,5 @@
-/// Owns authorization statements and their request- and object-enforcement flows.
-@ApplicationModule(allowedDependencies = { "foundation", "language" })
+/// Owns authorization policy lifecycle, request decisions, and persistence-neutral object predicates.
+@ApplicationModule(allowedDependencies = { "foundation", "language", "language :: ast" })
 @NullMarked
 package io.taskmigo.authorization;
 

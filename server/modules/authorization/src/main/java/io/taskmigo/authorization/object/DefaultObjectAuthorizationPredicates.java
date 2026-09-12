@@ -1,17 +1,10 @@
 package io.taskmigo.authorization.object;
 
-import io.taskmigo.language.LanguageDiagnostic.SourceSpan;
-import io.taskmigo.language.LanguageType;
-import io.taskmigo.language.SemanticAst;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import io.taskmigo.authorization.object.persistence.ObjectAuthorizationExpression;
+import io.taskmigo.authorization.object.persistence.ObjectAuthorizationPredicateModels;
 
 /// Applies Boolean identities while composing Object Authorization predicates.
-@SuppressWarnings({ "checkstyle:NeedBraces", "unchecked" })
+@SuppressWarnings("checkstyle:NeedBraces")
 final class DefaultObjectAuthorizationPredicates implements ObjectAuthorizationPredicates {
 
     static final DefaultObjectAuthorizationPredicates INSTANCE = new DefaultObjectAuthorizationPredicates();
@@ -20,18 +13,12 @@ final class DefaultObjectAuthorizationPredicates implements ObjectAuthorizationP
 
     @Override
     public <Q> ObjectAuthorizationPredicate<Q> alwaysTrue() {
-        return ObjectAuthorizationPredicateFactory.from(
-            new UnboundObjectAuthorizationSchema<>(),
-            new SemanticAst.Literal(true, LanguageType.Scalar.BOOL, Set.of(), span())
-        );
+        return ObjectAuthorizationPredicateModels.wrap("", new ObjectAuthorizationExpression.Literal(true));
     }
 
     @Override
     public <Q> ObjectAuthorizationPredicate<Q> alwaysFalse() {
-        return ObjectAuthorizationPredicateFactory.from(
-            new UnboundObjectAuthorizationSchema<>(),
-            new SemanticAst.Literal(false, LanguageType.Scalar.BOOL, Set.of(), span())
-        );
+        return ObjectAuthorizationPredicateModels.wrap("", new ObjectAuthorizationExpression.Literal(false));
     }
 
     @Override
@@ -44,7 +31,7 @@ final class DefaultObjectAuthorizationPredicates implements ObjectAuthorizationP
         if (right.isAlwaysFalse()) return right;
         if (left.isAlwaysTrue()) return right;
         if (right.isAlwaysTrue()) return left;
-        return wrap(left, SemanticAst.BinaryOperator.AND, right);
+        return wrap(left, ObjectAuthorizationExpression.BinaryOperator.AND, right);
     }
 
     @Override
@@ -57,97 +44,42 @@ final class DefaultObjectAuthorizationPredicates implements ObjectAuthorizationP
         if (right.isAlwaysTrue()) return right;
         if (left.isAlwaysFalse()) return right;
         if (right.isAlwaysFalse()) return left;
-        return wrap(left, SemanticAst.BinaryOperator.OR, right);
+        return wrap(left, ObjectAuthorizationExpression.BinaryOperator.OR, right);
     }
 
     @Override
     public <Q> ObjectAuthorizationPredicate<Q> not(ObjectAuthorizationPredicate<Q> predicate) {
-        if (predicate.isAlwaysTrue()) return ObjectAuthorizationPredicateFactory.constantLike(predicate, false);
-        if (predicate.isAlwaysFalse()) return ObjectAuthorizationPredicateFactory.constantLike(predicate, true);
-        SemanticAst.Expression expression = ObjectAuthorizationPredicateFactory.expression(predicate);
-        return ObjectAuthorizationPredicateFactory.from(
-            new IdentityObjectAuthorizationSchema<>(ObjectAuthorizationPredicateFactory.schemaIdentity(predicate)),
-            new SemanticAst.Unary(
-                SemanticAst.UnaryOperator.NOT,
-                expression,
-                LanguageType.Scalar.BOOL,
-                expression.dependencies(),
-                span()
+        if (predicate.isAlwaysTrue()) return ObjectAuthorizationPredicateModels.constantLike(predicate, false);
+        if (predicate.isAlwaysFalse()) return ObjectAuthorizationPredicateModels.constantLike(predicate, true);
+        return ObjectAuthorizationPredicateModels.wrap(
+            ObjectAuthorizationPredicateModels.schemaIdentity(predicate),
+            new ObjectAuthorizationExpression.Unary(
+                ObjectAuthorizationExpression.UnaryOperator.NOT,
+                ObjectAuthorizationPredicateModels.model(predicate).expression()
             )
         );
     }
 
     private static <Q> ObjectAuthorizationPredicate<Q> wrap(
         ObjectAuthorizationPredicate<Q> left,
-        SemanticAst.BinaryOperator operator,
+        ObjectAuthorizationExpression.BinaryOperator operator,
         ObjectAuthorizationPredicate<Q> right
     ) {
-        SemanticAst.Expression l = ObjectAuthorizationPredicateFactory.expression(left);
-        SemanticAst.Expression r = ObjectAuthorizationPredicateFactory.expression(right);
-        return ObjectAuthorizationPredicateFactory.from(
-            new IdentityObjectAuthorizationSchema<>(ObjectAuthorizationPredicateFactory.schemaIdentity(left)),
-            new SemanticAst.Binary(
+        return ObjectAuthorizationPredicateModels.wrap(
+            ObjectAuthorizationPredicateModels.schemaIdentity(left),
+            new ObjectAuthorizationExpression.Binary(
                 operator,
-                l,
-                r,
-                LanguageType.Scalar.BOOL,
-                Stream.of(l, r)
-                    .flatMap(value -> value.dependencies().stream())
-                    .collect(Collectors.toUnmodifiableSet()),
-                span()
+                ObjectAuthorizationPredicateModels.model(left).expression(),
+                ObjectAuthorizationPredicateModels.model(right).expression()
             )
         );
     }
 
     private static void requireCompatible(ObjectAuthorizationPredicate<?> left, ObjectAuthorizationPredicate<?> right) {
-        String leftIdentity = ObjectAuthorizationPredicateFactory.schemaIdentity(left);
-        String rightIdentity = ObjectAuthorizationPredicateFactory.schemaIdentity(right);
+        String leftIdentity = ObjectAuthorizationPredicateModels.schemaIdentity(left);
+        String rightIdentity = ObjectAuthorizationPredicateModels.schemaIdentity(right);
         if (!leftIdentity.isEmpty() && !rightIdentity.isEmpty() && !leftIdentity.equals(rightIdentity)) {
             throw new IllegalArgumentException("Object Authorization Predicates belong to incompatible schemas");
-        }
-    }
-
-    private static SourceSpan span() {
-        return new SourceSpan(1, 0, 1, 0);
-    }
-
-    private record IdentityObjectAuthorizationSchema<Q>(String identity) implements ObjectAuthorizationSchema<Q> {
-        @Override
-        public Class<Q> objectType() {
-            return (Class<Q>) Object.class;
-        }
-
-        @Override
-        public Optional<ObjectAuthorizationField> field(ObjectAuthorizationPath path) {
-            return Optional.empty();
-        }
-
-        @Override
-        public Collection<ObjectAuthorizationField> fields() {
-            return List.of();
-        }
-    }
-
-    private static final class UnboundObjectAuthorizationSchema<Q> implements ObjectAuthorizationSchema<Q> {
-
-        @Override
-        public Class<Q> objectType() {
-            return (Class<Q>) Object.class;
-        }
-
-        @Override
-        public Optional<ObjectAuthorizationField> field(ObjectAuthorizationPath path) {
-            return Optional.empty();
-        }
-
-        @Override
-        public Collection<ObjectAuthorizationField> fields() {
-            return List.of();
-        }
-
-        @Override
-        public String identity() {
-            return "";
         }
     }
 }

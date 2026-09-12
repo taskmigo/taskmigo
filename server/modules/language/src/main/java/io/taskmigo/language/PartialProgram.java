@@ -1,9 +1,10 @@
 package io.taskmigo.language;
 
+import io.taskmigo.language.ast.ExpressionVisitor;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
-/// Represents either a concrete partially evaluated value or a residual typed Semantic AST expression.
+/// Represents either a concrete partially evaluated value or a residual typed Language expression.
 public sealed interface PartialProgram permits PartialProgram.Concrete, PartialProgram.Residual {
     /// Returns the static program result type represented by this result.
     LanguageType type();
@@ -20,15 +21,27 @@ public sealed interface PartialProgram permits PartialProgram.Concrete, PartialP
         }
     }
 
-    /// Holds a residual Semantic AST expression.
-    record Residual(SemanticAst.Expression expression) implements PartialProgram {
-        public Residual {
-            Objects.requireNonNull(expression);
+    /// Holds a residual expression without exposing concrete Semantic AST nodes.
+    final class Residual implements PartialProgram {
+
+        private final SemanticAst.Expression expression;
+
+        Residual(SemanticAst.Expression expression) {
+            this.expression = Objects.requireNonNull(expression);
+        }
+
+        /// Translates the residual expression through the stable read-only AST visitor.
+        public <R> R map(ExpressionVisitor<R> visitor) {
+            return SemanticExpressionMapper.map(this.expression, Objects.requireNonNull(visitor));
         }
 
         @Override
         public LanguageType type() {
             return this.expression.type();
+        }
+
+        SemanticAst.Expression internalExpression() {
+            return this.expression;
         }
     }
 }
