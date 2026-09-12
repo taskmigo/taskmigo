@@ -1,0 +1,16 @@
+---
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /server
+    schedule:
+      interval: cron
+      cronjob: 0 0 */3 * *
+      timezone: UTC
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: cron
+      cronjob: 0 0 */3 * *
+      timezone: UTC

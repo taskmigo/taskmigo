@@ -1,16 +1,20 @@
 ---
-name: Dockerfiles
+name: YAML
 
 on:
   pull_request:
     paths:
-      - "**/Dockerfile"
-      - .github/workflows/dockerfiles.yml
+      - "**/*.yaml"
+      - "**/*.yml"
+      - .yamllint
+      - .github/workflows/yaml.yml
   push:
     branches: [next]
     paths:
-      - "**/Dockerfile"
-      - .github/workflows/dockerfiles.yml
+      - "**/*.yaml"
+      - "**/*.yml"
+      - .yamllint
+      - .github/workflows/yaml.yml
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -20,15 +24,15 @@ permissions:
   contents: read
 
 jobs:
-  lint:
-    name: Lint
+  check:
+    name: Check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
 
-      - name: Run Hadolint
-        uses: hadolint/hadolint-action@v3.4.0
-        with:
-          dockerfile: Dockerfile
-          recursive: true
+      - name: Install yamllint
+        run: pip install yamllint==1.38.0
+
+      - name: Check YAML
+        run: yamllint .

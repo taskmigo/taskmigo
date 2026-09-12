@@ -1,18 +1,19 @@
+---
 name: Client
 
 on:
   pull_request:
     paths:
-      - "client/**"
+      - client/**
       - "!client/**/*.md"
-      - ".github/workflows/client.yml"
+      - .github/workflows/client.yml
   push:
     branches:
       - next
     paths:
-      - "client/**"
+      - client/**
       - "!client/**/*.md"
-      - ".github/workflows/client.yml"
+      - .github/workflows/client.yml
 
 permissions:
   contents: read

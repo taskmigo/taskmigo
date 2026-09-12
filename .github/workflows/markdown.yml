@@ -1,17 +1,18 @@
+---
 name: Markdown
 
 on:
   pull_request:
     paths:
       - "**/*.md"
-      - ".markdownlint-cli2.jsonc"
-      - ".github/workflows/markdown.yml"
+      - .markdownlint-cli2.jsonc
+      - .github/workflows/markdown.yml
   push:
     branches: [next]
     paths:
       - "**/*.md"
-      - ".markdownlint-cli2.jsonc"
-      - ".github/workflows/markdown.yml"
+      - .markdownlint-cli2.jsonc
+      - .github/workflows/markdown.yml
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
