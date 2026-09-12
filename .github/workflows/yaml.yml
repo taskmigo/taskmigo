@@ -1,0 +1,38 @@
+---
+name: YAML
+
+on:
+  pull_request:
+    paths:
+      - "**/*.yaml"
+      - "**/*.yml"
+      - .yamllint
+      - .github/workflows/yaml.yml
+  push:
+    branches: [next]
+    paths:
+      - "**/*.yaml"
+      - "**/*.yml"
+      - .yamllint
+      - .github/workflows/yaml.yml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Install yamllint
+        run: pip install yamllint==1.38.0
+
+      - name: Check YAML
+        run: yamllint .
