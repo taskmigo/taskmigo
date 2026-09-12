@@ -10,6 +10,7 @@ import org.jspecify.annotations.Nullable;
 
 /// Holds one allocation-light evaluation scope for roots and restricted-lambda bindings.
 @NullUnmarked
+@SuppressWarnings("checkstyle:NeedBraces")
 final class EvaluationFrame {
 
     private static final String LAMBDA_ROOT = "__lambda__";
@@ -18,12 +19,12 @@ final class EvaluationFrame {
     private static final Object[] EMPTY_BINDING_VALUES = new Object[0];
 
     private final Map<String, ?> roots;
-    private final Object[] rootValues;
+    private final @Nullable Object[] rootValues;
     private final byte[] rootStates;
-    private final Object[] localValues;
+    private final @Nullable Object[] localValues;
     private final boolean[] localPresent;
-    private String[] bindingNames = EMPTY_BINDING_NAMES;
-    private Object[] bindingValues = EMPTY_BINDING_VALUES;
+    private @Nullable String[] bindingNames = EMPTY_BINDING_NAMES;
+    private @Nullable Object[] bindingValues = EMPTY_BINDING_VALUES;
     private int bindingCount;
 
     private EvaluationFrame(Map<String, ?> roots, int rootSlots, int localSlots) {
@@ -155,9 +156,7 @@ final class EvaluationFrame {
 
     private @Nullable Object rootValue(SemanticAst.Reference reference) {
         int slot = reference.rootSlot();
-        return slot >= 0 && slot < this.rootValues.length
-            ? this.rootValues[slot]
-            : this.roots.get(reference.root());
+        return slot >= 0 && slot < this.rootValues.length ? this.rootValues[slot] : this.roots.get(reference.root());
     }
 
     private int bindingIndex(String name) {
