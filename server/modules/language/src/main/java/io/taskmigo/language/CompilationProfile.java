@@ -3,6 +3,7 @@ package io.taskmigo.language;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Set;
+import org.jspecify.annotations.Nullable;
 
 /// Defines the Language source mode and enabled feature families for one compilation.
 public final class CompilationProfile {
@@ -64,10 +65,12 @@ public final class CompilationProfile {
     }
 
     @Override
-    public boolean equals(Object other) {
-        return other instanceof CompilationProfile profile &&
+    public boolean equals(@Nullable Object other) {
+        return (
+            other instanceof CompilationProfile profile &&
             this.mode == profile.mode &&
-            this.featureMask == profile.featureMask;
+            this.featureMask == profile.featureMask
+        );
     }
 
     @Override
