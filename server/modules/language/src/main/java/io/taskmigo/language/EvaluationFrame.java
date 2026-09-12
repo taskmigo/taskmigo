@@ -13,10 +13,12 @@ final class EvaluationFrame {
 
     private static final String LAMBDA_ROOT = "__lambda__";
     private static final int INITIAL_BINDING_CAPACITY = 4;
+    private static final String[] EMPTY_BINDING_NAMES = new String[0];
+    private static final Object[] EMPTY_BINDING_VALUES = new Object[0];
 
     private final Map<String, ?> roots;
-    private String[] bindingNames = new String[INITIAL_BINDING_CAPACITY];
-    private Object[] bindingValues = new Object[INITIAL_BINDING_CAPACITY];
+    private String[] bindingNames = EMPTY_BINDING_NAMES;
+    private Object[] bindingValues = EMPTY_BINDING_VALUES;
     private int bindingCount;
 
     private EvaluationFrame(Map<String, ?> roots) {
@@ -44,7 +46,7 @@ final class EvaluationFrame {
 
     void push(String name, Object value) {
         if (this.bindingCount == this.bindingNames.length) {
-            int capacity = this.bindingCount * 2;
+            int capacity = this.bindingCount == 0 ? INITIAL_BINDING_CAPACITY : this.bindingCount * 2;
             this.bindingNames = Arrays.copyOf(this.bindingNames, capacity);
             this.bindingValues = Arrays.copyOf(this.bindingValues, capacity);
         }

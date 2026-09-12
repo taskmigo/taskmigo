@@ -65,6 +65,39 @@ class AlphaSixLanguageTest {
     }
 
     /**
+     * Verifies that optimized runtime-number handling preserves the prior decimal interpretation of Float values.
+     *
+     * Given: a schema Number root supplied as Float value 0.1 and source comparing it with decimal literal 0.1.
+     * Expect: direct evaluation returns true exactly as the previous Number-to-decimal conversion did.
+     */
+    @Test
+    @DisplayName("should preserve float decimal semantics when evaluating numeric input")
+    void shouldPreserveFloatDecimalSemanticsWhenEvaluatingNumericInput() {
+        // Arrange
+        EnvironmentSchema numericSchema = new EnvironmentSchema(
+            "numeric",
+            Map.of(
+                "number",
+                new EnvironmentSchema.Root(
+                    new EnvironmentSchema.Field(LanguageType.Scalar.NUMBER, false, false),
+                    Map.of()
+                )
+            )
+        );
+        CompiledSource source = new LanguageCompiler().compile(
+            "number == 0.1",
+            numericSchema,
+            CompilationProfile.expression()
+        );
+
+        // Act
+        Object result = source.evaluate(Map.of("number", 0.1F));
+
+        // Assert
+        assertThat(result).isEqualTo(true);
+    }
+
+    /**
      * Verifies that a disabled language feature is rejected before an executable artifact is produced.
      *
      * Given: an expression using list literals and a profile with list literals disabled.

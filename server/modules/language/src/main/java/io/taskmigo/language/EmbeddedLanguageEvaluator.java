@@ -226,7 +226,7 @@ final class EmbeddedLanguageEvaluator {
             if (!Float.isFinite(floatValue)) throw new IllegalArgumentException(
                 "Embedded Language Number must be finite"
             );
-            return BigDecimal.valueOf(floatValue.doubleValue());
+            return new BigDecimal(Float.toString(floatValue));
         }
         try {
             return new BigDecimal(number.toString());
