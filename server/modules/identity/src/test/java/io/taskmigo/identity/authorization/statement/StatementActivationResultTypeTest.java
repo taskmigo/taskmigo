@@ -15,6 +15,7 @@ import io.taskmigo.identity.persistence.statement.StatementRepository;
 import io.taskmigo.language.EmbeddedLanguageCompiler;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 
 class StatementActivationResultTypeTest {
 
@@ -49,6 +50,6 @@ class StatementActivationResultTypeTest {
         );
 
         // Assert
-        verify(repository).save(org.mockito.ArgumentMatchers.any(StatementEntity.class));
+        verify(repository).save(ArgumentMatchers.any(StatementEntity.class));
     }
 }

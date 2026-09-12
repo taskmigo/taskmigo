@@ -5,6 +5,7 @@ import jakarta.persistence.Embeddable;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import java.util.Objects;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
@@ -66,7 +67,7 @@ public class GroupHierarchyClosureEntity {
 
         @Override
         public int hashCode() {
-            return java.util.Objects.hash(this.ancestorGroupId, this.descendantGroupId);
+            return Objects.hash(this.ancestorGroupId, this.descendantGroupId);
         }
     }
 }

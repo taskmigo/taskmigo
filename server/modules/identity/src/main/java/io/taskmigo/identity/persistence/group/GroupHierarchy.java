@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 public final class GroupHierarchy {
@@ -60,10 +61,7 @@ public final class GroupHierarchy {
     }
 
     public List<UUID> reachableFrom(Collection<UUID> roots) {
-        Set<UUID> knownRoots = roots
-            .stream()
-            .filter(this.graph.nodes()::contains)
-            .collect(java.util.stream.Collectors.toSet());
+        Set<UUID> knownRoots = roots.stream().filter(this.graph.nodes()::contains).collect(Collectors.toSet());
         if (knownRoots.isEmpty()) {
             return List.of();
         }

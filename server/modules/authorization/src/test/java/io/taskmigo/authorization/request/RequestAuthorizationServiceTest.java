@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 class RequestAuthorizationServiceTest {
 
@@ -256,7 +257,7 @@ class RequestAuthorizationServiceTest {
 
         // Assert
         assertThat(result.allowed()).isTrue();
-        org.mockito.Mockito.verifyNoInteractions(this.statements);
+        Mockito.verifyNoInteractions(this.statements);
     }
 
     /**

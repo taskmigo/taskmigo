@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.core.ResolvableType;
 
 class ObjectAuthorizationServiceTest {
@@ -198,7 +199,7 @@ class ObjectAuthorizationServiceTest {
     @DisplayName("reuses the typed request context for object authorization")
     void shouldReuseTypedRequestContextWhenObjectAuthorizationUsesSameOperation() {
         // Arrange
-        EffectiveStatementResolver resolver = org.mockito.Mockito.mock(EffectiveStatementResolver.class);
+        EffectiveStatementResolver resolver = Mockito.mock(EffectiveStatementResolver.class);
         UUID userId = UUID.randomUUID();
         StatementInfo requestStatement = new StatementInfo(
             UUID.randomUUID(),
@@ -210,7 +211,7 @@ class ObjectAuthorizationServiceTest {
             "return true;"
         );
         StatementInfo objectStatement = statement(Effect.ALLOW, "return object.name == \"alice\";");
-        org.mockito.Mockito.when(resolver.resolve(userId)).thenReturn(List.of(requestStatement, objectStatement));
+        Mockito.when(resolver.resolve(userId)).thenReturn(List.of(requestStatement, objectStatement));
         RequestAuthorizationService requestAuthorization = new RequestAuthorizationService(
             resolver,
             new EmbeddedLanguageEvaluator(),
@@ -228,7 +229,7 @@ class ObjectAuthorizationServiceTest {
         assertThat(result.granted()).isTrue();
         assertThat(predicate.isAlwaysTrue()).isFalse();
         assertThat(predicate.isAlwaysFalse()).isFalse();
-        org.mockito.Mockito.verify(resolver).resolve(userId);
+        Mockito.verify(resolver).resolve(userId);
     }
 
     /**

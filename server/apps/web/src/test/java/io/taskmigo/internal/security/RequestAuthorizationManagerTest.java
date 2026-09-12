@@ -18,6 +18,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -146,6 +147,6 @@ class RequestAuthorizationManagerTest {
 
         // Assert
         assertThat(decision.isGranted()).isTrue();
-        verify(authorization, org.mockito.Mockito.never()).authorize(any(), any());
+        verify(authorization, Mockito.never()).authorize(any(), any());
     }
 }

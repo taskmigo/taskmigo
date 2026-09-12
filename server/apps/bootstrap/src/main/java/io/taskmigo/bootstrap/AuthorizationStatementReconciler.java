@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -107,11 +108,11 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
         Set<UUID> roles = values(user.roles())
             .stream()
             .map(roleName -> this.resolveRole(roleIds, roleName))
-            .collect(java.util.stream.Collectors.toSet());
+            .collect(Collectors.toSet());
         Set<UUID> statements = values(user.statements())
             .stream()
             .map(statementName -> this.resolveStatement(statementIds, statementName))
-            .collect(java.util.stream.Collectors.toSet());
+            .collect(Collectors.toSet());
         this.users.reconcileBootstrapUser(
             user.username(),
             user.email(),

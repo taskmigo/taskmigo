@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -69,12 +70,12 @@ class HierarchyClosureWriterTest {
         assertThat(rows.getAllValues())
             .extracting(TestClosure::ancestorId, TestClosure::descendantId)
             .containsExactlyInAnyOrder(
-                org.assertj.core.groups.Tuple.tuple(ROOT_ID, ROOT_ID),
-                org.assertj.core.groups.Tuple.tuple(ROOT_ID, CHILD_ID),
-                org.assertj.core.groups.Tuple.tuple(ROOT_ID, LEAF_ID),
-                org.assertj.core.groups.Tuple.tuple(CHILD_ID, CHILD_ID),
-                org.assertj.core.groups.Tuple.tuple(CHILD_ID, LEAF_ID),
-                org.assertj.core.groups.Tuple.tuple(LEAF_ID, LEAF_ID)
+                Tuple.tuple(ROOT_ID, ROOT_ID),
+                Tuple.tuple(ROOT_ID, CHILD_ID),
+                Tuple.tuple(ROOT_ID, LEAF_ID),
+                Tuple.tuple(CHILD_ID, CHILD_ID),
+                Tuple.tuple(CHILD_ID, LEAF_ID),
+                Tuple.tuple(LEAF_ID, LEAF_ID)
             );
         verify(this.entityManager, times(2)).flush();
     }

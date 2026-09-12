@@ -19,6 +19,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -225,8 +226,8 @@ public class RoleService {
             roles
                 .stream()
                 .collect(
-                    java.util.stream.Collectors.toMap(RoleEntity::id, role ->
-                        role.childRoles().stream().map(RoleEntity::id).collect(java.util.stream.Collectors.toSet())
+                    Collectors.toMap(RoleEntity::id, role ->
+                        role.childRoles().stream().map(RoleEntity::id).collect(Collectors.toSet())
                     )
                 )
         );
