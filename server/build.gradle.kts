@@ -149,17 +149,6 @@ val verifyBuildConventionScopes = tasks.register("verifyBuildConventionScopes") 
             "org.springframework.modulith:spring-modulith-starter-core",
             "org.springframework.modulith:spring-modulith-starter-test"
         )
-        (reusableLibraries + nonPublishedJavaProjects).forEach { javaProject ->
-            val leaked = javaProject.configurations.getByName("runtimeClasspath").incoming.resolutionResult.allComponents
-                .mapNotNull { component ->
-                    (component.id as? ModuleComponentIdentifier)?.let { "${it.group}:${it.module}" }
-                }
-                .filter { it == "org.jspecify:jspecify" }
-                .distinct()
-            check(leaked.isEmpty()) {
-                "${javaProject.path} must keep JSpecify out of runtimeClasspath: $leaked"
-            }
-        }
         (reusableLibraries + nonPublishedJavaProjects + applications).forEach { javaProject ->
             val leaked = javaProject.configurations.getByName("runtimeClasspath").incoming.resolutionResult.allComponents
                 .mapNotNull { component ->
