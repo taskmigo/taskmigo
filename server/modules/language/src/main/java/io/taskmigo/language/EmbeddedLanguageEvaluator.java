@@ -10,7 +10,6 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 /// Evaluates typed Embedded Language Semantic AST against an immutable approved environment.
-@SuppressWarnings("checkstyle:NeedBraces")
 final class EmbeddedLanguageEvaluator {
 
     @Nullable
@@ -71,9 +70,13 @@ final class EmbeddedLanguageEvaluator {
             return number(left).compareTo(number(right)) == 0;
         }
         if (left instanceof List<?> leftValues && right instanceof List<?> rightValues) {
-            if (leftValues.size() != rightValues.size()) return false;
+            if (leftValues.size() != rightValues.size()) {
+                return false;
+            }
             for (int index = 0; index < leftValues.size(); index++) {
-                if (!equal(leftValues.get(index), rightValues.get(index))) return false;
+                if (!equal(leftValues.get(index), rightValues.get(index))) {
+                    return false;
+                }
             }
             return true;
         }
@@ -82,7 +85,9 @@ final class EmbeddedLanguageEvaluator {
 
     private static boolean contains(List<?> values, @Nullable Object expected) {
         for (Object value : values) {
-            if (equal(expected, value)) return true;
+            if (equal(expected, value)) {
+                return true;
+            }
         }
         return false;
     }
@@ -104,7 +109,9 @@ final class EmbeddedLanguageEvaluator {
 
     private static List<@Nullable Object> list(SemanticAst.ListLiteral expression, EvaluationFrame frame) {
         List<@Nullable Object> result = new ArrayList<>(expression.values().size());
-        for (SemanticAst.Expression value : expression.values()) result.add(value(value, frame));
+        for (SemanticAst.Expression value : expression.values()) {
+            result.add(value(value, frame));
+        }
         return Collections.unmodifiableList(result);
     }
 
@@ -118,28 +125,42 @@ final class EmbeddedLanguageEvaluator {
             } finally {
                 frame.pop(expression.elementSlot());
             }
-            if (expression.operator() == SemanticAst.QuantifierOperator.ALL && !matches) return false;
-            if (expression.operator() == SemanticAst.QuantifierOperator.ANY && matches) return true;
-            if (expression.operator() == SemanticAst.QuantifierOperator.NONE && matches) return false;
+            if (expression.operator() == SemanticAst.QuantifierOperator.ALL && !matches) {
+                return false;
+            }
+            if (expression.operator() == SemanticAst.QuantifierOperator.ANY && matches) {
+                return true;
+            }
+            if (expression.operator() == SemanticAst.QuantifierOperator.NONE && matches) {
+                return false;
+            }
         }
         return expression.operator() != SemanticAst.QuantifierOperator.ANY;
     }
 
     private static BigDecimal length(SemanticAst.Length expression, EvaluationFrame frame) {
         Object value = value(expression.operand(), frame);
-        if (value instanceof String text) return BigDecimal.valueOf(text.length());
-        if (value instanceof List<?> list) return BigDecimal.valueOf(list.size());
+        if (value instanceof String text) {
+            return BigDecimal.valueOf(text.length());
+        }
+        if (value instanceof List<?> list) {
+            return BigDecimal.valueOf(list.size());
+        }
         throw failure("len requires a String or List", expression.span());
     }
 
     private static Object binary(SemanticAst.Binary binary, EvaluationFrame frame) {
         Object left = value(binary.left(), frame);
         if (binary.operator() == SemanticAst.BinaryOperator.AND && left instanceof Boolean bool) {
-            if (!bool) return false;
+            if (!bool) {
+                return false;
+            }
             return requireBoolean(value(binary.right(), frame));
         }
         if (binary.operator() == SemanticAst.BinaryOperator.OR && left instanceof Boolean bool) {
-            if (bool) return true;
+            if (bool) {
+                return true;
+            }
             return requireBoolean(value(binary.right(), frame));
         }
         return compute(binary.operator(), left, value(binary.right(), frame));
@@ -165,7 +186,9 @@ final class EmbeddedLanguageEvaluator {
 
     private static boolean allMatch(List<?> values, LanguageType type) {
         for (Object value : values) {
-            if (!matchesType(value, type)) return false;
+            if (!matchesType(value, type)) {
+                return false;
+            }
         }
         return true;
     }
@@ -175,7 +198,9 @@ final class EmbeddedLanguageEvaluator {
             Object nested = values.get(entry.getKey());
             EnvironmentSchema.Field field = entry.getValue();
             if (nested != null) {
-                if (!matchesType(nested, field.type())) return false;
+                if (!matchesType(nested, field.type())) {
+                    return false;
+                }
             } else if (!field.nullable() && field.type() != LanguageType.Scalar.NULL) {
                 return false;
             }
@@ -188,8 +213,12 @@ final class EmbeddedLanguageEvaluator {
     }
 
     private static boolean finite(Number number) {
-        if (number instanceof Double value) return Double.isFinite(value);
-        if (number instanceof Float value) return Float.isFinite(value);
+        if (number instanceof Double value) {
+            return Double.isFinite(value);
+        }
+        if (number instanceof Float value) {
+            return Float.isFinite(value);
+        }
         try {
             number(number);
             return true;
@@ -199,31 +228,35 @@ final class EmbeddedLanguageEvaluator {
     }
 
     private static Boolean requireBoolean(@Nullable Object value) {
-        if (!(value instanceof Boolean result)) throw new IllegalArgumentException(
-            "Embedded Language value is not Bool"
-        );
+        if (!(value instanceof Boolean result)) {
+            throw new IllegalArgumentException("Embedded Language value is not Bool");
+        }
         return result;
     }
 
     private static BigDecimal number(@Nullable Object value) {
-        if (!(value instanceof Number number)) throw new IllegalArgumentException(
-            "Embedded Language value is not Number"
-        );
-        if (number instanceof BigDecimal decimal) return decimal;
-        if (number instanceof BigInteger integer) return new BigDecimal(integer);
-        if (
-            number instanceof Byte || number instanceof Short || number instanceof Integer || number instanceof Long
-        ) return BigDecimal.valueOf(number.longValue());
+        if (!(value instanceof Number number)) {
+            throw new IllegalArgumentException("Embedded Language value is not Number");
+        }
+        if (number instanceof BigDecimal decimal) {
+            return decimal;
+        }
+        if (number instanceof BigInteger integer) {
+            return new BigDecimal(integer);
+        }
+        if (number instanceof Byte || number instanceof Short || number instanceof Integer || number instanceof Long) {
+            return BigDecimal.valueOf(number.longValue());
+        }
         if (number instanceof Double doubleValue) {
-            if (!Double.isFinite(doubleValue)) throw new IllegalArgumentException(
-                "Embedded Language Number must be finite"
-            );
+            if (!Double.isFinite(doubleValue)) {
+                throw new IllegalArgumentException("Embedded Language Number must be finite");
+            }
             return BigDecimal.valueOf(doubleValue);
         }
         if (number instanceof Float floatValue) {
-            if (!Float.isFinite(floatValue)) throw new IllegalArgumentException(
-                "Embedded Language Number must be finite"
-            );
+            if (!Float.isFinite(floatValue)) {
+                throw new IllegalArgumentException("Embedded Language Number must be finite");
+            }
             return new BigDecimal(Float.toString(floatValue));
         }
         try {
@@ -234,24 +267,30 @@ final class EmbeddedLanguageEvaluator {
     }
 
     private static List<?> list(@Nullable Object value) {
-        if (!(value instanceof List<?> result)) throw new IllegalArgumentException(
-            "Embedded Language value is not a List"
-        );
+        if (!(value instanceof List<?> result)) {
+            throw new IllegalArgumentException("Embedded Language value is not a List");
+        }
         return result;
     }
 
     private static int compare(@Nullable Object left, @Nullable Object right) {
-        if (left instanceof String leftText && right instanceof String rightText) return leftText.compareTo(rightText);
+        if (left instanceof String leftText && right instanceof String rightText) {
+            return leftText.compareTo(rightText);
+        }
         return number(left).compareTo(number(right));
     }
 
     private static BigDecimal divide(BigDecimal left, BigDecimal right) {
-        if (right.signum() == 0) throw new IllegalArgumentException("division by zero");
+        if (right.signum() == 0) {
+            throw new IllegalArgumentException("division by zero");
+        }
         return left.divide(right, MathContext.DECIMAL128);
     }
 
     private static BigDecimal modulo(BigDecimal left, BigDecimal right) {
-        if (right.signum() == 0) throw new IllegalArgumentException("modulo by zero");
+        if (right.signum() == 0) {
+            throw new IllegalArgumentException("modulo by zero");
+        }
         return left.remainder(right);
     }
 
