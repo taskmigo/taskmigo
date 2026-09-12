@@ -53,4 +53,31 @@ class LanguagePackageArchitectureTest {
         // Act + Assert
         partialEvaluatorDoesNotDependOnFrontend.check(classes);
     }
+
+    /**
+     * Verifies that ANTLR stays confined to the parser/compiler frontend.
+     *
+     * Given: every compiled class outside the generated parser package.
+     * Expect: only EmbeddedLanguageCompiler and LanguageCompilerVisitor may depend directly on ANTLR or generated parser
+     * types.
+     */
+    @Test
+    @DisplayName("confines ANTLR dependencies to the compiler frontend")
+    void shouldConfineAntlrDependenciesWhenLanguagePackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = new ClassFileImporter().importPackages("io.taskmigo.language");
+        ArchRule onlyCompilerFrontendDependsOnAntlr = noClasses()
+            .that()
+            .resideOutsideOfPackage("io.taskmigo.language.antlr..")
+            .and()
+            .doNotHaveSimpleName("EmbeddedLanguageCompiler")
+            .and()
+            .doNotHaveSimpleName("LanguageCompilerVisitor")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage("org.antlr..", "io.taskmigo.language.antlr..");
+
+        // Act + Assert
+        onlyCompilerFrontendDependsOnAntlr.check(classes);
+    }
 }
