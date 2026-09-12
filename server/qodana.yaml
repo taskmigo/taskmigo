@@ -6,6 +6,21 @@ projectJDK: "26"
 failThreshold: 0
 withinDocker: false
 
+# Analyze only the repository's Java projects. The Gradle build-logic included build
+# is configuration infrastructure; its generated Kotlin DSL packages are not product
+# source and do not have stable package names or package-info.java files.
+rootJavaProjects:
+  - ./modules/foundation
+  - ./modules/language
+  - ./modules/query
+  - ./modules/authorization
+  - ./modules/database
+  - ./modules/identity
+  - ./benchmarks/authorization
+  - ./apps/bootstrap
+  - ./apps/web
+  - ./apps/worker
+
 include:
   # Correctness and API contracts.
   - name: QodanaJavaSanity
