@@ -79,7 +79,9 @@ public final class StatementArtifactFactory {
     }
 
     private List<String> applicableSchemaIdentities(StatementInfo statement) {
-        if (statement.scope() != Scope.OBJECT) return List.of();
+        if (statement.scope() != Scope.OBJECT) {
+            return List.of();
+        }
         return this.schemaRegistry
             .applicable(statement.target().api().method(), statement.target().api().path())
             .stream()
