@@ -14,7 +14,6 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.data.jpa.domain.Specification;
 
 /// Binds the Query-owned persistence-neutral expression model to JPA Criteria.
-@SuppressWarnings("checkstyle:NeedBraces")
 final class JpaQueryExpressionBinder {
 
     private JpaQueryExpressionBinder() {}
@@ -79,7 +78,9 @@ final class JpaQueryExpressionBinder {
             if (
                 binary.operator() != QueryExpression.BinaryOperator.EQUAL &&
                 binary.operator() != QueryExpression.BinaryOperator.NOT_EQUAL
-            ) throw unsupported("null comparison");
+            ) {
+                throw unsupported("null comparison");
+            }
             Expression<?> value = value(leftNull ? binary.right() : binary.left(), root, builder, paths, types);
             return binary.operator() == QueryExpression.BinaryOperator.EQUAL ? value.isNull() : value.isNotNull();
         }
@@ -201,12 +202,18 @@ final class JpaQueryExpressionBinder {
         Root<E> root,
         Map<String, String> paths
     ) {
-        if (!reference.root().equals("object")) throw unsupported("non-object reference");
+        if (!reference.root().equals("object")) {
+            throw unsupported("non-object reference");
+        }
         String logical = String.join(".", reference.path());
         String physical = paths.get(logical);
-        if (physical == null) throw failure("Persistence path is not bound: " + logical);
+        if (physical == null) {
+            throw failure("Persistence path is not bound: " + logical);
+        }
         Path<?> current = root;
-        for (String segment : physical.split("\\.")) current = current.get(segment);
+        for (String segment : physical.split("\\.")) {
+            current = current.get(segment);
+        }
         return current;
     }
 
@@ -219,13 +226,25 @@ final class JpaQueryExpressionBinder {
     }
 
     private static @Nullable Object coerce(@Nullable Object value, @Nullable Class<?> type) {
-        if (value == null || type == null || type.isInstance(value)) return value;
-        if (type == UUID.class && value instanceof String text) return UUID.fromString(text);
+        if (value == null || type == null || type.isInstance(value)) {
+            return value;
+        }
+        if (type == UUID.class && value instanceof String text) {
+            return UUID.fromString(text);
+        }
         if (value instanceof Number number) {
-            if (type == Integer.class || type == int.class) return number.intValue();
-            if (type == Long.class || type == long.class) return number.longValue();
-            if (type == Double.class || type == double.class) return number.doubleValue();
-            if (type == Float.class || type == float.class) return number.floatValue();
+            if (type == Integer.class || type == int.class) {
+                return number.intValue();
+            }
+            if (type == Long.class || type == long.class) {
+                return number.longValue();
+            }
+            if (type == Double.class || type == double.class) {
+                return number.doubleValue();
+            }
+            if (type == Float.class || type == float.class) {
+                return number.floatValue();
+            }
         }
         throw failure("Predicate value has incompatible persistence type");
     }
