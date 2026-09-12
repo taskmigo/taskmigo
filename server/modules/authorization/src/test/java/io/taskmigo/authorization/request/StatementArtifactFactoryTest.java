@@ -12,11 +12,7 @@ import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.TargetInfo;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageContract;
-import io.taskmigo.language.SemanticAst;
-import java.lang.reflect.RecordComponent;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,8 +56,8 @@ class StatementArtifactFactoryTest {
      * Verifies that compiled Statement artifacts carry the current Language and Authorization profile contracts.
      *
      * Given: one request Statement compiled by the artifact factory.
-     * Expect: its metadata records the centralized Language contract and the Authorization-owned profile fingerprint,
-     * while the Semantic AST exposes no independent version component.
+     * Expect: its public compiled-source metadata records collision-resistant source identity, the centralized Language
+     * contract, and the Authorization-owned profile fingerprint without exposing the concrete Semantic AST.
      */
     @Test
     @DisplayName("includes language and authorization profile identity in artifacts")
@@ -73,10 +69,8 @@ class StatementArtifactFactoryTest {
         StatementExecutionArtifact artifact = this.factory.build(List.of(statement)).getFirst();
 
         // Assert
+        assertThat(artifact.policy().sourceFingerprint()).hasSize(64);
         assertThat(artifact.policy().compilerFingerprint()).contains(LanguageContract.VERSION);
-        assertThat(
-            Arrays.stream(Objects.requireNonNull(SemanticAst.class.getRecordComponents())).map(RecordComponent::getName)
-        ).doesNotContain("languageVersion");
         assertThat(artifact.policy().profileFingerprint()).isEqualTo(
             AuthorizationCompilationProfile.policy().fingerprint()
         );
