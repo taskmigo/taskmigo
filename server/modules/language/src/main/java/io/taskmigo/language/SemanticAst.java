@@ -37,12 +37,7 @@ record SemanticAst(
         this(expression, "", "", "", CompilationMode.PROGRAM, "", 0, 0, Set.of());
     }
 
-    SemanticAst(
-        Expression expression,
-        String sourceFingerprint,
-        String schemaFingerprint,
-        String compilerFingerprint
-    ) {
+    SemanticAst(Expression expression, String sourceFingerprint, String schemaFingerprint, String compilerFingerprint) {
         this(expression, sourceFingerprint, schemaFingerprint, compilerFingerprint, CompilationMode.PROGRAM, "");
     }
 
@@ -75,7 +70,9 @@ record SemanticAst(
         return this.expression.nullable();
     }
 
-    sealed interface Expression permits Literal, Reference, ListLiteral, Binary, Unary, Conditional, Quantifier, Length {
+    sealed interface Expression
+        permits Literal, Reference, ListLiteral, Binary, Unary, Conditional, Quantifier, Length
+    {
         LanguageType type();
 
         Set<String> dependencies();
