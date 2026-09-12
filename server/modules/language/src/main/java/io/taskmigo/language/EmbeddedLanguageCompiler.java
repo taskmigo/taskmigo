@@ -104,7 +104,7 @@ final class EmbeddedLanguageCompiler {
             profile.fingerprint(),
             schema.rootCount(),
             visitor.localSlotCount(),
-            visitor.requiredRoots()
+            RequiredRoots.from(expression)
         );
     }
 
@@ -151,8 +151,10 @@ final class EmbeddedLanguageCompiler {
                         this.depth++;
                         this.maximumDepth = Math.max(this.maximumDepth, this.depth);
                     }
-                    case EmbeddedLanguageLexer.RBRACE, EmbeddedLanguageLexer.RBRACKET, EmbeddedLanguageLexer.RPAREN ->
-                        this.depth--;
+                    case
+                        EmbeddedLanguageLexer.RBRACE,
+                        EmbeddedLanguageLexer.RBRACKET,
+                        EmbeddedLanguageLexer.RPAREN -> this.depth--;
                     default -> {
                     }
                 }
