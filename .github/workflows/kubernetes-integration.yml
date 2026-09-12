@@ -1,39 +1,40 @@
+---
 name: Kubernetes Integration
 
 on:
   pull_request:
     paths:
-      - "Taskfile.yml"
-      - "deploy/minikube/**"
+      - Taskfile.yml
+      - deploy/minikube/**
       - "!deploy/minikube/**/*.md"
-      - "helm/**"
+      - helm/**
       - "!helm/**/*.md"
-      - "server/**"
+      - server/**
       - "!server/**/*.md"
       - "!server/benchmarks/**"
-      - "client/**"
+      - client/**
       - "!client/**/*.md"
-      - "e2e/**"
+      - e2e/**
       - "!e2e/**/*.md"
-      - ".github/docker-bake.integration.hcl"
-      - ".github/workflows/kubernetes-integration.yml"
+      - .github/docker-bake.integration.hcl
+      - .github/workflows/kubernetes-integration.yml
   push:
     branches: [next]
     paths:
-      - "Taskfile.yml"
-      - "deploy/minikube/**"
+      - Taskfile.yml
+      - deploy/minikube/**
       - "!deploy/minikube/**/*.md"
-      - "helm/**"
+      - helm/**
       - "!helm/**/*.md"
-      - "server/**"
+      - server/**
       - "!server/**/*.md"
       - "!server/benchmarks/**"
-      - "client/**"
+      - client/**
       - "!client/**/*.md"
-      - "e2e/**"
+      - e2e/**
       - "!e2e/**/*.md"
-      - ".github/docker-bake.integration.hcl"
-      - ".github/workflows/kubernetes-integration.yml"
+      - .github/docker-bake.integration.hcl
+      - .github/workflows/kubernetes-integration.yml
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -70,7 +71,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7.0.0
         with:
-          node-version: "26.7.0"
+          node-version: 26.7.0
 
       - name: Cache Minikube assets
         uses: actions/cache@v5.0.5
