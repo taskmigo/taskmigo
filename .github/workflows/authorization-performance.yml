@@ -1,15 +1,16 @@
+---
 name: Authorization performance
 
 on:
   pull_request:
     paths:
-      - "server/**"
-      - ".github/workflows/authorization-performance.yml"
+      - server/**
+      - .github/workflows/authorization-performance.yml
   push:
     branches: [next]
     paths:
-      - "server/**"
-      - ".github/workflows/authorization-performance.yml"
+      - server/**
+      - .github/workflows/authorization-performance.yml
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
