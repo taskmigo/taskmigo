@@ -5,7 +5,6 @@ import io.taskmigo.query.persistence.QueryPredicateModel;
 import java.util.Objects;
 
 /// Creates and composes opaque predicates at the logical query boundary.
-@SuppressWarnings("checkstyle:NeedBraces")
 final class QueryPredicateFactory {
 
     private QueryPredicateFactory() {}
@@ -24,9 +23,9 @@ final class QueryPredicateFactory {
     }
 
     static QueryPredicateModel model(QueryPredicate<?> predicate) {
-        if (!(predicate instanceof QueryPredicateModel model)) throw new IllegalArgumentException(
-            "unsupported Query Predicate implementation"
-        );
+        if (!(predicate instanceof QueryPredicateModel model)) {
+            throw new IllegalArgumentException("unsupported Query Predicate implementation");
+        }
         return model;
     }
 
