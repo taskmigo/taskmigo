@@ -29,7 +29,11 @@ public final class EmbeddedLanguagePartialEvaluator {
     }
 
     private static SemanticAst.Expression simplify(SemanticAst.Expression expression, EvaluationFrame frame) {
-        if (!frame.hasBindings() && Collections.disjoint(expression.dependencies(), frame.rootNames())) {
+        if (
+            !frame.hasBindings() &&
+            !expression.dependencies().isEmpty() &&
+            Collections.disjoint(expression.dependencies(), frame.rootNames())
+        ) {
             return expression;
         }
         return switch (expression) {

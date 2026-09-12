@@ -45,6 +45,26 @@ class AlphaSixLanguageTest {
     }
 
     /**
+     * Verifies that the public compiled-source facade owns direct execution without exposing evaluator lifecycle.
+     *
+     * Given: an expression compiled through LanguageCompiler.
+     * Expect: the returned CompiledSource reports its Number type and evaluates to 3.
+     */
+    @Test
+    @DisplayName("should evaluate a compiled source through the public language facade")
+    void shouldEvaluateCompiledSourceWhenUsingLanguageCompiler() {
+        // Arrange
+        LanguageCompiler compiler = new LanguageCompiler();
+
+        // Act
+        CompiledSource source = compiler.compile("1 + 2", this.schema, CompilationProfile.expression());
+
+        // Assert
+        assertThat(source.resultType()).isEqualTo(LanguageType.Scalar.NUMBER);
+        assertThat(source.evaluate(Map.of())).isEqualTo(new BigDecimal("3"));
+    }
+
+    /**
      * Verifies that a disabled language feature is rejected before an executable artifact is produced.
      *
      * Given: an expression using list literals and a profile with list literals disabled.
@@ -88,5 +108,51 @@ class AlphaSixLanguageTest {
         assertThat(all).isEqualTo(true);
         assertThat(any).isEqualTo(false);
         assertThat(none).isEqualTo(true);
+    }
+
+    /**
+     * Verifies that nested quantifiers can capture an outer restricted-lambda binding.
+     *
+     * Given: an outer `all` whose inner `any` compares each inner element with the current outer element.
+     * Expect: direct evaluation resolves the lexical capture and returns true without replacing the outer binding.
+     */
+    @Test
+    @DisplayName("should preserve outer lambda bindings when quantifiers are nested")
+    void shouldPreserveOuterLambdaBindingWhenQuantifiersAreNested() {
+        // Arrange
+        CompiledSource source = new LanguageCompiler().compile(
+            "all([1, 2], outer => any([1, 2], inner => inner == outer))",
+            this.schema,
+            CompilationProfile.expression()
+        );
+
+        // Act
+        Object result = source.evaluate(Map.of());
+
+        // Assert
+        assertThat(result).isEqualTo(true);
+    }
+
+    /**
+     * Verifies that root-independent quantified expressions are concrete during partial evaluation.
+     *
+     * Given: a nested quantified expression whose values are entirely source literals.
+     * Expect: partial evaluation resolves the lambda bindings and returns a concrete true result.
+     */
+    @Test
+    @DisplayName("should fully specialize root independent quantified expressions")
+    void shouldFullySpecializeQuantifiedExpressionWhenNoRootsAreRequired() {
+        // Arrange
+        CompiledSource source = new LanguageCompiler().compile(
+            "all([1, 2], outer => any([1, 2], inner => inner == outer))",
+            this.schema,
+            CompilationProfile.expression()
+        );
+
+        // Act
+        PartialProgram result = source.partialEvaluate(Map.of());
+
+        // Assert
+        assertThat(result).isEqualTo(new PartialProgram.Concrete(true, LanguageType.Scalar.BOOL));
     }
 }
