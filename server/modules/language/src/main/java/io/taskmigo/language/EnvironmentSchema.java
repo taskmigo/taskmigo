@@ -1,10 +1,6 @@
 package io.taskmigo.language;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -107,13 +103,7 @@ public final class EnvironmentSchema {
                     value.append('|').append(path).append(':').append(field)
                 );
             });
-        try {
-            return HexFormat.of().formatHex(
-                MessageDigest.getInstance("SHA-256").digest(value.toString().getBytes(StandardCharsets.UTF_8))
-            );
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is unavailable", exception);
-        }
+        return Sha256Fingerprint.of(value.toString());
     }
 
     /// Describes one schema root and its fields.
