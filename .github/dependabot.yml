@@ -14,3 +14,10 @@ updates:
       interval: cron
       cronjob: 0 0 */3 * *
       timezone: UTC
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: cron
+      cronjob: 0 0 */3 * *
+      timezone: UTC
