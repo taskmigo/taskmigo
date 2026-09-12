@@ -9,13 +9,13 @@ import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
-/// Evaluates typed Language Semantic AST against an immutable approved environment.
+/// Evaluates typed Embedded Language Semantic AST against an immutable approved environment.
 @SuppressWarnings("checkstyle:NeedBraces")
 final class EmbeddedLanguageEvaluator {
 
     @Nullable
     Object evaluate(SemanticAst program, Map<String, ?> roots) {
-        EvaluationFrame frame = EvaluationFrame.of(roots);
+        EvaluationFrame frame = EvaluationFrame.of(roots, program.rootSlotCount(), program.localSlotCount());
         try {
             Object result = value(program.expression(), frame);
             if (!conforms(result, program.resultType(), program.resultNullable())) {
@@ -104,21 +104,19 @@ final class EmbeddedLanguageEvaluator {
 
     private static List<@Nullable Object> list(SemanticAst.ListLiteral expression, EvaluationFrame frame) {
         List<@Nullable Object> result = new ArrayList<>(expression.values().size());
-        for (SemanticAst.Expression value : expression.values()) {
-            result.add(value(value, frame));
-        }
+        for (SemanticAst.Expression value : expression.values()) result.add(value(value, frame));
         return Collections.unmodifiableList(result);
     }
 
     private static boolean quantifier(SemanticAst.Quantifier expression, EvaluationFrame frame) {
         List<?> values = list(value(expression.collection(), frame));
         for (Object element : values) {
-            frame.push(expression.elementName(), element);
+            frame.push(expression.elementSlot(), expression.elementName(), element);
             boolean matches;
             try {
                 matches = requireBoolean(value(expression.predicate(), frame));
             } finally {
-                frame.pop();
+                frame.pop(expression.elementSlot());
             }
             if (expression.operator() == SemanticAst.QuantifierOperator.ALL && !matches) return false;
             if (expression.operator() == SemanticAst.QuantifierOperator.ANY && matches) return true;

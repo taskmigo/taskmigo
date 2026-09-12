@@ -1,6 +1,6 @@
 package io.taskmigo.language;
 
-import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -14,7 +14,10 @@ public record SemanticAst(
     String schemaFingerprint,
     String compilerFingerprint,
     CompilationMode mode,
-    String profileFingerprint
+    String profileFingerprint,
+    int rootSlotCount,
+    int localSlotCount,
+    Set<String> requiredRoots
 ) {
     public SemanticAst {
         Objects.requireNonNull(expression);
@@ -23,11 +26,13 @@ public record SemanticAst(
         Objects.requireNonNull(compilerFingerprint);
         Objects.requireNonNull(mode);
         Objects.requireNonNull(profileFingerprint);
+        if (rootSlotCount < 0 || localSlotCount < 0) throw new IllegalArgumentException("slot counts must not be negative");
+        requiredRoots = Set.copyOf(requiredRoots);
     }
 
     /// Creates a metadata-free Semantic AST for focused tests.
     public SemanticAst(Expression expression) {
-        this(expression, "", "", "", CompilationMode.PROGRAM, "");
+        this(expression, "", "", "", CompilationMode.PROGRAM, "", 0, 0, Set.of());
     }
 
     /// Creates an artifact with explicit compilation metadata.
@@ -38,6 +43,18 @@ public record SemanticAst(
         String compilerFingerprint
     ) {
         this(expression, sourceFingerprint, schemaFingerprint, compilerFingerprint, CompilationMode.PROGRAM, "");
+    }
+
+    /// Creates an artifact with compilation metadata but without optimized execution slots.
+    public SemanticAst(
+        Expression expression,
+        String sourceFingerprint,
+        String schemaFingerprint,
+        String compilerFingerprint,
+        CompilationMode mode,
+        String profileFingerprint
+    ) {
+        this(expression, sourceFingerprint, schemaFingerprint, compilerFingerprint, mode, profileFingerprint, 0, 0, Set.of());
     }
 
     /// Returns the statically determined program result type.
@@ -85,7 +102,7 @@ public record SemanticAst(
         public Literal {
             value = immutableValue(value);
             Objects.requireNonNull(type);
-            dependencies = Set.copyOf(dependencies);
+            dependencies = immutableDependencies(dependencies);
             Objects.requireNonNull(span);
         }
 
@@ -102,11 +119,13 @@ public record SemanticAst(
         LanguageType type,
         boolean nullable,
         boolean symbolic,
+        int rootSlot,
+        int localSlot,
         Set<String> dependencies,
         LanguageDiagnostic.SourceSpan span
     ) implements Expression {
         public Reference(String root, List<String> path) {
-            this(root, path, LanguageType.Scalar.STRING, false, false, Set.of(root), UNKNOWN_SPAN);
+            this(root, path, LanguageType.Scalar.STRING, false, false, -1, -1, Set.of(root), UNKNOWN_SPAN);
         }
 
         public Reference(
@@ -117,14 +136,27 @@ public record SemanticAst(
             boolean symbolic,
             LanguageDiagnostic.SourceSpan span
         ) {
-            this(root, path, type, nullable, symbolic, Set.of(root), span);
+            this(root, path, type, nullable, symbolic, -1, -1, Set.of(root), span);
+        }
+
+        public Reference(
+            String root,
+            List<String> path,
+            LanguageType type,
+            boolean nullable,
+            boolean symbolic,
+            Set<String> dependencies,
+            LanguageDiagnostic.SourceSpan span
+        ) {
+            this(root, path, type, nullable, symbolic, -1, -1, dependencies, span);
         }
 
         public Reference {
             Objects.requireNonNull(root);
             path = List.copyOf(path);
             Objects.requireNonNull(type);
-            dependencies = Set.copyOf(dependencies);
+            if (rootSlot < -1 || localSlot < -1) throw new IllegalArgumentException("reference slot must be -1 or positive");
+            dependencies = immutableDependencies(dependencies);
             Objects.requireNonNull(span);
         }
 
@@ -144,7 +176,7 @@ public record SemanticAst(
         public ListLiteral {
             values = List.copyOf(values);
             Objects.requireNonNull(type);
-            dependencies = Set.copyOf(dependencies);
+            dependencies = immutableDependencies(dependencies);
             Objects.requireNonNull(span);
         }
     }
@@ -159,7 +191,7 @@ public record SemanticAst(
         LanguageDiagnostic.SourceSpan span
     ) implements Expression {
         public Binary(BinaryOperator operator, Expression left, Expression right) {
-            this(operator, left, right, infer(operator), union(left, right), left.span());
+            this(operator, left, right, infer(operator), dependencies(left, right), left.span());
         }
 
         public Binary {
@@ -167,7 +199,7 @@ public record SemanticAst(
             Objects.requireNonNull(left);
             Objects.requireNonNull(right);
             Objects.requireNonNull(type);
-            dependencies = Set.copyOf(dependencies);
+            dependencies = immutableDependencies(dependencies);
             Objects.requireNonNull(span);
         }
     }
@@ -188,7 +220,7 @@ public record SemanticAst(
             Objects.requireNonNull(operator);
             Objects.requireNonNull(operand);
             Objects.requireNonNull(type);
-            dependencies = Set.copyOf(dependencies);
+            dependencies = immutableDependencies(dependencies);
             Objects.requireNonNull(span);
         }
     }
@@ -208,7 +240,7 @@ public record SemanticAst(
                 whenTrue,
                 whenFalse,
                 compatibleResultType(whenTrue, whenFalse),
-                union(condition, whenTrue, whenFalse),
+                dependencies(condition, whenTrue, whenFalse),
                 condition.span()
             );
         }
@@ -218,7 +250,7 @@ public record SemanticAst(
             Objects.requireNonNull(whenTrue);
             Objects.requireNonNull(whenFalse);
             Objects.requireNonNull(type);
-            dependencies = Set.copyOf(dependencies);
+            dependencies = immutableDependencies(dependencies);
             Objects.requireNonNull(span);
         }
 
@@ -233,19 +265,33 @@ public record SemanticAst(
         QuantifierOperator operator,
         Expression collection,
         String elementName,
+        int elementSlot,
         Expression predicate,
         LanguageType type,
         Set<String> dependencies,
         LanguageDiagnostic.SourceSpan span
     ) implements Expression {
+        public Quantifier(
+            QuantifierOperator operator,
+            Expression collection,
+            String elementName,
+            Expression predicate,
+            LanguageType type,
+            Set<String> dependencies,
+            LanguageDiagnostic.SourceSpan span
+        ) {
+            this(operator, collection, elementName, -1, predicate, type, dependencies, span);
+        }
+
         public Quantifier {
             Objects.requireNonNull(operator);
             Objects.requireNonNull(collection);
             Objects.requireNonNull(elementName);
             if (elementName.isBlank()) throw new IllegalArgumentException("quantifier element name must not be blank");
+            if (elementSlot < -1) throw new IllegalArgumentException("quantifier slot must be -1 or positive");
             Objects.requireNonNull(predicate);
             Objects.requireNonNull(type);
-            dependencies = Set.copyOf(dependencies);
+            dependencies = immutableDependencies(dependencies);
             Objects.requireNonNull(span);
         }
 
@@ -265,7 +311,7 @@ public record SemanticAst(
         public Length {
             Objects.requireNonNull(operand);
             Objects.requireNonNull(type);
-            dependencies = Set.copyOf(dependencies);
+            dependencies = immutableDependencies(dependencies);
             Objects.requireNonNull(span);
         }
     }
@@ -304,6 +350,23 @@ public record SemanticAst(
 
     private static final LanguageDiagnostic.SourceSpan UNKNOWN_SPAN = new LanguageDiagnostic.SourceSpan(1, 0, 1, 0);
 
+    static Set<String> dependencies(Expression... expressions) {
+        return RootDependencies.union(expressions);
+    }
+
+    static Set<String> dependencies(Iterable<? extends Expression> expressions) {
+        return RootDependencies.union(expressions);
+    }
+
+    static boolean dependsOnAny(Expression expression, Set<String> roots) {
+        return RootDependencies.intersects(expression.dependencies(), roots);
+    }
+
+    private static Set<String> immutableDependencies(Set<String> dependencies) {
+        Objects.requireNonNull(dependencies);
+        return dependencies instanceof RootDependencies ? dependencies : Set.copyOf(dependencies);
+    }
+
     private static LanguageType infer(@Nullable Object value) {
         return switch (value) {
             case null -> LanguageType.Scalar.NULL;
@@ -334,13 +397,10 @@ public record SemanticAst(
         throw new IllegalArgumentException("conditional branches have incompatible result types");
     }
 
-    private static Set<String> union(Expression... expressions) {
-        HashSet<String> result = new HashSet<>();
-        for (Expression expression : expressions) result.addAll(expression.dependencies());
-        return Set.copyOf(result);
-    }
-
     private static @Nullable Object immutableValue(@Nullable Object value) {
-        return value instanceof List<?> list ? list.stream().map(SemanticAst::immutableValue).toList() : value;
+        if (!(value instanceof List<?> list)) return value;
+        ArrayList<@Nullable Object> result = new ArrayList<>(list.size());
+        for (Object item : list) result.add(immutableValue(item));
+        return List.copyOf(result);
     }
 }

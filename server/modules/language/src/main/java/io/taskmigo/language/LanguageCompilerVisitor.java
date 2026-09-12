@@ -1,6 +1,5 @@
 package io.taskmigo.language;
 
-import io.taskmigo.language.antlr.EmbeddedLanguageBaseVisitor;
 import io.taskmigo.language.antlr.EmbeddedLanguageParser;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -12,28 +11,28 @@ import java.util.Objects;
 import java.util.Set;
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.TerminalNode;
 import org.jspecify.annotations.Nullable;
 
-/// Converts the generated ANTLR parse tree into the typed language-owned Semantic AST.
-///
-/// Parsing remains owned by the canonical ANTLR grammar. This visitor builds a compact private syntax model and then
-/// performs binding, type checking, control-flow normalization, dependency analysis, and constant folding.
+/// Compiles the generated ANTLR parse tree directly into typed Language Semantic AST.
 @SuppressWarnings({
     "checkstyle:NeedBraces",
     "checkstyle:OverloadMethodsDeclarationOrder",
     "checkstyle:UnnecessaryFullyQualifiedType",
     "ConstantValue",
 })
-final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> {
+final class LanguageCompilerVisitor {
 
     private final EnvironmentSchema schema;
     private final CompilerLimits limits;
     private final CompilationProfile profile;
     private final List<Scope> scopes = new ArrayList<>();
+    private final Set<String> requiredRoots = new HashSet<>();
     private int nodes;
     private int syntaxNesting;
     private int quantifierNesting;
     private int lambdaNesting;
+    private int localSlotCount;
 
     LanguageCompilerVisitor(EnvironmentSchema schema, CompilerLimits limits, CompilationProfile profile) {
         this.schema = schema;
@@ -42,262 +41,29 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
     }
 
     SemanticAst.Expression compile(EmbeddedLanguageParser.ProgramContext context) {
-        Program program = (Program) this.visitProgram(context);
-        return this.sequence(program.statements(), new Scope(null), 0, null, new HashSet<>());
+        return this.sequence(context.statement(), 0, new Scope(null), 0, null, new HashSet<>());
     }
 
     SemanticAst.Expression compile(EmbeddedLanguageParser.ExpressionSourceContext context) {
         this.scopes.add(new Scope(null));
         try {
-            return this.lower(this.expression(context.expression()));
+            return this.expression(context.expression());
         } finally {
             this.scopes.removeLast();
         }
     }
 
-    @Override
-    public Object visitProgram(EmbeddedLanguageParser.ProgramContext context) {
-        return new Program(context.statement().stream().map(this::statement).toList());
+    int localSlotCount() {
+        return this.localSlotCount;
     }
 
-    @Override
-    public Object visitStatement(EmbeddedLanguageParser.StatementContext context) {
-        return this.visit(context.getChild(0));
-    }
-
-    @Override
-    public Object visitBlock(EmbeddedLanguageParser.BlockContext context) {
-        return new Block(context.statement().stream().map(this::statement).toList());
-    }
-
-    @Override
-    public Object visitConstDecl(EmbeddedLanguageParser.ConstDeclContext context) {
-        this.requireFeature(CompilationFeature.LOCAL_BINDINGS, context.getStart());
-        return new Constant(context.IDENT().getText(), this.expression(context.expression()), span(context));
-    }
-
-    @Override
-    public Object visitReturnStatement(EmbeddedLanguageParser.ReturnStatementContext context) {
-        return new Returning(this.expression(context.expression()), span(context));
-    }
-
-    @Override
-    public Object visitIfStatement(EmbeddedLanguageParser.IfStatementContext context) {
-        this.requireFeature(CompilationFeature.CONDITIONAL_CONTROL_FLOW, context.getStart());
-        Block whenTrue = (Block) this.visitBlock(context.block(0));
-        List<Statement> whenFalse = null;
-        if (context.ELSE() != null) {
-            if (context.ifStatement() != null) {
-                whenFalse = List.of((Statement) this.visitIfStatement(context.ifStatement()));
-            } else {
-                whenFalse = ((Block) this.visitBlock(context.block(1))).statements();
-            }
-        }
-        return new Conditional(this.expression(context.expression()), whenTrue.statements(), whenFalse, span(context));
-    }
-
-    @Override
-    public Object visitExpression(EmbeddedLanguageParser.ExpressionContext context) {
-        return this.visitOrExpression(context.orExpression());
-    }
-
-    @Override
-    public Object visitOrExpression(EmbeddedLanguageParser.OrExpressionContext context) {
-        return this.chain(context.andExpression(), context, operator -> SemanticAst.BinaryOperator.OR);
-    }
-
-    @Override
-    public Object visitAndExpression(EmbeddedLanguageParser.AndExpressionContext context) {
-        return this.chain(context.equalityExpression(), context, operator -> SemanticAst.BinaryOperator.AND);
-    }
-
-    @Override
-    public Object visitEqualityExpression(EmbeddedLanguageParser.EqualityExpressionContext context) {
-        return this.chain(
-            context.comparisonExpression(),
-            context,
-            operator ->
-                switch (operator) {
-                    case "==" -> SemanticAst.BinaryOperator.EQUAL;
-                    case "!=" -> SemanticAst.BinaryOperator.NOT_EQUAL;
-                    default -> throw new IllegalStateException("unsupported equality operator");
-                }
-        );
-    }
-
-    @Override
-    public Object visitComparisonExpression(EmbeddedLanguageParser.ComparisonExpressionContext context) {
-        return this.chain(
-            context.membershipExpression(),
-            context,
-            operator ->
-                switch (operator) {
-                    case "<" -> SemanticAst.BinaryOperator.LESS;
-                    case "<=" -> SemanticAst.BinaryOperator.LESS_OR_EQUAL;
-                    case ">" -> SemanticAst.BinaryOperator.GREATER;
-                    case ">=" -> SemanticAst.BinaryOperator.GREATER_OR_EQUAL;
-                    default -> throw new IllegalStateException("unsupported comparison operator");
-                }
-        );
-    }
-
-    @Override
-    public Object visitMembershipExpression(EmbeddedLanguageParser.MembershipExpressionContext context) {
-        Expression left = this.expression(context.additiveExpression(0));
-        if (context.additiveExpression().size() == 1) return left;
-        Expression right = this.expression(context.additiveExpression(1));
-        return new Binary(SemanticAst.BinaryOperator.IN, left, right, sourceSpan(left.span(), right.span()));
-    }
-
-    @Override
-    public Object visitAdditiveExpression(EmbeddedLanguageParser.AdditiveExpressionContext context) {
-        return this.chain(
-            context.multiplicativeExpression(),
-            context,
-            operator ->
-                switch (operator) {
-                    case "+" -> SemanticAst.BinaryOperator.ADD;
-                    case "-" -> SemanticAst.BinaryOperator.SUBTRACT;
-                    default -> throw new IllegalStateException("unsupported additive operator");
-                }
-        );
-    }
-
-    @Override
-    public Object visitMultiplicativeExpression(EmbeddedLanguageParser.MultiplicativeExpressionContext context) {
-        return this.chain(
-            context.unaryExpression(),
-            context,
-            operator ->
-                switch (operator) {
-                    case "*" -> SemanticAst.BinaryOperator.MULTIPLY;
-                    case "/" -> SemanticAst.BinaryOperator.DIVIDE;
-                    case "%" -> SemanticAst.BinaryOperator.MODULO;
-                    default -> throw new IllegalStateException("unsupported multiplicative operator");
-                }
-        );
-    }
-
-    @Override
-    public Object visitUnaryExpression(EmbeddedLanguageParser.UnaryExpressionContext context) {
-        this.syntaxNesting++;
-        if (this.syntaxNesting > this.limits.maxSyntaxDepth()) {
-            throw failure(
-                LanguageDiagnostic.Category.ComplexityError,
-                "program syntax depth exceeds the limit",
-                span(context)
-            );
-        }
-        try {
-            if (context.primary() != null) return this.visitPrimary(context.primary());
-            SemanticAst.UnaryOperator operator = switch (context.getChild(0).getText()) {
-                case "!" -> SemanticAst.UnaryOperator.NOT;
-                case "+" -> SemanticAst.UnaryOperator.PLUS;
-                case "-" -> SemanticAst.UnaryOperator.MINUS;
-                default -> throw new IllegalStateException("unsupported unary operator");
-            };
-            return new Unary(operator, this.expression(context.unaryExpression()), span(context));
-        } finally {
-            this.syntaxNesting--;
-        }
-    }
-
-    @Override
-    public Object visitPrimary(EmbeddedLanguageParser.PrimaryContext context) {
-        if (context.literal() != null) return this.visitLiteral(context.literal());
-        if (context.listLiteral() != null) return this.visitListLiteral(context.listLiteral());
-        if (context.reference() != null) return this.visitReference(context.reference());
-        if (context.quantifierExpression() != null) return this.visitQuantifierExpression(
-            context.quantifierExpression()
-        );
-        if (context.lengthExpression() != null) return this.visitLengthExpression(context.lengthExpression());
-        return this.visitExpression(context.expression());
-    }
-
-    @Override
-    public Object visitQuantifierExpression(EmbeddedLanguageParser.QuantifierExpressionContext context) {
-        this.requireFeature(CompilationFeature.COLLECTION_QUANTIFIERS, context.getStart());
-        this.quantifierNesting++;
-        if (this.quantifierNesting > this.limits.maxQuantifierDepth()) {
-            throw failure(
-                LanguageDiagnostic.Category.ComplexityError,
-                "quantifier nesting exceeds the limit",
-                span(context)
-            );
-        }
-        try {
-            SemanticAst.QuantifierOperator operator = switch (context.quantifier().getStart().getType()) {
-                case EmbeddedLanguageParser.ALL -> SemanticAst.QuantifierOperator.ALL;
-                case EmbeddedLanguageParser.ANY -> SemanticAst.QuantifierOperator.ANY;
-                case EmbeddedLanguageParser.NONE -> SemanticAst.QuantifierOperator.NONE;
-                default -> throw syntax("invalid quantifier", context.getStart());
-            };
-            return new Quantifier(
-                operator,
-                this.expression(context.expression(0)),
-                context.IDENT().getText(),
-                this.expression(context.expression(1)),
-                span(context)
-            );
-        } finally {
-            this.quantifierNesting--;
-        }
-    }
-
-    @Override
-    public Object visitLengthExpression(EmbeddedLanguageParser.LengthExpressionContext context) {
-        this.requireFeature(CompilationFeature.LENGTH_INTRINSIC, context.getStart());
-        return new LengthExpression(this.expression(context.expression()), span(context));
-    }
-
-    @Override
-    public Object visitReference(EmbeddedLanguageParser.ReferenceContext context) {
-        List<String> names = context
-            .IDENT()
-            .stream()
-            .map(node -> node.getText())
-            .toList();
-        return new Reference(names.getFirst(), names.subList(1, names.size()), span(context));
-    }
-
-    @Override
-    public Object visitListLiteral(EmbeddedLanguageParser.ListLiteralContext context) {
-        return new ListExpression(context.expression().stream().map(this::expression).toList(), span(context));
-    }
-
-    @Override
-    public Object visitLiteral(EmbeddedLanguageParser.LiteralContext context) {
-        return new Literal(context.getStart());
-    }
-
-    private Statement statement(EmbeddedLanguageParser.StatementContext context) {
-        return (Statement) this.visitStatement(context);
-    }
-
-    private Expression expression(ParserRuleContext context) {
-        return (Expression) this.visit(context);
-    }
-
-    private Expression chain(
-        List<? extends ParserRuleContext> operands,
-        ParserRuleContext context,
-        java.util.function.Function<String, SemanticAst.BinaryOperator> operator
-    ) {
-        Expression result = this.expression(operands.getFirst());
-        for (int index = 1; index < operands.size(); index++) {
-            Expression right = this.expression(operands.get(index));
-            result = new Binary(
-                operator.apply(context.getChild(index * 2 - 1).getText()),
-                result,
-                right,
-                sourceSpan(result.span(), right.span())
-            );
-        }
-        return result;
+    Set<String> requiredRoots() {
+        return Set.copyOf(this.requiredRoots);
     }
 
     private SemanticAst.Expression sequence(
-        List<Statement> statements,
+        List<EmbeddedLanguageParser.StatementContext> statements,
+        int start,
         Scope environment,
         int blockDepth,
         SemanticAst.@Nullable Expression continuation,
@@ -310,50 +76,37 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         );
         this.scopes.add(environment);
         try {
-            for (int index = 0; index < statements.size(); index++) {
-                Statement statement = statements.get(index);
-                if (statement instanceof Constant constant) {
-                    if (!declared.add(constant.name())) throw failure(
+            for (int index = start; index < statements.size(); index++) {
+                EmbeddedLanguageParser.StatementContext statement = statements.get(index);
+                if (statement.constDecl() != null) {
+                    EmbeddedLanguageParser.ConstDeclContext constant = statement.constDecl();
+                    this.requireFeature(CompilationFeature.LOCAL_BINDINGS, constant.getStart());
+                    String name = constant.IDENT().getText();
+                    if (!declared.add(name)) throw failure(
                         LanguageDiagnostic.Category.BindingError,
-                        "local binding is already declared: " + constant.name(),
-                        constant.span()
+                        "local binding is already declared: " + name,
+                        span(constant)
                     );
-                    environment.put(constant.name(), this.lower(constant.value()));
-                } else if (statement instanceof Returning returning) {
-                    return this.lower(returning.value());
+                    environment.put(name, this.expression(constant.expression()));
+                } else if (statement.returnStatement() != null) {
+                    return this.expression(statement.returnStatement().expression());
                 } else {
-                    Conditional conditional = (Conditional) statement;
-                    boolean hasElse = conditional.whenFalse() != null;
+                    EmbeddedLanguageParser.IfStatementContext conditional = statement.ifStatement();
+                    this.requireFeature(CompilationFeature.CONDITIONAL_CONTROL_FLOW, conditional.getStart());
+                    boolean hasElse = conditional.ELSE() != null;
                     boolean hasFollowing = index + 1 < statements.size();
                     SemanticAst.Expression rest =
                         hasFollowing || !hasElse
                             ? this.sequence(
-                                  statements.subList(index + 1, statements.size()),
+                                  statements,
+                                  index + 1,
                                   new Scope(environment),
                                   blockDepth,
                                   continuation,
                                   new HashSet<>(declared)
                               )
                             : continuation;
-                    SemanticAst.Expression whenTrue = this.sequence(
-                        conditional.whenTrue(),
-                        new Scope(environment),
-                        blockDepth + 1,
-                        rest,
-                        new HashSet<>()
-                    );
-                    SemanticAst.Expression whenFalse = hasElse
-                        ? this.lowerElse(
-                              Objects.requireNonNull(conditional.whenFalse()),
-                              environment,
-                              blockDepth + 1,
-                              rest
-                          )
-                        : requireExpression(rest);
-                    SemanticAst.Expression condition = this.lower(conditional.condition());
-                    require(condition, LanguageType.Scalar.BOOL, "if condition must be Bool");
-                    requireMatchingBranches(whenTrue, whenFalse);
-                    return this.folded(this.node(new SemanticAst.Conditional(condition, whenTrue, whenFalse)));
+                    return this.conditional(conditional, environment, blockDepth, rest);
                 }
             }
             if (continuation == null) throw failure(
@@ -367,56 +120,206 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
         }
     }
 
-    private SemanticAst.Expression lowerElse(
-        List<Statement> statements,
+    private SemanticAst.Expression conditional(
+        EmbeddedLanguageParser.IfStatementContext conditional,
         Scope environment,
         int blockDepth,
         SemanticAst.@Nullable Expression continuation
     ) {
-        if (statements.size() == 1 && statements.getFirst() instanceof Conditional conditional) {
-            return this.lowerConditional(conditional, environment, blockDepth, continuation);
-        }
-        return this.sequence(statements, new Scope(environment), blockDepth, continuation, new HashSet<>());
-    }
-
-    private SemanticAst.Expression lowerConditional(
-        Conditional conditional,
-        Scope environment,
-        int blockDepth,
-        SemanticAst.@Nullable Expression continuation
-    ) {
+        EmbeddedLanguageParser.BlockContext trueBlock = conditional.block(0);
         SemanticAst.Expression whenTrue = this.sequence(
-            conditional.whenTrue(),
+            trueBlock.statement(),
+            0,
             new Scope(environment),
             blockDepth + 1,
             continuation,
             new HashSet<>()
         );
-        SemanticAst.Expression whenFalse =
-            conditional.whenFalse() == null
-                ? requireExpression(continuation)
-                : this.lowerElse(
-                      Objects.requireNonNull(conditional.whenFalse()),
-                      environment,
-                      blockDepth + 1,
-                      continuation
-                  );
-        SemanticAst.Expression condition = this.lower(conditional.condition());
+        SemanticAst.Expression whenFalse;
+        if (conditional.ELSE() == null) {
+            whenFalse = requireExpression(continuation);
+        } else if (conditional.ifStatement() != null) {
+            this.requireFeature(CompilationFeature.CONDITIONAL_CONTROL_FLOW, conditional.ifStatement().getStart());
+            whenFalse = this.conditional(conditional.ifStatement(), environment, blockDepth + 1, continuation);
+        } else {
+            EmbeddedLanguageParser.BlockContext falseBlock = conditional.block(1);
+            whenFalse = this.sequence(
+                falseBlock.statement(),
+                0,
+                new Scope(environment),
+                blockDepth + 1,
+                continuation,
+                new HashSet<>()
+            );
+        }
+        SemanticAst.Expression condition = this.expression(conditional.expression());
         require(condition, LanguageType.Scalar.BOOL, "if condition must be Bool");
         requireMatchingBranches(whenTrue, whenFalse);
-        return this.folded(this.node(new SemanticAst.Conditional(condition, whenTrue, whenFalse)));
+        if (
+            condition instanceof SemanticAst.Literal literal && literal.value() instanceof Boolean value
+        ) return value ? whenTrue : whenFalse;
+        return this.node(new SemanticAst.Conditional(condition, whenTrue, whenFalse));
     }
 
-    private SemanticAst.Expression lower(Expression expression) {
-        return switch (expression) {
-            case Literal literal -> this.literal(literal.token());
-            case Reference reference -> this.reference(reference);
-            case ListExpression list -> this.list(list);
-            case Unary unary -> this.unary(unary);
-            case Binary binary -> this.binary(binary);
-            case Quantifier quantifier -> this.quantifier(quantifier);
-            case LengthExpression length -> this.length(length);
-        };
+    private SemanticAst.Expression expression(EmbeddedLanguageParser.ExpressionContext context) {
+        return this.or(context.orExpression());
+    }
+
+    private SemanticAst.Expression or(EmbeddedLanguageParser.OrExpressionContext context) {
+        List<EmbeddedLanguageParser.AndExpressionContext> operands = context.andExpression();
+        SemanticAst.Expression result = this.and(operands.getFirst());
+        for (int index = 1; index < operands.size(); index++) {
+            result = this.binary(
+                SemanticAst.BinaryOperator.OR,
+                result,
+                this.and(operands.get(index)),
+                sourceSpan(result.span(), span(operands.get(index)))
+            );
+        }
+        return result;
+    }
+
+    private SemanticAst.Expression and(EmbeddedLanguageParser.AndExpressionContext context) {
+        List<EmbeddedLanguageParser.EqualityExpressionContext> operands = context.equalityExpression();
+        SemanticAst.Expression result = this.equality(operands.getFirst());
+        for (int index = 1; index < operands.size(); index++) {
+            result = this.binary(
+                SemanticAst.BinaryOperator.AND,
+                result,
+                this.equality(operands.get(index)),
+                sourceSpan(result.span(), span(operands.get(index)))
+            );
+        }
+        return result;
+    }
+
+    private SemanticAst.Expression equality(EmbeddedLanguageParser.EqualityExpressionContext context) {
+        List<EmbeddedLanguageParser.ComparisonExpressionContext> operands = context.comparisonExpression();
+        SemanticAst.Expression result = this.comparison(operands.getFirst());
+        for (int index = 1; index < operands.size(); index++) {
+            SemanticAst.BinaryOperator operator = switch (context.getChild(index * 2 - 1).getText()) {
+                case "==" -> SemanticAst.BinaryOperator.EQUAL;
+                case "!=" -> SemanticAst.BinaryOperator.NOT_EQUAL;
+                default -> throw new IllegalStateException("unsupported equality operator");
+            };
+            SemanticAst.Expression right = this.comparison(operands.get(index));
+            result = this.binary(operator, result, right, sourceSpan(result.span(), right.span()));
+        }
+        return result;
+    }
+
+    private SemanticAst.Expression comparison(EmbeddedLanguageParser.ComparisonExpressionContext context) {
+        List<EmbeddedLanguageParser.MembershipExpressionContext> operands = context.membershipExpression();
+        SemanticAst.Expression result = this.membership(operands.getFirst());
+        for (int index = 1; index < operands.size(); index++) {
+            SemanticAst.BinaryOperator operator = switch (context.getChild(index * 2 - 1).getText()) {
+                case "<" -> SemanticAst.BinaryOperator.LESS;
+                case "<=" -> SemanticAst.BinaryOperator.LESS_OR_EQUAL;
+                case ">" -> SemanticAst.BinaryOperator.GREATER;
+                case ">=" -> SemanticAst.BinaryOperator.GREATER_OR_EQUAL;
+                default -> throw new IllegalStateException("unsupported comparison operator");
+            };
+            SemanticAst.Expression right = this.membership(operands.get(index));
+            result = this.binary(operator, result, right, sourceSpan(result.span(), right.span()));
+        }
+        return result;
+    }
+
+    private SemanticAst.Expression membership(EmbeddedLanguageParser.MembershipExpressionContext context) {
+        SemanticAst.Expression left = this.additive(context.additiveExpression(0));
+        if (context.additiveExpression().size() == 1) return left;
+        SemanticAst.Expression right = this.additive(context.additiveExpression(1));
+        return this.binary(SemanticAst.BinaryOperator.IN, left, right, sourceSpan(left.span(), right.span()));
+    }
+
+    private SemanticAst.Expression additive(EmbeddedLanguageParser.AdditiveExpressionContext context) {
+        List<EmbeddedLanguageParser.MultiplicativeExpressionContext> operands = context.multiplicativeExpression();
+        SemanticAst.Expression result = this.multiplicative(operands.getFirst());
+        for (int index = 1; index < operands.size(); index++) {
+            SemanticAst.BinaryOperator operator = switch (context.getChild(index * 2 - 1).getText()) {
+                case "+" -> SemanticAst.BinaryOperator.ADD;
+                case "-" -> SemanticAst.BinaryOperator.SUBTRACT;
+                default -> throw new IllegalStateException("unsupported additive operator");
+            };
+            SemanticAst.Expression right = this.multiplicative(operands.get(index));
+            result = this.binary(operator, result, right, sourceSpan(result.span(), right.span()));
+        }
+        return result;
+    }
+
+    private SemanticAst.Expression multiplicative(EmbeddedLanguageParser.MultiplicativeExpressionContext context) {
+        List<EmbeddedLanguageParser.UnaryExpressionContext> operands = context.unaryExpression();
+        SemanticAst.Expression result = this.unary(operands.getFirst());
+        for (int index = 1; index < operands.size(); index++) {
+            SemanticAst.BinaryOperator operator = switch (context.getChild(index * 2 - 1).getText()) {
+                case "*" -> SemanticAst.BinaryOperator.MULTIPLY;
+                case "/" -> SemanticAst.BinaryOperator.DIVIDE;
+                case "%" -> SemanticAst.BinaryOperator.MODULO;
+                default -> throw new IllegalStateException("unsupported multiplicative operator");
+            };
+            SemanticAst.Expression right = this.unary(operands.get(index));
+            result = this.binary(operator, result, right, sourceSpan(result.span(), right.span()));
+        }
+        return result;
+    }
+
+    private SemanticAst.Expression unary(EmbeddedLanguageParser.UnaryExpressionContext context) {
+        this.syntaxNesting++;
+        if (this.syntaxNesting > this.limits.maxSyntaxDepth()) throw failure(
+            LanguageDiagnostic.Category.ComplexityError,
+            "program syntax depth exceeds the limit",
+            span(context)
+        );
+        try {
+            if (context.primary() != null) return this.primary(context.primary());
+            SemanticAst.UnaryOperator operator = switch (context.getChild(0).getText()) {
+                case "!" -> SemanticAst.UnaryOperator.NOT;
+                case "+" -> SemanticAst.UnaryOperator.PLUS;
+                case "-" -> SemanticAst.UnaryOperator.MINUS;
+                default -> throw new IllegalStateException("unsupported unary operator");
+            };
+            SemanticAst.Expression operand = this.unary(context.unaryExpression());
+            this.requireFeature(
+                operator == SemanticAst.UnaryOperator.NOT
+                    ? CompilationFeature.LOGICAL_OPERATORS
+                    : CompilationFeature.ARITHMETIC_OPERATORS,
+                span(context)
+            );
+            require(
+                operand,
+                operator == SemanticAst.UnaryOperator.NOT ? LanguageType.Scalar.BOOL : LanguageType.Scalar.NUMBER,
+                "unary operator has an incompatible operand"
+            );
+            if (operand instanceof SemanticAst.Literal literal) {
+                try {
+                    return this.literal(EmbeddedLanguageEvaluator.compute(operator, literal.value()), span(context));
+                } catch (IllegalArgumentException ignored) {
+                    // Runtime failures such as division by zero remain represented in the Semantic AST.
+                }
+            }
+            return this.node(
+                new SemanticAst.Unary(
+                    operator,
+                    operand,
+                    operator == SemanticAst.UnaryOperator.NOT
+                        ? LanguageType.Scalar.BOOL
+                        : LanguageType.Scalar.NUMBER,
+                    operand.dependencies(),
+                    span(context)
+                )
+            );
+        } finally {
+            this.syntaxNesting--;
+        }
+    }
+
+    private SemanticAst.Expression primary(EmbeddedLanguageParser.PrimaryContext context) {
+        if (context.literal() != null) return this.literal(context.literal().getStart());
+        if (context.listLiteral() != null) return this.list(context.listLiteral());
+        if (context.reference() != null) return this.reference(context.reference());
+        if (context.quantifierExpression() != null) return this.quantifier(context.quantifierExpression());
+        if (context.lengthExpression() != null) return this.length(context.lengthExpression());
+        return this.expression(context.expression());
     }
 
     private SemanticAst.Expression literal(Token token) {
@@ -428,198 +331,202 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
             case EmbeddedLanguageParser.STRING -> parseString(token);
             default -> throw syntax("invalid literal", token);
         };
-        return this.node(new SemanticAst.Literal(value, typeOf(value), Set.of(), span(token)));
+        return this.node(new SemanticAst.Literal(value, typeOf(value), this.schema.noDependencies(), span(token)));
     }
 
-    private SemanticAst.Expression reference(Reference reference) {
-        SemanticAst.@Nullable Expression local = this.scopes.getLast().lookup(reference.root());
+    private SemanticAst.Expression literal(@Nullable Object value, LanguageDiagnostic.SourceSpan span) {
+        return this.node(new SemanticAst.Literal(value, typeOf(value), this.schema.noDependencies(), span));
+    }
+
+    private SemanticAst.Expression reference(EmbeddedLanguageParser.ReferenceContext context) {
+        List<TerminalNode> identifiers = context.IDENT();
+        String root = identifiers.getFirst().getText();
+        ArrayList<String> path = new ArrayList<>(Math.max(0, identifiers.size() - 1));
+        for (int index = 1; index < identifiers.size(); index++) path.add(identifiers.get(index).getText());
+        LanguageDiagnostic.SourceSpan sourceSpan = span(context);
+        SemanticAst.@Nullable Expression local = this.scopes.getLast().lookup(root);
         if (local != null) {
-            if (reference.path().isEmpty()) return local;
+            if (path.isEmpty()) return local;
             if (local instanceof SemanticAst.Reference localReference && localReference.root().equals("__lambda__")) {
-                List<String> path = new ArrayList<>(localReference.path());
-                path.addAll(reference.path());
+                ArrayList<String> localPath = new ArrayList<>(localReference.path().size() + path.size());
+                localPath.addAll(localReference.path());
+                localPath.addAll(path);
                 return this.node(
                     new SemanticAst.Reference(
                         localReference.root(),
-                        path,
-                        resolveLocalPath(localReference.type(), reference.path()),
+                        localPath,
+                        resolveLocalPath(localReference.type(), path),
                         localReference.nullable(),
                         true,
-                        Set.of(),
-                        reference.span()
+                        -1,
+                        localReference.localSlot(),
+                        this.schema.noDependencies(),
+                        sourceSpan
                     )
                 );
             }
         }
-        EnvironmentSchema.Field field = this.schema.resolve(reference.root(), reference.path());
+        EnvironmentSchema.Field field = this.schema.resolve(root, path);
         if (field == null) throw failure(
             LanguageDiagnostic.Category.BindingError,
-            "unknown program reference: " + reference.root() + String.join(".", reference.path()),
-            reference.span()
+            "unknown program reference: " + root + (path.isEmpty() ? "" : "." + String.join(".", path)),
+            sourceSpan
         );
+        if (!field.symbolic()) this.requiredRoots.add(root);
         return this.node(
             new SemanticAst.Reference(
-                reference.root(),
-                reference.path(),
+                root,
+                path,
                 field.type(),
                 field.nullable(),
                 field.symbolic(),
-                Set.of(reference.root()),
-                reference.span()
+                this.schema.rootSlot(root),
+                -1,
+                this.schema.dependency(root),
+                sourceSpan
             )
         );
     }
 
-    private SemanticAst.Expression list(ListExpression expression) {
-        this.requireFeature(CompilationFeature.LIST_LITERALS, expression.span());
-        if (expression.values().size() > this.limits.maxListElements()) throw failure(
+    private SemanticAst.Expression list(EmbeddedLanguageParser.ListLiteralContext context) {
+        this.requireFeature(CompilationFeature.LIST_LITERALS, context.getStart());
+        if (context.expression().size() > this.limits.maxListElements()) throw failure(
             LanguageDiagnostic.Category.ComplexityError,
             "list literal exceeds the element limit",
-            expression.span()
+            span(context)
         );
-        List<SemanticAst.Expression> values = new ArrayList<>(expression.values().size());
-        Set<String> dependencies = new HashSet<>();
-        for (Expression value : expression.values()) {
-            SemanticAst.Expression lowered = this.lower(value);
-            values.add(lowered);
-            dependencies.addAll(lowered.dependencies());
-        }
+        ArrayList<SemanticAst.Expression> values = new ArrayList<>(context.expression().size());
+        for (EmbeddedLanguageParser.ExpressionContext value : context.expression()) values.add(this.expression(value));
         LanguageType element = values.isEmpty() ? LanguageType.Scalar.NULL : values.getFirst().type();
-        for (SemanticAst.Expression value : values)
+        for (SemanticAst.Expression value : values) {
             if (!value.type().equals(element)) throw failure(
                 LanguageDiagnostic.Category.TypeError,
                 "list elements must have one homogeneous type",
                 value.span()
             );
+        }
         return this.node(
             new SemanticAst.ListLiteral(
                 values,
                 new LanguageType.ListType(element),
-                Set.copyOf(dependencies),
-                expression.span()
+                SemanticAst.dependencies(values),
+                span(context)
             )
         );
     }
 
-    private SemanticAst.Expression unary(Unary expression) {
-        SemanticAst.Expression operand = this.lower(expression.operand());
-        SemanticAst.UnaryOperator operator = expression.operator();
-        this.requireFeature(
-            operator == SemanticAst.UnaryOperator.NOT
-                ? CompilationFeature.LOGICAL_OPERATORS
-                : CompilationFeature.ARITHMETIC_OPERATORS,
-            expression.span()
-        );
-        require(
-            operand,
-            operator == SemanticAst.UnaryOperator.NOT ? LanguageType.Scalar.BOOL : LanguageType.Scalar.NUMBER,
-            "unary operator has an incompatible operand"
-        );
-        return this.folded(
-            this.node(
-                new SemanticAst.Unary(
-                    operator,
-                    operand,
-                    operator == SemanticAst.UnaryOperator.NOT ? LanguageType.Scalar.BOOL : LanguageType.Scalar.NUMBER,
-                    operand.dependencies(),
-                    expression.span()
-                )
-            )
-        );
-    }
-
-    private SemanticAst.Expression binary(Binary expression) {
-        SemanticAst.Expression left = this.lower(expression.left());
-        SemanticAst.Expression right = this.lower(expression.right());
-        SemanticAst.BinaryOperator operator = expression.operator();
-        this.requireFeature(this.feature(operator), expression.span());
-        LanguageType type = validate(operator, left, right, expression.span());
-        return this.folded(
-            this.node(new SemanticAst.Binary(operator, left, right, type, union(left, right), expression.span()))
-        );
-    }
-
-    private SemanticAst.Expression quantifier(Quantifier expression) {
-        SemanticAst.Expression collection = this.lower(expression.collection());
-        if (!(collection.type() instanceof LanguageType.ListType list)) {
-            throw failure(LanguageDiagnostic.Category.TypeError, "quantifier requires a List", expression.span());
+    private SemanticAst.Expression binary(
+        SemanticAst.BinaryOperator operator,
+        SemanticAst.Expression left,
+        SemanticAst.Expression right,
+        LanguageDiagnostic.SourceSpan sourceSpan
+    ) {
+        this.requireFeature(this.feature(operator), sourceSpan);
+        LanguageType type = validate(operator, left, right, sourceSpan);
+        if (operator == SemanticAst.BinaryOperator.AND && left instanceof SemanticAst.Literal literal) {
+            if (literal.value() instanceof Boolean value) return value ? right : literal;
         }
-        SemanticAst.Expression predicate;
-        this.scopes.add(new Scope(this.scopes.isEmpty() ? null : this.scopes.getLast()));
-        this.lambdaNesting++;
-        try {
-            if (this.lambdaNesting > this.limits.maxLambdaDepth()) {
-                throw failure(
-                    LanguageDiagnostic.Category.ComplexityError,
-                    "lambda nesting exceeds the limit",
-                    expression.span()
-                );
+        if (operator == SemanticAst.BinaryOperator.OR && left instanceof SemanticAst.Literal literal) {
+            if (literal.value() instanceof Boolean value) return value ? literal : right;
+        }
+        if (left instanceof SemanticAst.Literal l && right instanceof SemanticAst.Literal r) {
+            try {
+                return this.literal(EmbeddedLanguageEvaluator.compute(operator, l.value(), r.value()), sourceSpan);
+            } catch (IllegalArgumentException ignored) {
+                // Runtime failures stay represented rather than becoming compilation failures.
             }
+        }
+        return this.node(
+            new SemanticAst.Binary(operator, left, right, type, SemanticAst.dependencies(left, right), sourceSpan)
+        );
+    }
+
+    private SemanticAst.Expression quantifier(EmbeddedLanguageParser.QuantifierExpressionContext context) {
+        this.requireFeature(CompilationFeature.COLLECTION_QUANTIFIERS, context.getStart());
+        this.quantifierNesting++;
+        if (this.quantifierNesting > this.limits.maxQuantifierDepth()) throw failure(
+            LanguageDiagnostic.Category.ComplexityError,
+            "quantifier nesting exceeds the limit",
+            span(context)
+        );
+        SemanticAst.Expression collection = this.expression(context.expression(0));
+        if (!(collection.type() instanceof LanguageType.ListType list)) {
+            this.quantifierNesting--;
+            throw failure(LanguageDiagnostic.Category.TypeError, "quantifier requires a List", span(context));
+        }
+        int slot = this.lambdaNesting;
+        this.lambdaNesting++;
+        this.localSlotCount = Math.max(this.localSlotCount, this.lambdaNesting);
+        if (this.lambdaNesting > this.limits.maxLambdaDepth()) {
+            this.lambdaNesting--;
+            this.quantifierNesting--;
+            throw failure(LanguageDiagnostic.Category.ComplexityError, "lambda nesting exceeds the limit", span(context));
+        }
+        String elementName = context.IDENT().getText();
+        this.scopes.add(new Scope(this.scopes.isEmpty() ? null : this.scopes.getLast()));
+        SemanticAst.Expression predicate;
+        try {
             this.scopes
                 .getLast()
                 .put(
-                    expression.elementName(),
+                    elementName,
                     new SemanticAst.Reference(
                         "__lambda__",
-                        List.of(expression.elementName()),
+                        List.of(elementName),
                         list.elementType(),
                         false,
                         false,
-                        Set.of(),
-                        expression.span()
+                        -1,
+                        slot,
+                        this.schema.noDependencies(),
+                        span(context)
                     )
                 );
-            predicate = this.lower(expression.predicate());
+            predicate = this.expression(context.expression(1));
         } finally {
-            this.lambdaNesting--;
             this.scopes.removeLast();
+            this.lambdaNesting--;
+            this.quantifierNesting--;
         }
         require(predicate, LanguageType.Scalar.BOOL, "quantifier predicate must be Bool");
-        return this.folded(
-            this.node(
-                new SemanticAst.Quantifier(
-                    expression.operator(),
-                    collection,
-                    expression.elementName(),
-                    predicate,
-                    LanguageType.Scalar.BOOL,
-                    union(collection, predicate),
-                    expression.span()
-                )
+        SemanticAst.QuantifierOperator operator = switch (context.quantifier().getStart().getType()) {
+            case EmbeddedLanguageParser.ALL -> SemanticAst.QuantifierOperator.ALL;
+            case EmbeddedLanguageParser.ANY -> SemanticAst.QuantifierOperator.ANY;
+            case EmbeddedLanguageParser.NONE -> SemanticAst.QuantifierOperator.NONE;
+            default -> throw syntax("invalid quantifier", context.getStart());
+        };
+        return this.node(
+            new SemanticAst.Quantifier(
+                operator,
+                collection,
+                elementName,
+                slot,
+                predicate,
+                LanguageType.Scalar.BOOL,
+                SemanticAst.dependencies(collection, predicate),
+                span(context)
             )
         );
     }
 
-    private SemanticAst.Expression length(LengthExpression expression) {
-        SemanticAst.Expression operand = this.lower(expression.operand());
+    private SemanticAst.Expression length(EmbeddedLanguageParser.LengthExpressionContext context) {
+        this.requireFeature(CompilationFeature.LENGTH_INTRINSIC, context.getStart());
+        SemanticAst.Expression operand = this.expression(context.expression());
         if (
             operand.type() != LanguageType.Scalar.STRING && !(operand.type() instanceof LanguageType.ListType)
-        ) throw failure(LanguageDiagnostic.Category.TypeError, "len requires a String or List", expression.span());
+        ) throw failure(LanguageDiagnostic.Category.TypeError, "len requires a String or List", span(context));
         if (operand.nullable()) throw failure(
             LanguageDiagnostic.Category.TypeError,
             "len does not accept nullable values",
-            expression.span()
+            span(context)
         );
-        return this.node(
-            new SemanticAst.Length(operand, LanguageType.Scalar.NUMBER, operand.dependencies(), expression.span())
-        );
-    }
-
-    private static LanguageType resolveLocalPath(LanguageType type, List<String> path) {
-        LanguageType current = type;
-        for (String segment : path) {
-            if (!(current instanceof LanguageType.StructuredType structured)) {
-                throw failure(LanguageDiagnostic.Category.BindingError, "unknown lambda path: " + segment, unknown());
-            }
-            EnvironmentSchema.Field field = structured.field(segment);
-            if (field == null) throw failure(
-                LanguageDiagnostic.Category.BindingError,
-                "unknown lambda path: " + segment,
-                unknown()
-            );
-            current = field.type();
+        if (operand instanceof SemanticAst.Literal literal) {
+            if (literal.value() instanceof String text) return this.literal(BigDecimal.valueOf(text.length()), span(context));
+            if (literal.value() instanceof List<?> values) return this.literal(BigDecimal.valueOf(values.size()), span(context));
         }
-        return current;
+        return this.node(
+            new SemanticAst.Length(operand, LanguageType.Scalar.NUMBER, operand.dependencies(), span(context))
+        );
     }
 
     private CompilationFeature feature(SemanticAst.BinaryOperator operator) {
@@ -682,72 +589,24 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
             (left.type() == LanguageType.Scalar.NULL && right.nullable()) ||
             (right.type() == LanguageType.Scalar.NULL && left.nullable())
         ) return LanguageType.Scalar.BOOL;
-        throw failure(
-            LanguageDiagnostic.Category.TypeError,
-            "equality requires matching types or nullable values",
-            span
-        );
+        throw failure(LanguageDiagnostic.Category.TypeError, "equality requires matching types or nullable values", span);
     }
 
-    private SemanticAst.Expression folded(SemanticAst.Expression expression) {
-        switch (expression) {
-            case SemanticAst.Binary binary -> {
-                switch (binary.operator()) {
-                    case AND -> {
-                        if (
-                            binary.left() instanceof SemanticAst.Literal literal &&
-                            literal.value() instanceof Boolean value
-                        ) return value ? binary.right() : literal;
-                    }
-                    case OR -> {
-                        if (
-                            binary.left() instanceof SemanticAst.Literal literal &&
-                            literal.value() instanceof Boolean value
-                        ) return value ? literal : binary.right();
-                    }
-                    default -> {
-                    }
-                }
-                if (
-                    binary.left() instanceof SemanticAst.Literal left &&
-                    binary.right() instanceof SemanticAst.Literal right
-                ) {
-                    try {
-                        return this.literal(
-                            EmbeddedLanguageEvaluator.compute(binary.operator(), left.value(), right.value()),
-                            binary.span()
-                        );
-                    } catch (IllegalArgumentException ignored) {
-                        return expression;
-                    }
-                }
+    private static LanguageType resolveLocalPath(LanguageType type, List<String> path) {
+        LanguageType current = type;
+        for (String segment : path) {
+            if (!(current instanceof LanguageType.StructuredType structured)) {
+                throw failure(LanguageDiagnostic.Category.BindingError, "unknown lambda path: " + segment, unknown());
             }
-            case SemanticAst.Unary unary -> {
-                if (unary.operand() instanceof SemanticAst.Literal literal) {
-                    try {
-                        return this.literal(
-                            EmbeddedLanguageEvaluator.compute(unary.operator(), literal.value()),
-                            unary.span()
-                        );
-                    } catch (IllegalArgumentException ignored) {
-                        return expression;
-                    }
-                }
-            }
-            case SemanticAst.Conditional conditional -> {
-                if (
-                    conditional.condition() instanceof SemanticAst.Literal literal &&
-                    literal.value() instanceof Boolean value
-                ) return value ? conditional.whenTrue() : conditional.whenFalse();
-            }
-            default -> {
-            }
+            EnvironmentSchema.Field field = structured.field(segment);
+            if (field == null) throw failure(
+                LanguageDiagnostic.Category.BindingError,
+                "unknown lambda path: " + segment,
+                unknown()
+            );
+            current = field.type();
         }
-        return expression;
-    }
-
-    private SemanticAst.Expression literal(@Nullable Object value, LanguageDiagnostic.SourceSpan span) {
-        return this.node(new SemanticAst.Literal(value, typeOf(value), Set.of(), span));
+        return current;
     }
 
     private SemanticAst.Expression node(SemanticAst.Expression expression) {
@@ -758,12 +617,6 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
             expression.span()
         );
         return expression;
-    }
-
-    private static Set<String> union(SemanticAst.Expression left, SemanticAst.Expression right) {
-        Set<String> result = new HashSet<>(left.dependencies());
-        result.addAll(right.dependencies());
-        return Set.copyOf(result);
     }
 
     private static void require(SemanticAst.Expression expression, LanguageType expected, String message) {
@@ -829,7 +682,7 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
                         case 'n' -> '\n';
                         case 'r' -> '\r';
                         case 't' -> '\t';
-                        case 'u' -> (char) Integer.parseInt(text.substring(escapeIndex + 1, escapeIndex + 5), 16);
+                        case 'u' -> (char) Integer.parseInt(text, escapeIndex + 1, escapeIndex + 5, 16);
                         default -> throw syntax("invalid string escape", token);
                     }
                 );
@@ -905,89 +758,6 @@ final class LanguageCompilerVisitor extends EmbeddedLanguageBaseVisitor<Object> 
     ) {
         return EmbeddedLanguageCompiler.failure(category, message, span);
     }
-
-    private sealed interface SyntaxNode permits Program, Block, Statement, Expression {}
-
-    private record Program(List<Statement> statements) implements SyntaxNode {
-        private Program {
-            statements = List.copyOf(statements);
-        }
-    }
-
-    private record Block(List<Statement> statements) implements SyntaxNode {
-        private Block {
-            statements = List.copyOf(statements);
-        }
-    }
-
-    private sealed interface Statement extends SyntaxNode permits Constant, Returning, Conditional {
-        LanguageDiagnostic.SourceSpan span();
-    }
-
-    private record Constant(String name, Expression value, LanguageDiagnostic.SourceSpan span) implements Statement {}
-
-    private record Returning(Expression value, LanguageDiagnostic.SourceSpan span) implements Statement {}
-
-    private record Conditional(
-        Expression condition,
-        List<Statement> whenTrue,
-        @Nullable List<Statement> whenFalse,
-        LanguageDiagnostic.SourceSpan span
-    ) implements Statement {
-        private Conditional {
-            whenTrue = List.copyOf(whenTrue);
-            whenFalse = whenFalse == null ? null : List.copyOf(whenFalse);
-        }
-    }
-
-    private sealed interface Expression
-        extends SyntaxNode
-        permits Literal, Reference, ListExpression, Unary, Binary, Quantifier, LengthExpression
-    {
-        LanguageDiagnostic.SourceSpan span();
-    }
-
-    private record Literal(Token token) implements Expression {
-        @Override
-        public LanguageDiagnostic.SourceSpan span() {
-            return LanguageCompilerVisitor.span(this.token);
-        }
-    }
-
-    private record Reference(String root, List<String> path, LanguageDiagnostic.SourceSpan span) implements Expression {
-        private Reference {
-            path = List.copyOf(path);
-        }
-    }
-
-    private record ListExpression(List<Expression> values, LanguageDiagnostic.SourceSpan span) implements Expression {
-        private ListExpression {
-            values = List.copyOf(values);
-        }
-    }
-
-    private record Unary(
-        SemanticAst.UnaryOperator operator,
-        Expression operand,
-        LanguageDiagnostic.SourceSpan span
-    ) implements Expression {}
-
-    private record Binary(
-        SemanticAst.BinaryOperator operator,
-        Expression left,
-        Expression right,
-        LanguageDiagnostic.SourceSpan span
-    ) implements Expression {}
-
-    private record Quantifier(
-        SemanticAst.QuantifierOperator operator,
-        Expression collection,
-        String elementName,
-        Expression predicate,
-        LanguageDiagnostic.SourceSpan span
-    ) implements Expression {}
-
-    private record LengthExpression(Expression operand, LanguageDiagnostic.SourceSpan span) implements Expression {}
 
     private static final class Scope {
 

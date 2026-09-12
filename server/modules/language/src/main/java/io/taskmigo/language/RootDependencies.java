@@ -107,7 +107,7 @@ final class RootDependencies extends AbstractSet<String> {
     @Override
     public Iterator<String> iterator() {
         return new Iterator<>() {
-            private int next = find(0);
+            private int next = this.find(0);
 
             @Override
             public boolean hasNext() {
@@ -118,7 +118,7 @@ final class RootDependencies extends AbstractSet<String> {
             public String next() {
                 if (this.next < 0) throw new NoSuchElementException();
                 int current = this.next;
-                this.next = find(current + 1);
+                this.next = this.find(current + 1);
                 return catalog.root(current);
             }
 

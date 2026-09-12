@@ -82,6 +82,10 @@ public final class EnvironmentSchema {
         return this.dependencies.slot(root);
     }
 
+    int rootCount() {
+        return this.dependencies.size();
+    }
+
     Set<String> dependency(String root) {
         return this.dependencies.dependency(root);
     }
