@@ -84,13 +84,10 @@ final class EvaluationFrame {
     void pop(int slot) {
         if (slot >= 0 && slot < this.localValues.length) {
             this.localPresent[slot] = false;
-            this.localValues[slot] = null;
             return;
         }
         if (this.bindingCount == 0) throw new IllegalStateException("evaluation binding stack is empty");
         this.bindingCount--;
-        this.bindingNames[this.bindingCount] = null;
-        this.bindingValues[this.bindingCount] = null;
     }
 
     @Nullable
