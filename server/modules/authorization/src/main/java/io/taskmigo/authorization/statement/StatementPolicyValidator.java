@@ -5,8 +5,8 @@ import io.taskmigo.authorization.core.AuthorizationName;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfile;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
 import io.taskmigo.authorization.object.ObjectAuthorization;
-import io.taskmigo.language.EmbeddedLanguageCompiler;
 import io.taskmigo.language.EmbeddedLanguageException;
+import io.taskmigo.language.LanguageCompiler;
 import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
@@ -29,15 +29,15 @@ public final class StatementPolicyValidator {
     );
 
     private final ObjectAuthorization objectAuthorization;
-    private final EmbeddedLanguageCompiler embeddedLanguageCompiler;
+    private final LanguageCompiler languageCompiler;
 
     /// Creates a validator with the authorization-owned policy compilers.
     public StatementPolicyValidator(
         ObjectAuthorization objectAuthorization,
-        EmbeddedLanguageCompiler embeddedLanguageCompiler
+        LanguageCompiler languageCompiler
     ) {
         this.objectAuthorization = objectAuthorization;
-        this.embeddedLanguageCompiler = embeddedLanguageCompiler;
+        this.languageCompiler = languageCompiler;
     }
 
     /// Validates and normalizes a Statement definition for persistence.
@@ -72,7 +72,7 @@ public final class StatementPolicyValidator {
         String validPolicy = requiredPolicy(policy);
         try {
             if (validScope == Scope.REQUEST) {
-                this.embeddedLanguageCompiler.compile(
+                this.languageCompiler.compile(
                     validPolicy,
                     AuthorizationEmbeddedLanguageSchemas.request(),
                     AuthorizationCompilationProfile.policy()

@@ -1,13 +1,11 @@
 package io.taskmigo.authorization.request;
 
 import io.taskmigo.authorization.core.AuthorizationException;
-import io.taskmigo.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
-import io.taskmigo.language.EmbeddedLanguageEvaluator;
+import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.EmbeddedLanguageException;
-import io.taskmigo.language.SemanticAst;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -20,21 +18,14 @@ import org.springframework.stereotype.Service;
 public class RequestAuthorizationService implements RequestAuthorization {
 
     private final EffectiveStatementResolver statements;
-    private final EmbeddedLanguageEvaluator embeddedLanguageEvaluator;
     private final StatementArtifactFactory artifacts;
 
     /// Creates Request Authorization with effective-state resolution and compiled artifact services.
     ///
     /// @param statements resolves committed effective Statements
-    /// @param embeddedLanguageEvaluator evaluates compiled request policies
     /// @param artifacts builds reusable compiled Statement artifacts
-    public RequestAuthorizationService(
-        EffectiveStatementResolver statements,
-        EmbeddedLanguageEvaluator embeddedLanguageEvaluator,
-        StatementArtifactFactory artifacts
-    ) {
+    public RequestAuthorizationService(EffectiveStatementResolver statements, StatementArtifactFactory artifacts) {
         this.statements = statements;
-        this.embeddedLanguageEvaluator = embeddedLanguageEvaluator;
         this.artifacts = artifacts;
     }
 
@@ -108,11 +99,7 @@ public class RequestAuthorizationService implements RequestAuthorization {
         for (Evaluation evaluation : evaluations) {
             StatementInfo statement = evaluation.statement();
             try {
-                Object value = this.embeddedLanguageEvaluator.evaluate(
-                    evaluation.policy(),
-                    AuthorizationEmbeddedLanguageSchemas.request(),
-                    approvedRoots
-                );
+                Object value = evaluation.policy().evaluate(approvedRoots);
                 if (!(value instanceof Boolean matches)) {
                     throw new AuthorizationException("Request authorization policy result is not Bool");
                 }
@@ -129,11 +116,11 @@ public class RequestAuthorizationService implements RequestAuthorization {
         return new RequestAuthorizationDecision(allowed);
     }
 
-    private static boolean constantTrue(SemanticAst policy) {
-        return policy.expression() instanceof SemanticAst.Literal literal && Boolean.TRUE.equals(literal.value());
+    private static boolean constantTrue(CompiledSource policy) {
+        return policy.constantBoolean().orElse(false);
     }
 
-    private record Evaluation(StatementInfo statement, SemanticAst policy) {}
+    private record Evaluation(StatementInfo statement, CompiledSource policy) {}
 
     private static final class FailedAuthorizationContext implements AuthorizationContext {}
 }

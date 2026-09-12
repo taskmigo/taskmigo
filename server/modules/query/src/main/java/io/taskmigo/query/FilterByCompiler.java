@@ -3,11 +3,11 @@ package io.taskmigo.query;
 import io.taskmigo.language.CompilationFeature;
 import io.taskmigo.language.CompilationMode;
 import io.taskmigo.language.CompilationProfile;
-import io.taskmigo.language.EmbeddedLanguageCompiler;
+import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.EnvironmentSchema;
+import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageType;
-import io.taskmigo.language.SemanticAst;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -24,15 +24,15 @@ import org.springframework.stereotype.Service;
 @SuppressWarnings({ "checkstyle:NeedBraces", "checkstyle:OneStatementPerLine", "checkstyle:UnusedLocalVariable" })
 public class FilterByCompiler {
 
-    private final EmbeddedLanguageCompiler compiler;
+    private final LanguageCompiler compiler;
 
-    /// Creates a filter compiler using the default Embedded Language limits.
+    /// Creates a filter compiler using the default Language limits.
     public FilterByCompiler() {
-        this(new EmbeddedLanguageCompiler());
+        this(new LanguageCompiler());
     }
 
-    /// Creates a filter compiler with an application-configured language compiler.
-    public FilterByCompiler(EmbeddedLanguageCompiler compiler) {
+    /// Creates a filter compiler with an application-configured Language compiler.
+    public FilterByCompiler(LanguageCompiler compiler) {
         this.compiler = compiler;
     }
 
@@ -54,7 +54,7 @@ public class FilterByCompiler {
                     CompilationFeature.LENGTH_INTRINSIC
                 )
             );
-            SemanticAst compiled = this.compiler.compile(source, environment, profile);
+            CompiledSource compiled = this.compiler.compile(source, environment, profile);
             if (compiled.resultType() != LanguageType.Scalar.BOOL) throw new FilterByException(
                 "filterBy expression must return Bool"
             );

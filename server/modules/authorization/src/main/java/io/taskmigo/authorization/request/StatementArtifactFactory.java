@@ -8,10 +8,10 @@ import io.taskmigo.authorization.object.ObjectAuthorizationSchemaRegistry;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.authorization.statement.StatementInfo;
-import io.taskmigo.language.EmbeddedLanguageCompiler;
+import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.EnvironmentSchema;
-import io.taskmigo.language.SemanticAst;
+import io.taskmigo.language.LanguageCompiler;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -32,14 +32,14 @@ import org.springframework.stereotype.Service;
 @Service
 public final class StatementArtifactFactory {
 
-    private final EmbeddedLanguageCompiler compiler;
+    private final LanguageCompiler compiler;
     private final List<ObjectAuthorizationSchema<?>> schemas;
     private final ObjectAuthorizationSchemaRegistry schemaRegistry;
     private final ConcurrentMap<CacheKey, CachedArtifacts> derived = new ConcurrentHashMap<>();
 
     /// Creates a factory whose cache contains only compiled policy and matcher derivatives.
     public StatementArtifactFactory(
-        EmbeddedLanguageCompiler compiler,
+        LanguageCompiler compiler,
         List<ObjectAuthorizationSchema<?>> schemas,
         ObjectAuthorizationSchemaRegistry schemaRegistry
     ) {
@@ -128,5 +128,5 @@ public final class StatementArtifactFactory {
 
     private record CacheKey(UUID statementId, String schemaFingerprint, String statementFingerprint) {}
 
-    private record DerivedArtifacts(SemanticAst policy, Pattern pathMatcher) {}
+    private record DerivedArtifacts(CompiledSource policy, Pattern pathMatcher) {}
 }

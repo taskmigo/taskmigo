@@ -12,9 +12,9 @@ import io.taskmigo.authorization.object.ObjectAuthorizationSchemaRegistry;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchemaValidator;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
-import io.taskmigo.language.EmbeddedLanguageCompiler;
+import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.EmbeddedLanguageException;
-import io.taskmigo.language.EmbeddedLanguagePartialEvaluator;
+import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageDiagnostic;
 import io.taskmigo.language.LanguageType;
 import io.taskmigo.language.PartialProgram;
@@ -27,17 +27,14 @@ import org.springframework.stereotype.Service;
 @Service
 public class ObjectAuthorizationService implements ObjectAuthorization {
 
-    private final EmbeddedLanguagePartialEvaluator partialEvaluator;
-    private final EmbeddedLanguageCompiler compiler;
+    private final LanguageCompiler compiler;
     private final ObjectAuthorizationSchemaRegistry schemaRegistry;
 
     /// Creates the service with the compiler and application-owned object route registry.
     public ObjectAuthorizationService(
-        EmbeddedLanguagePartialEvaluator partialEvaluator,
-        EmbeddedLanguageCompiler compiler,
+        LanguageCompiler compiler,
         ObjectAuthorizationSchemaRegistry schemaRegistry
     ) {
-        this.partialEvaluator = partialEvaluator;
         this.compiler = compiler;
         this.schemaRegistry = schemaRegistry;
     }
@@ -56,7 +53,7 @@ public class ObjectAuthorizationService implements ObjectAuthorization {
             for (var artifact : operation.snapshot().executableStatements()) {
                 var statement = artifact.statement();
                 if (statement.scope() == Scope.OBJECT && artifact.matches(operation.method(), operation.path())) {
-                    SemanticAst policy = operation.snapshot().compiledPolicy(statement);
+                    CompiledSource policy = operation.snapshot().compiledPolicy(statement);
                     ObjectAuthorizationSchemaValidator.validate(policy.expression(), schema);
                     ObjectAuthorizationPredicate<Q> predicate = ObjectAuthorizationPredicateFactory.from(
                         schema,
@@ -86,7 +83,7 @@ public class ObjectAuthorizationService implements ObjectAuthorization {
             throw new AuthorizationException("Object Statement target matches no registered object schema route");
         }
         for (ObjectAuthorizationSchema<?> schema : applicable) {
-            SemanticAst compiled = this.compiler.compile(
+            CompiledSource compiled = this.compiler.compile(
                 policy,
                 AuthorizationEmbeddedLanguageSchemas.object(schema),
                 AuthorizationCompilationProfile.policy()
@@ -95,8 +92,8 @@ public class ObjectAuthorizationService implements ObjectAuthorization {
         }
     }
 
-    private SemanticAst.Expression partial(SemanticAst policy, Map<String, ?> roots) {
-        PartialProgram result = this.partialEvaluator.partial(policy, roots);
+    private SemanticAst.Expression partial(CompiledSource policy, Map<String, ?> roots) {
+        PartialProgram result = policy.partialEvaluate(roots);
         if (result instanceof PartialProgram.Concrete concrete) {
             if (!(concrete.value() instanceof Boolean value)) {
                 throw new AuthorizationException("Object authorization policy result is not Bool");

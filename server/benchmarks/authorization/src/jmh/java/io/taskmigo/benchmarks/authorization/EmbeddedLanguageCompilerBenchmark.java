@@ -3,10 +3,10 @@ package io.taskmigo.benchmarks.authorization;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.openjdk.jmh.annotations.Scope.Thread;
 
-import io.taskmigo.language.EmbeddedLanguageCompiler;
+import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.EnvironmentSchema;
+import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageType;
-import io.taskmigo.language.SemanticAst;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -39,7 +39,7 @@ public class EmbeddedLanguageCompilerBenchmark {
     /// Measures compiling one deterministic batch of authorization policies.
     @Benchmark
     public void compileBatch(BenchmarkState state, Blackhole blackhole) {
-        List<SemanticAst> compiled = new ArrayList<>(state.policies.size());
+        List<CompiledSource> compiled = new ArrayList<>(state.policies.size());
         for (String source : state.policies) {
             compiled.add(state.compiler.compile(source, state.schema));
         }
@@ -62,7 +62,7 @@ public class EmbeddedLanguageCompilerBenchmark {
         @SuppressWarnings({ "CanBeFinal", "FieldCanBeLocal", "FieldMayBeFinal" })
         private String statementCount = "500";
 
-        private final EmbeddedLanguageCompiler compiler = new EmbeddedLanguageCompiler();
+        private final LanguageCompiler compiler = new LanguageCompiler();
         private EnvironmentSchema schema = schema("REQUEST");
         private List<String> policies = List.of();
 
