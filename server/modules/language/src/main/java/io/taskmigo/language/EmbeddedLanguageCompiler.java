@@ -17,7 +17,6 @@ import org.antlr.v4.runtime.TokenSource;
 import org.jspecify.annotations.Nullable;
 
 /// Compiles direct-body Embedded Language source into an immutable typed Semantic AST.
-@SuppressWarnings("checkstyle:NeedBraces")
 final class EmbeddedLanguageCompiler {
 
     private static final String COMPILER_CONTRACT = "semantic-v2";
@@ -61,7 +60,9 @@ final class EmbeddedLanguageCompiler {
         BoundedTokenSource bounded = new BoundedTokenSource(lexer);
         CommonTokenStream tokens = new CommonTokenStream(bounded);
         tokens.fill();
-        if (!errors.diagnostics.isEmpty()) throw new EmbeddedLanguageException(errors.diagnostics);
+        if (!errors.diagnostics.isEmpty()) {
+            throw new EmbeddedLanguageException(errors.diagnostics);
+        }
         if (bounded.tokenCount() > this.limits.maxTokens()) {
             throw failure(
                 LanguageDiagnostic.Category.ComplexityError,
@@ -84,11 +85,15 @@ final class EmbeddedLanguageCompiler {
         SemanticAst.Expression expression;
         if (profile.mode() == CompilationMode.PROGRAM) {
             EmbeddedLanguageParser.ProgramContext program = parser.program();
-            if (!errors.diagnostics.isEmpty()) throw new EmbeddedLanguageException(errors.diagnostics);
+            if (!errors.diagnostics.isEmpty()) {
+                throw new EmbeddedLanguageException(errors.diagnostics);
+            }
             expression = visitor.compile(program);
         } else {
             EmbeddedLanguageParser.ExpressionSourceContext expressionSource = parser.expressionSource();
-            if (!errors.diagnostics.isEmpty()) throw new EmbeddedLanguageException(errors.diagnostics);
+            if (!errors.diagnostics.isEmpty()) {
+                throw new EmbeddedLanguageException(errors.diagnostics);
+            }
             expression = visitor.compile(expressionSource);
         }
         return new SemanticAst(
