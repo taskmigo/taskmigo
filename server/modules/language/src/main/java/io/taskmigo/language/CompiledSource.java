@@ -1,5 +1,6 @@
 package io.taskmigo.language;
 
+import io.taskmigo.language.ast.ExpressionVisitor;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -27,7 +28,12 @@ public final class CompiledSource {
         return this.program.resultNullable();
     }
 
-    /// Returns the typed expression for trusted consumers that translate Language semantics to another representation.
+    /// Translates the compiled expression through the stable read-only AST visitor.
+    public <R> R map(ExpressionVisitor<R> visitor) {
+        return SemanticExpressionMapper.map(this.program.expression(), Objects.requireNonNull(visitor));
+    }
+
+    /// Returns the typed expression for compatibility while consumers migrate to {@link #map(ExpressionVisitor)}.
     public SemanticAst.Expression expression() {
         return this.program.expression();
     }
