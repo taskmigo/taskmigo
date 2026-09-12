@@ -6,7 +6,7 @@ plugins {
 }
 
 tasks.generateGrammarSource {
-    arguments.addAll(listOf("-visitor"))
+    arguments.add("-visitor")
 }
 
 spotless {
@@ -20,7 +20,7 @@ tasks.withType<Checkstyle>().configureEach {
     exclude("**/EmbeddedLanguage*.java")
 }
 
-configurations.named("runtimeClasspath") {
+configurations.runtimeClasspath {
     exclude(group = "org.antlr", module = "antlr4")
     exclude(group = "org.antlr", module = "ST4")
     exclude(group = "org.antlr", module = "antlr-runtime")
@@ -28,7 +28,7 @@ configurations.named("runtimeClasspath") {
     exclude(group = "com.ibm.icu", module = "icu4j")
 }
 
-configurations.named("runtimeElements") {
+configurations.runtimeElements {
     exclude(group = "org.antlr", module = "antlr4")
     exclude(group = "org.antlr", module = "ST4")
     exclude(group = "org.antlr", module = "antlr-runtime")

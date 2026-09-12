@@ -1,4 +1,3 @@
-import org.springframework.boot.gradle.tasks.bundling.BootJar
 import org.gradle.api.tasks.compile.JavaCompile
 
 plugins {
@@ -6,8 +5,8 @@ plugins {
     alias(libs.plugins.spring.boot)
 }
 
-tasks.named<BootJar>("bootJar") {
-    archiveFileName.set("web.jar")
+tasks.bootJar {
+    archiveFileName = "web.jar"
 }
 
 description = "Taskmigo HTTP and OAuth application"

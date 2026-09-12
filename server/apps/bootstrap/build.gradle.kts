@@ -1,12 +1,10 @@
-import org.springframework.boot.gradle.tasks.bundling.BootJar
-
 plugins {
     java
     alias(libs.plugins.spring.boot)
 }
 
-tasks.named<BootJar>("bootJar") {
-    archiveFileName.set("bootstrap.jar")
+tasks.bootJar {
+    archiveFileName = "bootstrap.jar"
 }
 
 description = "Taskmigo database migration and installation bootstrap application"

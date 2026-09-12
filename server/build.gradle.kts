@@ -1,6 +1,5 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
 import net.ltgt.gradle.errorprone.errorprone
-import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.plugins.JavaPluginExtension
 import org.gradle.api.plugins.quality.Checkstyle
 import org.gradle.api.plugins.quality.CheckstyleExtension
@@ -9,7 +8,6 @@ import org.gradle.api.tasks.testing.Test
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.kotlin.dsl.dependencies
-import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.repositories
 
 plugins {
@@ -24,8 +22,6 @@ allprojects {
     group = "io.taskmigo"
     version = "0.0.1-SNAPSHOT"
 }
-
-val taskmigoCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
 subprojects {
     pluginManager.withPlugin("java") {
@@ -44,9 +40,9 @@ subprojects {
         }
 
         dependencies {
-            add("testRuntimeOnly", taskmigoCatalog.findLibrary("junit-platform-launcher").get())
-            add("errorprone", taskmigoCatalog.findLibrary("errorprone-core").get())
-            add("errorprone", taskmigoCatalog.findLibrary("nullaway").get())
+            add("testRuntimeOnly", libs.junit.platform.launcher)
+            add("errorprone", libs.errorprone.core)
+            add("errorprone", libs.nullaway)
         }
 
         extensions.configure<SpotlessExtension> {
@@ -59,7 +55,7 @@ subprojects {
         }
 
         extensions.configure<CheckstyleExtension> {
-            toolVersion = taskmigoCatalog.findVersion("checkstyle").get().requiredVersion
+            toolVersion = libs.versions.checkstyle.get()
             configFile = rootProject.file("config/checkstyle/checkstyle.xml")
         }
 
@@ -87,24 +83,20 @@ subprojects {
             }
         }
 
-        afterEvaluate {
+        if (!pluginManager.hasPlugin("java-library")) {
             dependencies {
-                if (pluginManager.hasPlugin("java-library")) {
-                    add("compileOnlyApi", taskmigoCatalog.findLibrary("jspecify").get())
-                } else {
-                    add("compileOnly", taskmigoCatalog.findLibrary("jspecify").get())
-                }
+                add("compileOnly", libs.jspecify)
             }
+        }
+
+        rootProject.tasks.build {
+            dependsOn(tasks.build)
         }
     }
-}
 
-tasks.named("build") {
-    dependsOn(
-        subprojects.flatMap { project ->
-            project.subprojects.ifEmpty { setOf(project) }.mapNotNull { leaf ->
-                leaf.tasks.findByName("build")?.path
-            }
+    pluginManager.withPlugin("java-library") {
+        dependencies {
+            add("compileOnlyApi", libs.jspecify)
         }
-    )
+    }
 }
