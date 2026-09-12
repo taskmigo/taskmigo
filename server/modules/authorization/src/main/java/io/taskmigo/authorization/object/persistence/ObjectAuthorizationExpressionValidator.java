@@ -7,7 +7,6 @@ import io.taskmigo.authorization.object.ObjectAuthorizationPath;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 
 /// Validates Object Authorization expression paths and operators against one logical schema.
-@SuppressWarnings("checkstyle:NeedBraces")
 public final class ObjectAuthorizationExpressionValidator {
 
     private ObjectAuthorizationExpressionValidator() {}
@@ -25,13 +24,17 @@ public final class ObjectAuthorizationExpressionValidator {
                 if (
                     unary.operand() instanceof ObjectAuthorizationExpression.Reference reference &&
                     reference.root().equals("object")
-                ) requireOperator(reference, ObjectAuthorizationOperator.NOT, schema);
+                ) {
+                    requireOperator(reference, ObjectAuthorizationOperator.NOT, schema);
+                }
             }
             case ObjectAuthorizationExpression.Length length -> {
                 if (
                     length.operand() instanceof ObjectAuthorizationExpression.Reference reference &&
                     reference.root().equals("object")
-                ) requireOperator(reference, ObjectAuthorizationOperator.LENGTH, schema);
+                ) {
+                    requireOperator(reference, ObjectAuthorizationOperator.LENGTH, schema);
+                }
                 validate(length.operand(), schema);
             }
             case ObjectAuthorizationExpression.Binary binary -> {
@@ -78,7 +81,9 @@ public final class ObjectAuthorizationExpressionValidator {
         if (
             expression instanceof ObjectAuthorizationExpression.Reference reference && reference.root().equals("object")
         ) {
-            if (operator == ObjectAuthorizationOperator.AND || operator == ObjectAuthorizationOperator.OR) return;
+            if (operator == ObjectAuthorizationOperator.AND || operator == ObjectAuthorizationOperator.OR) {
+                return;
+            }
             requireOperator(reference, operator, schema);
         }
     }
@@ -91,9 +96,9 @@ public final class ObjectAuthorizationExpressionValidator {
         ObjectAuthorizationField field = schema
             .field(new ObjectAuthorizationPath(reference.path()))
             .orElseThrow(() -> invalid("object path is not queryable"));
-        if (!field.operators().contains(operator)) throw invalid(
-            "operator is not supported for object path " + field.path().text()
-        );
+        if (!field.operators().contains(operator)) {
+            throw invalid("operator is not supported for object path " + field.path().text());
+        }
     }
 
     private static ObjectAuthorizationOperator operator(ObjectAuthorizationExpression.BinaryOperator operator) {
