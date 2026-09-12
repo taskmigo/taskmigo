@@ -8,7 +8,7 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
+import java.util.Set;
 import java.util.TreeMap;
 import org.jspecify.annotations.Nullable;
 
@@ -18,7 +18,8 @@ public final class EnvironmentSchema {
 
     private final String identity;
     private final Map<String, Root> roots;
-    private final Map<String, Map<List<String>, Field>> fieldsByPath;
+    private final Map<String, PathNode> paths;
+    private final DependencyCatalog dependencies;
     private final String fingerprint;
 
     public EnvironmentSchema(String identity, Map<String, Root> roots) {
@@ -28,13 +29,10 @@ public final class EnvironmentSchema {
         );
         this.identity = identity;
         this.roots = Map.copyOf(roots);
-        Map<String, Map<List<String>, Field>> indexedFields = new HashMap<>();
-        this.roots.forEach((rootName, root) -> {
-            Map<List<String>, Field> fields = new HashMap<>();
-            root.fields().forEach((path, field) -> fields.put(List.of(path.split("\\.")), field));
-            indexedFields.put(rootName, Map.copyOf(fields));
-        });
-        this.fieldsByPath = Map.copyOf(indexedFields);
+        this.dependencies = new DependencyCatalog(this.roots.keySet());
+        HashMap<String, PathNode> indexed = new HashMap<>();
+        this.roots.forEach((rootName, root) -> indexed.put(rootName, PathNode.root(root)));
+        this.paths = Map.copyOf(indexed);
         this.fingerprint = this.computeFingerprint();
     }
 
@@ -53,35 +51,43 @@ public final class EnvironmentSchema {
         Root root = this.roots.get(rootName);
         if (root == null) return null;
         if (path.isEmpty()) return root.value();
-        Map<List<String>, Field> indexedFields = Objects.requireNonNull(this.fieldsByPath.get(rootName));
-        Field exact = indexedFields.get(path);
-        if (exact != null) return exact;
-        Optional<Field> current = Optional.ofNullable(root.fields().get(path.getFirst()));
-        boolean nullable = current.map(Field::nullable).orElse(false);
-        for (int index = 1; index < path.size() && current.isPresent(); index++) {
-            Field field = current.get();
-            current =
-                field.type() instanceof LanguageType.StructuredType structured
-                    ? Optional.ofNullable(structured.field(path.get(index)))
-                    : Optional.empty();
-            nullable = nullable || current.map(Field::nullable).orElse(false);
-        }
-        if (current.isPresent() && path.size() > 1) {
-            Field field = current.get();
-            return new Field(field.type(), nullable, field.symbolic(), field.dynamicMemberType());
-        }
-        for (int index = path.size() - 1; index >= 0; index--) {
-            Field prefix = indexedFields.get(path.subList(0, index));
-            if (prefix != null && prefix.dynamicMemberType() != null && index < path.size()) {
-                return new Field(prefix.dynamicMemberType(), false, prefix.symbolic());
+        PathNode current = this.paths.get(rootName);
+        boolean nullable = false;
+        for (String segment : path) {
+            if (current == null) return null;
+            PathNode child = current.children().get(segment);
+            if (child == null) {
+                Field currentField = current.field();
+                if (currentField != null && currentField.dynamicMemberType() != null) {
+                    return new Field(currentField.dynamicMemberType(), false, currentField.symbolic());
+                }
+                return null;
             }
+            current = child;
+            if (current.field() != null) nullable = nullable || Objects.requireNonNull(current.field()).nullable();
         }
-        return null;
+        Field field = current == null ? null : current.field();
+        if (field == null) return null;
+        return nullable == field.nullable()
+            ? field
+            : new Field(field.type(), nullable, field.symbolic(), field.dynamicMemberType());
     }
 
     /// Returns a deterministic fingerprint for the complete schema contract.
     public String fingerprint() {
         return this.fingerprint;
+    }
+
+    int rootSlot(String root) {
+        return this.dependencies.slot(root);
+    }
+
+    Set<String> dependency(String root) {
+        return this.dependencies.dependency(root);
+    }
+
+    Set<String> noDependencies() {
+        return this.dependencies.empty();
     }
 
     private String computeFingerprint() {
@@ -127,6 +133,53 @@ public final class EnvironmentSchema {
 
         public Field {
             Objects.requireNonNull(type);
+        }
+    }
+
+    private record PathNode(@Nullable Field field, Map<String, PathNode> children) {
+        private static PathNode root(Root root) {
+            MutablePathNode node = new MutablePathNode(null);
+            for (Map.Entry<String, Field> entry : root.fields().entrySet()) {
+                node.insert(List.of(entry.getKey().split("\\.")), 0, entry.getValue());
+            }
+            return node.freeze();
+        }
+    }
+
+    private static final class MutablePathNode {
+
+        private @Nullable Field field;
+        private final Map<String, MutablePathNode> children = new HashMap<>();
+
+        private MutablePathNode(@Nullable Field field) {
+            this.field = field;
+        }
+
+        private void insert(List<String> segments, int index, Field value) {
+            if (index == segments.size()) {
+                this.field = value;
+                this.expand(value);
+                return;
+            }
+            this.children
+                .computeIfAbsent(segments.get(index), ignored -> new MutablePathNode(null))
+                .insert(segments, index + 1, value);
+        }
+
+        private void expand(Field value) {
+            if (value.type() instanceof LanguageType.StructuredType structured) {
+                for (Map.Entry<String, Field> entry : structured.fields().entrySet()) {
+                    this.children
+                        .computeIfAbsent(entry.getKey(), ignored -> new MutablePathNode(null))
+                        .insert(List.of(), 0, entry.getValue());
+                }
+            }
+        }
+
+        private PathNode freeze() {
+            HashMap<String, PathNode> frozen = new HashMap<>();
+            this.children.forEach((name, child) -> frozen.put(name, child.freeze()));
+            return new PathNode(this.field, Map.copyOf(frozen));
         }
     }
 }

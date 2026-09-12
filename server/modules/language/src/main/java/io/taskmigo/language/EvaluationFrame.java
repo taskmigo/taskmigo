@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.jspecify.annotations.NullUnmarked;
+import org.jspecify.annotations.Nullable;
 
 /// Holds one allocation-light evaluation scope for roots and restricted-lambda bindings.
 @NullUnmarked
@@ -62,6 +63,7 @@ final class EvaluationFrame {
         this.bindingCount--;
     }
 
+    @Nullable
     Object read(SemanticAst.Reference reference) {
         Object current;
         int pathIndex;
