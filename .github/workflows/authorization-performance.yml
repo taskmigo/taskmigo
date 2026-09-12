@@ -33,7 +33,7 @@ env:
 
 jobs:
   benchmark:
-    name: JMH authorization compiler
+    name: JMH language performance
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -65,7 +65,7 @@ jobs:
           jmh_jar="$(find benchmarks/authorization/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jmh_jar"
 
-          java --enable-native-access=ALL-UNNAMED -jar "$jmh_jar" '.*EmbeddedLanguageCompilerBenchmark.*' \
+          java --enable-native-access=ALL-UNNAMED -jar "$jmh_jar" '.*EmbeddedLanguage.*Benchmark.*' \
             -bm avgt \
             -tu ms \
             -t 1 \
@@ -75,10 +75,8 @@ jobs:
             -i "$JMH_MEASUREMENT_ITERATIONS" \
             -r "$JMH_MEASUREMENT_TIME" \
             -foe true \
-            -p scopeName=REQUEST,OBJECT \
-            -p programType=SIMPLE,COMPLEX \
-            -p statementCount="$JMH_STATEMENT_COUNT" \
             -prof "$JMH_PROFILER:dir=$RUNNER_TEMP/jfr" \
+            -prof gc \
             -rf JSON \
             -rff "$RUNNER_TEMP/$JMH_RESULTS_FILE" \
             -o "$RUNNER_TEMP/$JMH_HUMAN_OUTPUT_FILE" \
@@ -88,13 +86,13 @@ jobs:
         if: ${{ always() }}
         run: |
           {
-            echo "## Authorization compiler benchmark"
+            echo "## Language benchmark"
             echo
-            echo "Statements: $JMH_STATEMENT_COUNT"
+            echo "Compiler statements: $JMH_STATEMENT_COUNT"
             echo "Forks: $JMH_FORKS"
             echo "Warmup: $JMH_WARMUP_ITERATIONS × $JMH_WARMUP_TIME"
             echo "Measurement: $JMH_MEASUREMENT_ITERATIONS × $JMH_MEASUREMENT_TIME"
-            echo "Profiler: $JMH_PROFILER"
+            echo "Profilers: $JMH_PROFILER, gc"
             if [[ -s "$RUNNER_TEMP/$JMH_HUMAN_OUTPUT_FILE" ]]; then
               echo
               echo '```text'

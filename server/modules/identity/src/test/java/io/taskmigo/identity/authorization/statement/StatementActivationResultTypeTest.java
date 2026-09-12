@@ -12,7 +12,7 @@ import io.taskmigo.identity.persistence.query.ObjectAuthorizationPredicateBinder
 import io.taskmigo.identity.persistence.query.QueryPredicateBinder;
 import io.taskmigo.identity.persistence.statement.StatementEntity;
 import io.taskmigo.identity.persistence.statement.StatementRepository;
-import io.taskmigo.language.EmbeddedLanguageCompiler;
+import io.taskmigo.language.LanguageCompiler;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
@@ -33,7 +33,7 @@ class StatementActivationResultTypeTest {
         when(repository.existsByName("non_boolean_request")).thenReturn(false);
         StatementService service = new StatementService(
             repository,
-            new StatementPolicyValidator(mock(ObjectAuthorization.class), new EmbeddedLanguageCompiler()),
+            new StatementPolicyValidator(mock(ObjectAuthorization.class), new LanguageCompiler()),
             mock(QueryPredicateBinder.class),
             mock(ObjectAuthorizationPredicateBinder.class)
         );

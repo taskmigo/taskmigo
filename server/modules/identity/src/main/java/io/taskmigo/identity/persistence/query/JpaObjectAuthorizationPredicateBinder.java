@@ -1,7 +1,7 @@
 package io.taskmigo.identity.persistence.query;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.object.ObjectAuthorizationPredicateFactory;
+import io.taskmigo.authorization.object.persistence.ObjectAuthorizationPredicateModel;
 import java.util.Map;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -38,10 +38,9 @@ public final class JpaObjectAuthorizationPredicateBinder<Q, E> implements Object
 
     @Override
     public Specification<E> bind(ObjectAuthorizationPredicate<Q> predicate) {
-        return JpaSemanticPredicateBinder.bind(
-            ObjectAuthorizationPredicateFactory.expression(predicate),
-            this.paths,
-            this.types
-        );
+        if (!(predicate instanceof ObjectAuthorizationPredicateModel model)) {
+            throw new IllegalArgumentException("unsupported Object Authorization Predicate implementation");
+        }
+        return JpaObjectAuthorizationExpressionBinder.bind(model.expression(), this.paths, this.types);
     }
 }

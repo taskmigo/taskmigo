@@ -10,25 +10,30 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import org.springframework.core.ResolvableType;
 
-/// Builds the consumer-owned Embedded Language schemas used by authorization.
-@SuppressWarnings({ "checkstyle:NeedBraces", "checkstyle:OverloadMethodsDeclarationOrder" })
+/// Builds the consumer-owned Language schemas used by authorization.
+@SuppressWarnings("checkstyle:OverloadMethodsDeclarationOrder")
 public final class AuthorizationEmbeddedLanguageSchemas {
+
+    private static final EnvironmentSchema REQUEST = new EnvironmentSchema(
+        "taskmigo.authorization.request.0.3.2",
+        Map.of(
+            "principal",
+            root(Map.of("id", string(), "username", string())),
+            "request",
+            root(Map.of("method", string(), "path", string(), "pathVariables", dynamicString()))
+        )
+    );
+    private static final ConcurrentMap<String, EnvironmentSchema> OBJECTS = new ConcurrentHashMap<>();
 
     private AuthorizationEmbeddedLanguageSchemas() {}
 
-    /// Returns the request-only schema required by the authorization specification.
+    /// Returns the reusable request-only schema required by the authorization specification.
     public static EnvironmentSchema request() {
-        return new EnvironmentSchema(
-            "taskmigo.authorization.request.0.3.2",
-            Map.of(
-                "principal",
-                root(Map.of("id", string(), "username", string())),
-                "request",
-                root(Map.of("method", string(), "path", string(), "pathVariables", dynamicString()))
-            )
-        );
+        return REQUEST;
     }
 
     /// Returns an object schema containing the fields registered by all logical object contracts.
@@ -56,8 +61,12 @@ public final class AuthorizationEmbeddedLanguageSchemas {
         );
     }
 
-    /// Returns an object schema derived from an authorization-owned logical object schema.
+    /// Returns a cached object schema derived from an authorization-owned logical object schema.
     public static <Q> EnvironmentSchema object(ObjectAuthorizationSchema<Q> schema) {
+        return OBJECTS.computeIfAbsent(schema.identity(), ignored -> buildObject(schema));
+    }
+
+    private static <Q> EnvironmentSchema buildObject(ObjectAuthorizationSchema<Q> schema) {
         Map<String, EnvironmentSchema.Field> fields = new HashMap<>();
         for (ObjectAuthorizationField field : schema.fields()) {
             String first = field.path().segments().getFirst();
@@ -108,12 +117,18 @@ public final class AuthorizationEmbeddedLanguageSchemas {
 
     private static LanguageType languageType(ResolvableType type) {
         Class<?> raw = type.resolve(Object.class);
-        if (
-            raw == String.class || raw == UUID.class || raw == Character.class || raw == char.class
-        ) return LanguageType.Scalar.STRING;
-        if (raw == Boolean.class || raw == boolean.class) return LanguageType.Scalar.BOOL;
-        if (Number.class.isAssignableFrom(raw) || raw.isPrimitive()) return LanguageType.Scalar.NUMBER;
-        if (Collection.class.isAssignableFrom(raw)) return new LanguageType.ListType(languageType(type.getGeneric(0)));
+        if (raw == String.class || raw == UUID.class || raw == Character.class || raw == char.class) {
+            return LanguageType.Scalar.STRING;
+        }
+        if (raw == Boolean.class || raw == boolean.class) {
+            return LanguageType.Scalar.BOOL;
+        }
+        if (Number.class.isAssignableFrom(raw) || raw.isPrimitive()) {
+            return LanguageType.Scalar.NUMBER;
+        }
+        if (Collection.class.isAssignableFrom(raw)) {
+            return new LanguageType.ListType(languageType(type.getGeneric(0)));
+        }
         return new LanguageType.StructuredType(raw.getName(), Map.of());
     }
 

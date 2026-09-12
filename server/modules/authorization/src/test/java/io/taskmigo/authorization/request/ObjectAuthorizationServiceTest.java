@@ -17,10 +17,8 @@ import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.TargetInfo;
-import io.taskmigo.language.EmbeddedLanguageCompiler;
-import io.taskmigo.language.EmbeddedLanguageEvaluator;
 import io.taskmigo.language.EmbeddedLanguageException;
-import io.taskmigo.language.EmbeddedLanguagePartialEvaluator;
+import io.taskmigo.language.LanguageCompiler;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -35,13 +33,12 @@ class ObjectAuthorizationServiceTest {
 
     private final ObjectAuthorizationSchema<TestObject> schema = schema();
     private final StatementArtifactFactory artifacts = new StatementArtifactFactory(
-        new EmbeddedLanguageCompiler(),
+        new LanguageCompiler(),
         List.of(this.schema),
         ObjectAuthorizationSchemaRegistry.all(List.of(this.schema))
     );
     private final ObjectAuthorizationService service = new ObjectAuthorizationService(
-        new EmbeddedLanguagePartialEvaluator(),
-        new EmbeddedLanguageCompiler(),
+        new LanguageCompiler(),
         ObjectAuthorizationSchemaRegistry.all(List.of(this.schema))
     );
 
@@ -169,8 +166,7 @@ class ObjectAuthorizationServiceTest {
         // Arrange
         ObjectAuthorizationSchema<TestObject> otherSchema = schema("other");
         ObjectAuthorizationService targetedService = new ObjectAuthorizationService(
-            new EmbeddedLanguagePartialEvaluator(),
-            new EmbeddedLanguageCompiler(),
+            new LanguageCompiler(),
             ObjectAuthorizationSchemaRegistry.of(
                 List.of(
                     new ObjectAuthorizationSchemaRegistration("GET", "/api/v0/objects", this.schema),
@@ -212,11 +208,7 @@ class ObjectAuthorizationServiceTest {
         );
         StatementInfo objectStatement = statement(Effect.ALLOW, "return object.name == \"alice\";");
         Mockito.when(resolver.resolve(userId)).thenReturn(List.of(requestStatement, objectStatement));
-        RequestAuthorizationService requestAuthorization = new RequestAuthorizationService(
-            resolver,
-            new EmbeddedLanguageEvaluator(),
-            this.artifacts
-        );
+        RequestAuthorizationService requestAuthorization = new RequestAuthorizationService(resolver, this.artifacts);
 
         // Act
         RequestAuthorizationResult result = requestAuthorization.authorize(
@@ -244,8 +236,7 @@ class ObjectAuthorizationServiceTest {
         // Arrange
         ObjectAuthorizationSchema<TestObject> apiSchema = schema("target.api.path");
         ObjectAuthorizationService apiService = new ObjectAuthorizationService(
-            new EmbeddedLanguagePartialEvaluator(),
-            new EmbeddedLanguageCompiler(),
+            new LanguageCompiler(),
             ObjectAuthorizationSchemaRegistry.all(List.of(apiSchema))
         );
 

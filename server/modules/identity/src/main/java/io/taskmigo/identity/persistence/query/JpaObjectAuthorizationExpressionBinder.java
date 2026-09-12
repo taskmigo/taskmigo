@@ -1,6 +1,6 @@
 package io.taskmigo.identity.persistence.query;
 
-import io.taskmigo.language.SemanticAst;
+import io.taskmigo.authorization.object.persistence.ObjectAuthorizationExpression;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Path;
@@ -13,13 +13,13 @@ import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.jpa.domain.Specification;
 
-/// Implements Identity-owned logical-to-JPA translation after resource schema validation.
-public final class JpaSemanticPredicateBinder {
+/// Binds the Object Authorization-owned persistence-neutral expression model to JPA Criteria.
+final class JpaObjectAuthorizationExpressionBinder {
 
-    private JpaSemanticPredicateBinder() {}
+    private JpaObjectAuthorizationExpressionBinder() {}
 
-    public static <E> Specification<E> bind(
-        SemanticAst.Expression expression,
+    static <E> Specification<E> bind(
+        ObjectAuthorizationExpression expression,
         Map<String, String> paths,
         Map<String, Class<?>> types
     ) {
@@ -27,42 +27,42 @@ public final class JpaSemanticPredicateBinder {
     }
 
     private static <E> Predicate predicate(
-        SemanticAst.Expression expression,
+        ObjectAuthorizationExpression expression,
         Root<E> root,
         CriteriaBuilder builder,
         Map<String, String> paths,
         Map<String, Class<?>> types
     ) {
         return switch (expression) {
-            case SemanticAst.Literal literal when literal.value() instanceof Boolean value -> value
+            case ObjectAuthorizationExpression.Literal literal when literal.value() instanceof Boolean value -> value
                 ? builder.conjunction()
                 : builder.disjunction();
-            case SemanticAst.Unary unary when unary.operator() == SemanticAst.UnaryOperator.NOT -> builder.not(
-                predicate(unary.operand(), root, builder, paths, types)
-            );
-            case SemanticAst.Binary binary when binary.operator() == SemanticAst.BinaryOperator.AND -> builder.and(
+            case ObjectAuthorizationExpression.Unary unary when (
+                unary.operator() == ObjectAuthorizationExpression.UnaryOperator.NOT
+            ) -> builder.not(predicate(unary.operand(), root, builder, paths, types));
+            case ObjectAuthorizationExpression.Binary binary when (
+                binary.operator() == ObjectAuthorizationExpression.BinaryOperator.AND
+            ) -> builder.and(
                 predicate(binary.left(), root, builder, paths, types),
                 predicate(binary.right(), root, builder, paths, types)
             );
-            case SemanticAst.Binary binary when binary.operator() == SemanticAst.BinaryOperator.OR -> builder.or(
+            case ObjectAuthorizationExpression.Binary binary when (
+                binary.operator() == ObjectAuthorizationExpression.BinaryOperator.OR
+            ) -> builder.or(
                 predicate(binary.left(), root, builder, paths, types),
                 predicate(binary.right(), root, builder, paths, types)
             );
-            case SemanticAst.Binary binary when binary.operator() == SemanticAst.BinaryOperator.IN -> in(
-                binary,
-                root,
-                builder,
-                paths,
-                types
-            );
-            case SemanticAst.Binary binary -> comparison(binary, root, builder, paths, types);
+            case ObjectAuthorizationExpression.Binary binary when (
+                binary.operator() == ObjectAuthorizationExpression.BinaryOperator.IN
+            ) -> in(binary, root, builder, paths, types);
+            case ObjectAuthorizationExpression.Binary binary -> comparison(binary, root, builder, paths, types);
             default -> throw unsupported("predicate");
         };
     }
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     private static <E> Predicate comparison(
-        SemanticAst.Binary binary,
+        ObjectAuthorizationExpression.Binary binary,
         Root<E> root,
         CriteriaBuilder builder,
         Map<String, String> paths,
@@ -72,13 +72,15 @@ public final class JpaSemanticPredicateBinder {
         boolean rightNull = isNull(binary.right());
         if (leftNull || rightNull) {
             if (
-                binary.operator() != SemanticAst.BinaryOperator.EQUAL &&
-                binary.operator() != SemanticAst.BinaryOperator.NOT_EQUAL
+                binary.operator() != ObjectAuthorizationExpression.BinaryOperator.EQUAL &&
+                binary.operator() != ObjectAuthorizationExpression.BinaryOperator.NOT_EQUAL
             ) {
                 throw unsupported("null comparison");
             }
             Expression<?> value = value(leftNull ? binary.right() : binary.left(), root, builder, paths, types);
-            return binary.operator() == SemanticAst.BinaryOperator.EQUAL ? value.isNull() : value.isNotNull();
+            return binary.operator() == ObjectAuthorizationExpression.BinaryOperator.EQUAL
+                ? value.isNull()
+                : value.isNotNull();
         }
         Expression<?> firstOperand = comparisonValue(binary.left(), binary.right(), root, builder, paths, types);
         Expression<?> secondOperand = comparisonValue(binary.right(), binary.left(), root, builder, paths, types);
@@ -97,7 +99,7 @@ public final class JpaSemanticPredicateBinder {
     }
 
     private static <E> Predicate in(
-        SemanticAst.Binary binary,
+        ObjectAuthorizationExpression.Binary binary,
         Root<E> root,
         CriteriaBuilder builder,
         Map<String, String> paths,
@@ -106,78 +108,87 @@ public final class JpaSemanticPredicateBinder {
         Expression<?> left = value(binary.left(), root, builder, paths, types);
         List<Expression<?>> candidates = new ArrayList<>();
         String logical =
-            binary.left() instanceof SemanticAst.Reference reference ? String.join(".", reference.path()) : null;
+            binary.left() instanceof ObjectAuthorizationExpression.Reference reference
+                ? String.join(".", reference.path())
+                : null;
         Class<?> type = logical == null ? null : types.get(logical);
         switch (binary.right()) {
-            case SemanticAst.ListLiteral list -> list.values().forEach(item ->
+            case ObjectAuthorizationExpression.ListValue list -> list.values().forEach(item ->
                 candidates.add(
-                    item instanceof SemanticAst.Literal literal
+                    item instanceof ObjectAuthorizationExpression.Literal literal
                         ? literal(coerce(literal.value(), type), builder)
                         : value(item, root, builder, paths, types)
                 )
             );
-            case SemanticAst.Literal literal when literal.value() instanceof List<?> values -> values.forEach(item ->
-                candidates.add(literal(coerce(item, type), builder))
-            );
+            case ObjectAuthorizationExpression.Literal literal when (
+                literal.value() instanceof List<?> values
+            ) -> values.forEach(item -> candidates.add(literal(coerce(item, type), builder)));
             default -> throw unsupported("IN values");
         }
         return left.in(candidates.toArray(Expression<?>[]::new));
     }
 
     private static <E> Expression<?> comparisonValue(
-        SemanticAst.Expression expression,
-        SemanticAst.Expression other,
+        ObjectAuthorizationExpression expression,
+        ObjectAuthorizationExpression other,
         Root<E> root,
         CriteriaBuilder builder,
         Map<String, String> paths,
         Map<String, Class<?>> types
     ) {
-        if (expression instanceof SemanticAst.Literal literal && other instanceof SemanticAst.Reference reference) {
+        if (
+            expression instanceof ObjectAuthorizationExpression.Literal literal &&
+            other instanceof ObjectAuthorizationExpression.Reference reference
+        ) {
             return literal(coerce(literal.value(), types.get(String.join(".", reference.path()))), builder);
         }
         return value(expression, root, builder, paths, types);
     }
 
     private static <E> Expression<?> value(
-        SemanticAst.Expression expression,
+        ObjectAuthorizationExpression expression,
         Root<E> root,
         CriteriaBuilder builder,
         Map<String, String> paths,
         Map<String, Class<?>> types
     ) {
         return switch (expression) {
-            case SemanticAst.Reference reference -> field(reference, root, paths);
-            case SemanticAst.Literal literal -> literal(literal.value(), builder);
-            case SemanticAst.ListLiteral _ -> throw unsupported("list value");
-            case SemanticAst.Binary binary when binary.operator() == SemanticAst.BinaryOperator.ADD -> builder.sum(
+            case ObjectAuthorizationExpression.Reference reference -> field(reference, root, paths);
+            case ObjectAuthorizationExpression.Literal literal -> literal(literal.value(), builder);
+            case ObjectAuthorizationExpression.ListValue _ -> throw unsupported("list value");
+            case ObjectAuthorizationExpression.Binary binary when (
+                binary.operator() == ObjectAuthorizationExpression.BinaryOperator.ADD
+            ) -> builder.sum(
                 numeric(binary.left(), root, builder, paths, types),
                 numeric(binary.right(), root, builder, paths, types)
             );
-            case SemanticAst.Binary binary when (
-                binary.operator() == SemanticAst.BinaryOperator.SUBTRACT
+            case ObjectAuthorizationExpression.Binary binary when (
+                binary.operator() == ObjectAuthorizationExpression.BinaryOperator.SUBTRACT
             ) -> builder.diff(
                 numeric(binary.left(), root, builder, paths, types),
                 numeric(binary.right(), root, builder, paths, types)
             );
-            case SemanticAst.Binary binary when (
-                binary.operator() == SemanticAst.BinaryOperator.MULTIPLY
+            case ObjectAuthorizationExpression.Binary binary when (
+                binary.operator() == ObjectAuthorizationExpression.BinaryOperator.MULTIPLY
             ) -> builder.prod(
                 numeric(binary.left(), root, builder, paths, types),
                 numeric(binary.right(), root, builder, paths, types)
             );
-            case SemanticAst.Binary binary when binary.operator() == SemanticAst.BinaryOperator.DIVIDE -> builder.quot(
+            case ObjectAuthorizationExpression.Binary binary when (
+                binary.operator() == ObjectAuthorizationExpression.BinaryOperator.DIVIDE
+            ) -> builder.quot(
                 numeric(binary.left(), root, builder, paths, types),
                 numeric(binary.right(), root, builder, paths, types)
             );
-            case SemanticAst.Unary unary when unary.operator() == SemanticAst.UnaryOperator.MINUS -> builder.neg(
-                numeric(unary.operand(), root, builder, paths, types)
-            );
+            case ObjectAuthorizationExpression.Unary unary when (
+                unary.operator() == ObjectAuthorizationExpression.UnaryOperator.MINUS
+            ) -> builder.neg(numeric(unary.operand(), root, builder, paths, types));
             default -> throw unsupported("value");
         };
     }
 
     private static <E> Expression<Number> numeric(
-        SemanticAst.Expression expression,
+        ObjectAuthorizationExpression expression,
         Root<E> root,
         CriteriaBuilder builder,
         Map<String, String> paths,
@@ -186,7 +197,11 @@ public final class JpaSemanticPredicateBinder {
         return value(expression, root, builder, paths, types).as(Number.class);
     }
 
-    private static <E> Expression<?> field(SemanticAst.Reference reference, Root<E> root, Map<String, String> paths) {
+    private static <E> Expression<?> field(
+        ObjectAuthorizationExpression.Reference reference,
+        Root<E> root,
+        Map<String, String> paths
+    ) {
         if (!reference.root().equals("object")) {
             throw unsupported("non-object reference");
         }
@@ -206,8 +221,8 @@ public final class JpaSemanticPredicateBinder {
         return value == null ? builder.nullLiteral(Object.class) : builder.literal(value);
     }
 
-    private static boolean isNull(SemanticAst.Expression expression) {
-        return expression instanceof SemanticAst.Literal literal && literal.value() == null;
+    private static boolean isNull(ObjectAuthorizationExpression expression) {
+        return expression instanceof ObjectAuthorizationExpression.Literal literal && literal.value() == null;
     }
 
     private static @Nullable Object coerce(@Nullable Object value, @Nullable Class<?> type) {

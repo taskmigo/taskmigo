@@ -1,38 +1,37 @@
 package io.taskmigo.query;
 
-import io.taskmigo.language.SemanticAst;
+import io.taskmigo.query.persistence.QueryExpression;
 
 /// Validates that symbolic object paths and operators belong to an explicit Query Schema.
-@SuppressWarnings({ "checkstyle:NeedBraces", "checkstyle:UnusedLocalVariable" })
-public final class QuerySchemaValidator {
+@SuppressWarnings("checkstyle:UnusedLocalVariable")
+final class QuerySchemaValidator {
 
     private QuerySchemaValidator() {}
 
-    /// Rejects unknown API paths and operators not allowed by their registered fields.
-    public static <Q> void validate(SemanticAst.Expression expression, QuerySchema<Q> schema) {
+    static <Q> void validate(QueryExpression expression, QuerySchema<Q> schema) {
         switch (expression) {
-            case SemanticAst.Literal ignored -> {
+            case QueryExpression.Literal ignored -> {
             }
-            case SemanticAst.Reference reference -> validateReference(reference, schema);
-            case SemanticAst.ListLiteral list -> list.values().forEach(value -> validate(value, schema));
-            case SemanticAst.Unary unary -> validate(unary.operand(), schema);
-            case SemanticAst.Length length -> {
+            case QueryExpression.Reference reference -> validateReference(reference, schema);
+            case QueryExpression.ListValue list -> list.values().forEach(value -> validate(value, schema));
+            case QueryExpression.Unary unary -> validate(unary.operand(), schema);
+            case QueryExpression.Length length -> {
                 requireOperator(length.operand(), QueryOperator.LENGTH, schema);
                 validate(length.operand(), schema);
             }
-            case SemanticAst.Binary binary -> {
+            case QueryExpression.Binary binary -> {
                 QueryOperator operator = operator(binary.operator());
                 requireOperator(binary.left(), operator, schema);
                 requireOperator(binary.right(), operator, schema);
                 validate(binary.left(), schema);
                 validate(binary.right(), schema);
             }
-            case SemanticAst.Conditional conditional -> {
+            case QueryExpression.Conditional conditional -> {
                 validate(conditional.condition(), schema);
                 validate(conditional.whenTrue(), schema);
                 validate(conditional.whenFalse(), schema);
             }
-            case SemanticAst.Quantifier quantifier -> {
+            case QueryExpression.Quantifier quantifier -> {
                 QueryOperator operator = switch (quantifier.operator()) {
                     case ALL -> QueryOperator.ALL;
                     case ANY -> QueryOperator.ANY;
@@ -45,29 +44,27 @@ public final class QuerySchemaValidator {
         }
     }
 
-    private static <Q> void validateReference(SemanticAst.Reference reference, QuerySchema<Q> schema) {
+    private static <Q> void validateReference(QueryExpression.Reference reference, QuerySchema<Q> schema) {
         if (reference.root().equals("object")) {
             schema.field(new QueryPath(reference.path())).orElseThrow(() -> invalid("unknown query path"));
         }
     }
 
-    private static <Q> void requireOperator(
-        SemanticAst.Expression expression,
-        QueryOperator operator,
-        QuerySchema<Q> schema
-    ) {
-        if (expression instanceof SemanticAst.Reference reference && reference.root().equals("object")) {
-            if (operator == QueryOperator.AND || operator == QueryOperator.OR) return;
+    private static <Q> void requireOperator(QueryExpression expression, QueryOperator operator, QuerySchema<Q> schema) {
+        if (expression instanceof QueryExpression.Reference reference && reference.root().equals("object")) {
+            if (operator == QueryOperator.AND || operator == QueryOperator.OR) {
+                return;
+            }
             QueryField field = schema
                 .field(new QueryPath(reference.path()))
                 .orElseThrow(() -> invalid("unknown query path"));
-            if (!field.operators().contains(operator)) throw invalid(
-                "operator is not supported for query path " + field.path().text()
-            );
+            if (!field.operators().contains(operator)) {
+                throw invalid("operator is not supported for query path " + field.path().text());
+            }
         }
     }
 
-    private static QueryOperator operator(SemanticAst.BinaryOperator operator) {
+    private static QueryOperator operator(QueryExpression.BinaryOperator operator) {
         return switch (operator) {
             case AND -> QueryOperator.AND;
             case OR -> QueryOperator.OR;

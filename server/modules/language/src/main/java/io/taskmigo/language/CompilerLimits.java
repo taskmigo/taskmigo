@@ -1,10 +1,5 @@
 package io.taskmigo.language;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
-
 /// Contains finite safety limits applied before a program becomes executable.
 public record CompilerLimits(
     int maxSourceCharacters,
@@ -59,13 +54,6 @@ public record CompilerLimits(
 
     /// Returns the cache identity of this compiler contract.
     public String fingerprint() {
-        String text = this.toString();
-        try {
-            return HexFormat.of().formatHex(
-                MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8))
-            );
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is unavailable", exception);
-        }
+        return Sha256Fingerprint.of(this.toString());
     }
 }

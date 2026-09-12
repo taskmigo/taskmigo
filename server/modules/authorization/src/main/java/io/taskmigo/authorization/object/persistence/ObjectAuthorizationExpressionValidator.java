@@ -1,49 +1,55 @@
-package io.taskmigo.authorization.object;
+package io.taskmigo.authorization.object.persistence;
 
 import io.taskmigo.authorization.core.AuthorizationException;
-import io.taskmigo.language.SemanticAst;
+import io.taskmigo.authorization.object.ObjectAuthorizationField;
+import io.taskmigo.authorization.object.ObjectAuthorizationOperator;
+import io.taskmigo.authorization.object.ObjectAuthorizationPath;
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 
-/// Validates symbolic Object Authorization paths and operators against one logical schema.
-@SuppressWarnings("checkstyle:NeedBraces")
-public final class ObjectAuthorizationSchemaValidator {
+/// Validates Object Authorization expression paths and operators against one logical schema.
+public final class ObjectAuthorizationExpressionValidator {
 
-    private ObjectAuthorizationSchemaValidator() {}
+    private ObjectAuthorizationExpressionValidator() {}
 
-    /// Validates every path and operator in an expression against one logical schema.
-    ///
-    /// @param expression the compiled policy expression
-    /// @param schema the logical object contract
-    public static <Q> void validate(SemanticAst.Expression expression, ObjectAuthorizationSchema<Q> schema) {
+    public static <Q> void validate(ObjectAuthorizationExpression expression, ObjectAuthorizationSchema<Q> schema) {
         switch (expression) {
-            case SemanticAst.Literal _ -> {
+            case ObjectAuthorizationExpression.Literal _ -> {
             }
-            case SemanticAst.Reference reference -> validateReference(reference, schema);
-            case SemanticAst.ListLiteral list -> list.values().forEach(value -> validate(value, schema));
-            case SemanticAst.Unary unary -> {
+            case ObjectAuthorizationExpression.Reference reference -> validateReference(reference, schema);
+            case ObjectAuthorizationExpression.ListValue list -> list.values().forEach(value ->
+                validate(value, schema)
+            );
+            case ObjectAuthorizationExpression.Unary unary -> {
                 validate(unary.operand(), schema);
-                if (unary.operand() instanceof SemanticAst.Reference reference && reference.root().equals("object")) {
+                if (
+                    unary.operand() instanceof ObjectAuthorizationExpression.Reference reference &&
+                    reference.root().equals("object")
+                ) {
                     requireOperator(reference, ObjectAuthorizationOperator.NOT, schema);
                 }
             }
-            case SemanticAst.Length length -> {
-                if (length.operand() instanceof SemanticAst.Reference reference && reference.root().equals("object")) {
+            case ObjectAuthorizationExpression.Length length -> {
+                if (
+                    length.operand() instanceof ObjectAuthorizationExpression.Reference reference &&
+                    reference.root().equals("object")
+                ) {
                     requireOperator(reference, ObjectAuthorizationOperator.LENGTH, schema);
                 }
                 validate(length.operand(), schema);
             }
-            case SemanticAst.Binary binary -> {
+            case ObjectAuthorizationExpression.Binary binary -> {
                 ObjectAuthorizationOperator operator = operator(binary.operator());
                 requireOperator(binary.left(), operator, schema);
                 requireOperator(binary.right(), operator, schema);
                 validate(binary.left(), schema);
                 validate(binary.right(), schema);
             }
-            case SemanticAst.Conditional conditional -> {
+            case ObjectAuthorizationExpression.Conditional conditional -> {
                 validate(conditional.condition(), schema);
                 validate(conditional.whenTrue(), schema);
                 validate(conditional.whenFalse(), schema);
             }
-            case SemanticAst.Quantifier quantifier -> {
+            case ObjectAuthorizationExpression.Quantifier quantifier -> {
                 ObjectAuthorizationOperator operator = switch (quantifier.operator()) {
                     case ALL -> ObjectAuthorizationOperator.ALL;
                     case ANY -> ObjectAuthorizationOperator.ANY;
@@ -56,7 +62,10 @@ public final class ObjectAuthorizationSchemaValidator {
         }
     }
 
-    private static <Q> void validateReference(SemanticAst.Reference reference, ObjectAuthorizationSchema<Q> schema) {
+    private static <Q> void validateReference(
+        ObjectAuthorizationExpression.Reference reference,
+        ObjectAuthorizationSchema<Q> schema
+    ) {
         if (reference.root().equals("object")) {
             schema
                 .field(new ObjectAuthorizationPath(reference.path()))
@@ -65,30 +74,34 @@ public final class ObjectAuthorizationSchemaValidator {
     }
 
     private static <Q> void requireOperator(
-        SemanticAst.Expression expression,
+        ObjectAuthorizationExpression expression,
         ObjectAuthorizationOperator operator,
         ObjectAuthorizationSchema<Q> schema
     ) {
-        if (expression instanceof SemanticAst.Reference reference && reference.root().equals("object")) {
-            if (operator == ObjectAuthorizationOperator.AND || operator == ObjectAuthorizationOperator.OR) return;
+        if (
+            expression instanceof ObjectAuthorizationExpression.Reference reference && reference.root().equals("object")
+        ) {
+            if (operator == ObjectAuthorizationOperator.AND || operator == ObjectAuthorizationOperator.OR) {
+                return;
+            }
             requireOperator(reference, operator, schema);
         }
     }
 
     private static <Q> void requireOperator(
-        SemanticAst.Reference reference,
+        ObjectAuthorizationExpression.Reference reference,
         ObjectAuthorizationOperator operator,
         ObjectAuthorizationSchema<Q> schema
     ) {
         ObjectAuthorizationField field = schema
             .field(new ObjectAuthorizationPath(reference.path()))
             .orElseThrow(() -> invalid("object path is not queryable"));
-        if (!field.operators().contains(operator)) throw invalid(
-            "operator is not supported for object path " + field.path().text()
-        );
+        if (!field.operators().contains(operator)) {
+            throw invalid("operator is not supported for object path " + field.path().text());
+        }
     }
 
-    private static ObjectAuthorizationOperator operator(SemanticAst.BinaryOperator operator) {
+    private static ObjectAuthorizationOperator operator(ObjectAuthorizationExpression.BinaryOperator operator) {
         return switch (operator) {
             case AND -> ObjectAuthorizationOperator.AND;
             case OR -> ObjectAuthorizationOperator.OR;
