@@ -6,7 +6,8 @@ import org.jspecify.annotations.Nullable;
 
 /// Persistence-neutral logical expression owned by the Query module.
 public sealed interface QueryExpression
-    permits QueryExpression.Literal,
+    permits
+        QueryExpression.Literal,
         QueryExpression.Reference,
         QueryExpression.ListValue,
         QueryExpression.Unary,
