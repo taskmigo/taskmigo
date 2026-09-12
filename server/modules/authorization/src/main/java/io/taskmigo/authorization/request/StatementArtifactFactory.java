@@ -12,20 +12,14 @@ import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.EnvironmentSchema;
 import io.taskmigo.language.LanguageCompiler;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
-import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 /// Builds executable Statement derivatives after the authoritative Statement rows have been loaded.
@@ -37,7 +31,7 @@ public final class StatementArtifactFactory {
     private final LanguageCompiler compiler;
     private final EnvironmentSchema objectSchema;
     private final ObjectAuthorizationSchemaRegistry schemaRegistry;
-    private final ConcurrentMap<CacheKey, CachedArtifacts> derived = new ConcurrentHashMap<>();
+    private final ConcurrentMap<CacheKey, DerivedArtifacts> derived = new ConcurrentHashMap<>();
 
     /// Creates a factory whose cache contains only compiled policy and matcher derivatives.
     public StatementArtifactFactory(
@@ -56,18 +50,17 @@ public final class StatementArtifactFactory {
         for (StatementInfo statement : statements) {
             EnvironmentSchema schema =
                 statement.scope() == Scope.REQUEST ? AuthorizationEmbeddedLanguageSchemas.request() : this.objectSchema;
-            String fingerprint = this.fingerprint(statement, schema);
-            CacheKey key = new CacheKey(statement.id(), schema.fingerprint(), fingerprint);
-            CachedArtifacts cached = Objects.requireNonNull(
-                this.derived.compute(key, (ignored, current) ->
-                    current != null && current.fingerprint().equals(fingerprint)
-                        ? current
-                        : new CachedArtifacts(fingerprint, this.compile(statement, schema))
-                )
+            CacheKey key = new CacheKey(
+                statement,
+                schema.fingerprint(),
+                this.compiler.contractFingerprint(),
+                POLICY_FINGERPRINT,
+                this.applicableSchemaIdentities(statement)
             );
-            result.add(
-                new StatementExecutionArtifact(statement, cached.artifacts().policy(), cached.artifacts().pathMatcher())
+            DerivedArtifacts cached = Objects.requireNonNull(
+                this.derived.computeIfAbsent(key, ignored -> this.compile(statement, schema))
             );
+            result.add(new StatementExecutionArtifact(statement, cached.policy(), cached.pathMatcher()));
         }
         return List.copyOf(result);
     }
@@ -85,48 +78,27 @@ public final class StatementArtifactFactory {
         }
     }
 
-    private String fingerprint(StatementInfo statement, EnvironmentSchema schema) {
-        StringBuilder state = new StringBuilder();
-        append(state, statement.id());
-        append(state, statement.name());
-        append(state, statement.description());
-        append(state, statement.effect());
-        append(state, statement.scope());
-        append(state, statement.target().api().method());
-        append(state, statement.target().api().path());
-        append(state, statement.policy());
-        append(state, schema.fingerprint());
-        append(state, this.compiler.contractFingerprint());
-        append(state, POLICY_FINGERPRINT);
-        if (statement.scope() == Scope.OBJECT) {
-            this.schemaRegistry
-                .applicable(statement.target().api().method(), statement.target().api().path())
-                .stream()
-                .map(ObjectAuthorizationSchema::identity)
-                .sorted()
-                .forEach(identity -> append(state, identity));
-        }
-        try {
-            return HexFormat.of().formatHex(
-                MessageDigest.getInstance("SHA-256").digest(state.toString().getBytes(StandardCharsets.UTF_8))
-            );
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is unavailable", exception);
-        }
+    private List<String> applicableSchemaIdentities(StatementInfo statement) {
+        if (statement.scope() != Scope.OBJECT) return List.of();
+        return this.schemaRegistry
+            .applicable(statement.target().api().method(), statement.target().api().path())
+            .stream()
+            .map(ObjectAuthorizationSchema::identity)
+            .sorted()
+            .toList();
     }
 
-    private static void append(StringBuilder state, @Nullable Object value) {
-        if (value == null) {
-            state.append("-1:");
-            return;
+    private record CacheKey(
+        StatementInfo statement,
+        String schemaFingerprint,
+        String compilerFingerprint,
+        String profileFingerprint,
+        List<String> applicableSchemaIdentities
+    ) {
+        private CacheKey {
+            applicableSchemaIdentities = List.copyOf(applicableSchemaIdentities);
         }
-        String encoded = value.toString();
-        state.append(encoded.length()).append(':').append(encoded);
     }
-
-    private record CachedArtifacts(String fingerprint, DerivedArtifacts artifacts) {}
-
-    private record CacheKey(UUID statementId, String schemaFingerprint, String statementFingerprint) {}
 
     private record DerivedArtifacts(CompiledSource policy, Pattern pathMatcher) {}
 }
