@@ -9,6 +9,7 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /// Stores root dependencies as a compact bit mask while retaining the public Set contract.
+@SuppressWarnings({ "checkstyle:NeedBraces", "checkstyle:OverloadMethodsDeclarationOrder" })
 final class RootDependencies extends AbstractSet<String> {
 
     private static final long[] EMPTY_WORDS = new long[0];
@@ -125,12 +126,12 @@ final class RootDependencies extends AbstractSet<String> {
                 if (this.next < 0) throw new NoSuchElementException();
                 int current = this.next;
                 this.next = this.find(current + 1);
-                return catalog.root(current);
+                return RootDependencies.this.catalog.root(current);
             }
 
             private int find(int start) {
-                for (int slot = start; slot < catalog.size(); slot++) {
-                    if (containsSlot(slot)) return slot;
+                for (int slot = start; slot < RootDependencies.this.catalog.size(); slot++) {
+                    if (RootDependencies.this.containsSlot(slot)) return slot;
                 }
                 return -1;
             }
