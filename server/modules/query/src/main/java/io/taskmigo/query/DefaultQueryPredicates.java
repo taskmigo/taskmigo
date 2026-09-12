@@ -46,7 +46,10 @@ final class DefaultQueryPredicates implements QueryPredicates {
         if (predicate.isAlwaysFalse()) return QueryPredicateFactory.constantLike(predicate, true);
         return QueryPredicateFactory.wrap(
             schema(predicate),
-            new QueryExpression.Unary(QueryExpression.UnaryOperator.NOT, QueryPredicateFactory.model(predicate).expression())
+            new QueryExpression.Unary(
+                QueryExpression.UnaryOperator.NOT,
+                QueryPredicateFactory.model(predicate).expression()
+            )
         );
     }
 
