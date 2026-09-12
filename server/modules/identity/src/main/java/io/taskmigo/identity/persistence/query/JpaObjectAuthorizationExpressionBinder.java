@@ -14,6 +14,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.data.jpa.domain.Specification;
 
 /// Binds the Object Authorization-owned persistence-neutral expression model to JPA Criteria.
+@SuppressWarnings("checkstyle:NeedBraces")
 final class JpaObjectAuthorizationExpressionBinder {
 
     private JpaObjectAuthorizationExpressionBinder() {}
