@@ -1,15 +1,16 @@
+---
 name: Dockerfiles
 
 on:
   pull_request:
     paths:
       - "**/Dockerfile"
-      - ".github/workflows/dockerfiles.yml"
+      - .github/workflows/dockerfiles.yml
   push:
     branches: [next]
     paths:
       - "**/Dockerfile"
-      - ".github/workflows/dockerfiles.yml"
+      - .github/workflows/dockerfiles.yml
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
