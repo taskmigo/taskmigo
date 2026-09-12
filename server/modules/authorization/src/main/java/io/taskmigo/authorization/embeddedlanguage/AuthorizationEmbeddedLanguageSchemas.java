@@ -12,23 +12,25 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.core.ResolvableType;
 
-/// Builds the consumer-owned Embedded Language schemas used by authorization.
+/// Builds the consumer-owned Language schemas used by authorization.
 @SuppressWarnings({ "checkstyle:NeedBraces", "checkstyle:OverloadMethodsDeclarationOrder" })
 public final class AuthorizationEmbeddedLanguageSchemas {
 
+    private static final EnvironmentSchema REQUEST = new EnvironmentSchema(
+        "taskmigo.authorization.request.0.3.2",
+        Map.of(
+            "principal",
+            root(Map.of("id", string(), "username", string())),
+            "request",
+            root(Map.of("method", string(), "path", string(), "pathVariables", dynamicString()))
+        )
+    );
+
     private AuthorizationEmbeddedLanguageSchemas() {}
 
-    /// Returns the request-only schema required by the authorization specification.
+    /// Returns the reusable request-only schema required by the authorization specification.
     public static EnvironmentSchema request() {
-        return new EnvironmentSchema(
-            "taskmigo.authorization.request.0.3.2",
-            Map.of(
-                "principal",
-                root(Map.of("id", string(), "username", string())),
-                "request",
-                root(Map.of("method", string(), "path", string(), "pathVariables", dynamicString()))
-            )
-        );
+        return REQUEST;
     }
 
     /// Returns an object schema containing the fields registered by all logical object contracts.

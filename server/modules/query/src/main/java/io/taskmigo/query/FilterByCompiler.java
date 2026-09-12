@@ -24,6 +24,20 @@ import org.springframework.stereotype.Service;
 @SuppressWarnings({ "checkstyle:NeedBraces", "checkstyle:OneStatementPerLine", "checkstyle:UnusedLocalVariable" })
 public class FilterByCompiler {
 
+    private static final CompilationProfile PROFILE = new CompilationProfile(
+        CompilationMode.EXPRESSION,
+        Set.of(
+            CompilationFeature.LOGICAL_OPERATORS,
+            CompilationFeature.EQUALITY_OPERATORS,
+            CompilationFeature.ORDERING_OPERATORS,
+            CompilationFeature.ARITHMETIC_OPERATORS,
+            CompilationFeature.LIST_LITERALS,
+            CompilationFeature.MEMBERSHIP,
+            CompilationFeature.COLLECTION_QUANTIFIERS,
+            CompilationFeature.LENGTH_INTRINSIC
+        )
+    );
+
     private final LanguageCompiler compiler;
 
     /// Creates a filter compiler using the default Language limits.
@@ -41,20 +55,7 @@ public class FilterByCompiler {
         if (source == null || source.isBlank()) return QueryPredicateFactory.alwaysTrue(schema);
         try {
             EnvironmentSchema environment = environment(schema);
-            CompilationProfile profile = new CompilationProfile(
-                CompilationMode.EXPRESSION,
-                Set.of(
-                    CompilationFeature.LOGICAL_OPERATORS,
-                    CompilationFeature.EQUALITY_OPERATORS,
-                    CompilationFeature.ORDERING_OPERATORS,
-                    CompilationFeature.ARITHMETIC_OPERATORS,
-                    CompilationFeature.LIST_LITERALS,
-                    CompilationFeature.MEMBERSHIP,
-                    CompilationFeature.COLLECTION_QUANTIFIERS,
-                    CompilationFeature.LENGTH_INTRINSIC
-                )
-            );
-            CompiledSource compiled = this.compiler.compile(source, environment, profile);
+            CompiledSource compiled = this.compiler.compile(source, environment, PROFILE);
             if (compiled.resultType() != LanguageType.Scalar.BOOL) throw new FilterByException(
                 "filterBy expression must return Bool"
             );

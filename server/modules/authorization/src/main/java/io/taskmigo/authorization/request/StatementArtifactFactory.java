@@ -32,8 +32,10 @@ import org.springframework.stereotype.Service;
 @Service
 public final class StatementArtifactFactory {
 
+    private static final String POLICY_FINGERPRINT = AuthorizationCompilationProfile.policy().fingerprint();
+
     private final LanguageCompiler compiler;
-    private final List<ObjectAuthorizationSchema<?>> schemas;
+    private final EnvironmentSchema objectSchema;
     private final ObjectAuthorizationSchemaRegistry schemaRegistry;
     private final ConcurrentMap<CacheKey, CachedArtifacts> derived = new ConcurrentHashMap<>();
 
@@ -44,7 +46,7 @@ public final class StatementArtifactFactory {
         ObjectAuthorizationSchemaRegistry schemaRegistry
     ) {
         this.compiler = compiler;
-        this.schemas = List.copyOf(schemas);
+        this.objectSchema = AuthorizationEmbeddedLanguageSchemas.object(List.copyOf(schemas));
         this.schemaRegistry = schemaRegistry;
     }
 
@@ -53,9 +55,7 @@ public final class StatementArtifactFactory {
         List<StatementExecutionArtifact> result = new ArrayList<>();
         for (StatementInfo statement : statements) {
             EnvironmentSchema schema =
-                statement.scope() == Scope.REQUEST
-                    ? AuthorizationEmbeddedLanguageSchemas.request()
-                    : AuthorizationEmbeddedLanguageSchemas.object(this.schemas);
+                statement.scope() == Scope.REQUEST ? AuthorizationEmbeddedLanguageSchemas.request() : this.objectSchema;
             String fingerprint = this.fingerprint(statement, schema);
             CacheKey key = new CacheKey(statement.id(), schema.fingerprint(), fingerprint);
             CachedArtifacts cached = Objects.requireNonNull(
@@ -97,7 +97,7 @@ public final class StatementArtifactFactory {
         append(state, statement.policy());
         append(state, schema.fingerprint());
         append(state, this.compiler.contractFingerprint());
-        append(state, AuthorizationCompilationProfile.policy().fingerprint());
+        append(state, POLICY_FINGERPRINT);
         if (statement.scope() == Scope.OBJECT) {
             this.schemaRegistry
                 .applicable(statement.target().api().method(), statement.target().api().path())
