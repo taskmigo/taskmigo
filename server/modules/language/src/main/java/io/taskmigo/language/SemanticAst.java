@@ -1,6 +1,7 @@
 package io.taskmigo.language;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -415,6 +416,6 @@ public record SemanticAst(
         if (!(value instanceof List<?> list)) return value;
         ArrayList<@Nullable Object> result = new ArrayList<>(list.size());
         for (Object item : list) result.add(immutableValue(item));
-        return List.copyOf(result);
+        return Collections.unmodifiableList(result);
     }
 }
