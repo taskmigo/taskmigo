@@ -1,5 +1,5 @@
-/// Provides persistence-neutral query contracts and safe filter compilation.
-@ApplicationModule(allowedDependencies = { "foundation", "language" })
+/// Owns generic query contracts, filter compilation, and persistence-neutral query predicates.
+@ApplicationModule(allowedDependencies = { "foundation", "language", "language :: ast" })
 @NullMarked
 package io.taskmigo.query;
 

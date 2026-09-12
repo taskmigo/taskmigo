@@ -1,12 +1,6 @@
 package io.taskmigo.query;
 
-import io.taskmigo.language.LanguageDiagnostic;
-import io.taskmigo.language.LanguageDiagnostic.SourceSpan;
-import io.taskmigo.language.LanguageType;
-import io.taskmigo.language.SemanticAst;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import io.taskmigo.query.persistence.QueryExpression;
 
 /// Default Boolean-algebra implementation for opaque Query Predicates.
 @SuppressWarnings("checkstyle:NeedBraces")
@@ -18,18 +12,12 @@ final class DefaultQueryPredicates implements QueryPredicates {
 
     @Override
     public <Q> QueryPredicate<Q> alwaysTrue() {
-        return QueryPredicateFactory.wrap(
-            "",
-            new SemanticAst.Literal(true, LanguageType.Scalar.BOOL, Set.of(), span())
-        );
+        return QueryPredicateFactory.wrap("", new QueryExpression.Literal(true));
     }
 
     @Override
     public <Q> QueryPredicate<Q> alwaysFalse() {
-        return QueryPredicateFactory.wrap(
-            "",
-            new SemanticAst.Literal(false, LanguageType.Scalar.BOOL, Set.of(), span())
-        );
+        return QueryPredicateFactory.wrap("", new QueryExpression.Literal(false));
     }
 
     @Override
@@ -39,7 +27,7 @@ final class DefaultQueryPredicates implements QueryPredicates {
         if (right.isAlwaysFalse()) return right;
         if (left.isAlwaysTrue()) return right;
         if (right.isAlwaysTrue()) return left;
-        return QueryPredicateFactory.wrap(schema(left), binary(SemanticAst.BinaryOperator.AND, left, right));
+        return QueryPredicateFactory.wrap(schema(left), binary(QueryExpression.BinaryOperator.AND, left, right));
     }
 
     @Override
@@ -49,37 +37,29 @@ final class DefaultQueryPredicates implements QueryPredicates {
         if (right.isAlwaysTrue()) return right;
         if (left.isAlwaysFalse()) return right;
         if (right.isAlwaysFalse()) return left;
-        return QueryPredicateFactory.wrap(schema(left), binary(SemanticAst.BinaryOperator.OR, left, right));
+        return QueryPredicateFactory.wrap(schema(left), binary(QueryExpression.BinaryOperator.OR, left, right));
     }
 
     @Override
     public <Q> QueryPredicate<Q> not(QueryPredicate<Q> predicate) {
         if (predicate.isAlwaysTrue()) return QueryPredicateFactory.constantLike(predicate, false);
         if (predicate.isAlwaysFalse()) return QueryPredicateFactory.constantLike(predicate, true);
-        SemanticAst.Expression expression = QueryPredicateFactory.expression(predicate);
         return QueryPredicateFactory.wrap(
             schema(predicate),
-            new SemanticAst.Unary(
-                SemanticAst.UnaryOperator.NOT,
-                expression,
-                LanguageType.Scalar.BOOL,
-                expression.dependencies(),
-                span()
-            )
+            new QueryExpression.Unary(QueryExpression.UnaryOperator.NOT, QueryPredicateFactory.model(predicate).expression())
         );
     }
 
-    private static <Q> SemanticAst.Expression binary(
-        SemanticAst.BinaryOperator operator,
+    private static <Q> QueryExpression binary(
+        QueryExpression.BinaryOperator operator,
         QueryPredicate<Q> left,
         QueryPredicate<Q> right
     ) {
-        SemanticAst.Expression l = QueryPredicateFactory.expression(left);
-        SemanticAst.Expression r = QueryPredicateFactory.expression(right);
-        Set<String> dependencies = Stream.of(l, r)
-            .flatMap(expression -> expression.dependencies().stream())
-            .collect(Collectors.toUnmodifiableSet());
-        return new SemanticAst.Binary(operator, l, r, LanguageType.Scalar.BOOL, dependencies, span());
+        return new QueryExpression.Binary(
+            operator,
+            QueryPredicateFactory.model(left).expression(),
+            QueryPredicateFactory.model(right).expression()
+        );
     }
 
     private static String schema(QueryPredicate<?> predicate) {
@@ -90,9 +70,5 @@ final class DefaultQueryPredicates implements QueryPredicates {
         if (!schema(left).equals(schema(right)) && !schema(left).isEmpty() && !schema(right).isEmpty()) {
             throw new IllegalArgumentException("Query Predicates belong to incompatible schemas");
         }
-    }
-
-    private static LanguageDiagnostic.SourceSpan span() {
-        return new SourceSpan(1, 0, 1, 0);
     }
 }

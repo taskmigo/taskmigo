@@ -8,12 +8,15 @@ import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.EnvironmentSchema;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageType;
+import io.taskmigo.query.persistence.QueryExpression;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.springframework.core.ResolvableType;
@@ -39,6 +42,7 @@ public class FilterByCompiler {
     );
 
     private final LanguageCompiler compiler;
+    private final ConcurrentMap<QuerySchema<?>, EnvironmentSchema> environments = new ConcurrentHashMap<>();
 
     /// Creates a filter compiler using the default Language limits.
     public FilterByCompiler() {
@@ -54,13 +58,14 @@ public class FilterByCompiler {
     public <Q> QueryPredicate<Q> compile(QuerySchema<Q> schema, @Nullable String source) {
         if (source == null || source.isBlank()) return QueryPredicateFactory.alwaysTrue(schema);
         try {
-            EnvironmentSchema environment = environment(schema);
+            EnvironmentSchema environment = this.environments.computeIfAbsent(schema, FilterByCompiler::environment);
             CompiledSource compiled = this.compiler.compile(source, environment, PROFILE);
             if (compiled.resultType() != LanguageType.Scalar.BOOL) throw new FilterByException(
                 "filterBy expression must return Bool"
             );
-            QuerySchemaValidator.validate(compiled.expression(), schema);
-            return QueryPredicateFactory.from(schema, compiled.expression());
+            QueryExpression expression = compiled.map(LanguageQueryExpressionVisitor.INSTANCE);
+            QuerySchemaValidator.validate(expression, schema);
+            return QueryPredicateFactory.from(schema, expression);
         } catch (EmbeddedLanguageException | IllegalArgumentException exception) {
             throw new FilterByException("Invalid filterBy expression", exception);
         }

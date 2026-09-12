@@ -1,7 +1,7 @@
 package io.taskmigo.identity.persistence.query;
 
 import io.taskmigo.query.QueryPredicate;
-import io.taskmigo.query.QueryPredicateFactory;
+import io.taskmigo.query.persistence.QueryPredicateModel;
 import java.util.Map;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -38,6 +38,9 @@ public final class JpaQueryPredicateBinder<Q, E> implements QueryPredicateBinder
 
     @Override
     public Specification<E> bind(QueryPredicate<Q> predicate) {
-        return JpaSemanticPredicateBinder.bind(QueryPredicateFactory.expression(predicate), this.paths, this.types);
+        if (!(predicate instanceof QueryPredicateModel model)) {
+            throw new IllegalArgumentException("unsupported Query Predicate implementation");
+        }
+        return JpaQueryExpressionBinder.bind(model.expression(), this.paths, this.types);
     }
 }
