@@ -14,6 +14,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.data.jpa.domain.Specification;
 
 /// Binds the Query-owned persistence-neutral expression model to JPA Criteria.
+@SuppressWarnings("checkstyle:NeedBraces")
 final class JpaQueryExpressionBinder {
 
     private JpaQueryExpressionBinder() {}
