@@ -9,14 +9,7 @@ import org.jspecify.annotations.Nullable;
 public interface ExpressionVisitor<R> {
     R literal(@Nullable Object value, LanguageType type, SourceSpan span);
 
-    R reference(
-        String root,
-        List<String> path,
-        LanguageType type,
-        boolean nullable,
-        boolean symbolic,
-        SourceSpan span
-    );
+    R reference(String root, List<String> path, LanguageType type, boolean nullable, boolean symbolic, SourceSpan span);
 
     R list(List<R> values, LanguageType type, SourceSpan span);
 
