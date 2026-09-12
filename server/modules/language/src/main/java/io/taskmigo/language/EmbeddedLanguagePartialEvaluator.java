@@ -9,7 +9,6 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /// Partially evaluates Semantic AST using only the roots known to the consumer.
-@SuppressWarnings("checkstyle:NeedBraces")
 final class EmbeddedLanguagePartialEvaluator {
 
     PartialProgram partial(SemanticAst program, Map<String, ?> knownRoots) {
@@ -29,11 +28,17 @@ final class EmbeddedLanguagePartialEvaluator {
         EvaluationFrame frame = EvaluationFrame.of(knownRoots, program.rootSlotCount(), program.localSlotCount());
         SemanticAst.Expression residual = simplify(program.expression(), frame);
         if (residual instanceof SemanticAst.Literal literal) {
-            if (!conforms(literal.value(), program)) throw incompatible(residual.span());
+            if (!conforms(literal.value(), program)) {
+                throw incompatible(residual.span());
+            }
             return new PartialProgram.Concrete(literal.value(), program.resultType());
         }
-        if (!residual.type().equals(program.resultType())) throw incompatible(residual.span());
-        if (residual.nullable() && !program.resultNullable()) throw incompatible(residual.span());
+        if (!residual.type().equals(program.resultType())) {
+            throw incompatible(residual.span());
+        }
+        if (residual.nullable() && !program.resultNullable()) {
+            throw incompatible(residual.span());
+        }
         return new PartialProgram.Residual(residual);
     }
 
@@ -42,7 +47,9 @@ final class EmbeddedLanguagePartialEvaluator {
             !frame.hasBindings() &&
             !expression.dependencies().isEmpty() &&
             !SemanticAst.dependsOnAny(expression, frame.rootNames())
-        ) return expression;
+        ) {
+            return expression;
+        }
         return switch (expression) {
             case SemanticAst.Literal literal -> literal;
             case SemanticAst.Reference reference when !frame.hasValue(reference) -> reference;
@@ -68,10 +75,14 @@ final class EmbeddedLanguagePartialEvaluator {
         }
         if (concrete) {
             List<@Nullable Object> concreteValues = new ArrayList<>(values.size());
-            for (SemanticAst.Expression value : values) concreteValues.add(((SemanticAst.Literal) value).value());
+            for (SemanticAst.Expression value : values) {
+                concreteValues.add(((SemanticAst.Literal) value).value());
+            }
             return literal(Collections.unmodifiableList(concreteValues), expression.type(), expression.span());
         }
-        if (!changed) return expression;
+        if (!changed) {
+            return expression;
+        }
         return new SemanticAst.ListLiteral(
             values,
             expression.type(),
@@ -88,7 +99,9 @@ final class EmbeddedLanguagePartialEvaluator {
                 expression.span()
             );
         }
-        if (operand == expression.operand()) return expression;
+        if (operand == expression.operand()) {
+            return expression;
+        }
         return new SemanticAst.Unary(
             expression.operator(),
             operand,
@@ -105,7 +118,9 @@ final class EmbeddedLanguagePartialEvaluator {
             left instanceof SemanticAst.Literal literal &&
             literal.value() instanceof Boolean value
         ) {
-            if (!value) return literal(false, expression.span());
+            if (!value) {
+                return literal(false, expression.span());
+            }
             return simplify(expression.right(), frame);
         }
         if (
@@ -113,7 +128,9 @@ final class EmbeddedLanguagePartialEvaluator {
             left instanceof SemanticAst.Literal literal &&
             literal.value() instanceof Boolean value
         ) {
-            if (value) return literal(true, expression.span());
+            if (value) {
+                return literal(true, expression.span());
+            }
             return simplify(expression.right(), frame);
         }
         SemanticAst.Expression right = simplify(expression.right(), frame);
@@ -123,7 +140,9 @@ final class EmbeddedLanguagePartialEvaluator {
                 expression.span()
             );
         }
-        if (left == expression.left() && right == expression.right()) return expression;
+        if (left == expression.left() && right == expression.right()) {
+            return expression;
+        }
         return new SemanticAst.Binary(
             expression.operator(),
             left,
@@ -136,16 +155,18 @@ final class EmbeddedLanguagePartialEvaluator {
 
     private static SemanticAst.Expression conditional(SemanticAst.Conditional expression, EvaluationFrame frame) {
         SemanticAst.Expression condition = simplify(expression.condition(), frame);
-        if (
-            condition instanceof SemanticAst.Literal literal && literal.value() instanceof Boolean value
-        ) return simplify(value ? expression.whenTrue() : expression.whenFalse(), frame);
+        if (condition instanceof SemanticAst.Literal literal && literal.value() instanceof Boolean value) {
+            return simplify(value ? expression.whenTrue() : expression.whenFalse(), frame);
+        }
         SemanticAst.Expression whenTrue = simplify(expression.whenTrue(), frame);
         SemanticAst.Expression whenFalse = simplify(expression.whenFalse(), frame);
         if (
             condition == expression.condition() &&
             whenTrue == expression.whenTrue() &&
             whenFalse == expression.whenFalse()
-        ) return expression;
+        ) {
+            return expression;
+        }
         return new SemanticAst.Conditional(
             condition,
             whenTrue,
@@ -182,13 +203,14 @@ final class EmbeddedLanguagePartialEvaluator {
                     residual = true;
                 }
             }
-            if (!residual) return literal(
-                expression.operator() != SemanticAst.QuantifierOperator.ANY,
-                expression.span()
-            );
+            if (!residual) {
+                return literal(expression.operator() != SemanticAst.QuantifierOperator.ANY, expression.span());
+            }
         }
         SemanticAst.Expression predicate = simplify(expression.predicate(), frame);
-        if (collection == expression.collection() && predicate == expression.predicate()) return expression;
+        if (collection == expression.collection() && predicate == expression.predicate()) {
+            return expression;
+        }
         return new SemanticAst.Quantifier(
             expression.operator(),
             collection,
@@ -211,7 +233,9 @@ final class EmbeddedLanguagePartialEvaluator {
                 return literal(java.math.BigDecimal.valueOf(list.size()), expression.span());
             }
         }
-        if (operand == expression.operand()) return expression;
+        if (operand == expression.operand()) {
+            return expression;
+        }
         return new SemanticAst.Length(operand, expression.type(), operand.dependencies(), expression.span());
     }
 
@@ -250,7 +274,9 @@ final class EmbeddedLanguagePartialEvaluator {
     }
 
     private static boolean conforms(@Nullable Object value, SemanticAst program) {
-        if (value == null) return program.resultNullable() || program.resultType() == LanguageType.Scalar.NULL;
+        if (value == null) {
+            return program.resultNullable() || program.resultType() == LanguageType.Scalar.NULL;
+        }
         return EmbeddedLanguageEvaluator.matchesType(value, program.resultType());
     }
 
