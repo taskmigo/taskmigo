@@ -13,6 +13,7 @@ import io.taskmigo.authorization.statement.TargetInfo;
 import io.taskmigo.language.EmbeddedLanguageCompiler;
 import io.taskmigo.language.LanguageContract;
 import java.lang.reflect.RecordComponent;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -73,7 +74,7 @@ class StatementArtifactFactoryTest {
         // Assert
         assertThat(artifact.policy().compilerFingerprint()).contains(LanguageContract.VERSION);
         assertThat(
-            java.util.Arrays.stream(Objects.requireNonNull(artifact.policy().getClass().getRecordComponents())).map(
+            Arrays.stream(Objects.requireNonNull(artifact.policy().getClass().getRecordComponents())).map(
                 RecordComponent::getName
             )
         ).doesNotContain("languageVersion");

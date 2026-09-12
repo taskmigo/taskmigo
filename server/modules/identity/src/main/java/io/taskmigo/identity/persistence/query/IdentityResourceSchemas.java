@@ -10,11 +10,13 @@ import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.query.QueryField;
 import io.taskmigo.query.QueryPath;
 import io.taskmigo.query.QuerySchema;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.ResolvableType;
@@ -131,9 +133,7 @@ public class IdentityResourceSchemas {
     }
 
     private static Map<String, String> simplePaths(String... fields) {
-        return java.util.Arrays.stream(fields).collect(
-            java.util.stream.Collectors.toUnmodifiableMap(field -> field, field -> field)
-        );
+        return Arrays.stream(fields).collect(Collectors.toUnmodifiableMap(field -> field, field -> field));
     }
 
     private static Map<String, Class<?>> simpleTypes() {

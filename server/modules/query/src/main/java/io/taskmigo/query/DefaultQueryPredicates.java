@@ -5,6 +5,8 @@ import io.taskmigo.language.LanguageDiagnostic.SourceSpan;
 import io.taskmigo.language.LanguageType;
 import io.taskmigo.language.SemanticAst;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /// Default Boolean-algebra implementation for opaque Query Predicates.
 @SuppressWarnings("checkstyle:NeedBraces")
@@ -74,9 +76,9 @@ final class DefaultQueryPredicates implements QueryPredicates {
     ) {
         SemanticAst.Expression l = QueryPredicateFactory.expression(left);
         SemanticAst.Expression r = QueryPredicateFactory.expression(right);
-        Set<String> dependencies = java.util.stream.Stream.of(l, r)
+        Set<String> dependencies = Stream.of(l, r)
             .flatMap(expression -> expression.dependencies().stream())
-            .collect(java.util.stream.Collectors.toUnmodifiableSet());
+            .collect(Collectors.toUnmodifiableSet());
         return new SemanticAst.Binary(operator, l, r, LanguageType.Scalar.BOOL, dependencies, span());
     }
 

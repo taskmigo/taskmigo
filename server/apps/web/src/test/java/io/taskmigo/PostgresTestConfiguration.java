@@ -6,6 +6,7 @@ import io.taskmigo.identity.authorization.role.RoleAuthorizationService;
 import io.taskmigo.identity.authorization.statement.StatementService;
 import io.taskmigo.identity.oauth.InternalClientMetadata;
 import io.taskmigo.identity.user.UserService;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -55,9 +56,9 @@ public class PostgresTestConfiguration {
             UUID roleId = access.reconcile(
                 "System Operator",
                 "Highest-privilege integration-test role.",
-                java.util.List.of(fullAccess, usersAccess, rolesAccess, groupsAccess, statementsAccess)
+                List.of(fullAccess, usersAccess, rolesAccess, groupsAccess, statementsAccess)
             );
-            users.setRoles(users.findForAuthentication("system").orElseThrow().id(), java.util.List.of(roleId));
+            users.setRoles(users.findForAuthentication("system").orElseThrow().id(), List.of(roleId));
             if (clients.findByClientId("integration-client") == null) {
                 clients.save(
                     RegisteredClient.withId("integration-client")

@@ -30,8 +30,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -106,9 +108,7 @@ class StatementServiceTest {
         assertThatThrownBy(() -> this.create("missing-policy", null)).isInstanceOf(AuthorizationException.class);
         assertThatThrownBy(() -> this.create("empty-policy", "")).isInstanceOf(AuthorizationException.class);
         assertThatThrownBy(() -> this.create("blank-policy", " \t\n ")).isInstanceOf(AuthorizationException.class);
-        verify(this.statements, org.mockito.Mockito.never()).save(
-            org.mockito.ArgumentMatchers.any(StatementEntity.class)
-        );
+        verify(this.statements, Mockito.never()).save(ArgumentMatchers.any(StatementEntity.class));
     }
 
     /**
@@ -133,7 +133,7 @@ class StatementServiceTest {
                 "return request.method == ;"
             )
         ).isInstanceOf(AuthorizationException.class);
-        verify(this.statements, never()).save(org.mockito.ArgumentMatchers.any(StatementEntity.class));
+        verify(this.statements, never()).save(ArgumentMatchers.any(StatementEntity.class));
     }
 
     /**

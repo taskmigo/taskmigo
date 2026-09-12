@@ -1,9 +1,11 @@
 package io.taskmigo.language;
 
 import java.math.BigDecimal;
+import java.math.MathContext;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 import org.jspecify.annotations.Nullable;
 
 /// Evaluates typed Embedded Language Semantic AST against an immutable approved environment.
@@ -71,7 +73,7 @@ public final class EmbeddedLanguageEvaluator {
         if (left instanceof List<?> leftValues && right instanceof List<?> rightValues) {
             return (
                 leftValues.size() == rightValues.size() &&
-                java.util.stream.IntStream.range(0, leftValues.size()).allMatch(index ->
+                IntStream.range(0, leftValues.size()).allMatch(index ->
                     equal(leftValues.get(index), rightValues.get(index))
                 )
             );
@@ -227,7 +229,7 @@ public final class EmbeddedLanguageEvaluator {
 
     private static BigDecimal divide(BigDecimal left, BigDecimal right) {
         if (right.signum() == 0) throw new IllegalArgumentException("division by zero");
-        return left.divide(right, java.math.MathContext.DECIMAL128);
+        return left.divide(right, MathContext.DECIMAL128);
     }
 
     private static BigDecimal modulo(BigDecimal left, BigDecimal right) {

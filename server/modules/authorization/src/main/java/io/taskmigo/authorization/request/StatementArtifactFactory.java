@@ -5,6 +5,7 @@ import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfil
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchemaRegistry;
+import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.language.EmbeddedLanguageCompiler;
@@ -52,7 +53,7 @@ public final class StatementArtifactFactory {
         List<StatementExecutionArtifact> result = new ArrayList<>();
         for (StatementInfo statement : statements) {
             EnvironmentSchema schema =
-                statement.scope() == io.taskmigo.authorization.statement.Scope.REQUEST
+                statement.scope() == Scope.REQUEST
                     ? AuthorizationEmbeddedLanguageSchemas.request()
                     : AuthorizationEmbeddedLanguageSchemas.object(this.schemas);
             String fingerprint = this.fingerprint(statement, schema);
@@ -97,7 +98,7 @@ public final class StatementArtifactFactory {
         append(state, schema.fingerprint());
         append(state, this.compiler.contractFingerprint());
         append(state, AuthorizationCompilationProfile.policy().fingerprint());
-        if (statement.scope() == io.taskmigo.authorization.statement.Scope.OBJECT) {
+        if (statement.scope() == Scope.OBJECT) {
             this.schemaRegistry
                 .applicable(statement.target().api().method(), statement.target().api().path())
                 .stream()

@@ -7,6 +7,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /// Applies Boolean identities while composing Object Authorization predicates.
 @SuppressWarnings({ "checkstyle:NeedBraces", "unchecked" })
@@ -89,9 +91,9 @@ final class DefaultObjectAuthorizationPredicates implements ObjectAuthorizationP
                 l,
                 r,
                 LanguageType.Scalar.BOOL,
-                java.util.stream.Stream.of(l, r)
+                Stream.of(l, r)
                     .flatMap(value -> value.dependencies().stream())
-                    .collect(java.util.stream.Collectors.toUnmodifiableSet()),
+                    .collect(Collectors.toUnmodifiableSet()),
                 span()
             )
         );
