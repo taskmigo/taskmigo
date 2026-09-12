@@ -55,14 +55,18 @@ public final class ObjectAuthorizationPredicateModels {
     ) implements ObjectAuthorizationPredicate<Q>, ObjectAuthorizationPredicateModel {
         @Override
         public boolean isAlwaysTrue() {
-            return this.expression instanceof ObjectAuthorizationExpression.Literal literal &&
-                Boolean.TRUE.equals(literal.value());
+            return (
+                this.expression instanceof ObjectAuthorizationExpression.Literal literal &&
+                Boolean.TRUE.equals(literal.value())
+            );
         }
 
         @Override
         public boolean isAlwaysFalse() {
-            return this.expression instanceof ObjectAuthorizationExpression.Literal literal &&
-                Boolean.FALSE.equals(literal.value());
+            return (
+                this.expression instanceof ObjectAuthorizationExpression.Literal literal &&
+                Boolean.FALSE.equals(literal.value())
+            );
         }
     }
 }
