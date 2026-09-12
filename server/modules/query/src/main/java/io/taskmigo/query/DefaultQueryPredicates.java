@@ -3,7 +3,6 @@ package io.taskmigo.query;
 import io.taskmigo.query.persistence.QueryExpression;
 
 /// Default Boolean-algebra implementation for opaque Query Predicates.
-@SuppressWarnings("checkstyle:NeedBraces")
 final class DefaultQueryPredicates implements QueryPredicates {
 
     static final DefaultQueryPredicates INSTANCE = new DefaultQueryPredicates();
@@ -23,27 +22,47 @@ final class DefaultQueryPredicates implements QueryPredicates {
     @Override
     public <Q> QueryPredicate<Q> and(QueryPredicate<Q> left, QueryPredicate<Q> right) {
         requireCompatible(left, right);
-        if (left.isAlwaysFalse()) return left;
-        if (right.isAlwaysFalse()) return right;
-        if (left.isAlwaysTrue()) return right;
-        if (right.isAlwaysTrue()) return left;
+        if (left.isAlwaysFalse()) {
+            return left;
+        }
+        if (right.isAlwaysFalse()) {
+            return right;
+        }
+        if (left.isAlwaysTrue()) {
+            return right;
+        }
+        if (right.isAlwaysTrue()) {
+            return left;
+        }
         return QueryPredicateFactory.wrap(schema(left), binary(QueryExpression.BinaryOperator.AND, left, right));
     }
 
     @Override
     public <Q> QueryPredicate<Q> or(QueryPredicate<Q> left, QueryPredicate<Q> right) {
         requireCompatible(left, right);
-        if (left.isAlwaysTrue()) return left;
-        if (right.isAlwaysTrue()) return right;
-        if (left.isAlwaysFalse()) return right;
-        if (right.isAlwaysFalse()) return left;
+        if (left.isAlwaysTrue()) {
+            return left;
+        }
+        if (right.isAlwaysTrue()) {
+            return right;
+        }
+        if (left.isAlwaysFalse()) {
+            return right;
+        }
+        if (right.isAlwaysFalse()) {
+            return left;
+        }
         return QueryPredicateFactory.wrap(schema(left), binary(QueryExpression.BinaryOperator.OR, left, right));
     }
 
     @Override
     public <Q> QueryPredicate<Q> not(QueryPredicate<Q> predicate) {
-        if (predicate.isAlwaysTrue()) return QueryPredicateFactory.constantLike(predicate, false);
-        if (predicate.isAlwaysFalse()) return QueryPredicateFactory.constantLike(predicate, true);
+        if (predicate.isAlwaysTrue()) {
+            return QueryPredicateFactory.constantLike(predicate, false);
+        }
+        if (predicate.isAlwaysFalse()) {
+            return QueryPredicateFactory.constantLike(predicate, true);
+        }
         return QueryPredicateFactory.wrap(
             schema(predicate),
             new QueryExpression.Unary(
