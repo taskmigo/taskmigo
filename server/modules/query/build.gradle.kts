@@ -5,9 +5,11 @@ plugins {
 description = "Taskmigo Query Filtering contracts, validation, and filterBy compilation"
 
 dependencies {
-    api(libs.jspecify)
     compileOnly(platform(libs.spring.modulith.bom))
     compileOnly(libs.spring.modulith.starter.core)
+    testImplementation(platform(libs.spring.modulith.bom))
+    testImplementation(libs.spring.modulith.starter.test)
+
     implementation(platform(libs.spring.boot.bom))
     api(libs.spring.boot.core.starter)
     api(project(":modules:language"))

@@ -1,27 +1,31 @@
-import org.springframework.boot.gradle.tasks.bundling.BootJar
+import org.gradle.api.tasks.compile.JavaCompile
 
 plugins {
     java
-    id("org.springframework.boot")
+    alias(libs.plugins.spring.boot)
 }
 
-tasks.named<BootJar>("bootJar") {
-    archiveFileName.set("web.jar")
+tasks.bootJar {
+    archiveFileName = "web.jar"
 }
 
 description = "Taskmigo HTTP and OAuth application"
 
 dependencies {
-    implementation(libs.jspecify)
+    compileOnly(platform(libs.spring.modulith.bom))
+    compileOnly(libs.spring.modulith.starter.core)
+    testImplementation(platform(libs.spring.modulith.bom))
+    testImplementation(libs.spring.modulith.starter.test)
+    testImplementation(libs.archunit.junit5)
+
     implementation(platform(libs.spring.boot.bom))
-    implementation(platform(libs.spring.modulith.bom))
     implementation(project(":modules:foundation"))
     implementation(project(":modules:query"))
     implementation(project(":modules:authorization"))
     // Provides shared datasource/JPA configuration; apps/bootstrap owns migration execution.
     implementation(project(":modules:database"))
     implementation(project(":modules:identity"))
-    compileOnly(libs.spring.modulith.starter.core)
+    runtimeOnly(libs.jspecify)
     implementation(libs.spring.boot.starter.jdbc)
     implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.spring.boot.starter.validation)
@@ -34,7 +38,6 @@ dependencies {
     testImplementation(libs.spring.boot.starter.data.jpa)
     testImplementation(libs.spring.boot.starter.flyway)
     testImplementation(libs.flyway.postgresql)
-    testImplementation(libs.spring.modulith.starter.test)
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers.postgresql)
 }
