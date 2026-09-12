@@ -43,10 +43,7 @@ public class EmbeddedLanguageSchemaBenchmark {
             int count = Integer.parseInt(this.fieldCount);
             Map<String, EnvironmentSchema.Field> fields = new LinkedHashMap<>();
             for (int index = 0; index < count; index++) {
-                fields.put(
-                    "field" + index,
-                    new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, false)
-                );
+                fields.put("field" + index, new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, false));
             }
             this.roots = Map.of(
                 "record",
