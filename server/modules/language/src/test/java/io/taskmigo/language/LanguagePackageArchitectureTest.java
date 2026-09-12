@@ -58,8 +58,8 @@ class LanguagePackageArchitectureTest {
      * Verifies that ANTLR stays confined to the parser/compiler frontend.
      *
      * Given: every compiled class outside the generated parser package.
-     * Expect: only EmbeddedLanguageCompiler and LanguageCompilerVisitor may depend directly on ANTLR or generated parser
-     * types.
+     * Expect: only LanguageCompilerVisitor and the EmbeddedLanguageCompiler implementation, including its private
+     * TokenSource and error-listener classes, may depend directly on ANTLR or generated parser types.
      */
     @Test
     @DisplayName("confines ANTLR dependencies to the compiler frontend")
@@ -71,6 +71,10 @@ class LanguagePackageArchitectureTest {
             .resideOutsideOfPackage("io.taskmigo.language.antlr..")
             .and()
             .doNotHaveSimpleName("EmbeddedLanguageCompiler")
+            .and()
+            .doNotHaveSimpleName("BoundedTokenSource")
+            .and()
+            .doNotHaveSimpleName("Errors")
             .and()
             .doNotHaveSimpleName("LanguageCompilerVisitor")
             .should()
