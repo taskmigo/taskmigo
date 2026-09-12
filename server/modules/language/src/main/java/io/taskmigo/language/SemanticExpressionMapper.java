@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /// Bridges the internal Semantic AST to the stable visitor-only translation surface.
+@SuppressWarnings("checkstyle:NeedBraces")
 final class SemanticExpressionMapper {
 
     private SemanticExpressionMapper() {}
@@ -23,7 +24,11 @@ final class SemanticExpressionMapper {
                 reference.symbolic(),
                 reference.span()
             );
-            case SemanticAst.ListLiteral list -> visitor.list(mapList(list.values(), visitor), list.type(), list.span());
+            case SemanticAst.ListLiteral list -> visitor.list(
+                mapList(list.values(), visitor),
+                list.type(),
+                list.span()
+            );
             case SemanticAst.Unary unary -> visitor.unary(
                 UnaryOperator.valueOf(unary.operator().name()),
                 map(unary.operand(), visitor),
