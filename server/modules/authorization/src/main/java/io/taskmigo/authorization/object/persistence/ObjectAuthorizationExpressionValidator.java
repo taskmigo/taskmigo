@@ -17,7 +17,9 @@ public final class ObjectAuthorizationExpressionValidator {
             case ObjectAuthorizationExpression.Literal _ -> {
             }
             case ObjectAuthorizationExpression.Reference reference -> validateReference(reference, schema);
-            case ObjectAuthorizationExpression.ListValue list -> list.values().forEach(value -> validate(value, schema));
+            case ObjectAuthorizationExpression.ListValue list -> list.values().forEach(value ->
+                validate(value, schema)
+            );
             case ObjectAuthorizationExpression.Unary unary -> {
                 validate(unary.operand(), schema);
                 if (
