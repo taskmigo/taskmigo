@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 /// Assigns stable compact slots to one Environment Schema's roots.
+@SuppressWarnings("checkstyle:NeedBraces")
 final class DependencyCatalog {
 
     private final List<String> roots;
