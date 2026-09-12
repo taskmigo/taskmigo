@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import org.springframework.core.ResolvableType;
 
 /// Builds the consumer-owned Language schemas used by authorization.
@@ -25,6 +27,7 @@ public final class AuthorizationEmbeddedLanguageSchemas {
             root(Map.of("method", string(), "path", string(), "pathVariables", dynamicString()))
         )
     );
+    private static final ConcurrentMap<String, EnvironmentSchema> OBJECTS = new ConcurrentHashMap<>();
 
     private AuthorizationEmbeddedLanguageSchemas() {}
 
@@ -58,8 +61,12 @@ public final class AuthorizationEmbeddedLanguageSchemas {
         );
     }
 
-    /// Returns an object schema derived from an authorization-owned logical object schema.
+    /// Returns a cached object schema derived from an authorization-owned logical object schema.
     public static <Q> EnvironmentSchema object(ObjectAuthorizationSchema<Q> schema) {
+        return OBJECTS.computeIfAbsent(schema.identity(), ignored -> buildObject(schema));
+    }
+
+    private static <Q> EnvironmentSchema buildObject(ObjectAuthorizationSchema<Q> schema) {
         Map<String, EnvironmentSchema.Field> fields = new HashMap<>();
         for (ObjectAuthorizationField field : schema.fields()) {
             String first = field.path().segments().getFirst();
