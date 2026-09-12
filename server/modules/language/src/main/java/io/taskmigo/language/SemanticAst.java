@@ -8,7 +8,7 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /// Represents the immutable typed Semantic AST of one compiled Embedded Language program.
-@SuppressWarnings({ "checkstyle:NeedBraces", "checkstyle:DeclarationOrder" })
+@SuppressWarnings("checkstyle:DeclarationOrder")
 record SemanticAst(
     Expression expression,
     String sourceFingerprint,
@@ -27,9 +27,9 @@ record SemanticAst(
         Objects.requireNonNull(compilerFingerprint);
         Objects.requireNonNull(mode);
         Objects.requireNonNull(profileFingerprint);
-        if (rootSlotCount < 0 || localSlotCount < 0) throw new IllegalArgumentException(
-            "slot counts must not be negative"
-        );
+        if (rootSlotCount < 0 || localSlotCount < 0) {
+            throw new IllegalArgumentException("slot counts must not be negative");
+        }
         requiredRoots = Set.copyOf(requiredRoots);
     }
 
@@ -153,9 +153,9 @@ record SemanticAst(
             Objects.requireNonNull(root);
             path = List.copyOf(path);
             Objects.requireNonNull(type);
-            if (rootSlot < -1 || localSlot < -1) throw new IllegalArgumentException(
-                "reference slot must be -1 or positive"
-            );
+            if (rootSlot < -1 || localSlot < -1) {
+                throw new IllegalArgumentException("reference slot must be -1 or positive");
+            }
             dependencies = immutableDependencies(dependencies);
             Objects.requireNonNull(span);
         }
@@ -282,8 +282,12 @@ record SemanticAst(
             Objects.requireNonNull(operator);
             Objects.requireNonNull(collection);
             Objects.requireNonNull(elementName);
-            if (elementName.isBlank()) throw new IllegalArgumentException("quantifier element name must not be blank");
-            if (elementSlot < -1) throw new IllegalArgumentException("quantifier slot must be -1 or positive");
+            if (elementName.isBlank()) {
+                throw new IllegalArgumentException("quantifier element name must not be blank");
+            }
+            if (elementSlot < -1) {
+                throw new IllegalArgumentException("quantifier slot must be -1 or positive");
+            }
             Objects.requireNonNull(predicate);
             Objects.requireNonNull(type);
             dependencies = immutableDependencies(dependencies);
@@ -382,16 +386,26 @@ record SemanticAst(
     }
 
     private static LanguageType compatibleResultType(Expression left, Expression right) {
-        if (left.type().equals(right.type())) return left.type();
-        if (left.type() == LanguageType.Scalar.NULL) return right.type();
-        if (right.type() == LanguageType.Scalar.NULL) return left.type();
+        if (left.type().equals(right.type())) {
+            return left.type();
+        }
+        if (left.type() == LanguageType.Scalar.NULL) {
+            return right.type();
+        }
+        if (right.type() == LanguageType.Scalar.NULL) {
+            return left.type();
+        }
         throw new IllegalArgumentException("conditional branches have incompatible result types");
     }
 
     private static @Nullable Object immutableValue(@Nullable Object value) {
-        if (!(value instanceof List<?> list)) return value;
+        if (!(value instanceof List<?> list)) {
+            return value;
+        }
         ArrayList<@Nullable Object> result = new ArrayList<>(list.size());
-        for (Object item : list) result.add(immutableValue(item));
+        for (Object item : list) {
+            result.add(immutableValue(item));
+        }
         return Collections.unmodifiableList(result);
     }
 }
