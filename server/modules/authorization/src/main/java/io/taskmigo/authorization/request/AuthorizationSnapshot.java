@@ -5,6 +5,7 @@ import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.language.SemanticAst;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -62,7 +63,11 @@ record AuthorizationSnapshot(
                 yield immutableMap(stringMap);
             }
             case List<?> list -> list.stream().map(AuthorizationSnapshot::immutableValue).toList();
-            case Set<?> set -> Set.copyOf(set.stream().map(AuthorizationSnapshot::immutableValue).toList());
+            case Set<?> set -> {
+                Set<@Nullable Object> copy = new LinkedHashSet<>();
+                set.forEach(element -> copy.add(immutableValue(element)));
+                yield Collections.unmodifiableSet(copy);
+            }
             case String string -> string;
             case Number number -> number;
             case Boolean bool -> bool;

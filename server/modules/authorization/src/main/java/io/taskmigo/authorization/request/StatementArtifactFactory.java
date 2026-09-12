@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -56,10 +57,12 @@ public final class StatementArtifactFactory {
                     : AuthorizationEmbeddedLanguageSchemas.object(this.schemas);
             String fingerprint = this.fingerprint(statement, schema);
             CacheKey key = new CacheKey(statement.id(), schema.fingerprint(), fingerprint);
-            CachedArtifacts cached = this.derived.compute(key, (ignored, current) ->
-                current != null && current.fingerprint().equals(fingerprint)
-                    ? current
-                    : new CachedArtifacts(fingerprint, this.compile(statement, schema))
+            CachedArtifacts cached = Objects.requireNonNull(
+                this.derived.compute(key, (ignored, current) ->
+                    current != null && current.fingerprint().equals(fingerprint)
+                        ? current
+                        : new CachedArtifacts(fingerprint, this.compile(statement, schema))
+                )
             );
             result.add(
                 new StatementExecutionArtifact(statement, cached.artifacts().policy(), cached.artifacts().pathMatcher())

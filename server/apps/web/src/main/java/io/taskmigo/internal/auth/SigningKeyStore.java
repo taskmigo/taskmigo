@@ -47,15 +47,20 @@ final class SigningKeyStore {
 
     private static void createForDevelopment(Path path) throws GeneralSecurityException, IOException {
         var parent = Objects.requireNonNull(path.getParent());
+        var fileName = Objects.requireNonNull(path.getFileName(), "OAuth signing key path must name a file");
         Files.createDirectories(parent);
         var generator = KeyPairGenerator.getInstance("RSA");
         generator.initialize(3072);
         var keyPair = generator.generateKeyPair();
+        var privateKey = Objects.requireNonNull(
+            keyPair.getPrivate().getEncoded(),
+            "generated RSA private key has no encoded form"
+        );
 
-        var temporary = Files.createTempFile(parent, path.getFileName().toString(), ".tmp");
+        var temporary = Files.createTempFile(parent, fileName.toString(), ".tmp");
         try {
             restrictToOwner(temporary);
-            Files.writeString(temporary, pem(keyPair.getPrivate().getEncoded()), StandardCharsets.US_ASCII);
+            Files.writeString(temporary, pem(privateKey), StandardCharsets.US_ASCII);
             try {
                 Files.move(temporary, path);
             } catch (FileAlreadyExistsException _) {

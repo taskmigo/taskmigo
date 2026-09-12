@@ -65,6 +65,7 @@ subprojects {
                 error("NullAway", "RequireExplicitNullMarking")
                 option("NullAway:OnlyNullMarked", "true")
                 option("NullAway:JSpecifyMode", "true")
+                option("NullAway:JSpecifyExperimental", "true")
                 option("NullAway:HandleTestAssertionLibraries", "true")
             }
         }

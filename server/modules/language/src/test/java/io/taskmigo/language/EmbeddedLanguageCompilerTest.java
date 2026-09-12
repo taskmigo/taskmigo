@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -67,7 +68,7 @@ class EmbeddedLanguageCompilerTest {
     @DisplayName("supports nullable program results")
     void shouldEvaluateNullableProgramResult() {
         SemanticAst program = new EmbeddedLanguageCompiler().compile("return request.optional;", schema);
-        Map<String, Object> request = new HashMap<>();
+        Map<String, @Nullable Object> request = new HashMap<>();
         request.put("optional", null);
 
         Object result = new EmbeddedLanguageEvaluator().evaluate(program, Map.of("request", request));

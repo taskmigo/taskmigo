@@ -14,6 +14,7 @@ import io.taskmigo.language.EmbeddedLanguageCompiler;
 import io.taskmigo.language.LanguageContract;
 import java.lang.reflect.RecordComponent;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -72,7 +73,9 @@ class StatementArtifactFactoryTest {
         // Assert
         assertThat(artifact.policy().compilerFingerprint()).contains(LanguageContract.VERSION);
         assertThat(
-            java.util.Arrays.stream(artifact.policy().getClass().getRecordComponents()).map(RecordComponent::getName)
+            java.util.Arrays.stream(Objects.requireNonNull(artifact.policy().getClass().getRecordComponents())).map(
+                RecordComponent::getName
+            )
         ).doesNotContain("languageVersion");
         assertThat(artifact.policy().profileFingerprint()).isEqualTo(
             AuthorizationCompilationProfile.policy().fingerprint()
