@@ -26,11 +26,7 @@ final class EmbeddedLanguagePartialEvaluator {
                 );
             }
         }
-        EvaluationFrame frame = EvaluationFrame.of(
-            knownRoots,
-            program.rootSlotCount(),
-            program.localSlotCount()
-        );
+        EvaluationFrame frame = EvaluationFrame.of(knownRoots, program.rootSlotCount(), program.localSlotCount());
         SemanticAst.Expression residual = simplify(program.expression(), frame);
         if (residual instanceof SemanticAst.Literal literal) {
             if (!conforms(literal.value(), program)) throw incompatible(residual.span());
@@ -76,13 +72,21 @@ final class EmbeddedLanguagePartialEvaluator {
             return literal(Collections.unmodifiableList(concreteValues), expression.type(), expression.span());
         }
         if (!changed) return expression;
-        return new SemanticAst.ListLiteral(values, expression.type(), SemanticAst.dependencies(values), expression.span());
+        return new SemanticAst.ListLiteral(
+            values,
+            expression.type(),
+            SemanticAst.dependencies(values),
+            expression.span()
+        );
     }
 
     private static SemanticAst.Expression unary(SemanticAst.Unary expression, EvaluationFrame frame) {
         SemanticAst.Expression operand = simplify(expression.operand(), frame);
         if (operand instanceof SemanticAst.Literal literal) {
-            return literal(EmbeddedLanguageEvaluator.compute(expression.operator(), literal.value()), expression.span());
+            return literal(
+                EmbeddedLanguageEvaluator.compute(expression.operator(), literal.value()),
+                expression.span()
+            );
         }
         if (operand == expression.operand()) return expression;
         return new SemanticAst.Unary(
