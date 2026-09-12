@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 
 /// Assigns stable compact slots to one Environment Schema's roots.
-@SuppressWarnings("checkstyle:NeedBraces")
 final class DependencyCatalog {
 
     private final List<String> roots;
@@ -45,7 +44,9 @@ final class DependencyCatalog {
 
     RootDependencies dependency(String root) {
         int slot = this.slot(root);
-        if (slot < 0) throw new IllegalArgumentException("unknown schema root: " + root);
+        if (slot < 0) {
+            throw new IllegalArgumentException("unknown schema root: " + root);
+        }
         return RootDependencies.of(this, slot);
     }
 }
