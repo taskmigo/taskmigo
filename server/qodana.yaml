@@ -6,20 +6,6 @@ projectJDK: "26"
 failThreshold: 0
 withinDocker: false
 
-# Analyze only the repository's Java projects. Gradle build configuration is not product
-# source and is intentionally outside this Qodana project scope.
-rootJavaProjects:
-  - ./modules/foundation
-  - ./modules/language
-  - ./modules/query
-  - ./modules/authorization
-  - ./modules/database
-  - ./modules/identity
-  - ./benchmarks/authorization
-  - ./apps/bootstrap
-  - ./apps/web
-  - ./apps/worker
-
 include:
   # Correctness and API contracts.
   - name: QodanaJavaSanity
