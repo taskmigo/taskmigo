@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.math.BigDecimal;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -86,6 +85,8 @@ class AlphaSixLanguageTest {
         Object none = evaluator.evaluate(compiler.compile("return none([], item => true);", schema), Map.of());
 
         // Assert
-        assertThat(List.of(all, any, none)).containsExactly(true, false, true);
+        assertThat(all).isEqualTo(true);
+        assertThat(any).isEqualTo(false);
+        assertThat(none).isEqualTo(true);
     }
 }

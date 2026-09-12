@@ -6,6 +6,7 @@ import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 
 /// Stores one reflexive-transitive Group hierarchy relationship for bounded authorization resolution.
 @Entity
@@ -50,7 +51,7 @@ public class GroupHierarchyClosureEntity {
         }
 
         @Override
-        public boolean equals(Object other) {
+        public boolean equals(@Nullable Object other) {
             if (this == other) {
                 return true;
             }

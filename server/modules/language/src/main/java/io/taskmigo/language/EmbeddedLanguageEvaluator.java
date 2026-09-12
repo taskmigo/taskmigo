@@ -100,8 +100,8 @@ public final class EmbeddedLanguageEvaluator {
     private static boolean quantifier(SemanticAst.Quantifier expression, Map<String, ?> roots) {
         List<?> values = list(value(expression.collection(), roots));
         for (Object element : values) {
-            Map<String, Object> scoped = new HashMap<>(roots);
-            Map<String, Object> binding = new HashMap<>();
+            Map<String, @Nullable Object> scoped = new HashMap<>(roots);
+            Map<String, @Nullable Object> binding = new HashMap<>();
             binding.put(expression.elementName(), element);
             scoped.put("__lambda__", binding);
             boolean matches = requireBoolean(value(expression.predicate(), scoped));

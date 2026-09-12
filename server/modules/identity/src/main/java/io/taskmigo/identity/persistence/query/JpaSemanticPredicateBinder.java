@@ -6,6 +6,7 @@ import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -103,24 +104,24 @@ public final class JpaSemanticPredicateBinder {
         Map<String, Class<?>> types
     ) {
         Expression<?> left = value(binary.left(), root, builder, paths, types);
-        CriteriaBuilder.In<Object> predicate = builder.in(left);
+        List<Expression<?>> candidates = new ArrayList<>();
         String logical =
             binary.left() instanceof SemanticAst.Reference reference ? String.join(".", reference.path()) : null;
         Class<?> type = logical == null ? null : types.get(logical);
         switch (binary.right()) {
             case SemanticAst.ListLiteral list -> list.values().forEach(item ->
-                predicate.value(
+                candidates.add(
                     item instanceof SemanticAst.Literal literal
                         ? literal(coerce(literal.value(), type), builder)
                         : value(item, root, builder, paths, types)
                 )
             );
             case SemanticAst.Literal literal when literal.value() instanceof List<?> values -> values.forEach(item ->
-                predicate.value(literal(coerce(item, type), builder))
+                candidates.add(literal(coerce(item, type), builder))
             );
             default -> throw unsupported("IN values");
         }
-        return predicate;
+        return left.in(candidates.toArray(Expression<?>[]::new));
     }
 
     private static <E> Expression<?> comparisonValue(

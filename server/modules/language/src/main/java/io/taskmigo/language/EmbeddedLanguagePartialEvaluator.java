@@ -175,8 +175,8 @@ public final class EmbeddedLanguagePartialEvaluator {
         SemanticAst.Expression collection = simplify(expression.collection(), roots);
         if (collection instanceof SemanticAst.Literal literal && literal.value() instanceof List<?> values) {
             for (Object element : values) {
-                Map<String, Object> scoped = new HashMap<>(roots);
-                Map<String, Object> binding = new HashMap<>();
+                Map<String, @Nullable Object> scoped = new HashMap<>(roots);
+                Map<String, @Nullable Object> binding = new HashMap<>();
                 binding.put(expression.elementName(), element);
                 scoped.put("__lambda__", binding);
                 SemanticAst.Expression predicate = simplify(expression.predicate(), scoped);
