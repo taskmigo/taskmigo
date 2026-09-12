@@ -17,39 +17,34 @@ import org.antlr.v4.runtime.Recognizer;
 import org.antlr.v4.runtime.Token;
 import org.jspecify.annotations.Nullable;
 
-/// Compiles direct-body Embedded Language source into an immutable typed Semantic AST.
+/// Compiles canonical Language source into the internal typed Semantic AST.
 ///
 /// The generated ANTLR lexer and parser implement the canonical grammar. The generated parse tree is converted into
 /// the language-owned Semantic AST before evaluation or partial evaluation.
 @SuppressWarnings("checkstyle:NeedBraces")
-public final class EmbeddedLanguageCompiler {
+final class EmbeddedLanguageCompiler {
 
     private final CompilerLimits limits;
     private final String compilerFingerprint;
 
-    /// Creates a compiler with the finite default contract limits.
-    public EmbeddedLanguageCompiler() {
+    EmbeddedLanguageCompiler() {
         this(CompilerLimits.defaults());
     }
 
-    /// Creates a compiler with explicit finite limits.
-    public EmbeddedLanguageCompiler(CompilerLimits limits) {
+    EmbeddedLanguageCompiler(CompilerLimits limits) {
         this.limits = Objects.requireNonNull(limits);
         this.compilerFingerprint = this.limits.fingerprint() + ":" + LanguageContract.VERSION;
     }
 
-    /// Returns the identity of the compiler limits and language contract.
-    public String contractFingerprint() {
+    String contractFingerprint() {
         return this.compilerFingerprint;
     }
 
-    /// Compiles source against a consumer-owned environment schema.
-    public SemanticAst compile(String source, EnvironmentSchema schema) {
+    SemanticAst compile(String source, EnvironmentSchema schema) {
         return this.compile(source, schema, CompilationProfile.program());
     }
 
-    /// Compiles source against a schema and explicit language compilation profile.
-    public SemanticAst compile(String source, EnvironmentSchema schema, CompilationProfile profile) {
+    SemanticAst compile(String source, EnvironmentSchema schema, CompilationProfile profile) {
         Objects.requireNonNull(source);
         Objects.requireNonNull(schema);
         Objects.requireNonNull(profile);

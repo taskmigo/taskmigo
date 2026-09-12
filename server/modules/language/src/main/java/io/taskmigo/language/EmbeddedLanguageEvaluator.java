@@ -9,12 +9,11 @@ import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
-/// Evaluates typed Embedded Language Semantic AST against an immutable approved environment.
+/// Evaluates typed Language Semantic AST against an immutable approved environment.
 @SuppressWarnings("checkstyle:NeedBraces")
-public final class EmbeddedLanguageEvaluator {
+final class EmbeddedLanguageEvaluator {
 
-    /// Evaluates a program and returns a value conforming to its static result contract.
-    public @Nullable Object evaluate(SemanticAst program, Map<String, ?> roots) {
+    @Nullable Object evaluate(SemanticAst program, Map<String, ?> roots) {
         EvaluationFrame frame = EvaluationFrame.of(roots);
         try {
             Object result = value(program.expression(), frame);
@@ -32,8 +31,7 @@ public final class EmbeddedLanguageEvaluator {
         }
     }
 
-    /// Evaluates a program after checking that its schema identity is unchanged.
-    public @Nullable Object evaluate(SemanticAst program, EnvironmentSchema schema, Map<String, ?> roots) {
+    @Nullable Object evaluate(SemanticAst program, EnvironmentSchema schema, Map<String, ?> roots) {
         if (!program.schemaFingerprint().isEmpty() && !program.schemaFingerprint().equals(schema.fingerprint())) {
             throw failure("compiled program schema does not match the evaluation schema", program.expression().span());
         }

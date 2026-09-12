@@ -10,10 +10,9 @@ import org.jspecify.annotations.Nullable;
 
 /// Partially evaluates Semantic AST using only the roots known to the consumer.
 @SuppressWarnings("checkstyle:NeedBraces")
-public final class EmbeddedLanguagePartialEvaluator {
+final class EmbeddedLanguagePartialEvaluator {
 
-    /// Produces a concrete typed value or a typed residual Semantic AST expression.
-    public PartialProgram partial(SemanticAst program, Map<String, ?> knownRoots) {
+    PartialProgram partial(SemanticAst program, Map<String, ?> knownRoots) {
         Objects.requireNonNull(program);
         Objects.requireNonNull(knownRoots);
         EvaluationFrame frame = EvaluationFrame.of(knownRoots);
