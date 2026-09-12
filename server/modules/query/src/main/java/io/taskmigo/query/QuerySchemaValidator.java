@@ -50,11 +50,7 @@ final class QuerySchemaValidator {
         }
     }
 
-    private static <Q> void requireOperator(
-        QueryExpression expression,
-        QueryOperator operator,
-        QuerySchema<Q> schema
-    ) {
+    private static <Q> void requireOperator(QueryExpression expression, QueryOperator operator, QuerySchema<Q> schema) {
         if (expression instanceof QueryExpression.Reference reference && reference.root().equals("object")) {
             if (operator == QueryOperator.AND || operator == QueryOperator.OR) return;
             QueryField field = schema
