@@ -1,5 +1,5 @@
 plugins {
-    `java-library`
+    id("taskmigo.java-library")
 }
 
 description = "Shared database configuration, migrations, and PostgreSQL runtime support"

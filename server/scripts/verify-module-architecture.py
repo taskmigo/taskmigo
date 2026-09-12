@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify the normative v1.0.0-alpha.9 server module dependency boundaries."""
+"""Verify the normative v1.0.0-alpha.10 server module and build boundaries."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from pathlib import Path
 
 SERVER = Path(__file__).resolve().parents[1]
 MODULES = SERVER / "modules"
+BUILD_LOGIC = SERVER / "build-logic"
 
 ALLOWED_PROJECT_DEPENDENCIES = {
     "foundation": set(),
@@ -36,6 +37,39 @@ FOUNDATION_PROHIBITED_SOURCE_TOKENS = (
     "import org.springframework",
     "import jakarta.persistence",
     "import org.antlr",
+)
+EXPECTED_TOOL_VERSIONS = {
+    "spring-modulith": "2.1.0",
+    "archunit": "1.4.2",
+    "errorprone-gradle-plugin": "5.1.0",
+    "errorprone-core": "2.50.0",
+    "nullaway": "0.14.0",
+    "jspecify": "1.0.1",
+    "checkstyle": "14.1.0",
+    "spotless": "8.10.1",
+}
+EXPECTED_CONVENTIONS = {
+    "modules/foundation/build.gradle.kts": "taskmigo.java-library",
+    "modules/database/build.gradle.kts": "taskmigo.java-library",
+    "modules/language/build.gradle.kts": "taskmigo.spring-module",
+    "modules/query/build.gradle.kts": "taskmigo.spring-module",
+    "modules/authorization/build.gradle.kts": "taskmigo.spring-module",
+    "modules/identity/build.gradle.kts": "taskmigo.spring-module",
+    "benchmarks/authorization/build.gradle.kts": "taskmigo.java-base",
+    "apps/bootstrap/build.gradle.kts": "taskmigo.spring-application",
+    "apps/web/build.gradle.kts": "taskmigo.spring-application",
+    "apps/worker/build.gradle.kts": "taskmigo.spring-application",
+}
+EXPECTED_ARCHITECTURE_TEST_CONVENTIONS = {
+    "modules/identity/build.gradle.kts",
+    "apps/web/build.gradle.kts",
+}
+REDUNDANT_CONVENTION_DEPENDENCIES = (
+    "libs.jspecify",
+    "libs.spring.modulith.bom",
+    "libs.spring.modulith.starter.core",
+    "libs.spring.modulith.starter.test",
+    "libs.archunit.junit5",
 )
 
 
@@ -112,12 +146,71 @@ def verify_named_modules(errors: list[str]) -> None:
         errors.append("settings.gradle.kts still includes the superseded auth module")
 
 
+def verify_build_conventions(errors: list[str]) -> None:
+    settings = (SERVER / "settings.gradle.kts").read_text(encoding="utf-8")
+    if 'includeBuild("build-logic")' not in settings:
+        errors.append("settings.gradle.kts does not include the build convention layer")
+
+    required_build_logic_files = {
+        "settings.gradle.kts",
+        "build.gradle.kts",
+        "src/main/kotlin/taskmigo.java-base.gradle.kts",
+        "src/main/kotlin/taskmigo.java-library.gradle.kts",
+        "src/main/kotlin/taskmigo.spring-module.gradle.kts",
+        "src/main/kotlin/taskmigo.spring-application.gradle.kts",
+        "src/main/kotlin/taskmigo.architecture-test.gradle.kts",
+    }
+    for relative_path in sorted(required_build_logic_files):
+        if not (BUILD_LOGIC / relative_path).is_file():
+            errors.append(f"missing build convention file: build-logic/{relative_path}")
+
+    catalog = (SERVER / "gradle/libs.versions.toml").read_text(encoding="utf-8")
+    for name, expected in EXPECTED_TOOL_VERSIONS.items():
+        if not re.search(rf"^{re.escape(name)}\s*=\s*\"{re.escape(expected)}\"$", catalog, re.MULTILINE):
+            errors.append(f"libs.versions.toml does not pin {name} to {expected}")
+
+    wrapper = (SERVER / "gradle/wrapper/gradle-wrapper.properties").read_text(encoding="utf-8")
+    if "distributionUrl=https\\://services.gradle.org/distributions/gradle-9.7.1-bin.zip" not in wrapper:
+        errors.append("Gradle wrapper is not pinned to 9.7.1")
+    if "distributionSha256Sum=acd53f1edaf02f1a8ff99879f8a34b302661a057d9b063ae9e35b552f804d20a" not in wrapper:
+        errors.append("Gradle wrapper distribution checksum is not pinned to the normative value")
+
+    for relative_path, convention in EXPECTED_CONVENTIONS.items():
+        build_text = (SERVER / relative_path).read_text(encoding="utf-8")
+        if f'id("{convention}")' not in build_text:
+            errors.append(f"{relative_path} does not apply {convention}")
+        for dependency in REDUNDANT_CONVENTION_DEPENDENCIES:
+            if dependency in build_text:
+                errors.append(f"{relative_path} redundantly declares convention dependency {dependency}")
+
+    for relative_path in sorted(EXPECTED_ARCHITECTURE_TEST_CONVENTIONS):
+        build_text = (SERVER / relative_path).read_text(encoding="utf-8")
+        if 'id("taskmigo.architecture-test")' not in build_text:
+            errors.append(f"{relative_path} does not apply taskmigo.architecture-test")
+
+    java_base = (BUILD_LOGIC / "src/main/kotlin/taskmigo.java-base.gradle.kts").read_text(encoding="utf-8")
+    required_java_base_tokens = (
+        'id("net.ltgt.errorprone")',
+        'id("com.diffplug.spotless")',
+        "checkstyle",
+        'JavaLanguageVersion.of(26)',
+        'add("compileOnlyApi"',
+        'add("compileOnly"',
+        'add("errorprone"',
+        'NullAway:JSpecifyMode',
+    )
+    for token in required_java_base_tokens:
+        if token not in java_base:
+            errors.append(f"java-base convention is missing required configuration: {token}")
+
+
 def main() -> int:
     errors: list[str] = []
     try:
         verify_named_modules(errors)
         verify_dependency_graph(errors)
         verify_foundation(errors)
+        verify_build_conventions(errors)
     except (OSError, UnicodeError) as exception:
         errors.append(str(exception))
 

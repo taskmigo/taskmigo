@@ -1,8 +1,7 @@
 import org.springframework.boot.gradle.tasks.bundling.BootJar
 
 plugins {
-    java
-    id("org.springframework.boot")
+    id("taskmigo.spring-application")
 }
 
 tasks.named<BootJar>("bootJar") {
@@ -12,14 +11,11 @@ tasks.named<BootJar>("bootJar") {
 description = "Taskmigo database migration and installation bootstrap application"
 
 dependencies {
-    implementation(libs.jspecify)
     implementation(platform(libs.spring.boot.bom))
-    implementation(platform(libs.spring.modulith.bom))
     implementation(project(":modules:database"))
     implementation(project(":modules:authorization"))
     implementation(project(":modules:identity"))
     implementation(libs.spring.boot.core.starter)
-    compileOnly(libs.spring.modulith.starter.core)
     implementation(libs.spring.boot.starter.jdbc)
     implementation(libs.spring.boot.starter.flyway)
     implementation(libs.flyway.postgresql)
@@ -28,7 +24,6 @@ dependencies {
     implementation(libs.jackson.dataformat.yaml)
 
     testImplementation(libs.spring.boot.starter.test)
-    testImplementation(libs.spring.modulith.starter.test)
     testImplementation(libs.spring.boot.testcontainers)
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers.postgresql)

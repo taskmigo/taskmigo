@@ -1,13 +1,11 @@
-import com.diffplug.gradle.spotless.SpotlessExtension
-import net.ltgt.gradle.errorprone.errorprone
-import org.gradle.api.plugins.quality.Checkstyle
-import org.gradle.api.plugins.quality.CheckstyleExtension
-import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.Project
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier
 import org.gradle.api.artifacts.result.ResolvedDependencyResult
 
 plugins {
     base
+    // Keep shared plugin services on the root classloader for sibling projects.
     alias(libs.plugins.spring.boot) apply false
     alias(libs.plugins.errorprone) apply false
     alias(libs.plugins.spotless) apply false
@@ -16,68 +14,6 @@ plugins {
 allprojects {
     group = "io.taskmigo"
     version = "0.0.1-SNAPSHOT"
-}
-
-subprojects {
-    repositories {
-        mavenCentral()
-    }
-
-    plugins.withType<JavaPlugin> {
-        apply(plugin = "net.ltgt.errorprone")
-        apply(plugin = "checkstyle")
-        apply(plugin = "com.diffplug.spotless")
-
-        extensions.configure<SpotlessExtension> {
-            java {
-                shortenFullyQualifiedTypes()
-                importOrder()
-                removeUnusedImports()
-                cleanthat().sourceCompatibility("26")
-            }
-        }
-
-        extensions.configure<CheckstyleExtension> {
-            toolVersion = libs.versions.checkstyle.get()
-            configFile = rootProject.file("config/checkstyle/checkstyle.xml")
-        }
-
-        extensions.configure<JavaPluginExtension> {
-            toolchain {
-                languageVersion = JavaLanguageVersion.of(26)
-            }
-        }
-
-        dependencies {
-            add("testRuntimeOnly", libs.junit.platform.launcher)
-            add("errorprone", libs.errorprone.core)
-            add("errorprone", libs.nullaway)
-        }
-
-        tasks.withType<JavaCompile>().configureEach {
-            options.errorprone {
-                disableAllChecks.set(true)
-                error("NullAway", "RequireExplicitNullMarking")
-                option("NullAway:OnlyNullMarked", "true")
-                option("NullAway:JSpecifyMode", "true")
-                option("NullAway:HandleTestAssertionLibraries", "true")
-            }
-        }
-
-        tasks.withType<Test>().configureEach {
-            useJUnitPlatform()
-            testLogging {
-                exceptionFormat = TestExceptionFormat.FULL
-            }
-        }
-
-        tasks.withType<Checkstyle>().configureEach {
-            reports {
-                xml.required.set(false)
-                html.required.set(true)
-            }
-        }
-    }
 }
 
 tasks.named("build") {
@@ -90,9 +26,162 @@ tasks.named("build") {
     )
 }
 
+val verifyBuildConventionScopes = tasks.register("verifyBuildConventionScopes") {
+    group = "verification"
+    description = "Verifies the fixed build-convention versions, scopes, and consumers."
+
+    doLast {
+        val actualVersions = mapOf(
+            "spring-modulith" to libs.versions.spring.modulith.get(),
+            "archunit" to libs.versions.archunit.get(),
+            "errorprone-gradle-plugin" to libs.versions.errorprone.gradle.plugin.get(),
+            "errorprone-core" to libs.versions.errorprone.core.get(),
+            "nullaway" to libs.versions.nullaway.get(),
+            "jspecify" to libs.versions.jspecify.get(),
+            "checkstyle" to libs.versions.checkstyle.get(),
+            "spotless" to libs.versions.spotless.get()
+        )
+        val expectedVersions = mapOf(
+            "spring-modulith" to "2.1.0",
+            "archunit" to "1.4.2",
+            "errorprone-gradle-plugin" to "5.1.0",
+            "errorprone-core" to "2.50.0",
+            "nullaway" to "0.14.0",
+            "jspecify" to "1.0.1",
+            "checkstyle" to "14.1.0",
+            "spotless" to "8.10.1"
+        )
+        for ((name, expected) in expectedVersions) {
+            check(actualVersions[name] == expected) {
+                "$name is ${actualVersions[name]}, expected fixed version $expected"
+            }
+        }
+
+        val wrapperProperties = rootProject.file("gradle/wrapper/gradle-wrapper.properties").readText()
+        check("distributionUrl=https\\://services.gradle.org/distributions/gradle-9.7.1-bin.zip" in wrapperProperties) {
+            "Gradle wrapper must use version 9.7.1"
+        }
+        check("distributionSha256Sum=acd53f1edaf02f1a8ff99879f8a34b302661a057d9b063ae9e35b552f804d20a" in wrapperProperties) {
+            "Gradle wrapper must pin the normative distribution checksum"
+        }
+
+        val conventionPlugins = mapOf(
+            ":modules:foundation" to "taskmigo.java-library",
+            ":modules:database" to "taskmigo.java-library",
+            ":modules:language" to "taskmigo.spring-module",
+            ":modules:query" to "taskmigo.spring-module",
+            ":modules:authorization" to "taskmigo.spring-module",
+            ":modules:identity" to "taskmigo.spring-module",
+            ":benchmarks:authorization" to "taskmigo.java-base",
+            ":apps:bootstrap" to "taskmigo.spring-application",
+            ":apps:web" to "taskmigo.spring-application",
+            ":apps:worker" to "taskmigo.spring-application"
+        )
+        for ((projectPath, pluginId) in conventionPlugins) {
+            check(project(projectPath).pluginManager.hasPlugin(pluginId)) {
+                "$projectPath must apply $pluginId"
+            }
+        }
+
+        fun Project.directDependencies(configurationName: String): Set<String> =
+            configurations.getByName(configurationName).dependencies.mapNotNull { dependency ->
+                dependency.group?.let { group -> "$group:${dependency.name}" }
+            }.toSet()
+
+        val reusableLibraries = listOf(
+            project(":modules:foundation"),
+            project(":modules:database"),
+            project(":modules:language"),
+            project(":modules:query"),
+            project(":modules:authorization"),
+            project(":modules:identity")
+        )
+        val nonPublishedJavaProjects = listOf(
+            project(":benchmarks:authorization")
+        )
+        reusableLibraries.forEach { library ->
+            check("org.jspecify:jspecify" in library.directDependencies("compileOnlyApi")) {
+                "${library.path} must receive JSpecify through compileOnlyApi"
+            }
+            check("org.jspecify:jspecify" !in library.directDependencies("api")) {
+                "${library.path} must not expose JSpecify through api"
+            }
+        }
+
+        val applications = listOf(
+            project(":apps:bootstrap"),
+            project(":apps:web"),
+            project(":apps:worker")
+        )
+        applications.forEach { application ->
+            check("org.jspecify:jspecify" in application.directDependencies("compileOnly")) {
+                "${application.path} must receive JSpecify through compileOnly"
+            }
+            check("org.jspecify:jspecify" in application.directDependencies("runtimeOnly")) {
+                "${application.path} must package JSpecify because Spring runtime metadata inspects it"
+            }
+            check("org.jspecify:jspecify" !in application.directDependencies("implementation")) {
+                "${application.path} must not put JSpecify on its runtime classpath"
+            }
+        }
+
+        nonPublishedJavaProjects.forEach { javaProject ->
+            check("org.jspecify:jspecify" in javaProject.directDependencies("compileOnly")) {
+                "${javaProject.path} must receive JSpecify through compileOnly"
+            }
+            check("org.jspecify:jspecify" !in javaProject.directDependencies("implementation")) {
+                "${javaProject.path} must not put JSpecify on its runtime classpath"
+            }
+        }
+
+        (reusableLibraries + nonPublishedJavaProjects + applications).forEach { javaProject ->
+            check(
+                setOf("com.google.errorprone:error_prone_core", "com.uber.nullaway:nullaway")
+                    .all { it in javaProject.directDependencies("errorprone") }
+            ) { "${javaProject.path} must configure Error Prone and NullAway through the errorprone tool scope" }
+        }
+
+        val buildOnlyCoordinates = setOf(
+            "com.google.errorprone:error_prone_core",
+            "com.uber.nullaway:nullaway",
+            "com.puppycrawl.tools:checkstyle",
+            "com.tngtech.archunit:archunit-junit5",
+            "org.springframework.modulith:spring-modulith-starter-core",
+            "org.springframework.modulith:spring-modulith-starter-test"
+        )
+        (reusableLibraries + nonPublishedJavaProjects).forEach { javaProject ->
+            val leaked = javaProject.configurations.getByName("runtimeClasspath").incoming.resolutionResult.allComponents
+                .mapNotNull { component ->
+                    (component.id as? ModuleComponentIdentifier)?.let { "${it.group}:${it.module}" }
+                }
+                .filter { it == "org.jspecify:jspecify" }
+                .distinct()
+            check(leaked.isEmpty()) {
+                "${javaProject.path} must keep JSpecify out of runtimeClasspath: $leaked"
+            }
+        }
+        (reusableLibraries + nonPublishedJavaProjects + applications).forEach { javaProject ->
+            val leaked = javaProject.configurations.getByName("runtimeClasspath").incoming.resolutionResult.allComponents
+                .mapNotNull { component ->
+                    (component.id as? ModuleComponentIdentifier)?.let { "${it.group}:${it.module}" }
+                }
+                .filter { it in buildOnlyCoordinates }
+                .distinct()
+                .sorted()
+            check(leaked.isEmpty()) {
+                "${javaProject.path} leaks build-only dependencies onto runtimeClasspath: $leaked"
+            }
+        }
+
+        logger.lifecycle("Build convention version and scope verification passed.")
+    }
+}
+
 tasks.register("verifyResolvedModuleArchitecture") {
     group = "verification"
     description = "Verifies resolved production dependencies against the normative module boundaries."
+
+    dependsOn(verifyBuildConventionScopes)
 
     doLast {
         val allowedDirect = mapOf(

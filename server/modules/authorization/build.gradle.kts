@@ -1,15 +1,12 @@
 plugins {
-    `java-library`
+    id("taskmigo.spring-module")
 }
 
 description = "Taskmigo Authorization semantics and public contracts"
 
 dependencies {
-    api(libs.jspecify)
     implementation(platform(libs.spring.boot.bom))
-    implementation(platform(libs.spring.modulith.bom))
     api(libs.spring.boot.core.starter)
-    compileOnly(libs.spring.modulith.starter.core)
     api("com.fasterxml.jackson.core:jackson-annotations")
     api(project(":modules:foundation"))
     api(project(":modules:language"))
