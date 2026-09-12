@@ -98,9 +98,9 @@ class LanguageConformanceTest {
 
         // Assert
         assertThat(result).isInstanceOf(List.class);
-        assertThat((List<?>) result)
-            .hasSize(1)
-            .containsExactly((Object) null);
+        List<?> values = (List<?>) result;
+        assertThat(values).hasSize(1);
+        assertThat(values.getFirst()).isNull();
     }
 
     /**
