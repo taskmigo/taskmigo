@@ -1,7 +1,7 @@
 import org.gradle.api.plugins.quality.Checkstyle
 
 plugins {
-    id("taskmigo.spring-module")
+    `java-library`
     antlr
 }
 
@@ -39,6 +39,11 @@ configurations.named("runtimeElements") {
 description = "Taskmigo Language"
 
 dependencies {
+    compileOnly(platform(libs.spring.modulith.bom))
+    compileOnly(libs.spring.modulith.starter.core)
+    testImplementation(platform(libs.spring.modulith.bom))
+    testImplementation(libs.spring.modulith.starter.test)
+
     implementation(libs.antlr.runtime)
     antlr(libs.antlr.tool)
     testImplementation(platform(libs.spring.boot.bom))

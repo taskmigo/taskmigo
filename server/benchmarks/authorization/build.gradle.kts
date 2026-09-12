@@ -1,6 +1,5 @@
 plugins {
     java
-    id("taskmigo.java-base")
     alias(libs.plugins.jmh)
 }
 

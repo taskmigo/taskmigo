@@ -1,5 +1,5 @@
 plugins {
-    id("taskmigo.java-library")
+    `java-library`
 }
 
 description = "Framework-neutral Taskmigo primitives and contracts"

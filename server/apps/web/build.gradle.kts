@@ -1,8 +1,9 @@
 import org.springframework.boot.gradle.tasks.bundling.BootJar
+import org.gradle.api.tasks.compile.JavaCompile
 
 plugins {
-    id("taskmigo.spring-application")
-    id("taskmigo.architecture-test")
+    java
+    alias(libs.plugins.spring.boot)
 }
 
 tasks.named<BootJar>("bootJar") {
@@ -12,6 +13,12 @@ tasks.named<BootJar>("bootJar") {
 description = "Taskmigo HTTP and OAuth application"
 
 dependencies {
+    compileOnly(platform(libs.spring.modulith.bom))
+    compileOnly(libs.spring.modulith.starter.core)
+    testImplementation(platform(libs.spring.modulith.bom))
+    testImplementation(libs.spring.modulith.starter.test)
+    testImplementation(libs.archunit.junit5)
+
     implementation(platform(libs.spring.boot.bom))
     implementation(project(":modules:foundation"))
     implementation(project(":modules:query"))
@@ -19,6 +26,7 @@ dependencies {
     // Provides shared datasource/JPA configuration; apps/bootstrap owns migration execution.
     implementation(project(":modules:database"))
     implementation(project(":modules:identity"))
+    runtimeOnly(libs.jspecify)
     implementation(libs.spring.boot.starter.jdbc)
     implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.spring.boot.starter.validation)

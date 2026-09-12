@@ -1,11 +1,16 @@
 plugins {
-    id("taskmigo.spring-module")
-    id("taskmigo.architecture-test")
+    `java-library`
 }
 
 description = "Taskmigo identity resources, persistence, and authorization integration"
 
 dependencies {
+    compileOnly(platform(libs.spring.modulith.bom))
+    compileOnly(libs.spring.modulith.starter.core)
+    testImplementation(platform(libs.spring.modulith.bom))
+    testImplementation(libs.spring.modulith.starter.test)
+    testImplementation(libs.archunit.junit5)
+
     implementation(platform(libs.spring.boot.bom))
     api(project(":modules:foundation"))
     api(project(":modules:query"))

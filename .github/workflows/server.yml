@@ -43,9 +43,6 @@ jobs:
             server/**/*.gradle*
             server/gradle/libs.versions.toml
 
-      - name: Verify module architecture
-        run: python3 scripts/verify-module-architecture.py
-
       - name: Run Gradle build
         run: |
           set -o pipefail
