@@ -33,11 +33,6 @@ public final class CompiledSource {
         return SemanticExpressionMapper.map(this.program.expression(), Objects.requireNonNull(visitor));
     }
 
-    /// Returns the typed expression for compatibility while consumers migrate to {@link #map(ExpressionVisitor)}.
-    public SemanticAst.Expression expression() {
-        return this.program.expression();
-    }
-
     /// Returns a constant Boolean result when compilation reduced the source to one.
     public Optional<Boolean> constantBoolean() {
         return this.program.expression() instanceof SemanticAst.Literal literal &&
