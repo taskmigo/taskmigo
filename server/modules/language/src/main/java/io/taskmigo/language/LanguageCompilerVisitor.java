@@ -27,7 +27,6 @@ final class LanguageCompilerVisitor {
     private final CompilerLimits limits;
     private final CompilationProfile profile;
     private final List<Scope> scopes = new ArrayList<>();
-    private final Set<String> requiredRoots = new HashSet<>();
     private int nodes;
     private int syntaxNesting;
     private int quantifierNesting;
@@ -55,10 +54,6 @@ final class LanguageCompilerVisitor {
 
     int localSlotCount() {
         return this.localSlotCount;
-    }
-
-    Set<String> requiredRoots() {
-        return Set.copyOf(this.requiredRoots);
     }
 
     private SemanticAst.Expression sequence(
@@ -155,9 +150,9 @@ final class LanguageCompilerVisitor {
         SemanticAst.Expression condition = this.expression(conditional.expression());
         require(condition, LanguageType.Scalar.BOOL, "if condition must be Bool");
         requireMatchingBranches(whenTrue, whenFalse);
-        if (
-            condition instanceof SemanticAst.Literal literal && literal.value() instanceof Boolean value
-        ) return value ? whenTrue : whenFalse;
+        if (condition instanceof SemanticAst.Literal literal && literal.value() instanceof Boolean value) return value
+            ? whenTrue
+            : whenFalse;
         return this.node(new SemanticAst.Conditional(condition, whenTrue, whenFalse));
     }
 
@@ -301,9 +296,7 @@ final class LanguageCompilerVisitor {
                 new SemanticAst.Unary(
                     operator,
                     operand,
-                    operator == SemanticAst.UnaryOperator.NOT
-                        ? LanguageType.Scalar.BOOL
-                        : LanguageType.Scalar.NUMBER,
+                    operator == SemanticAst.UnaryOperator.NOT ? LanguageType.Scalar.BOOL : LanguageType.Scalar.NUMBER,
                     operand.dependencies(),
                     span(context)
                 )
@@ -347,24 +340,30 @@ final class LanguageCompilerVisitor {
         SemanticAst.@Nullable Expression local = this.scopes.getLast().lookup(root);
         if (local != null) {
             if (path.isEmpty()) return local;
-            if (local instanceof SemanticAst.Reference localReference && localReference.root().equals("__lambda__")) {
+            if (local instanceof SemanticAst.Reference localReference) {
                 ArrayList<String> localPath = new ArrayList<>(localReference.path().size() + path.size());
                 localPath.addAll(localReference.path());
                 localPath.addAll(path);
+                LocalPath resolved = resolveLocalPath(localReference.type(), path, sourceSpan);
                 return this.node(
                     new SemanticAst.Reference(
                         localReference.root(),
                         localPath,
-                        resolveLocalPath(localReference.type(), path),
-                        localReference.nullable(),
-                        true,
-                        -1,
+                        resolved.type(),
+                        localReference.nullable() || resolved.nullable(),
+                        localReference.symbolic() || resolved.symbolic(),
+                        localReference.rootSlot(),
                         localReference.localSlot(),
-                        this.schema.noDependencies(),
+                        localReference.dependencies(),
                         sourceSpan
                     )
                 );
             }
+            throw failure(
+                LanguageDiagnostic.Category.BindingError,
+                "local value does not expose fields: " + root,
+                sourceSpan
+            );
         }
         EnvironmentSchema.Field field = this.schema.resolve(root, path);
         if (field == null) throw failure(
@@ -372,7 +371,6 @@ final class LanguageCompilerVisitor {
             "unknown program reference: " + root + (path.isEmpty() ? "" : "." + String.join(".", path)),
             sourceSpan
         );
-        if (!field.symbolic()) this.requiredRoots.add(root);
         return this.node(
             new SemanticAst.Reference(
                 root,
@@ -460,7 +458,11 @@ final class LanguageCompilerVisitor {
         if (this.lambdaNesting > this.limits.maxLambdaDepth()) {
             this.lambdaNesting--;
             this.quantifierNesting--;
-            throw failure(LanguageDiagnostic.Category.ComplexityError, "lambda nesting exceeds the limit", span(context));
+            throw failure(
+                LanguageDiagnostic.Category.ComplexityError,
+                "lambda nesting exceeds the limit",
+                span(context)
+            );
         }
         String elementName = context.IDENT().getText();
         this.scopes.add(new Scope(this.scopes.isEmpty() ? null : this.scopes.getLast()));
@@ -521,8 +523,14 @@ final class LanguageCompilerVisitor {
             span(context)
         );
         if (operand instanceof SemanticAst.Literal literal) {
-            if (literal.value() instanceof String text) return this.literal(BigDecimal.valueOf(text.length()), span(context));
-            if (literal.value() instanceof List<?> values) return this.literal(BigDecimal.valueOf(values.size()), span(context));
+            if (literal.value() instanceof String text) return this.literal(
+                BigDecimal.valueOf(text.length()),
+                span(context)
+            );
+            if (literal.value() instanceof List<?> values) return this.literal(
+                BigDecimal.valueOf(values.size()),
+                span(context)
+            );
         }
         return this.node(
             new SemanticAst.Length(operand, LanguageType.Scalar.NUMBER, operand.dependencies(), span(context))
@@ -589,24 +597,36 @@ final class LanguageCompilerVisitor {
             (left.type() == LanguageType.Scalar.NULL && right.nullable()) ||
             (right.type() == LanguageType.Scalar.NULL && left.nullable())
         ) return LanguageType.Scalar.BOOL;
-        throw failure(LanguageDiagnostic.Category.TypeError, "equality requires matching types or nullable values", span);
+        throw failure(
+            LanguageDiagnostic.Category.TypeError,
+            "equality requires matching types or nullable values",
+            span
+        );
     }
 
-    private static LanguageType resolveLocalPath(LanguageType type, List<String> path) {
+    private static LocalPath resolveLocalPath(
+        LanguageType type,
+        List<String> path,
+        LanguageDiagnostic.SourceSpan sourceSpan
+    ) {
         LanguageType current = type;
+        boolean nullable = false;
+        boolean symbolic = false;
         for (String segment : path) {
             if (!(current instanceof LanguageType.StructuredType structured)) {
-                throw failure(LanguageDiagnostic.Category.BindingError, "unknown lambda path: " + segment, unknown());
+                throw failure(LanguageDiagnostic.Category.BindingError, "unknown local path: " + segment, sourceSpan);
             }
             EnvironmentSchema.Field field = structured.field(segment);
             if (field == null) throw failure(
                 LanguageDiagnostic.Category.BindingError,
-                "unknown lambda path: " + segment,
-                unknown()
+                "unknown local path: " + segment,
+                sourceSpan
             );
+            nullable = nullable || field.nullable();
+            symbolic = symbolic || field.symbolic();
             current = field.type();
         }
-        return current;
+        return new LocalPath(current, nullable, symbolic);
     }
 
     private SemanticAst.Expression node(SemanticAst.Expression expression) {
@@ -758,6 +778,8 @@ final class LanguageCompilerVisitor {
     ) {
         return EmbeddedLanguageCompiler.failure(category, message, span);
     }
+
+    private record LocalPath(LanguageType type, boolean nullable, boolean symbolic) {}
 
     private static final class Scope {
 
