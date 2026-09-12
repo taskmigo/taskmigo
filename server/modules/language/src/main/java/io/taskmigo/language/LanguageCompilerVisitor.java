@@ -557,11 +557,7 @@ final class LanguageCompilerVisitor {
             throw failure(LanguageDiagnostic.Category.TypeError, "len requires a String or List", span(context));
         }
         if (operand.nullable()) {
-            throw failure(
-                LanguageDiagnostic.Category.TypeError,
-                "len does not accept nullable values",
-                span(context)
-            );
+            throw failure(LanguageDiagnostic.Category.TypeError, "len does not accept nullable values", span(context));
         }
         if (operand instanceof SemanticAst.Literal literal) {
             if (literal.value() instanceof String text) {
@@ -661,11 +657,7 @@ final class LanguageCompilerVisitor {
             }
             EnvironmentSchema.Field field = structured.field(segment);
             if (field == null) {
-                throw failure(
-                    LanguageDiagnostic.Category.BindingError,
-                    "unknown local path: " + segment,
-                    sourceSpan
-                );
+                throw failure(LanguageDiagnostic.Category.BindingError, "unknown local path: " + segment, sourceSpan);
             }
             nullable = nullable || field.nullable();
             symbolic = symbolic || field.symbolic();
@@ -766,21 +758,13 @@ final class LanguageCompilerVisitor {
 
     private void requireFeature(CompilationFeature feature, Token token) {
         if (!this.profile.enables(feature)) {
-            throw failure(
-                LanguageDiagnostic.Category.FeatureError,
-                "feature is disabled: " + feature,
-                span(token)
-            );
+            throw failure(LanguageDiagnostic.Category.FeatureError, "feature is disabled: " + feature, span(token));
         }
     }
 
     private void requireFeature(CompilationFeature feature, LanguageDiagnostic.SourceSpan span) {
         if (!this.profile.enables(feature)) {
-            throw failure(
-                LanguageDiagnostic.Category.FeatureError,
-                "feature is disabled: " + feature,
-                span
-            );
+            throw failure(LanguageDiagnostic.Category.FeatureError, "feature is disabled: " + feature, span);
         }
     }
 
