@@ -10,7 +10,6 @@ import org.jspecify.annotations.Nullable;
 
 /// Holds one allocation-light evaluation scope for roots and restricted-lambda bindings.
 @NullUnmarked
-@SuppressWarnings("checkstyle:NeedBraces")
 final class EvaluationFrame {
 
     private static final String LAMBDA_ROOT = "__lambda__";
@@ -48,9 +47,13 @@ final class EvaluationFrame {
     }
 
     boolean hasBindings() {
-        if (this.bindingCount != 0) return true;
+        if (this.bindingCount != 0) {
+            return true;
+        }
         for (boolean present : this.localPresent) {
-            if (present) return true;
+            if (present) {
+                return true;
+            }
         }
         return false;
     }
@@ -86,7 +89,9 @@ final class EvaluationFrame {
             this.localPresent[slot] = false;
             return;
         }
-        if (this.bindingCount == 0) throw new IllegalStateException("evaluation binding stack is empty");
+        if (this.bindingCount == 0) {
+            throw new IllegalStateException("evaluation binding stack is empty");
+        }
         this.bindingCount--;
     }
 
@@ -128,7 +133,9 @@ final class EvaluationFrame {
             current = map.get(name);
         }
         if (current == null) {
-            if (reference.nullable() || reference.type() == LanguageType.Scalar.NULL) return null;
+            if (reference.nullable() || reference.type() == LanguageType.Scalar.NULL) {
+                return null;
+            }
             throw failure("non-nullable program value is null", reference.span());
         }
         if (!EmbeddedLanguageEvaluator.matchesType(current, reference.type())) {
@@ -139,7 +146,9 @@ final class EvaluationFrame {
 
     private boolean rootPresent(SemanticAst.Reference reference) {
         int slot = reference.rootSlot();
-        if (slot < 0 || slot >= this.rootStates.length) return this.roots.containsKey(reference.root());
+        if (slot < 0 || slot >= this.rootStates.length) {
+            return this.roots.containsKey(reference.root());
+        }
         if (this.rootStates[slot] == 0) {
             if (this.roots.containsKey(reference.root())) {
                 this.rootStates[slot] = 2;
@@ -158,7 +167,9 @@ final class EvaluationFrame {
 
     private int bindingIndex(String name) {
         for (int index = this.bindingCount - 1; index >= 0; index--) {
-            if (name.equals(this.bindingNames[index])) return index;
+            if (name.equals(this.bindingNames[index])) {
+                return index;
+            }
         }
         return -1;
     }
