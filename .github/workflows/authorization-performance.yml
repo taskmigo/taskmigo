@@ -75,9 +75,6 @@ jobs:
             -i "$JMH_MEASUREMENT_ITERATIONS" \
             -r "$JMH_MEASUREMENT_TIME" \
             -foe true \
-            -p scopeName=REQUEST,OBJECT \
-            -p programType=SIMPLE,COMPLEX \
-            -p statementCount="$JMH_STATEMENT_COUNT" \
             -prof "$JMH_PROFILER:dir=$RUNNER_TEMP/jfr" \
             -prof gc \
             -rf JSON \
@@ -91,7 +88,7 @@ jobs:
           {
             echo "## Language benchmark"
             echo
-            echo "Statements: $JMH_STATEMENT_COUNT"
+            echo "Compiler statements: $JMH_STATEMENT_COUNT"
             echo "Forks: $JMH_FORKS"
             echo "Warmup: $JMH_WARMUP_ITERATIONS × $JMH_WARMUP_TIME"
             echo "Measurement: $JMH_MEASUREMENT_ITERATIONS × $JMH_MEASUREMENT_TIME"

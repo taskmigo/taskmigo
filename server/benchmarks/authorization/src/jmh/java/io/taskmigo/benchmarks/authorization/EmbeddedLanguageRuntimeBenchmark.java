@@ -8,8 +8,10 @@ import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageType;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
+import org.jspecify.annotations.Nullable;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Mode;
@@ -27,13 +29,13 @@ public class EmbeddedLanguageRuntimeBenchmark {
     /// Measures repeated direct evaluation of one already compiled quantified policy.
     @Benchmark
     public void evaluateQuantifier(RuntimeState state, Blackhole blackhole) {
-        blackhole.consume(state.compiled.evaluate(state.roots));
+        blackhole.consume(Objects.requireNonNull(state.compiled).evaluate(state.roots));
     }
 
     /// Measures repeated partial evaluation when all quantified inputs are known.
     @Benchmark
     public void partialEvaluateQuantifier(RuntimeState state, Blackhole blackhole) {
-        blackhole.consume(state.compiled.partialEvaluate(state.roots));
+        blackhole.consume(Objects.requireNonNull(state.compiled).partialEvaluate(state.roots));
     }
 
     /// Holds the reusable compiled source and immutable runtime values for one benchmark thread.
@@ -44,8 +46,8 @@ public class EmbeddedLanguageRuntimeBenchmark {
         @SuppressWarnings({ "CanBeFinal", "FieldCanBeLocal", "FieldMayBeFinal" })
         private String listSize = "10";
 
-        private CompiledSource compiled;
-        private Map<String, ?> roots;
+        private @Nullable CompiledSource compiled;
+        private Map<String, ?> roots = Map.of();
 
         /// Builds the schema, compiled source, and bounded list before measurement begins.
         @Setup
