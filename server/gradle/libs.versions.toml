@@ -2,7 +2,7 @@
 spring-boot = "4.1.1"
 spring-modulith = "2.1.0"
 springdoc-openapi = "3.1.0"
-errorprone-gradle-plugin = "5.1.0"
+errorprone-gradle-plugin = "5.1.1"
 errorprone-core = "2.50.0"
 nullaway = "0.14.0"
 jspecify = "1.0.1"
