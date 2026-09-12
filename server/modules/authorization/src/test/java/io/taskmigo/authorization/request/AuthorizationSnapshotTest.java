@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationSchemaRegistry;
 import io.taskmigo.authorization.statement.StatementInfo;
-import io.taskmigo.language.EmbeddedLanguageCompiler;
+import io.taskmigo.language.LanguageCompiler;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -35,7 +35,7 @@ class AuthorizationSnapshotTest {
             UUID.randomUUID(),
             statements,
             new StatementArtifactFactory(
-                new EmbeddedLanguageCompiler(),
+                new LanguageCompiler(),
                 List.of(),
                 ObjectAuthorizationSchemaRegistry.all(List.of())
             ).build(statements),

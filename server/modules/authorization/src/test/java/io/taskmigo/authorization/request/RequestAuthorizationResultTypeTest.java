@@ -10,8 +10,7 @@ import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.TargetInfo;
-import io.taskmigo.language.EmbeddedLanguageCompiler;
-import io.taskmigo.language.EmbeddedLanguageEvaluator;
+import io.taskmigo.language.LanguageCompiler;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -44,9 +43,8 @@ class RequestAuthorizationResultTypeTest {
         when(resolver.resolve(userId)).thenReturn(List.of(statement));
         RequestAuthorizationService service = new RequestAuthorizationService(
             resolver,
-            new EmbeddedLanguageEvaluator(),
             new StatementArtifactFactory(
-                new EmbeddedLanguageCompiler(),
+                new LanguageCompiler(),
                 List.of(),
                 ObjectAuthorizationSchemaRegistry.all(List.of())
             )

@@ -7,7 +7,7 @@ import static org.mockito.Mockito.verify;
 
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.object.ObjectAuthorization;
-import io.taskmigo.language.EmbeddedLanguageCompiler;
+import io.taskmigo.language.LanguageCompiler;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,7 +22,7 @@ class StatementPolicyValidatorTest {
     @BeforeEach
     void setUp() {
         this.objectAuthorization = mock(ObjectAuthorization.class);
-        this.validator = new StatementPolicyValidator(this.objectAuthorization, new EmbeddedLanguageCompiler());
+        this.validator = new StatementPolicyValidator(this.objectAuthorization, new LanguageCompiler());
     }
 
     /**

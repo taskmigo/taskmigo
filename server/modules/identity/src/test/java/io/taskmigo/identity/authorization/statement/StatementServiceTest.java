@@ -22,7 +22,7 @@ import io.taskmigo.identity.persistence.query.ObjectAuthorizationPredicateBinder
 import io.taskmigo.identity.persistence.query.QueryPredicateBinder;
 import io.taskmigo.identity.persistence.statement.StatementEntity;
 import io.taskmigo.identity.persistence.statement.StatementRepository;
-import io.taskmigo.language.EmbeddedLanguageCompiler;
+import io.taskmigo.language.LanguageCompiler;
 import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -49,7 +49,7 @@ class StatementServiceTest {
     @Spy
     private StatementPolicyValidator policyValidator = new StatementPolicyValidator(
         mock(ObjectAuthorization.class),
-        new EmbeddedLanguageCompiler()
+        new LanguageCompiler()
     );
 
     @Mock
@@ -233,7 +233,7 @@ class StatementServiceTest {
 
     private static StatementExecutionArtifact executable(StatementInfo statement) {
         return new StatementArtifactFactory(
-            new EmbeddedLanguageCompiler(),
+            new LanguageCompiler(),
             List.of(),
             ObjectAuthorizationSchemaRegistry.all(List.of())
         )

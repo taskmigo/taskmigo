@@ -10,8 +10,9 @@ import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.TargetInfo;
-import io.taskmigo.language.EmbeddedLanguageCompiler;
+import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageContract;
+import io.taskmigo.language.SemanticAst;
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
 import java.util.List;
@@ -23,7 +24,7 @@ import org.junit.jupiter.api.Test;
 class StatementArtifactFactoryTest {
 
     private final StatementArtifactFactory factory = new StatementArtifactFactory(
-        new EmbeddedLanguageCompiler(),
+        new LanguageCompiler(),
         List.of(),
         ObjectAuthorizationSchemaRegistry.all(List.of())
     );
@@ -74,9 +75,7 @@ class StatementArtifactFactoryTest {
         // Assert
         assertThat(artifact.policy().compilerFingerprint()).contains(LanguageContract.VERSION);
         assertThat(
-            Arrays.stream(Objects.requireNonNull(artifact.policy().getClass().getRecordComponents())).map(
-                RecordComponent::getName
-            )
+            Arrays.stream(Objects.requireNonNull(SemanticAst.class.getRecordComponents())).map(RecordComponent::getName)
         ).doesNotContain("languageVersion");
         assertThat(artifact.policy().profileFingerprint()).isEqualTo(
             AuthorizationCompilationProfile.policy().fingerprint()
