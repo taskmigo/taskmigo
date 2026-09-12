@@ -87,7 +87,10 @@ final class JpaObjectAuthorizationExpressionBinder {
             case EQUAL -> builder.equal(firstOperand, secondOperand);
             case NOT_EQUAL -> builder.notEqual(firstOperand, secondOperand);
             case GREATER -> builder.greaterThan((Expression) firstOperand, (Expression) secondOperand);
-            case GREATER_OR_EQUAL -> builder.greaterThanOrEqualTo((Expression) firstOperand, (Expression) secondOperand);
+            case GREATER_OR_EQUAL -> builder.greaterThanOrEqualTo(
+                (Expression) firstOperand,
+                (Expression) secondOperand
+            );
             case LESS -> builder.lessThan((Expression) firstOperand, (Expression) secondOperand);
             case LESS_OR_EQUAL -> builder.lessThanOrEqualTo((Expression) firstOperand, (Expression) secondOperand);
             default -> throw unsupported("comparison operator");
@@ -103,9 +106,10 @@ final class JpaObjectAuthorizationExpressionBinder {
     ) {
         Expression<?> left = value(binary.left(), root, builder, paths, types);
         List<Expression<?>> candidates = new ArrayList<>();
-        String logical = binary.left() instanceof ObjectAuthorizationExpression.Reference reference
-            ? String.join(".", reference.path())
-            : null;
+        String logical =
+            binary.left() instanceof ObjectAuthorizationExpression.Reference reference
+                ? String.join(".", reference.path())
+                : null;
         Class<?> type = logical == null ? null : types.get(logical);
         switch (binary.right()) {
             case ObjectAuthorizationExpression.ListValue list -> list.values().forEach(item ->
@@ -115,8 +119,9 @@ final class JpaObjectAuthorizationExpressionBinder {
                         : value(item, root, builder, paths, types)
                 )
             );
-            case ObjectAuthorizationExpression.Literal literal when literal.value() instanceof List<?> values ->
-                values.forEach(item -> candidates.add(literal(coerce(item, type), builder)));
+            case ObjectAuthorizationExpression.Literal literal when (
+                literal.value() instanceof List<?> values
+            ) -> values.forEach(item -> candidates.add(literal(coerce(item, type), builder)));
             default -> throw unsupported("IN values");
         }
         return left.in(candidates.toArray(Expression<?>[]::new));
