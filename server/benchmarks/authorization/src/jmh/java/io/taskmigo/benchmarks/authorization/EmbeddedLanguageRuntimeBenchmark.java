@@ -38,6 +38,12 @@ public class EmbeddedLanguageRuntimeBenchmark {
         blackhole.consume(Objects.requireNonNull(state.compiled).partialEvaluate(state.roots));
     }
 
+    /// Measures partial evaluation when the collection remains symbolic and only scalar context is known.
+    @Benchmark
+    public void partialEvaluateSparseQuantifier(RuntimeState state, Blackhole blackhole) {
+        blackhole.consume(Objects.requireNonNull(state.compiled).partialEvaluate(state.sparseRoots));
+    }
+
     /// Holds the reusable compiled source and immutable runtime values for one benchmark thread.
     @State(Thread)
     public static class RuntimeState {
@@ -48,6 +54,7 @@ public class EmbeddedLanguageRuntimeBenchmark {
 
         private @Nullable CompiledSource compiled;
         private Map<String, ?> roots = Map.of();
+        private Map<String, ?> sparseRoots = Map.of();
 
         /// Builds the schema, compiled source, and bounded list before measurement begins.
         @Setup
@@ -58,11 +65,11 @@ public class EmbeddedLanguageRuntimeBenchmark {
                 Map.of(
                     "record",
                     new EnvironmentSchema.Root(
-                        field(LanguageType.Scalar.STRING),
-                        Map.of("values", field(new LanguageType.ListType(LanguageType.Scalar.NUMBER)))
+                        field(LanguageType.Scalar.STRING, false),
+                        Map.of("values", field(new LanguageType.ListType(LanguageType.Scalar.NUMBER), true))
                     ),
                     "threshold",
-                    new EnvironmentSchema.Root(field(LanguageType.Scalar.NUMBER), Map.of())
+                    new EnvironmentSchema.Root(field(LanguageType.Scalar.NUMBER, false), Map.of())
                 )
             );
             this.compiled = new LanguageCompiler().compile(
@@ -71,10 +78,11 @@ public class EmbeddedLanguageRuntimeBenchmark {
             );
             List<Integer> values = IntStream.range(0, size).boxed().toList();
             this.roots = Map.of("record", Map.of("values", values), "threshold", 0);
+            this.sparseRoots = Map.of("threshold", 0);
         }
 
-        private static EnvironmentSchema.Field field(LanguageType type) {
-            return new EnvironmentSchema.Field(type, false, false);
+        private static EnvironmentSchema.Field field(LanguageType type, boolean symbolic) {
+            return new EnvironmentSchema.Field(type, false, symbolic);
         }
     }
 }
