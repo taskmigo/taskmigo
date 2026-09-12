@@ -3,6 +3,7 @@ package io.taskmigo.language;
 import java.util.AbstractSet;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
@@ -10,23 +11,29 @@ import org.jspecify.annotations.Nullable;
 /// Stores root dependencies as a compact bit mask while retaining the public Set contract.
 final class RootDependencies extends AbstractSet<String> {
 
+    private static final long[] EMPTY_WORDS = new long[0];
+
     private final DependencyCatalog catalog;
     private final long mask;
-    private final @Nullable long[] words;
+    private final long[] words;
 
-    private RootDependencies(DependencyCatalog catalog, long mask, @Nullable long[] words) {
+    private RootDependencies(DependencyCatalog catalog, long mask, long[] words) {
         this.catalog = catalog;
         this.mask = mask;
         this.words = words;
     }
 
     static RootDependencies empty(DependencyCatalog catalog) {
-        return new RootDependencies(catalog, 0L, catalog.size() > Long.SIZE ? new long[wordCount(catalog)] : null);
+        return new RootDependencies(
+            catalog,
+            0L,
+            catalog.size() > Long.SIZE ? new long[wordCount(catalog)] : EMPTY_WORDS
+        );
     }
 
     static RootDependencies of(DependencyCatalog catalog, int slot) {
         if (catalog.size() <= Long.SIZE) {
-            return new RootDependencies(catalog, 1L << slot, null);
+            return new RootDependencies(catalog, 1L << slot, EMPTY_WORDS);
         }
         long[] words = new long[wordCount(catalog)];
         words[slot >>> 6] |= 1L << (slot & 63);
@@ -59,7 +66,7 @@ final class RootDependencies extends AbstractSet<String> {
     }
 
     static Set<String> union(SemanticAst.Expression... expressions) {
-        return union(java.util.List.of(expressions));
+        return union(List.of(expressions));
     }
 
     static boolean intersects(Set<String> dependencies, Set<String> roots) {
@@ -78,19 +85,18 @@ final class RootDependencies extends AbstractSet<String> {
 
     RootDependencies union(RootDependencies other) {
         if (this.catalog != other.catalog) throw new IllegalArgumentException("dependency catalogs do not match");
-        if (this.words == null) {
-            return new RootDependencies(this.catalog, this.mask | other.mask, null);
+        if (this.words.length == 0) {
+            return new RootDependencies(this.catalog, this.mask | other.mask, EMPTY_WORDS);
         }
         long[] merged = this.words.clone();
-        long[] right = java.util.Objects.requireNonNull(other.words);
         for (int index = 0; index < merged.length; index++) {
-            merged[index] |= right[index];
+            merged[index] |= other.words[index];
         }
         return new RootDependencies(this.catalog, 0L, merged);
     }
 
     @Override
-    public boolean contains(Object value) {
+    public boolean contains(@Nullable Object value) {
         if (!(value instanceof String root)) return false;
         int slot = this.catalog.slot(root);
         return slot >= 0 && this.containsSlot(slot);
@@ -98,7 +104,7 @@ final class RootDependencies extends AbstractSet<String> {
 
     @Override
     public int size() {
-        if (this.words == null) return Long.bitCount(this.mask);
+        if (this.words.length == 0) return Long.bitCount(this.mask);
         int size = 0;
         for (long word : this.words) size += Long.bitCount(word);
         return size;
@@ -132,7 +138,7 @@ final class RootDependencies extends AbstractSet<String> {
     }
 
     private boolean containsSlot(int slot) {
-        if (this.words == null) return (this.mask & (1L << slot)) != 0L;
+        if (this.words.length == 0) return (this.mask & (1L << slot)) != 0L;
         return (this.words[slot >>> 6] & (1L << (slot & 63))) != 0L;
     }
 
