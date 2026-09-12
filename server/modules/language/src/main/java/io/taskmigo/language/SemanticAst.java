@@ -26,7 +26,9 @@ public record SemanticAst(
         Objects.requireNonNull(compilerFingerprint);
         Objects.requireNonNull(mode);
         Objects.requireNonNull(profileFingerprint);
-        if (rootSlotCount < 0 || localSlotCount < 0) throw new IllegalArgumentException("slot counts must not be negative");
+        if (rootSlotCount < 0 || localSlotCount < 0) throw new IllegalArgumentException(
+            "slot counts must not be negative"
+        );
         requiredRoots = Set.copyOf(requiredRoots);
     }
 
@@ -54,7 +56,17 @@ public record SemanticAst(
         CompilationMode mode,
         String profileFingerprint
     ) {
-        this(expression, sourceFingerprint, schemaFingerprint, compilerFingerprint, mode, profileFingerprint, 0, 0, Set.of());
+        this(
+            expression,
+            sourceFingerprint,
+            schemaFingerprint,
+            compilerFingerprint,
+            mode,
+            profileFingerprint,
+            0,
+            0,
+            Set.of()
+        );
     }
 
     /// Returns the statically determined program result type.
@@ -155,7 +167,9 @@ public record SemanticAst(
             Objects.requireNonNull(root);
             path = List.copyOf(path);
             Objects.requireNonNull(type);
-            if (rootSlot < -1 || localSlot < -1) throw new IllegalArgumentException("reference slot must be -1 or positive");
+            if (rootSlot < -1 || localSlot < -1) throw new IllegalArgumentException(
+                "reference slot must be -1 or positive"
+            );
             dependencies = immutableDependencies(dependencies);
             Objects.requireNonNull(span);
         }
@@ -191,7 +205,7 @@ public record SemanticAst(
         LanguageDiagnostic.SourceSpan span
     ) implements Expression {
         public Binary(BinaryOperator operator, Expression left, Expression right) {
-            this(operator, left, right, infer(operator), dependencies(left, right), left.span());
+            this(operator, left, right, infer(operator), SemanticAst.dependencies(left, right), left.span());
         }
 
         public Binary {
@@ -240,7 +254,7 @@ public record SemanticAst(
                 whenTrue,
                 whenFalse,
                 compatibleResultType(whenTrue, whenFalse),
-                dependencies(condition, whenTrue, whenFalse),
+                SemanticAst.dependencies(condition, whenTrue, whenFalse),
                 condition.span()
             );
         }
