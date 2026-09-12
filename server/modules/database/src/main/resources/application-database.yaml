@@ -1,3 +1,4 @@
+---
 spring:
   datasource:
     url: ${TASKMIGO_DATABASE_URL:jdbc:postgresql://localhost:5432/taskmigo}
