@@ -34,7 +34,8 @@ public final class CompiledSource {
 
     /// Returns a constant Boolean result when compilation reduced the source to one.
     public Optional<Boolean> constantBoolean() {
-        return this.program.expression() instanceof SemanticAst.Literal literal && literal.value() instanceof Boolean value
+        return this.program.expression() instanceof SemanticAst.Literal literal &&
+            literal.value() instanceof Boolean value
             ? Optional.of(value)
             : Optional.empty();
     }

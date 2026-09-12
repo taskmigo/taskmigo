@@ -114,10 +114,7 @@ final class EvaluationFrame {
         return reference.root() + (reference.path().isEmpty() ? "" : "." + String.join(".", reference.path()));
     }
 
-    private static EmbeddedLanguageException failure(
-        String message,
-        LanguageDiagnostic.SourceSpan span
-    ) {
+    private static EmbeddedLanguageException failure(String message, LanguageDiagnostic.SourceSpan span) {
         return new EmbeddedLanguageException(
             new LanguageDiagnostic(LanguageDiagnostic.Category.TypeError, message, span)
         );

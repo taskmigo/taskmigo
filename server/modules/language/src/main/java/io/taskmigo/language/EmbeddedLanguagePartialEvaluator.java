@@ -104,11 +104,7 @@ public final class EmbeddedLanguagePartialEvaluator {
             for (SemanticAst.Expression value : values) {
                 concreteValues.add(((SemanticAst.Literal) value).value());
             }
-            return literal(
-                Collections.unmodifiableList(concreteValues),
-                expression.type(),
-                expression.span()
-            );
+            return literal(Collections.unmodifiableList(concreteValues), expression.type(), expression.span());
         }
         return new SemanticAst.ListLiteral(values, expression.type(), dependencies(values), expression.span());
     }
@@ -161,10 +157,7 @@ public final class EmbeddedLanguagePartialEvaluator {
         );
     }
 
-    private static SemanticAst.Expression conditional(
-        SemanticAst.Conditional expression,
-        EvaluationFrame frame
-    ) {
+    private static SemanticAst.Expression conditional(SemanticAst.Conditional expression, EvaluationFrame frame) {
         SemanticAst.Expression condition = simplify(expression.condition(), frame);
         if (
             condition instanceof SemanticAst.Literal literal && literal.value() instanceof Boolean value
@@ -181,10 +174,7 @@ public final class EmbeddedLanguagePartialEvaluator {
         );
     }
 
-    private static SemanticAst.Expression quantifier(
-        SemanticAst.Quantifier expression,
-        EvaluationFrame frame
-    ) {
+    private static SemanticAst.Expression quantifier(SemanticAst.Quantifier expression, EvaluationFrame frame) {
         SemanticAst.Expression collection = simplify(expression.collection(), frame);
         if (collection instanceof SemanticAst.Literal literal && literal.value() instanceof List<?> values) {
             for (Object element : values) {

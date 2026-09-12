@@ -32,10 +32,7 @@ public final class StatementPolicyValidator {
     private final LanguageCompiler languageCompiler;
 
     /// Creates a validator with the authorization-owned policy compilers.
-    public StatementPolicyValidator(
-        ObjectAuthorization objectAuthorization,
-        LanguageCompiler languageCompiler
-    ) {
+    public StatementPolicyValidator(ObjectAuthorization objectAuthorization, LanguageCompiler languageCompiler) {
         this.objectAuthorization = objectAuthorization;
         this.languageCompiler = languageCompiler;
     }

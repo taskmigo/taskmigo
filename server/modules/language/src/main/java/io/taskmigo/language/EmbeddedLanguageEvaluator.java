@@ -160,7 +160,8 @@ public final class EmbeddedLanguageEvaluator {
                 case NULL -> value == null;
             };
             case LanguageType.ListType list -> value instanceof List<?> values && allMatch(values, list.elementType());
-            case LanguageType.StructuredType structured -> value instanceof Map<?, ?> map && matchesFields(map, structured);
+            case LanguageType.StructuredType structured -> value instanceof Map<?, ?> map &&
+                matchesFields(map, structured);
         };
     }
 

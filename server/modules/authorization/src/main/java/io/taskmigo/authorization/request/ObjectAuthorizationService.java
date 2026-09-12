@@ -31,10 +31,7 @@ public class ObjectAuthorizationService implements ObjectAuthorization {
     private final ObjectAuthorizationSchemaRegistry schemaRegistry;
 
     /// Creates the service with the compiler and application-owned object route registry.
-    public ObjectAuthorizationService(
-        LanguageCompiler compiler,
-        ObjectAuthorizationSchemaRegistry schemaRegistry
-    ) {
+    public ObjectAuthorizationService(LanguageCompiler compiler, ObjectAuthorizationSchemaRegistry schemaRegistry) {
         this.compiler = compiler;
         this.schemaRegistry = schemaRegistry;
     }
