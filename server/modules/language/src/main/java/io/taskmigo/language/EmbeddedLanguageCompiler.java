@@ -2,11 +2,7 @@ package io.taskmigo.language;
 
 import io.taskmigo.language.antlr.EmbeddedLanguageLexer;
 import io.taskmigo.language.antlr.EmbeddedLanguageParser;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
 import org.antlr.v4.runtime.BaseErrorListener;
@@ -97,7 +93,7 @@ final class EmbeddedLanguageCompiler {
         }
         return new SemanticAst(
             expression,
-            fingerprint(source),
+            Sha256Fingerprint.of(source),
             schema.fingerprint(),
             this.compilerFingerprint,
             profile.mode(),
@@ -106,16 +102,6 @@ final class EmbeddedLanguageCompiler {
             visitor.localSlotCount(),
             RequiredRoots.from(expression)
         );
-    }
-
-    private static String fingerprint(String source) {
-        try {
-            return HexFormat.of().formatHex(
-                MessageDigest.getInstance("SHA-256").digest(source.getBytes(StandardCharsets.UTF_8))
-            );
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is unavailable", exception);
-        }
     }
 
     static EmbeddedLanguageException failure(
