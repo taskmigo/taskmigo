@@ -4,7 +4,6 @@ import io.taskmigo.authorization.object.persistence.ObjectAuthorizationExpressio
 import io.taskmigo.authorization.object.persistence.ObjectAuthorizationPredicateModels;
 
 /// Applies Boolean identities while composing Object Authorization predicates.
-@SuppressWarnings("checkstyle:NeedBraces")
 final class DefaultObjectAuthorizationPredicates implements ObjectAuthorizationPredicates {
 
     static final DefaultObjectAuthorizationPredicates INSTANCE = new DefaultObjectAuthorizationPredicates();
@@ -27,10 +26,18 @@ final class DefaultObjectAuthorizationPredicates implements ObjectAuthorizationP
         ObjectAuthorizationPredicate<Q> right
     ) {
         requireCompatible(left, right);
-        if (left.isAlwaysFalse()) return left;
-        if (right.isAlwaysFalse()) return right;
-        if (left.isAlwaysTrue()) return right;
-        if (right.isAlwaysTrue()) return left;
+        if (left.isAlwaysFalse()) {
+            return left;
+        }
+        if (right.isAlwaysFalse()) {
+            return right;
+        }
+        if (left.isAlwaysTrue()) {
+            return right;
+        }
+        if (right.isAlwaysTrue()) {
+            return left;
+        }
         return wrap(left, ObjectAuthorizationExpression.BinaryOperator.AND, right);
     }
 
@@ -40,17 +47,29 @@ final class DefaultObjectAuthorizationPredicates implements ObjectAuthorizationP
         ObjectAuthorizationPredicate<Q> right
     ) {
         requireCompatible(left, right);
-        if (left.isAlwaysTrue()) return left;
-        if (right.isAlwaysTrue()) return right;
-        if (left.isAlwaysFalse()) return right;
-        if (right.isAlwaysFalse()) return left;
+        if (left.isAlwaysTrue()) {
+            return left;
+        }
+        if (right.isAlwaysTrue()) {
+            return right;
+        }
+        if (left.isAlwaysFalse()) {
+            return right;
+        }
+        if (right.isAlwaysFalse()) {
+            return left;
+        }
         return wrap(left, ObjectAuthorizationExpression.BinaryOperator.OR, right);
     }
 
     @Override
     public <Q> ObjectAuthorizationPredicate<Q> not(ObjectAuthorizationPredicate<Q> predicate) {
-        if (predicate.isAlwaysTrue()) return ObjectAuthorizationPredicateModels.constantLike(predicate, false);
-        if (predicate.isAlwaysFalse()) return ObjectAuthorizationPredicateModels.constantLike(predicate, true);
+        if (predicate.isAlwaysTrue()) {
+            return ObjectAuthorizationPredicateModels.constantLike(predicate, false);
+        }
+        if (predicate.isAlwaysFalse()) {
+            return ObjectAuthorizationPredicateModels.constantLike(predicate, true);
+        }
         return ObjectAuthorizationPredicateModels.wrap(
             ObjectAuthorizationPredicateModels.schemaIdentity(predicate),
             new ObjectAuthorizationExpression.Unary(
