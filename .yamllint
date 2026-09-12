@@ -4,6 +4,11 @@ yaml-files:
   - "*.yml"
   - .yamllint
 
+ignore: |
+  client/pnpm-lock.yaml
+  helm/taskmigo/templates/*.yaml
+  Taskfile.yml
+
 rules:
   anchors: enable
   braces:
