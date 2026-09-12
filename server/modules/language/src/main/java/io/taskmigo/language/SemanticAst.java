@@ -9,7 +9,7 @@ import org.jspecify.annotations.Nullable;
 
 /// Represents the immutable typed Semantic AST of one compiled Embedded Language program.
 @SuppressWarnings({ "checkstyle:NeedBraces", "checkstyle:DeclarationOrder" })
-public record SemanticAst(
+record SemanticAst(
     Expression expression,
     String sourceFingerprint,
     String schemaFingerprint,
@@ -20,7 +20,7 @@ public record SemanticAst(
     int localSlotCount,
     Set<String> requiredRoots
 ) {
-    public SemanticAst {
+    SemanticAst {
         Objects.requireNonNull(expression);
         Objects.requireNonNull(sourceFingerprint);
         Objects.requireNonNull(schemaFingerprint);
@@ -33,13 +33,11 @@ public record SemanticAst(
         requiredRoots = Set.copyOf(requiredRoots);
     }
 
-    /// Creates a metadata-free Semantic AST for focused tests.
-    public SemanticAst(Expression expression) {
+    SemanticAst(Expression expression) {
         this(expression, "", "", "", CompilationMode.PROGRAM, "", 0, 0, Set.of());
     }
 
-    /// Creates an artifact with explicit compilation metadata.
-    public SemanticAst(
+    SemanticAst(
         Expression expression,
         String sourceFingerprint,
         String schemaFingerprint,
@@ -48,8 +46,7 @@ public record SemanticAst(
         this(expression, sourceFingerprint, schemaFingerprint, compilerFingerprint, CompilationMode.PROGRAM, "");
     }
 
-    /// Creates an artifact with compilation metadata but without optimized execution slots.
-    public SemanticAst(
+    SemanticAst(
         Expression expression,
         String sourceFingerprint,
         String schemaFingerprint,
@@ -70,49 +67,41 @@ public record SemanticAst(
         );
     }
 
-    /// Returns the statically determined program result type.
-    public LanguageType resultType() {
+    LanguageType resultType() {
         return this.expression.type();
     }
 
-    /// Returns whether the statically determined program result may be null.
-    public boolean resultNullable() {
+    boolean resultNullable() {
         return this.expression.nullable();
     }
 
-    /// Represents one typed semantic expression.
-    public sealed interface Expression
-        permits Literal, Reference, ListLiteral, Binary, Unary, Conditional, Quantifier, Length
-    {
-        /// Returns the static type.
+    sealed interface Expression permits Literal, Reference, ListLiteral, Binary, Unary, Conditional, Quantifier, Length {
         LanguageType type();
-        /// Returns dependent schema roots.
+
         Set<String> dependencies();
-        /// Returns the source span.
+
         LanguageDiagnostic.SourceSpan span();
 
-        /// Returns whether this expression may evaluate to null.
         default boolean nullable() {
             return this.type() == LanguageType.Scalar.NULL;
         }
     }
 
-    /// Represents an immutable literal.
-    public record Literal(
+    record Literal(
         @Nullable Object value,
         LanguageType type,
         Set<String> dependencies,
         LanguageDiagnostic.SourceSpan span
     ) implements Expression {
-        public Literal(@Nullable Object value) {
+        Literal(@Nullable Object value) {
             this(value, infer(value), Set.of(), UNKNOWN_SPAN);
         }
 
-        public Literal(@Nullable Object value, LanguageType type, LanguageDiagnostic.SourceSpan span) {
+        Literal(@Nullable Object value, LanguageType type, LanguageDiagnostic.SourceSpan span) {
             this(value, type, Set.of(), span);
         }
 
-        public Literal {
+        Literal {
             value = immutableValue(value);
             Objects.requireNonNull(type);
             dependencies = immutableDependencies(dependencies);
@@ -125,8 +114,7 @@ public record SemanticAst(
         }
     }
 
-    /// Represents a statically resolved schema path.
-    public record Reference(
+    record Reference(
         String root,
         List<String> path,
         LanguageType type,
@@ -137,11 +125,11 @@ public record SemanticAst(
         Set<String> dependencies,
         LanguageDiagnostic.SourceSpan span
     ) implements Expression {
-        public Reference(String root, List<String> path) {
+        Reference(String root, List<String> path) {
             this(root, path, LanguageType.Scalar.STRING, false, false, -1, -1, Set.of(root), UNKNOWN_SPAN);
         }
 
-        public Reference(
+        Reference(
             String root,
             List<String> path,
             LanguageType type,
@@ -152,7 +140,7 @@ public record SemanticAst(
             this(root, path, type, nullable, symbolic, -1, -1, Set.of(root), span);
         }
 
-        public Reference(
+        Reference(
             String root,
             List<String> path,
             LanguageType type,
@@ -164,7 +152,7 @@ public record SemanticAst(
             this(root, path, type, nullable, symbolic, -1, -1, dependencies, span);
         }
 
-        public Reference {
+        Reference {
             Objects.requireNonNull(root);
             path = List.copyOf(path);
             Objects.requireNonNull(type);
@@ -181,14 +169,13 @@ public record SemanticAst(
         }
     }
 
-    /// Represents a homogeneous immutable list literal.
-    public record ListLiteral(
+    record ListLiteral(
         List<Expression> values,
         LanguageType type,
         Set<String> dependencies,
         LanguageDiagnostic.SourceSpan span
     ) implements Expression {
-        public ListLiteral {
+        ListLiteral {
             values = List.copyOf(values);
             Objects.requireNonNull(type);
             dependencies = immutableDependencies(dependencies);
@@ -196,8 +183,7 @@ public record SemanticAst(
         }
     }
 
-    /// Represents a typed binary operation.
-    public record Binary(
+    record Binary(
         BinaryOperator operator,
         Expression left,
         Expression right,
@@ -205,11 +191,11 @@ public record SemanticAst(
         Set<String> dependencies,
         LanguageDiagnostic.SourceSpan span
     ) implements Expression {
-        public Binary(BinaryOperator operator, Expression left, Expression right) {
+        Binary(BinaryOperator operator, Expression left, Expression right) {
             this(operator, left, right, infer(operator), SemanticAst.dependencies(left, right), left.span());
         }
 
-        public Binary {
+        Binary {
             Objects.requireNonNull(operator);
             Objects.requireNonNull(left);
             Objects.requireNonNull(right);
@@ -219,19 +205,18 @@ public record SemanticAst(
         }
     }
 
-    /// Represents a typed unary operation.
-    public record Unary(
+    record Unary(
         UnaryOperator operator,
         Expression operand,
         LanguageType type,
         Set<String> dependencies,
         LanguageDiagnostic.SourceSpan span
     ) implements Expression {
-        public Unary(UnaryOperator operator, Expression operand) {
+        Unary(UnaryOperator operator, Expression operand) {
             this(operator, operand, infer(operator), operand.dependencies(), operand.span());
         }
 
-        public Unary {
+        Unary {
             Objects.requireNonNull(operator);
             Objects.requireNonNull(operand);
             Objects.requireNonNull(type);
@@ -240,8 +225,7 @@ public record SemanticAst(
         }
     }
 
-    /// Represents conditional control flow after semantic analysis.
-    public record Conditional(
+    record Conditional(
         Expression condition,
         Expression whenTrue,
         Expression whenFalse,
@@ -249,7 +233,7 @@ public record SemanticAst(
         Set<String> dependencies,
         LanguageDiagnostic.SourceSpan span
     ) implements Expression {
-        public Conditional(Expression condition, Expression whenTrue, Expression whenFalse) {
+        Conditional(Expression condition, Expression whenTrue, Expression whenFalse) {
             this(
                 condition,
                 whenTrue,
@@ -260,7 +244,7 @@ public record SemanticAst(
             );
         }
 
-        public Conditional {
+        Conditional {
             Objects.requireNonNull(condition);
             Objects.requireNonNull(whenTrue);
             Objects.requireNonNull(whenFalse);
@@ -275,8 +259,7 @@ public record SemanticAst(
         }
     }
 
-    /// Represents a bounded collection quantifier with one lexical element binding.
-    public record Quantifier(
+    record Quantifier(
         QuantifierOperator operator,
         Expression collection,
         String elementName,
@@ -286,7 +269,7 @@ public record SemanticAst(
         Set<String> dependencies,
         LanguageDiagnostic.SourceSpan span
     ) implements Expression {
-        public Quantifier(
+        Quantifier(
             QuantifierOperator operator,
             Expression collection,
             String elementName,
@@ -298,7 +281,7 @@ public record SemanticAst(
             this(operator, collection, elementName, -1, predicate, type, dependencies, span);
         }
 
-        public Quantifier {
+        Quantifier {
             Objects.requireNonNull(operator);
             Objects.requireNonNull(collection);
             Objects.requireNonNull(elementName);
@@ -316,14 +299,13 @@ public record SemanticAst(
         }
     }
 
-    /// Represents the bounded `len` intrinsic.
-    public record Length(
+    record Length(
         Expression operand,
         LanguageType type,
         Set<String> dependencies,
         LanguageDiagnostic.SourceSpan span
     ) implements Expression {
-        public Length {
+        Length {
             Objects.requireNonNull(operand);
             Objects.requireNonNull(type);
             dependencies = immutableDependencies(dependencies);
@@ -331,8 +313,7 @@ public record SemanticAst(
         }
     }
 
-    /// Supported binary operations.
-    public enum BinaryOperator {
+    enum BinaryOperator {
         OR,
         AND,
         EQUAL,
@@ -349,15 +330,13 @@ public record SemanticAst(
         MODULO,
     }
 
-    /// Supported unary operations.
-    public enum UnaryOperator {
+    enum UnaryOperator {
         NOT,
         PLUS,
         MINUS,
     }
 
-    /// Identifies the three supported collection quantifiers.
-    public enum QuantifierOperator {
+    enum QuantifierOperator {
         ALL,
         ANY,
         NONE,
