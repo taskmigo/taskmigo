@@ -2,6 +2,56 @@
 
 These instructions apply to `server/` and all of its descendants. Repository-wide instructions in the root `AGENTS.md` and `CONTRIBUTING.md` also apply.
 
+## Start here
+
+Before changing server code:
+
+- Read the repository-level `AGENTS.md` and `CONTRIBUTING.md`, then check for more specific instructions from the repository root to the file being changed.
+- Inspect `.agents/skills/` and use the skill that matches the task. Read the complete `SKILL.md` before applying it.
+- Use `spring-boot-testing` when writing or reviewing Spring Boot tests.
+- Use `java-javadoc` when adding or changing Javadoc, package documentation, or public Java APIs.
+
+## Specification first
+
+The [Taskmigo specification repository](https://github.com/taskmigo/specification) is the authoritative source for product and system behavior.
+
+- Identify the affected feature specification before changing behavior.
+- Start with that feature's `README.md`, then follow its table of contents and read order.
+- Preserve requirement IDs and the meaning of normative terms such as `SHALL`, `SHOULD`, and `MAY`.
+- If the implementation and specification disagree, report the conflict instead of silently choosing one.
+
+## Server map
+
+- `apps/web` contains HTTP adapters, OAuth endpoints, REST APIs, and OpenAPI configuration.
+- `apps/bootstrap` runs database migration and initial data setup.
+- `apps/worker` contains background processing.
+- `modules/` contains reusable domain and application modules.
+- `benchmarks/` contains performance benchmarks and is not a replacement for functional tests.
+
+Put reusable feature behavior in its owning module and HTTP-specific behavior in `apps/web`. Before editing, identify which application or module owns the behavior.
+
+## Quick verification
+
+Install repository tooling once from the repository root:
+
+```bash
+npm ci
+```
+
+Run formatting from the repository root:
+
+```bash
+npm run format:check
+```
+
+Run the server build from `server/`:
+
+```bash
+./gradlew --no-daemon build
+```
+
+Spring integration tests use Testcontainers and require Docker. When running the application locally, start the PostgreSQL service from the repository root with `docker compose up -d postgres`. Run test and verification commands sequentially rather than starting them in parallel.
+
 ## HTTP module ownership
 
 - `apps/web` owns the HTTP adapters, OAuth endpoints, shared API transport infrastructure, and OpenAPI configuration.
@@ -11,7 +61,7 @@ These instructions apply to `server/` and all of its descendants. Repository-wid
 - Adding `implementation(project(":modules:<feature>"))` to `apps/web` must be sufficient to make the feature available;
   do not add feature-specific `@Import`, controller registration, or component-scan wiring.
 
-## Persistence queries
+## Persistence queriesre
 
 - Do not use `org.springframework.data.jpa.repository.Query` by default. Prefer Spring Data derived queries, specifications, the persistence API supplied by the owning library, or another repository abstraction when those alternatives keep the solution readable, maintainable, and ergonomic.
 - Do not optimize for avoiding `@Query` at the expense of developer experience. If the alternative introduces excessive boilerplate, awkward repository APIs, harder-to-understand code, or disproportionate implementation complexity, treat that DX regression as a legitimate reason to consider `@Query`.
