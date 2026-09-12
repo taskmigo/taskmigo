@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.springframework.core.ResolvableType;
 
 /// Builds the consumer-owned Language schemas used by authorization.
-@SuppressWarnings({ "checkstyle:NeedBraces", "checkstyle:OverloadMethodsDeclarationOrder" })
+@SuppressWarnings("checkstyle:OverloadMethodsDeclarationOrder")
 public final class AuthorizationEmbeddedLanguageSchemas {
 
     private static final EnvironmentSchema REQUEST = new EnvironmentSchema(
@@ -117,12 +117,18 @@ public final class AuthorizationEmbeddedLanguageSchemas {
 
     private static LanguageType languageType(ResolvableType type) {
         Class<?> raw = type.resolve(Object.class);
-        if (
-            raw == String.class || raw == UUID.class || raw == Character.class || raw == char.class
-        ) return LanguageType.Scalar.STRING;
-        if (raw == Boolean.class || raw == boolean.class) return LanguageType.Scalar.BOOL;
-        if (Number.class.isAssignableFrom(raw) || raw.isPrimitive()) return LanguageType.Scalar.NUMBER;
-        if (Collection.class.isAssignableFrom(raw)) return new LanguageType.ListType(languageType(type.getGeneric(0)));
+        if (raw == String.class || raw == UUID.class || raw == Character.class || raw == char.class) {
+            return LanguageType.Scalar.STRING;
+        }
+        if (raw == Boolean.class || raw == boolean.class) {
+            return LanguageType.Scalar.BOOL;
+        }
+        if (Number.class.isAssignableFrom(raw) || raw.isPrimitive()) {
+            return LanguageType.Scalar.NUMBER;
+        }
+        if (Collection.class.isAssignableFrom(raw)) {
+            return new LanguageType.ListType(languageType(type.getGeneric(0)));
+        }
         return new LanguageType.StructuredType(raw.getName(), Map.of());
     }
 
