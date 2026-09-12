@@ -41,11 +41,15 @@ final class JpaQueryExpressionBinder {
             case QueryExpression.Unary unary when unary.operator() == QueryExpression.UnaryOperator.NOT -> builder.not(
                 predicate(unary.operand(), root, builder, paths, types)
             );
-            case QueryExpression.Binary binary when binary.operator() == QueryExpression.BinaryOperator.AND -> builder.and(
+            case QueryExpression.Binary binary when (
+                binary.operator() == QueryExpression.BinaryOperator.AND
+            ) -> builder.and(
                 predicate(binary.left(), root, builder, paths, types),
                 predicate(binary.right(), root, builder, paths, types)
             );
-            case QueryExpression.Binary binary when binary.operator() == QueryExpression.BinaryOperator.OR -> builder.or(
+            case QueryExpression.Binary binary when (
+                binary.operator() == QueryExpression.BinaryOperator.OR
+            ) -> builder.or(
                 predicate(binary.left(), root, builder, paths, types),
                 predicate(binary.right(), root, builder, paths, types)
             );
@@ -85,7 +89,10 @@ final class JpaQueryExpressionBinder {
             case EQUAL -> builder.equal(firstOperand, secondOperand);
             case NOT_EQUAL -> builder.notEqual(firstOperand, secondOperand);
             case GREATER -> builder.greaterThan((Expression) firstOperand, (Expression) secondOperand);
-            case GREATER_OR_EQUAL -> builder.greaterThanOrEqualTo((Expression) firstOperand, (Expression) secondOperand);
+            case GREATER_OR_EQUAL -> builder.greaterThanOrEqualTo(
+                (Expression) firstOperand,
+                (Expression) secondOperand
+            );
             case LESS -> builder.lessThan((Expression) firstOperand, (Expression) secondOperand);
             case LESS_OR_EQUAL -> builder.lessThanOrEqualTo((Expression) firstOperand, (Expression) secondOperand);
             default -> throw unsupported("comparison operator");
@@ -101,9 +108,8 @@ final class JpaQueryExpressionBinder {
     ) {
         Expression<?> left = value(binary.left(), root, builder, paths, types);
         List<Expression<?>> candidates = new ArrayList<>();
-        String logical = binary.left() instanceof QueryExpression.Reference reference
-            ? String.join(".", reference.path())
-            : null;
+        String logical =
+            binary.left() instanceof QueryExpression.Reference reference ? String.join(".", reference.path()) : null;
         Class<?> type = logical == null ? null : types.get(logical);
         switch (binary.right()) {
             case QueryExpression.ListValue list -> list.values().forEach(item ->
@@ -113,8 +119,8 @@ final class JpaQueryExpressionBinder {
                         : value(item, root, builder, paths, types)
                 )
             );
-            case QueryExpression.Literal literal when literal.value() instanceof List<?> values -> values.forEach(item ->
-                candidates.add(literal(coerce(item, type), builder))
+            case QueryExpression.Literal literal when literal.value() instanceof List<?> values -> values.forEach(
+                item -> candidates.add(literal(coerce(item, type), builder))
             );
             default -> throw unsupported("IN values");
         }
@@ -129,7 +135,10 @@ final class JpaQueryExpressionBinder {
         Map<String, String> paths,
         Map<String, Class<?>> types
     ) {
-        if (expression instanceof QueryExpression.Literal literal && other instanceof QueryExpression.Reference reference) {
+        if (
+            expression instanceof QueryExpression.Literal literal &&
+            other instanceof QueryExpression.Reference reference
+        ) {
             return literal(coerce(literal.value(), types.get(String.join(".", reference.path()))), builder);
         }
         return value(expression, root, builder, paths, types);
@@ -146,25 +155,33 @@ final class JpaQueryExpressionBinder {
             case QueryExpression.Reference reference -> field(reference, root, paths);
             case QueryExpression.Literal literal -> literal(literal.value(), builder);
             case QueryExpression.ListValue _ -> throw unsupported("list value");
-            case QueryExpression.Binary binary when binary.operator() == QueryExpression.BinaryOperator.ADD -> builder.sum(
+            case QueryExpression.Binary binary when (
+                binary.operator() == QueryExpression.BinaryOperator.ADD
+            ) -> builder.sum(
                 numeric(binary.left(), root, builder, paths, types),
                 numeric(binary.right(), root, builder, paths, types)
             );
-            case QueryExpression.Binary binary when binary.operator() == QueryExpression.BinaryOperator.SUBTRACT -> builder.diff(
+            case QueryExpression.Binary binary when (
+                binary.operator() == QueryExpression.BinaryOperator.SUBTRACT
+            ) -> builder.diff(
                 numeric(binary.left(), root, builder, paths, types),
                 numeric(binary.right(), root, builder, paths, types)
             );
-            case QueryExpression.Binary binary when binary.operator() == QueryExpression.BinaryOperator.MULTIPLY -> builder.prod(
+            case QueryExpression.Binary binary when (
+                binary.operator() == QueryExpression.BinaryOperator.MULTIPLY
+            ) -> builder.prod(
                 numeric(binary.left(), root, builder, paths, types),
                 numeric(binary.right(), root, builder, paths, types)
             );
-            case QueryExpression.Binary binary when binary.operator() == QueryExpression.BinaryOperator.DIVIDE -> builder.quot(
+            case QueryExpression.Binary binary when (
+                binary.operator() == QueryExpression.BinaryOperator.DIVIDE
+            ) -> builder.quot(
                 numeric(binary.left(), root, builder, paths, types),
                 numeric(binary.right(), root, builder, paths, types)
             );
-            case QueryExpression.Unary unary when unary.operator() == QueryExpression.UnaryOperator.MINUS -> builder.neg(
-                numeric(unary.operand(), root, builder, paths, types)
-            );
+            case QueryExpression.Unary unary when (
+                unary.operator() == QueryExpression.UnaryOperator.MINUS
+            ) -> builder.neg(numeric(unary.operand(), root, builder, paths, types));
             default -> throw unsupported("value");
         };
     }
@@ -179,7 +196,11 @@ final class JpaQueryExpressionBinder {
         return value(expression, root, builder, paths, types).as(Number.class);
     }
 
-    private static <E> Expression<?> field(QueryExpression.Reference reference, Root<E> root, Map<String, String> paths) {
+    private static <E> Expression<?> field(
+        QueryExpression.Reference reference,
+        Root<E> root,
+        Map<String, String> paths
+    ) {
         if (!reference.root().equals("object")) throw unsupported("non-object reference");
         String logical = String.join(".", reference.path());
         String physical = paths.get(logical);
