@@ -13,8 +13,7 @@ import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.TargetInfo;
-import io.taskmigo.language.EmbeddedLanguageCompiler;
-import io.taskmigo.language.EmbeddedLanguageEvaluator;
+import io.taskmigo.language.LanguageCompiler;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,9 +26,8 @@ class RequestAuthorizationServiceTest {
     private final EffectiveStatementResolver statements = mock(EffectiveStatementResolver.class);
     private final RequestAuthorizationService service = new RequestAuthorizationService(
         this.statements,
-        new EmbeddedLanguageEvaluator(),
         new StatementArtifactFactory(
-            new EmbeddedLanguageCompiler(),
+            new LanguageCompiler(),
             List.of(),
             ObjectAuthorizationSchemaRegistry.all(List.of())
         )
@@ -245,7 +243,7 @@ class RequestAuthorizationServiceTest {
             userId,
             statements,
             new StatementArtifactFactory(
-                new EmbeddedLanguageCompiler(),
+                new LanguageCompiler(),
                 List.of(),
                 ObjectAuthorizationSchemaRegistry.all(List.of())
             ).build(statements),
