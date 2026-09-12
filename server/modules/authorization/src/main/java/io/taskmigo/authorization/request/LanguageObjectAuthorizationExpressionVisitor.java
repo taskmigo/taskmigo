@@ -13,7 +13,8 @@ import org.jspecify.annotations.Nullable;
 /// Converts Language semantics into the Object Authorization-owned persistence model at the module boundary.
 final class LanguageObjectAuthorizationExpressionVisitor implements ExpressionVisitor<ObjectAuthorizationExpression> {
 
-    static final LanguageObjectAuthorizationExpressionVisitor INSTANCE = new LanguageObjectAuthorizationExpressionVisitor();
+    static final LanguageObjectAuthorizationExpressionVisitor INSTANCE =
+        new LanguageObjectAuthorizationExpressionVisitor();
 
     private LanguageObjectAuthorizationExpressionVisitor() {}
 
