@@ -3,7 +3,7 @@ package io.taskmigo.query;
 import io.taskmigo.query.persistence.QueryExpression;
 
 /// Validates that symbolic object paths and operators belong to an explicit Query Schema.
-@SuppressWarnings({ "checkstyle:NeedBraces", "checkstyle:UnusedLocalVariable" })
+@SuppressWarnings("checkstyle:UnusedLocalVariable")
 final class QuerySchemaValidator {
 
     private QuerySchemaValidator() {}
@@ -52,13 +52,15 @@ final class QuerySchemaValidator {
 
     private static <Q> void requireOperator(QueryExpression expression, QueryOperator operator, QuerySchema<Q> schema) {
         if (expression instanceof QueryExpression.Reference reference && reference.root().equals("object")) {
-            if (operator == QueryOperator.AND || operator == QueryOperator.OR) return;
+            if (operator == QueryOperator.AND || operator == QueryOperator.OR) {
+                return;
+            }
             QueryField field = schema
                 .field(new QueryPath(reference.path()))
                 .orElseThrow(() -> invalid("unknown query path"));
-            if (!field.operators().contains(operator)) throw invalid(
-                "operator is not supported for query path " + field.path().text()
-            );
+            if (!field.operators().contains(operator)) {
+                throw invalid("operator is not supported for query path " + field.path().text());
+            }
         }
     }
 
