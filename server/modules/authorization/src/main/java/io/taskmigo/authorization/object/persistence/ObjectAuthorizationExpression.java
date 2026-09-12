@@ -6,7 +6,8 @@ import org.jspecify.annotations.Nullable;
 
 /// Persistence-neutral logical expression owned by Object Authorization.
 public sealed interface ObjectAuthorizationExpression
-    permits ObjectAuthorizationExpression.Literal,
+    permits
+        ObjectAuthorizationExpression.Literal,
         ObjectAuthorizationExpression.Reference,
         ObjectAuthorizationExpression.ListValue,
         ObjectAuthorizationExpression.Unary,
@@ -30,7 +31,10 @@ public sealed interface ObjectAuthorizationExpression
         }
     }
 
-    record Unary(UnaryOperator operator, ObjectAuthorizationExpression operand) implements ObjectAuthorizationExpression {
+    record Unary(
+        UnaryOperator operator,
+        ObjectAuthorizationExpression operand
+    ) implements ObjectAuthorizationExpression {
         public Unary {
             Objects.requireNonNull(operator);
             Objects.requireNonNull(operand);
