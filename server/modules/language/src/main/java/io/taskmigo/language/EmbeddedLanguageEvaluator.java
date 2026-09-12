@@ -1,11 +1,12 @@
 package io.taskmigo.language;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.MathContext;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.IntStream;
 import org.jspecify.annotations.Nullable;
 
 /// Evaluates typed Embedded Language Semantic AST against an immutable approved environment.
@@ -14,8 +15,9 @@ public final class EmbeddedLanguageEvaluator {
 
     /// Evaluates a program and returns a value conforming to its static result contract.
     public @Nullable Object evaluate(SemanticAst program, Map<String, ?> roots) {
+        EvaluationFrame frame = EvaluationFrame.of(roots);
         try {
-            Object result = value(program.expression(), roots);
+            Object result = value(program.expression(), frame);
             if (!conforms(result, program.resultType(), program.resultNullable())) {
                 throw failure("program result has an incompatible runtime type", program.expression().span());
             }
@@ -54,9 +56,7 @@ public final class EmbeddedLanguageEvaluator {
             case GREATER_OR_EQUAL -> compare(left, right) >= 0;
             case LESS -> compare(left, right) < 0;
             case LESS_OR_EQUAL -> compare(left, right) <= 0;
-            case IN -> list(right)
-                .stream()
-                .anyMatch(value -> equal(left, value));
+            case IN -> contains(list(right), left);
             case ADD -> number(left).add(number(right));
             case SUBTRACT -> number(left).subtract(number(right));
             case MULTIPLY -> number(left).multiply(number(right));
@@ -71,42 +71,55 @@ public final class EmbeddedLanguageEvaluator {
             return number(left).compareTo(number(right)) == 0;
         }
         if (left instanceof List<?> leftValues && right instanceof List<?> rightValues) {
-            return (
-                leftValues.size() == rightValues.size() &&
-                IntStream.range(0, leftValues.size()).allMatch(index ->
-                    equal(leftValues.get(index), rightValues.get(index))
-                )
-            );
+            if (leftValues.size() != rightValues.size()) return false;
+            for (int index = 0; index < leftValues.size(); index++) {
+                if (!equal(leftValues.get(index), rightValues.get(index))) return false;
+            }
+            return true;
         }
         return left == null ? right == null : left.equals(right);
     }
 
-    private static @Nullable Object value(SemanticAst.Expression expression, Map<String, ?> roots) {
+    private static boolean contains(List<?> values, @Nullable Object expected) {
+        for (Object value : values) {
+            if (equal(expected, value)) return true;
+        }
+        return false;
+    }
+
+    private static @Nullable Object value(SemanticAst.Expression expression, EvaluationFrame frame) {
         return switch (expression) {
             case SemanticAst.Literal literal -> literal.value();
-            case SemanticAst.Reference reference -> read(reference, roots);
-            case SemanticAst.ListLiteral list -> list.values()
-                .stream()
-                .map(value -> value(value, roots))
-                .toList();
-            case SemanticAst.Unary unary -> compute(unary.operator(), value(unary.operand(), roots));
-            case SemanticAst.Binary binary -> binary(binary, roots);
-            case SemanticAst.Conditional conditional -> requireBoolean(value(conditional.condition(), roots))
-                ? value(conditional.whenTrue(), roots)
-                : value(conditional.whenFalse(), roots);
-            case SemanticAst.Quantifier quantifier -> quantifier(quantifier, roots);
-            case SemanticAst.Length length -> length(length, roots);
+            case SemanticAst.Reference reference -> frame.read(reference);
+            case SemanticAst.ListLiteral list -> list(list, frame);
+            case SemanticAst.Unary unary -> compute(unary.operator(), value(unary.operand(), frame));
+            case SemanticAst.Binary binary -> binary(binary, frame);
+            case SemanticAst.Conditional conditional -> requireBoolean(value(conditional.condition(), frame))
+                ? value(conditional.whenTrue(), frame)
+                : value(conditional.whenFalse(), frame);
+            case SemanticAst.Quantifier quantifier -> quantifier(quantifier, frame);
+            case SemanticAst.Length length -> length(length, frame);
         };
     }
 
-    private static boolean quantifier(SemanticAst.Quantifier expression, Map<String, ?> roots) {
-        List<?> values = list(value(expression.collection(), roots));
+    private static List<@Nullable Object> list(SemanticAst.ListLiteral expression, EvaluationFrame frame) {
+        List<@Nullable Object> result = new ArrayList<>(expression.values().size());
+        for (SemanticAst.Expression value : expression.values()) {
+            result.add(value(value, frame));
+        }
+        return Collections.unmodifiableList(result);
+    }
+
+    private static boolean quantifier(SemanticAst.Quantifier expression, EvaluationFrame frame) {
+        List<?> values = list(value(expression.collection(), frame));
         for (Object element : values) {
-            Map<String, @Nullable Object> scoped = new HashMap<>(roots);
-            Map<String, @Nullable Object> binding = new HashMap<>();
-            binding.put(expression.elementName(), element);
-            scoped.put("__lambda__", binding);
-            boolean matches = requireBoolean(value(expression.predicate(), scoped));
+            frame.push(expression.elementName(), element);
+            boolean matches;
+            try {
+                matches = requireBoolean(value(expression.predicate(), frame));
+            } finally {
+                frame.pop();
+            }
             if (expression.operator() == SemanticAst.QuantifierOperator.ALL && !matches) return false;
             if (expression.operator() == SemanticAst.QuantifierOperator.ANY && matches) return true;
             if (expression.operator() == SemanticAst.QuantifierOperator.NONE && matches) return false;
@@ -114,50 +127,28 @@ public final class EmbeddedLanguageEvaluator {
         return expression.operator() != SemanticAst.QuantifierOperator.ANY;
     }
 
-    private static BigDecimal length(SemanticAst.Length expression, Map<String, ?> roots) {
-        Object value = value(expression.operand(), roots);
+    private static BigDecimal length(SemanticAst.Length expression, EvaluationFrame frame) {
+        Object value = value(expression.operand(), frame);
         if (value instanceof String text) return BigDecimal.valueOf(text.length());
         if (value instanceof List<?> list) return BigDecimal.valueOf(list.size());
         throw failure("len requires a String or List", expression.span());
     }
 
-    private static Object binary(SemanticAst.Binary binary, Map<String, ?> roots) {
-        Object left = value(binary.left(), roots);
+    private static Object binary(SemanticAst.Binary binary, EvaluationFrame frame) {
+        Object left = value(binary.left(), frame);
         if (binary.operator() == SemanticAst.BinaryOperator.AND && left instanceof Boolean bool) {
             if (!bool) return false;
-            return requireBoolean(value(binary.right(), roots));
+            return requireBoolean(value(binary.right(), frame));
         }
         if (binary.operator() == SemanticAst.BinaryOperator.OR && left instanceof Boolean bool) {
             if (bool) return true;
-            return requireBoolean(value(binary.right(), roots));
+            return requireBoolean(value(binary.right(), frame));
         }
-        return compute(binary.operator(), left, value(binary.right(), roots));
+        return compute(binary.operator(), left, value(binary.right(), frame));
     }
 
     static @Nullable Object read(SemanticAst.Reference reference, Map<String, ?> roots) {
-        if (!roots.containsKey(reference.root())) throw failure(
-            "missing program root: " + reference.root(),
-            reference.span()
-        );
-        Object current = roots.get(reference.root());
-        for (String name : reference.path()) {
-            if (!(current instanceof Map<?, ?> map) || !map.containsKey(name)) {
-                throw failure(
-                    "missing program value: " + reference.root() + "." + String.join(".", reference.path()),
-                    reference.span()
-                );
-            }
-            current = map.get(name);
-        }
-        if (current == null) {
-            if (reference.nullable() || reference.type() == LanguageType.Scalar.NULL) return null;
-            throw failure("non-nullable program value is null", reference.span());
-        }
-        if (!matchesType(current, reference.type())) throw failure(
-            "program input has an incompatible type",
-            reference.span()
-        );
-        return current;
+        return EvaluationFrame.of(roots).read(reference);
     }
 
     static boolean matchesType(@Nullable Object value, LanguageType type) {
@@ -168,20 +159,29 @@ public final class EmbeddedLanguageEvaluator {
                 case NUMBER -> value instanceof Number number && finite(number);
                 case NULL -> value == null;
             };
-            case LanguageType.ListType list -> value instanceof List<?> values &&
-                values.stream().allMatch(item -> matchesType(item, list.elementType()));
-            case LanguageType.StructuredType structured -> value instanceof Map<?, ?> map &&
-                structured
-                    .fields()
-                    .entrySet()
-                    .stream()
-                    .allMatch(entry -> {
-                        Object nested = map.get(entry.getKey());
-                        return nested != null
-                            ? matchesType(nested, entry.getValue().type())
-                            : entry.getValue().nullable() || entry.getValue().type() == LanguageType.Scalar.NULL;
-                    });
+            case LanguageType.ListType list -> value instanceof List<?> values && allMatch(values, list.elementType());
+            case LanguageType.StructuredType structured -> value instanceof Map<?, ?> map && matchesFields(map, structured);
         };
+    }
+
+    private static boolean allMatch(List<?> values, LanguageType type) {
+        for (Object value : values) {
+            if (!matchesType(value, type)) return false;
+        }
+        return true;
+    }
+
+    private static boolean matchesFields(Map<?, ?> values, LanguageType.StructuredType type) {
+        for (Map.Entry<String, EnvironmentSchema.Field> entry : type.fields().entrySet()) {
+            Object nested = values.get(entry.getKey());
+            EnvironmentSchema.Field field = entry.getValue();
+            if (nested != null) {
+                if (!matchesType(nested, field.type())) return false;
+            } else if (!field.nullable() && field.type() != LanguageType.Scalar.NULL) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean conforms(@Nullable Object value, LanguageType type, boolean nullable) {
@@ -189,10 +189,12 @@ public final class EmbeddedLanguageEvaluator {
     }
 
     private static boolean finite(Number number) {
+        if (number instanceof Double value) return Double.isFinite(value);
+        if (number instanceof Float value) return Float.isFinite(value);
         try {
-            BigDecimal parsed = new BigDecimal(number.toString());
-            return parsed.precision() > 0;
-        } catch (NumberFormatException exception) {
+            number(number);
+            return true;
+        } catch (IllegalArgumentException exception) {
             return false;
         }
     }
@@ -208,6 +210,23 @@ public final class EmbeddedLanguageEvaluator {
         if (!(value instanceof Number number)) throw new IllegalArgumentException(
             "Embedded Language value is not Number"
         );
+        if (number instanceof BigDecimal decimal) return decimal;
+        if (number instanceof BigInteger integer) return new BigDecimal(integer);
+        if (
+            number instanceof Byte || number instanceof Short || number instanceof Integer || number instanceof Long
+        ) return BigDecimal.valueOf(number.longValue());
+        if (number instanceof Double doubleValue) {
+            if (!Double.isFinite(doubleValue)) throw new IllegalArgumentException(
+                "Embedded Language Number must be finite"
+            );
+            return BigDecimal.valueOf(doubleValue);
+        }
+        if (number instanceof Float floatValue) {
+            if (!Float.isFinite(floatValue)) throw new IllegalArgumentException(
+                "Embedded Language Number must be finite"
+            );
+            return BigDecimal.valueOf(floatValue.doubleValue());
+        }
         try {
             return new BigDecimal(number.toString());
         } catch (NumberFormatException exception) {
