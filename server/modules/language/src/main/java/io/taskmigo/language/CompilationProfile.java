@@ -6,7 +6,6 @@ import java.util.Set;
 
 /// Defines the Language source mode and enabled feature families for one compilation.
 public record CompilationProfile(CompilationMode mode, Set<CompilationFeature> features) {
-
     private static final CompilationProfile PROGRAM = new CompilationProfile(
         CompilationMode.PROGRAM,
         EnumSet.allOf(CompilationFeature.class)

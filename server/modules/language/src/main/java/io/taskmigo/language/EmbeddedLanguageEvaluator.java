@@ -13,7 +13,8 @@ import org.jspecify.annotations.Nullable;
 @SuppressWarnings("checkstyle:NeedBraces")
 final class EmbeddedLanguageEvaluator {
 
-    @Nullable Object evaluate(SemanticAst program, Map<String, ?> roots) {
+    @Nullable
+    Object evaluate(SemanticAst program, Map<String, ?> roots) {
         EvaluationFrame frame = EvaluationFrame.of(roots);
         try {
             Object result = value(program.expression(), frame);
@@ -31,7 +32,8 @@ final class EmbeddedLanguageEvaluator {
         }
     }
 
-    @Nullable Object evaluate(SemanticAst program, EnvironmentSchema schema, Map<String, ?> roots) {
+    @Nullable
+    Object evaluate(SemanticAst program, EnvironmentSchema schema, Map<String, ?> roots) {
         if (!program.schemaFingerprint().isEmpty() && !program.schemaFingerprint().equals(schema.fingerprint())) {
             throw failure("compiled program schema does not match the evaluation schema", program.expression().span());
         }
