@@ -24,7 +24,7 @@ import org.springframework.stereotype.Service;
 
 /// Compiles the optional HTTP filterBy expression against an explicit Query Schema.
 @Service
-@SuppressWarnings({ "checkstyle:NeedBraces", "checkstyle:OneStatementPerLine", "checkstyle:UnusedLocalVariable" })
+@SuppressWarnings({ "checkstyle:OneStatementPerLine", "checkstyle:UnusedLocalVariable" })
 public class FilterByCompiler {
 
     private static final CompilationProfile PROFILE = new CompilationProfile(
@@ -56,13 +56,15 @@ public class FilterByCompiler {
 
     /// Compiles blank input as an always-true predicate and rejects every non-Boolean source.
     public <Q> QueryPredicate<Q> compile(QuerySchema<Q> schema, @Nullable String source) {
-        if (source == null || source.isBlank()) return QueryPredicateFactory.alwaysTrue(schema);
+        if (source == null || source.isBlank()) {
+            return QueryPredicateFactory.alwaysTrue(schema);
+        }
         try {
             EnvironmentSchema environment = this.environments.computeIfAbsent(schema, FilterByCompiler::environment);
             CompiledSource compiled = this.compiler.compile(source, environment, PROFILE);
-            if (compiled.resultType() != LanguageType.Scalar.BOOL) throw new FilterByException(
-                "filterBy expression must return Bool"
-            );
+            if (compiled.resultType() != LanguageType.Scalar.BOOL) {
+                throw new FilterByException("filterBy expression must return Bool");
+            }
             QueryExpression expression = compiled.map(LanguageQueryExpressionVisitor.INSTANCE);
             QuerySchemaValidator.validate(expression, schema);
             return QueryPredicateFactory.from(schema, expression);
@@ -85,8 +87,11 @@ public class FilterByCompiler {
         Map<String, EnvironmentSchema.Field> fields = new HashMap<>();
         for (QueryField field : schema.fields()) {
             List<String> segments = field.path().segments();
-            if (segments.size() == 1) fields.put(segments.getFirst(), toField(field));
-            else fields.putIfAbsent(segments.getFirst(), nestedField(schema, segments.getFirst()));
+            if (segments.size() == 1) {
+                fields.put(segments.getFirst(), toField(field));
+            } else {
+                fields.putIfAbsent(segments.getFirst(), nestedField(schema, segments.getFirst()));
+            }
         }
         return new EnvironmentSchema(
             "query-filter:" + schema.identity(),
@@ -135,14 +140,18 @@ public class FilterByCompiler {
 
     private static LanguageType toLanguageType(ResolvableType type) {
         Class<?> raw = type.resolve(Object.class);
-        if (
-            raw == String.class || raw == Character.class || raw == char.class || raw == UUID.class
-        ) return LanguageType.Scalar.STRING;
-        if (raw == Boolean.class || raw == boolean.class) return LanguageType.Scalar.BOOL;
-        if (Number.class.isAssignableFrom(raw) || raw.isPrimitive()) return LanguageType.Scalar.NUMBER;
-        if (Collection.class.isAssignableFrom(raw)) return new LanguageType.ListType(
-            toLanguageType(type.getGeneric(0))
-        );
+        if (raw == String.class || raw == Character.class || raw == char.class || raw == UUID.class) {
+            return LanguageType.Scalar.STRING;
+        }
+        if (raw == Boolean.class || raw == boolean.class) {
+            return LanguageType.Scalar.BOOL;
+        }
+        if (Number.class.isAssignableFrom(raw) || raw.isPrimitive()) {
+            return LanguageType.Scalar.NUMBER;
+        }
+        if (Collection.class.isAssignableFrom(raw)) {
+            return new LanguageType.ListType(toLanguageType(type.getGeneric(0)));
+        }
         return new LanguageType.StructuredType(raw.getName(), Map.of());
     }
 }
