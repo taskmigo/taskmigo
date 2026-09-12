@@ -10,6 +10,7 @@ public interface QuerySchema<Q> {
     Class<Q> queryType();
 
     /// Resolves one explicitly registered API path.
+    @SuppressWarnings("NullableProblems")
     Optional<QueryField> field(QueryPath path);
 
     /// Returns every explicitly registered field.

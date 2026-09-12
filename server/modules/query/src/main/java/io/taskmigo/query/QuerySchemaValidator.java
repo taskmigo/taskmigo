@@ -1,6 +1,6 @@
 package io.taskmigo.query;
 
-import io.taskmigo.embeddedlanguage.SemanticAst;
+import io.taskmigo.language.SemanticAst;
 
 /// Validates that symbolic object paths and operators belong to an explicit Query Schema.
 @SuppressWarnings({ "checkstyle:NeedBraces", "checkstyle:UnusedLocalVariable" })

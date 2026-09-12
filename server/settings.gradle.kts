@@ -6,7 +6,6 @@ include(
     ":modules:query",
     ":modules:authorization",
     ":modules:database",
-    ":modules:auth",
     ":modules:identity",
     ":benchmarks:authorization",
     ":apps:bootstrap",

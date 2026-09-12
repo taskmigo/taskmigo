@@ -1,9 +1,9 @@
 package io.taskmigo.query;
 
-import io.taskmigo.embeddedlanguage.LanguageDiagnostic;
-import io.taskmigo.embeddedlanguage.LanguageDiagnostic.SourceSpan;
-import io.taskmigo.embeddedlanguage.LanguageType;
-import io.taskmigo.embeddedlanguage.SemanticAst;
+import io.taskmigo.language.LanguageDiagnostic;
+import io.taskmigo.language.LanguageDiagnostic.SourceSpan;
+import io.taskmigo.language.LanguageType;
+import io.taskmigo.language.SemanticAst;
 import java.util.Set;
 
 /// Default Boolean-algebra implementation for opaque Query Predicates.

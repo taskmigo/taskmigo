@@ -20,9 +20,8 @@ dependencies {
     implementation(project(":modules:authorization"))
     // Provides shared datasource/JPA configuration; apps/bootstrap owns migration execution.
     implementation(project(":modules:database"))
-    implementation(project(":modules:auth"))
     implementation(project(":modules:identity"))
-    implementation(libs.spring.modulith.starter.core)
+    compileOnly(libs.spring.modulith.starter.core)
     implementation(libs.spring.boot.starter.jdbc)
     implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.spring.boot.starter.validation)

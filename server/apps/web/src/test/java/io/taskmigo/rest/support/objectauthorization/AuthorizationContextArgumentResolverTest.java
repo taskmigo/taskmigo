@@ -3,7 +3,7 @@ package io.taskmigo.rest.support.objectauthorization;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.auth.authorization.request.AuthorizationContext;
+import io.taskmigo.authorization.request.AuthorizationContext;
 import java.lang.reflect.Method;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

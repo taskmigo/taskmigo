@@ -6,11 +6,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.auth.authorization.request.AuthorizationContext;
-import io.taskmigo.auth.authorization.request.AuthorizationPrincipal;
-import io.taskmigo.auth.authorization.request.AuthorizationRequest;
-import io.taskmigo.auth.authorization.request.RequestAuthorization;
-import io.taskmigo.auth.authorization.request.RequestAuthorizationResult;
+import io.taskmigo.authorization.request.AuthorizationContext;
+import io.taskmigo.authorization.request.AuthorizationPrincipal;
+import io.taskmigo.authorization.request.AuthorizationRequest;
+import io.taskmigo.authorization.request.RequestAuthorization;
+import io.taskmigo.authorization.request.RequestAuthorizationResult;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;

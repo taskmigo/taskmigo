@@ -1,6 +1,6 @@
 package io.taskmigo.rest.support.objectauthorization;
 
-import io.taskmigo.auth.authorization.request.AuthorizationContext;
+import io.taskmigo.authorization.request.AuthorizationContext;
 import org.jspecify.annotations.Nullable;
 import org.springframework.core.MethodParameter;
 import org.springframework.stereotype.Component;

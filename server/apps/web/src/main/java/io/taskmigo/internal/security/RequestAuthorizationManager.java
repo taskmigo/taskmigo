@@ -1,11 +1,11 @@
 package io.taskmigo.internal.security;
 
-import io.taskmigo.auth.authorization.request.AuthorizationContext;
-import io.taskmigo.auth.authorization.request.AuthorizationPrincipal;
-import io.taskmigo.auth.authorization.request.AuthorizationRequest;
-import io.taskmigo.auth.authorization.request.RequestAuthorization;
-import io.taskmigo.auth.authorization.request.RequestAuthorizationResult;
-import io.taskmigo.auth.user.UserException;
+import io.taskmigo.authorization.request.AuthorizationContext;
+import io.taskmigo.authorization.request.AuthorizationPrincipal;
+import io.taskmigo.authorization.request.AuthorizationRequest;
+import io.taskmigo.authorization.request.RequestAuthorization;
+import io.taskmigo.authorization.request.RequestAuthorizationResult;
+import io.taskmigo.identity.user.UserException;
 import java.util.UUID;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;

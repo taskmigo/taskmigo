@@ -3,7 +3,6 @@ import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.plugins.quality.Checkstyle
 import org.gradle.api.plugins.quality.CheckstyleExtension
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
-import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier
 import org.gradle.api.artifacts.result.ResolvedDependencyResult
 
@@ -102,26 +101,16 @@ tasks.register("verifyResolvedModuleArchitecture") {
             "database" to emptySet(),
             "query" to setOf("language"),
             "authorization" to setOf("foundation", "language"),
-            "identity" to setOf("foundation", "query", "authorization"),
-            "auth" to setOf("foundation", "language", "query", "authorization", "identity")
+            "identity" to setOf("foundation", "language", "query", "authorization", "database")
         )
         val graph = mutableMapOf<String, Set<String>>()
         val errors = mutableListOf<String>()
-        val forbiddenFoundationGroups = setOf(
-            "org.springframework",
-            "org.springframework.boot",
-            "org.springframework.data",
-            "org.springframework.modulith",
-            "org.hibernate.orm",
-            "jakarta.persistence",
-            "org.antlr"
-        )
 
         for ((moduleName, allowed) in allowedDirect) {
             val module = project(":modules:$moduleName")
             val configuration = module.configurations.getByName("runtimeClasspath")
             val resolution = configuration.incoming.resolutionResult
-            val direct = resolution.root.dependencies
+            val direct = resolution.root.dependencies.asSequence()
                 .filterIsInstance<ResolvedDependencyResult>()
                 .mapNotNull { (it.selected.id as? ProjectComponentIdentifier)?.projectPath }
                 .filter { it.startsWith(":modules:") }
@@ -133,14 +122,6 @@ tasks.register("verifyResolvedModuleArchitecture") {
                 errors += "$moduleName declares prohibited direct project dependencies: ${prohibited.sorted()}"
             }
 
-            if (moduleName == "foundation") {
-                resolution.allComponents
-                    .mapNotNull { (it.id as? ModuleComponentIdentifier)?.group }
-                    .filter { group -> forbiddenFoundationGroups.any(group::startsWith) }
-                    .distinct()
-                    .sorted()
-                    .forEach { group -> errors += "foundation resolves prohibited framework group: $group" }
-            }
         }
 
         val visiting = mutableSetOf<String>()
@@ -165,7 +146,7 @@ tasks.register("verifyResolvedModuleArchitecture") {
             val forbidden = when (moduleName) {
                 "foundation" -> projects.filterNot { it == ":modules:foundation" }
                 "query" -> projects.filter { it in setOf(":modules:authorization", ":modules:identity", ":apps:web") }
-                "authorization" -> projects.filter { it in setOf(":modules:auth", ":modules:identity", ":modules:query", ":apps:web") }
+                "authorization" -> projects.filter { it in setOf(":modules:identity", ":modules:query", ":apps:web") }
                 else -> emptyList()
             }
             forbidden.distinct().sorted().forEach { dependency ->

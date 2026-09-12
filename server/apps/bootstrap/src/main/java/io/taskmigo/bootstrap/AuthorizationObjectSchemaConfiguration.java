@@ -1,12 +1,12 @@
 package io.taskmigo.bootstrap;
 
-import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchema;
-import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchemaRegistration;
-import io.taskmigo.auth.authorization.object.ObjectAuthorizationSchemaRegistry;
-import io.taskmigo.auth.authorization.statement.StatementInfo;
-import io.taskmigo.auth.group.GroupInfo;
-import io.taskmigo.auth.role.RoleInfo;
-import io.taskmigo.auth.user.UserInfo;
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.authorization.object.ObjectAuthorizationSchemaRegistration;
+import io.taskmigo.authorization.object.ObjectAuthorizationSchemaRegistry;
+import io.taskmigo.authorization.role.RoleInfo;
+import io.taskmigo.authorization.statement.StatementInfo;
+import io.taskmigo.identity.group.GroupInfo;
+import io.taskmigo.identity.user.UserInfo;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

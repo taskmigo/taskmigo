@@ -3,10 +3,10 @@ package io.taskmigo.benchmarks.authorization;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.openjdk.jmh.annotations.Scope.Thread;
 
-import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
-import io.taskmigo.embeddedlanguage.EnvironmentSchema;
-import io.taskmigo.embeddedlanguage.LanguageType;
-import io.taskmigo.embeddedlanguage.SemanticAst;
+import io.taskmigo.language.EmbeddedLanguageCompiler;
+import io.taskmigo.language.EnvironmentSchema;
+import io.taskmigo.language.LanguageType;
+import io.taskmigo.language.SemanticAst;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -261,11 +261,11 @@ public class EmbeddedLanguageCompilerBenchmark {
         private final Map<String, EnvironmentSchema.Root> roots = new HashMap<>();
 
         private void add(String name, Map<String, EnvironmentSchema.Field> fields) {
-            roots.put(name, new EnvironmentSchema.Root(field(LanguageType.Scalar.STRING), fields));
+            this.roots.put(name, new EnvironmentSchema.Root(field(LanguageType.Scalar.STRING), fields));
         }
 
         private Map<String, EnvironmentSchema.Root> build() {
-            return Map.copyOf(roots);
+            return Map.copyOf(this.roots);
         }
     }
 }

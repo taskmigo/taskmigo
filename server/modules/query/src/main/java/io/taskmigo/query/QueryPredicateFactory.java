@@ -1,8 +1,8 @@
 package io.taskmigo.query;
 
-import io.taskmigo.embeddedlanguage.LanguageDiagnostic.SourceSpan;
-import io.taskmigo.embeddedlanguage.LanguageType;
-import io.taskmigo.embeddedlanguage.SemanticAst;
+import io.taskmigo.language.LanguageDiagnostic.SourceSpan;
+import io.taskmigo.language.LanguageType;
+import io.taskmigo.language.SemanticAst;
 import java.util.Objects;
 import java.util.Set;
 
@@ -73,12 +73,12 @@ public final class QueryPredicateFactory {
 
         @Override
         public boolean isAlwaysTrue() {
-            return expression instanceof SemanticAst.Literal literal && Boolean.TRUE.equals(literal.value());
+            return this.expression instanceof SemanticAst.Literal literal && Boolean.TRUE.equals(literal.value());
         }
 
         @Override
         public boolean isAlwaysFalse() {
-            return expression instanceof SemanticAst.Literal literal && Boolean.FALSE.equals(literal.value());
+            return this.expression instanceof SemanticAst.Literal literal && Boolean.FALSE.equals(literal.value());
         }
     }
 }

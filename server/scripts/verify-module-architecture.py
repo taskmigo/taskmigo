@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify the normative v1.0.0-alpha.8 server module dependency boundaries."""
+"""Verify the normative v1.0.0-alpha.9 server module dependency boundaries."""
 
 from __future__ import annotations
 
@@ -27,17 +27,12 @@ ALLOWED_PROJECT_DEPENDENCIES = {
 }
 
 PROJECT_DEPENDENCY = re.compile(r"project\(\s*[\"']([^\"']+)[\"']\s*\)")
-FOUNDATION_PROHIBITED_BUILD_TOKENS = (
-    "libs.spring",
-    "libs.antlr",
-    "org.springframework",
-    "jakarta.persistence",
-    "org.antlr",
-)
+FOUNDATION_PROHIBITED_BUILD_TOKENS = ("project(",)
 FOUNDATION_PROHIBITED_SOURCE_TOKENS = (
     "package io.taskmigo.query",
-    "package io.taskmigo.auth",
-    "package io.taskmigo.embeddedlanguage",
+    "package io.taskmigo.language",
+    "package io.taskmigo.authorization",
+    "package io.taskmigo.identity",
     "import org.springframework",
     "import jakarta.persistence",
     "import org.antlr",
@@ -113,6 +108,8 @@ def verify_named_modules(errors: list[str]) -> None:
             errors.append(f"settings.gradle.kts does not include required module: {module}")
     if '":modules:embedded-language"' in settings:
         errors.append("settings.gradle.kts still includes the superseded embedded-language module")
+    if '":modules:auth"' in settings:
+        errors.append("settings.gradle.kts still includes the superseded auth module")
 
 
 def main() -> int:

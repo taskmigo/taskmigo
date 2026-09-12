@@ -8,7 +8,7 @@ import java.util.Objects;
 public record QueryPath(List<String> segments) {
     public QueryPath {
         segments = List.copyOf(segments);
-        if (segments.isEmpty() || segments.stream().anyMatch(segment -> segment == null || segment.isBlank())) {
+        if (segments.isEmpty() || segments.stream().anyMatch(String::isBlank)) {
             throw new IllegalArgumentException("query path must contain non-blank segments");
         }
     }

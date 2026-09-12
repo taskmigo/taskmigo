@@ -1,13 +1,13 @@
 package io.taskmigo.query;
 
-import io.taskmigo.embeddedlanguage.CompilationFeature;
-import io.taskmigo.embeddedlanguage.CompilationMode;
-import io.taskmigo.embeddedlanguage.CompilationProfile;
-import io.taskmigo.embeddedlanguage.EmbeddedLanguageCompiler;
-import io.taskmigo.embeddedlanguage.EmbeddedLanguageException;
-import io.taskmigo.embeddedlanguage.EnvironmentSchema;
-import io.taskmigo.embeddedlanguage.LanguageType;
-import io.taskmigo.embeddedlanguage.SemanticAst;
+import io.taskmigo.language.CompilationFeature;
+import io.taskmigo.language.CompilationMode;
+import io.taskmigo.language.CompilationProfile;
+import io.taskmigo.language.EmbeddedLanguageCompiler;
+import io.taskmigo.language.EmbeddedLanguageException;
+import io.taskmigo.language.EnvironmentSchema;
+import io.taskmigo.language.LanguageType;
+import io.taskmigo.language.SemanticAst;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -60,8 +60,6 @@ public class FilterByCompiler {
             );
             QuerySchemaValidator.validate(compiled.expression(), schema);
             return QueryPredicateFactory.from(schema, compiled.expression());
-        } catch (FilterByException exception) {
-            throw exception;
         } catch (EmbeddedLanguageException | IllegalArgumentException exception) {
             throw new FilterByException("Invalid filterBy expression", exception);
         }
@@ -74,7 +72,7 @@ public class FilterByCompiler {
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     private QueryPredicate<?> compileUntypedInternal(QuerySchema<?> schema, @Nullable String source) {
-        return compile((QuerySchema) schema, source);
+        return this.compile((QuerySchema) schema, source);
     }
 
     private static <Q> EnvironmentSchema environment(QuerySchema<Q> schema) {
