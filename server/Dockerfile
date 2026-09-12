@@ -8,8 +8,11 @@ COPY --chmod=755 gradlew ./
 COPY gradle ./gradle
 COPY settings.gradle.kts build.gradle.kts ./
 COPY modules/foundation/build.gradle.kts modules/foundation/build.gradle.kts
+COPY modules/language/build.gradle.kts modules/language/build.gradle.kts
+COPY modules/query/build.gradle.kts modules/query/build.gradle.kts
+COPY modules/authorization/build.gradle.kts modules/authorization/build.gradle.kts
 COPY modules/database/build.gradle.kts modules/database/build.gradle.kts
-COPY modules/auth/build.gradle.kts modules/auth/build.gradle.kts
+COPY modules/identity/build.gradle.kts modules/identity/build.gradle.kts
 COPY benchmarks/authorization/build.gradle.kts benchmarks/authorization/build.gradle.kts
 COPY apps/bootstrap/build.gradle.kts apps/bootstrap/build.gradle.kts
 COPY apps/web/build.gradle.kts apps/web/build.gradle.kts
@@ -22,8 +25,11 @@ RUN --mount=type=cache,id=taskmigo-gradle,target=/root/.gradle,sharing=locked \
         :apps:worker:dependencies
 
 COPY modules/foundation/src modules/foundation/src
+COPY modules/language/src modules/language/src
+COPY modules/query/src modules/query/src
+COPY modules/authorization/src modules/authorization/src
 COPY modules/database/src modules/database/src
-COPY modules/auth/src modules/auth/src
+COPY modules/identity/src modules/identity/src
 COPY benchmarks/authorization/src benchmarks/authorization/src
 COPY apps/bootstrap/src apps/bootstrap/src
 COPY apps/web/src apps/web/src
@@ -39,7 +45,24 @@ RUN --mount=type=cache,id=taskmigo-gradle,target=/root/.gradle,sharing=locked \
             extract --layers --launcher --destination "extracted/${taskmigo_app}"; \
     done
 
-FROM eclipse-temurin:26.0.2_10-jre-alpine-3.24@sha256:c4a22bec4f4368636abb9b6fe2b2350fd7fae1ec0d3bf43fcaae1be720c3bbd1 AS runtime
+FROM eclipse-temurin:26.0.2_10-jdk-alpine-3.24@sha256:e5b0a876436e5d1c8ff84dfd091cb530b83a9ed4273317d24acb673695bb7e0c AS runtime-builder
+
+RUN jlink \
+        --add-modules java.base,java.compiler,java.desktop,java.instrument,java.management,java.naming,java.net.http,java.prefs,java.rmi,java.scripting,java.security.jgss,java.security.sasl,java.sql,java.sql.rowset,java.transaction.xa,java.xml,java.xml.crypto,jdk.crypto.ec,jdk.crypto.cryptoki,jdk.jfr,jdk.management,jdk.unsupported,jdk.zipfs \
+        --strip-debug \
+        --no-man-pages \
+        --no-header-files \
+        --compress=zip-6 \
+        --output /opt/taskmigo-jre
+
+FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS runtime
+
+RUN apk add --no-cache \
+        ca-certificates=20260611-r0 \
+        p11-kit-trust=0.26.2-r0 \
+        tzdata=2026c-r0
+
+COPY --from=runtime-builder /opt/taskmigo-jre /opt/java
 
 RUN addgroup -S -g 10001 taskmigo \
     && adduser -S -D -H -u 10001 -G taskmigo taskmigo \
@@ -48,7 +71,9 @@ RUN addgroup -S -g 10001 taskmigo \
 
 WORKDIR /app
 
-ENV JAVA_TOOL_OPTIONS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+ENV JAVA_HOME=/opt/java \
+    PATH=/opt/java/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    JAVA_TOOL_OPTIONS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
 
 FROM runtime AS bootstrap
 

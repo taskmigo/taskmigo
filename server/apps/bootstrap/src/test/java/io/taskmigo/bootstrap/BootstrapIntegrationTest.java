@@ -4,15 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
-import io.taskmigo.auth.authorization.statement.Scope;
-import io.taskmigo.auth.authorization.statement.StatementInfo;
-import io.taskmigo.auth.authorization.statement.StatementService;
-import io.taskmigo.auth.oauth.InternalClientMetadata;
-import io.taskmigo.auth.role.RoleInfo;
-import io.taskmigo.auth.role.RoleService;
-import io.taskmigo.auth.user.SystemUser;
-import io.taskmigo.auth.user.UserInfo;
-import io.taskmigo.auth.user.UserService;
+import io.taskmigo.authorization.role.RoleInfo;
+import io.taskmigo.authorization.statement.Scope;
+import io.taskmigo.authorization.statement.StatementInfo;
+import io.taskmigo.identity.authorization.role.RoleService;
+import io.taskmigo.identity.authorization.statement.StatementService;
+import io.taskmigo.identity.oauth.InternalClientMetadata;
+import io.taskmigo.identity.user.SystemUser;
+import io.taskmigo.identity.user.UserInfo;
+import io.taskmigo.identity.user.UserService;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
@@ -162,14 +162,14 @@ class BootstrapIntegrationTest {
     }
 
     /**
-     * Verifies that every managed bootstrap Statement uses the final JavaScript policy contract.
+     * Verifies that every managed bootstrap Statement uses the final Embedded Language contract.
      *
      * Given: the five Statements declared in the managed bootstrap authorization bundle.
-     * Expect: every definition is persisted with a canonical scope and a non-blank default-exported policy.
+     * Expect: every definition is persisted with a canonical scope and a non-blank direct-body policy.
      */
     @Test
-    @DisplayName("persists JavaScript policies for every built-in statement")
-    void shouldPersistJavaScriptPoliciesWhenBootstrapRuns() {
+    @DisplayName("persists Embedded Language policies for every built-in statement")
+    void shouldPersistEmbeddedLanguagePoliciesWhenBootstrapRuns() {
         // Arrange
         Map<String, Scope> builtInScopes = Map.of(
             "system_operator_request_all",
@@ -193,7 +193,7 @@ class BootstrapIntegrationTest {
             .hasSize(builtInScopes.size())
             .allSatisfy(statement -> {
                 assertThat(statement.scope()).isEqualTo(builtInScopes.get(statement.name()));
-                assertThat(statement.policy()).isNotBlank().startsWith("export default");
+                assertThat(statement.policy()).isNotBlank().startsWith("return");
             });
     }
 

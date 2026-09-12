@@ -3,8 +3,8 @@ package io.taskmigo.rest.api.v0.auth.authorization;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.auth.role.RoleInfo;
-import io.taskmigo.auth.role.RoleService;
+import io.taskmigo.authorization.role.RoleInfo;
+import io.taskmigo.identity.authorization.role.RoleService;
 import io.taskmigo.rest.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.CreateRoleRequest;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.CreateStatementRequest;
@@ -171,7 +171,7 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
                     "allow",
                     "request",
                     new StatementTarget(new StatementApiTarget("GET", "/api/v0/roles")),
-                    "export default () => true;"
+                    "return true;"
                 )
             );
     }

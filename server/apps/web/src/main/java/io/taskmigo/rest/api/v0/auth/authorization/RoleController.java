@@ -3,13 +3,15 @@ package io.taskmigo.rest.api.v0.auth.authorization;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
-import io.taskmigo.auth.authorization.request.AuthorizationOperation;
-import io.taskmigo.auth.authorization.statement.StatementService;
-import io.taskmigo.auth.role.RoleAuthorizationService;
-import io.taskmigo.auth.role.RoleInfo;
-import io.taskmigo.auth.role.RoleService;
+import io.taskmigo.authorization.object.ObjectAuthorization;
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.authorization.request.AuthorizationContext;
+import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.identity.authorization.role.RoleAuthorizationService;
+import io.taskmigo.identity.authorization.role.RoleService;
+import io.taskmigo.identity.authorization.statement.StatementService;
+import io.taskmigo.query.FilteredQuery;
 import io.taskmigo.rest.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.rest.api.v0.support.response.ApiResponse;
 import io.taskmigo.rest.api.v0.support.response.ApiResponseFactory;
@@ -40,20 +42,23 @@ class RoleController {
     private final RoleService access;
     private final RoleAuthorizationService roleAuthorization;
     private final StatementService statements;
-    private final ObjectAuthorizationService objectAuthorization;
+    private final ObjectAuthorization objectAuthorization;
+    private final ObjectAuthorizationSchema<RoleInfo> objectSchema;
     private final ApiResponseFactory responses;
 
     RoleController(
         RoleService access,
         RoleAuthorizationService roleAuthorization,
         StatementService statements,
-        ObjectAuthorizationService objectAuthorization,
+        ObjectAuthorization objectAuthorization,
+        ObjectAuthorizationSchema<RoleInfo> objectSchema,
         ApiResponseFactory responses
     ) {
         this.access = access;
         this.roleAuthorization = roleAuthorization;
         this.statements = statements;
         this.objectAuthorization = objectAuthorization;
+        this.objectSchema = objectSchema;
         this.responses = responses;
     }
 
@@ -74,12 +79,14 @@ class RoleController {
     @Operation(summary = "List roles")
     ResponseEntity<ApiResponse<List<RoleInfo>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
-        AuthorizationOperation authorization
+        FilteredQuery<RoleInfo> filter,
+        AuthorizationContext context
     ) {
         OffsetPage<RoleInfo> roles = this.access.listRoles(
             pagination.page(),
             pagination.pageSize(),
-            this.objectAuthorization.plan(authorization.snapshot(), authorization.method(), authorization.path())
+            filter.predicate(),
+            this.objectAuthorization.authorize(context, this.objectSchema)
         );
         return this.responses.ok(
             roles.items(),

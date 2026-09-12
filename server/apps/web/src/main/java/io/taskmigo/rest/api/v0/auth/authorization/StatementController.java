@@ -3,14 +3,16 @@ package io.taskmigo.rest.api.v0.auth.authorization;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.taskmigo.auth.authorization.object.ObjectAuthorizationService;
-import io.taskmigo.auth.authorization.request.AuthorizationOperation;
-import io.taskmigo.auth.authorization.statement.ApiInfo;
-import io.taskmigo.auth.authorization.statement.Effect;
-import io.taskmigo.auth.authorization.statement.Scope;
-import io.taskmigo.auth.authorization.statement.StatementInfo;
-import io.taskmigo.auth.authorization.statement.StatementService;
+import io.taskmigo.authorization.object.ObjectAuthorization;
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.authorization.request.AuthorizationContext;
+import io.taskmigo.authorization.statement.ApiInfo;
+import io.taskmigo.authorization.statement.Effect;
+import io.taskmigo.authorization.statement.Scope;
+import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.identity.authorization.statement.StatementService;
+import io.taskmigo.query.FilteredQuery;
 import io.taskmigo.rest.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.rest.api.v0.support.response.ApiResponse;
 import io.taskmigo.rest.api.v0.support.response.ApiResponseFactory;
@@ -36,16 +38,19 @@ import org.springframework.web.bind.annotation.RestController;
 class StatementController {
 
     private final StatementService statements;
-    private final ObjectAuthorizationService objectAuthorization;
+    private final ObjectAuthorization objectAuthorization;
+    private final ObjectAuthorizationSchema<StatementInfo> objectSchema;
     private final ApiResponseFactory responses;
 
     StatementController(
         StatementService statements,
-        ObjectAuthorizationService objectAuthorization,
+        ObjectAuthorization objectAuthorization,
+        ObjectAuthorizationSchema<StatementInfo> objectSchema,
         ApiResponseFactory responses
     ) {
         this.statements = statements;
         this.objectAuthorization = objectAuthorization;
+        this.objectSchema = objectSchema;
         this.responses = responses;
     }
 
@@ -73,12 +78,14 @@ class StatementController {
     @Operation(summary = "List authorization statements")
     ResponseEntity<ApiResponse<List<StatementInfo>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
-        AuthorizationOperation authorization
+        FilteredQuery<StatementInfo> filter,
+        AuthorizationContext context
     ) {
         OffsetPage<StatementInfo> page = this.statements.list(
             pagination.page(),
             pagination.pageSize(),
-            this.objectAuthorization.plan(authorization.snapshot(), authorization.method(), authorization.path())
+            filter.predicate(),
+            this.objectAuthorization.authorize(context, this.objectSchema)
         );
         return this.responses.ok(
             page.items(),

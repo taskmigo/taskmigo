@@ -1,5 +1,5 @@
 /// Runs background jobs.
-@ApplicationModule
+@ApplicationModule(allowedDependencies = { "identity" })
 @NullMarked
 package io.taskmigo.worker;
 

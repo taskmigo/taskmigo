@@ -43,6 +43,10 @@ jobs:
           distribution: temurin
           java-version: "26"
 
+      - name: Generate language parser sources
+        working-directory: server
+        run: ./gradlew :modules:language:generateGrammarSource --no-daemon --console=plain
+
       - name: Scan
         uses: JetBrains/qodana-action@v2026.2.1
         with:

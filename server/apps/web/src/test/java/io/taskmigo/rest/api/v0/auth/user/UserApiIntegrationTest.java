@@ -3,12 +3,12 @@ package io.taskmigo.rest.api.v0.auth.user;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.auth.authorization.request.EffectiveStatementResolver;
-import io.taskmigo.auth.authorization.statement.StatementInfo;
-import io.taskmigo.auth.group.GroupService;
-import io.taskmigo.auth.role.RoleInfo;
-import io.taskmigo.auth.role.RoleService;
-import io.taskmigo.auth.user.UserService;
+import io.taskmigo.authorization.request.EffectiveStatementResolver;
+import io.taskmigo.authorization.role.RoleInfo;
+import io.taskmigo.authorization.statement.StatementInfo;
+import io.taskmigo.identity.authorization.role.RoleService;
+import io.taskmigo.identity.group.GroupService;
+import io.taskmigo.identity.user.UserService;
 import io.taskmigo.rest.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.CreateGroupRequest;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.CreateRoleRequest;
@@ -311,7 +311,7 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
                     "allow",
                     "request",
                     new StatementTarget(new StatementApiTarget("GET", "/api/v0/users")),
-                    "export default () => true;"
+                    "return true;"
                 )
             );
     }

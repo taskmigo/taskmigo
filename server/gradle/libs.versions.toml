@@ -10,7 +10,7 @@ checkstyle = "14.1.0"
 spotless = "8.10.1"
 jmh-gradle-plugin = "0.7.3"
 guava = "33.7.1-jre"
-rhino = "1.9.1"
+antlr = "4.13.2"
 
 [libraries]
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
@@ -33,12 +33,15 @@ spring-boot-starter-webmvc = { module = "org.springframework.boot:spring-boot-st
 spring-boot-starter-validation = { module = "org.springframework.boot:spring-boot-starter-validation" }
 spring-boot-starter-oauth2-authorization-server = { module = "org.springframework.boot:spring-boot-starter-oauth2-authorization-server" }
 spring-boot-starter-oauth2-resource-server = { module = "org.springframework.boot:spring-boot-starter-oauth2-resource-server" }
+spring-boot-security-oauth2-authorization-server = { module = "org.springframework.boot:spring-boot-security-oauth2-authorization-server" }
+spring-security-oauth2-authorization-server = { module = "org.springframework.security:spring-security-oauth2-authorization-server" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
 spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-testcontainers" }
 flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
 guava-bom = { module = "com.google.guava:guava-bom", version.ref = "guava" }
 guava = { module = "com.google.guava:guava" }
-rhino = { module = "org.mozilla:rhino", version.ref = "rhino" }
+antlr-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr" }
+antlr-tool = { module = "org.antlr:antlr4", version.ref = "antlr" }
 postgresql-driver = { module = "org.postgresql:postgresql" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter" }
 testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }

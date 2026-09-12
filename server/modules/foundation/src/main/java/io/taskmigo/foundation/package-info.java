@@ -1,4 +1,4 @@
-/// Provides framework-neutral domain and offset-pagination primitives shared across capability modules.
+/// Provides framework-neutral primitives and contracts shared across independent Taskmigo capabilities.
 @NullMarked
 package io.taskmigo.foundation;
 

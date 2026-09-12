@@ -1,5 +1,5 @@
 /// Contains web-only infrastructure that is not part of the public REST API contract.
-@ApplicationModule(allowedDependencies = { "rest :: *", "auth :: *", "foundation" })
+@ApplicationModule(allowedDependencies = { "rest :: security", "authorization :: request", "identity :: user" })
 @NullMarked
 package io.taskmigo.internal;
 

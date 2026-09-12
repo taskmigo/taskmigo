@@ -2,21 +2,19 @@ package io.taskmigo.internal.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.auth.authorization.request.AuthorizationOperation;
-import io.taskmigo.auth.authorization.request.AuthorizationSnapshot;
-import io.taskmigo.auth.authorization.request.RequestAuthorizationDecision;
-import io.taskmigo.auth.authorization.request.RequestAuthorizationService;
+import io.taskmigo.authorization.request.AuthorizationContext;
+import io.taskmigo.authorization.request.AuthorizationPrincipal;
+import io.taskmigo.authorization.request.AuthorizationRequest;
+import io.taskmigo.authorization.request.RequestAuthorization;
+import io.taskmigo.authorization.request.RequestAuthorizationResult;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
-import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -29,14 +27,14 @@ import org.springframework.security.web.access.intercept.RequestAuthorizationCon
 class RequestAuthorizationManagerTest {
 
     /**
-     * Verifies that security transports the complete authorization operation together with named route variables.
+     * Verifies that security delegates the available typed principal and request values to Request Authorization.
      *
      * Given: a versioned API request with a matched `userId` path variable and a valid user JWT.
-     * Expect: the operation contains the normalized target and the snapshot receives immutable `request.pathVariables.userId` input.
+     * Expect: the typed service receives those values and the manager transports only the opaque result context.
      */
     @Test
-    @DisplayName("passes named route variables to request authorization")
-    void shouldExposeRouteVariablesWhenRequestIsAuthorized() {
+    @DisplayName("passes typed principal and request values to request authorization")
+    void shouldAuthorizeTypedRequestWhenJwtAndRouteVariablesAreValid() {
         // Arrange
         UUID userId = UUID.randomUUID();
         HttpServletRequest request = mock(HttpServletRequest.class);
@@ -45,11 +43,10 @@ class RequestAuthorizationManagerTest {
         RequestAuthorizationContext context = mock(RequestAuthorizationContext.class);
         when(context.getRequest()).thenReturn(request);
         when(context.getVariables()).thenReturn(Map.of("userId", "target"));
-        AuthorizationSnapshot snapshot = snapshot(userId);
-        RequestAuthorizationService authorization = mock(RequestAuthorizationService.class);
-        when(authorization.snapshot(eq(userId), any())).thenReturn(snapshot);
-        when(authorization.authorize(snapshot, "GET", "/api/v0/users/target/statements")).thenReturn(
-            new RequestAuthorizationDecision(true)
+        AuthorizationContext authorizationContext = new AuthorizationContext() {};
+        RequestAuthorization authorization = mock(RequestAuthorization.class);
+        when(authorization.authorize(any(), any())).thenReturn(
+            new RequestAuthorizationResult(true, authorizationContext)
         );
         Jwt jwt = Jwt.withTokenValue("token")
             .header("alg", "none")
@@ -68,41 +65,35 @@ class RequestAuthorizationManagerTest {
         AuthorizationDecision decision = manager.authorize(() -> authentication, context);
 
         // Assert
-        ArgumentCaptor<Map<String, ?>> roots = ArgumentCaptor.forClass(Map.class);
-        verify(authorization).snapshot(eq(userId), roots.capture());
-        Map<?, ?> requestRoot = Objects.requireNonNull((Map<?, ?>) roots.getValue().get("request"));
-        SoftAssertions softly = new SoftAssertions();
-        softly.assertThat(decision.isGranted()).isTrue();
-        softly.assertThat(requestRoot.get("path")).isEqualTo("/api/v0/users/target/statements");
-        softly.assertThat(requestRoot.get("pathVariables")).isEqualTo(Map.of("userId", "target"));
-        softly.assertAll();
-        ArgumentCaptor<AuthorizationOperation> operation = ArgumentCaptor.forClass(AuthorizationOperation.class);
-        verify(request).setAttribute(eq(AuthorizationOperation.ATTRIBUTE), operation.capture());
-        assertThat(operation.getValue()).isEqualTo(
-            new AuthorizationOperation(snapshot, "GET", "/api/v0/users/target/statements")
+        ArgumentCaptor<AuthorizationPrincipal> principal = ArgumentCaptor.forClass(AuthorizationPrincipal.class);
+        ArgumentCaptor<AuthorizationRequest> authorizationRequest = ArgumentCaptor.forClass(AuthorizationRequest.class);
+        verify(authorization).authorize(principal.capture(), authorizationRequest.capture());
+        assertThat(decision.isGranted()).isTrue();
+        assertThat(principal.getValue()).isEqualTo(new AuthorizationPrincipal(userId, "alice"));
+        assertThat(authorizationRequest.getValue()).isEqualTo(
+            new AuthorizationRequest("GET", "/api/v0/users/target/statements", Map.of("userId", "target"))
         );
+        verify(request).setAttribute(AuthorizationContext.ATTRIBUTE, authorizationContext);
     }
 
     /**
-     * Verifies that a request authorization failure remains denied at the web boundary.
+     * Verifies that a denied typed authorization result remains denied at the web security boundary.
      *
-     * Given: a valid JWT but a request service that denies the request.
+     * Given: a valid JWT and a RequestAuthorization service returning granted = false.
      * Expect: the authorization manager returns a denied decision.
      */
     @Test
-    @DisplayName("denies the request when request authorization denies")
-    void shouldDenyRequestWhenAuthorizationServiceDenies() {
+    @DisplayName("denies the request when typed request authorization denies")
+    void shouldDenyRequestWhenTypedAuthorizationDenies() {
         // Arrange
         UUID userId = UUID.randomUUID();
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getMethod()).thenReturn("GET");
         when(request.getRequestURI()).thenReturn("/api/v0/users");
         RequestAuthorizationContext context = new RequestAuthorizationContext(request, Map.of());
-        AuthorizationSnapshot snapshot = snapshot(userId);
-        RequestAuthorizationService authorization = mock(RequestAuthorizationService.class);
-        when(authorization.snapshot(eq(userId), any())).thenReturn(snapshot);
-        when(authorization.authorize(snapshot, "GET", "/api/v0/users")).thenReturn(
-            new RequestAuthorizationDecision(false)
+        RequestAuthorization authorization = mock(RequestAuthorization.class);
+        when(authorization.authorize(any(), any())).thenReturn(
+            new RequestAuthorizationResult(false, new AuthorizationContext() {})
         );
         Jwt jwt = Jwt.withTokenValue("token")
             .header("alg", "none")
@@ -123,27 +114,22 @@ class RequestAuthorizationManagerTest {
     }
 
     /**
-     * Verifies that security reuses the complete operation already transported on the request.
+     * Verifies that a cached decision avoids a second typed authorization operation for one servlet request.
      *
-     * Given: a request carrying an operation for a snapshot and target different from the raw request target.
-     * Expect: authorization uses the transported operation and does not resolve or replace the snapshot.
+     * Given: a request whose cached decision attribute is true.
+     * Expect: the manager returns granted without invoking RequestAuthorization.
      */
     @Test
-    @DisplayName("reuses an authorization operation already on the request")
-    void shouldReuseAuthorizationOperationWhenRequestAlreadyContainsOne() {
+    @DisplayName("reuses the typed authorization result for one request")
+    void shouldReuseAuthorizationResultWhenSecurityChecksTheRequestAgain() {
         // Arrange
         UUID userId = UUID.randomUUID();
         HttpServletRequest request = mock(HttpServletRequest.class);
         when(request.getMethod()).thenReturn("GET");
         when(request.getRequestURI()).thenReturn("/api/v0/users");
-        AuthorizationSnapshot snapshot = snapshot(userId);
-        AuthorizationOperation operation = new AuthorizationOperation(snapshot, "POST", "/api/v0/roles");
-        when(request.getAttribute(AuthorizationOperation.ATTRIBUTE)).thenReturn(operation);
+        when(request.getAttribute("taskmigo.authorization.request.decision")).thenReturn(true);
         RequestAuthorizationContext context = new RequestAuthorizationContext(request, Map.of());
-        RequestAuthorizationService authorization = mock(RequestAuthorizationService.class);
-        when(authorization.authorize(snapshot, "POST", "/api/v0/roles")).thenReturn(
-            new RequestAuthorizationDecision(true)
-        );
+        RequestAuthorization authorization = mock(RequestAuthorization.class);
         Jwt jwt = Jwt.withTokenValue("token")
             .header("alg", "none")
             .claim("principal_type", "user")
@@ -160,12 +146,6 @@ class RequestAuthorizationManagerTest {
 
         // Assert
         assertThat(decision.isGranted()).isTrue();
-        verify(authorization).authorize(snapshot, "POST", "/api/v0/roles");
-        org.mockito.Mockito.verify(authorization, org.mockito.Mockito.never()).snapshot(any(), any());
-        org.mockito.Mockito.verify(request, org.mockito.Mockito.never()).setAttribute(any(), any());
-    }
-
-    private static AuthorizationSnapshot snapshot(UUID userId) {
-        return new AuthorizationSnapshot(userId, List.of(), List.of(), Map.of());
+        verify(authorization, org.mockito.Mockito.never()).authorize(any(), any());
     }
 }

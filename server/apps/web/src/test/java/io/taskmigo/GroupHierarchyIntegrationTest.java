@@ -3,11 +3,11 @@ package io.taskmigo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.auth.group.GroupException;
-import io.taskmigo.auth.group.GroupService;
-import io.taskmigo.auth.role.RoleException;
-import io.taskmigo.auth.role.RoleInfo;
-import io.taskmigo.auth.role.RoleService;
+import io.taskmigo.authorization.role.RoleInfo;
+import io.taskmigo.identity.authorization.role.RoleException;
+import io.taskmigo.identity.authorization.role.RoleService;
+import io.taskmigo.identity.group.GroupException;
+import io.taskmigo.identity.group.GroupService;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;

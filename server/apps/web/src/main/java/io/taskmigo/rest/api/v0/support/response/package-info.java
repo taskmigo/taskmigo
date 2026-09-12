@@ -1,5 +1,5 @@
 /// Provides the shared API v0 response envelope and exception translation.
-@NamedInterface
+@NamedInterface("response")
 @NullMarked
 package io.taskmigo.rest.api.v0.support.response;
 

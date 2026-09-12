@@ -3,10 +3,11 @@ plugins {
     alias(libs.plugins.jmh)
 }
 
-description = "JMH benchmarks for authorization compiler"
+description = "JMH benchmarks for the Taskmigo Language compiler"
 
 dependencies {
-    jmhImplementation(project(":modules:auth"))
+    jmhImplementation(project(":modules:language"))
+    testImplementation(platform(libs.spring.boot.bom))
 }
 
 jmh {

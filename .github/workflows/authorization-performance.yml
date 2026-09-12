@@ -3,12 +3,12 @@ name: Authorization performance
 on:
   pull_request:
     paths:
-      - "server/benchmarks/authorization/**"
+      - "server/**"
       - ".github/workflows/authorization-performance.yml"
   push:
     branches: [next]
     paths:
-      - "server/benchmarks/authorization/**"
+      - "server/**"
       - ".github/workflows/authorization-performance.yml"
 
 concurrency:
@@ -64,7 +64,7 @@ jobs:
           jmh_jar="$(find benchmarks/authorization/build/libs -maxdepth 1 -type f -name '*-jmh.jar' -print -quit)"
           test -n "$jmh_jar"
 
-          java --enable-native-access=ALL-UNNAMED -jar "$jmh_jar" '.*JavaScriptPolicyCompilerBenchmark.*' \
+          java --enable-native-access=ALL-UNNAMED -jar "$jmh_jar" '.*EmbeddedLanguageCompilerBenchmark.*' \
             -bm avgt \
             -tu ms \
             -t 1 \
@@ -75,7 +75,7 @@ jobs:
             -r "$JMH_MEASUREMENT_TIME" \
             -foe true \
             -p scopeName=REQUEST,OBJECT \
-            -p policyType=SIMPLE,COMPLEX \
+            -p programType=SIMPLE,COMPLEX \
             -p statementCount="$JMH_STATEMENT_COUNT" \
             -prof "$JMH_PROFILER:dir=$RUNNER_TEMP/jfr" \
             -rf JSON \

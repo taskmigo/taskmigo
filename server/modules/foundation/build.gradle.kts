@@ -2,7 +2,7 @@ plugins {
     `java-library`
 }
 
-description = "Framework-neutral shared domain and offset pagination primitives"
+description = "Framework-neutral Taskmigo primitives and contracts"
 
 dependencies {
     api(libs.jspecify)

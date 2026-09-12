@@ -1,5 +1,5 @@
 /// Defines the API security extension point consumed by the version-neutral web security boundary.
-@NamedInterface
+@NamedInterface("security")
 @NullMarked
 package io.taskmigo.rest.support.security;
 

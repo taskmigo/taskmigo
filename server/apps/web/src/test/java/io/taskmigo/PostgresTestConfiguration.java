@@ -1,11 +1,11 @@
 package io.taskmigo;
 
-import io.taskmigo.auth.authorization.statement.Effect;
-import io.taskmigo.auth.authorization.statement.Scope;
-import io.taskmigo.auth.authorization.statement.StatementService;
-import io.taskmigo.auth.oauth.InternalClientMetadata;
-import io.taskmigo.auth.role.RoleAuthorizationService;
-import io.taskmigo.auth.user.UserService;
+import io.taskmigo.authorization.statement.Effect;
+import io.taskmigo.authorization.statement.Scope;
+import io.taskmigo.identity.authorization.role.RoleAuthorizationService;
+import io.taskmigo.identity.authorization.statement.StatementService;
+import io.taskmigo.identity.oauth.InternalClientMetadata;
+import io.taskmigo.identity.user.UserService;
 import java.util.UUID;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -46,7 +46,7 @@ public class PostgresTestConfiguration {
                 Scope.REQUEST,
                 "*",
                 "/api/v.*/.*",
-                "export default () => true;"
+                "return true;"
             );
             UUID usersAccess = objectStatement(statements, "system_users_full_access", "/api/v0/users");
             UUID rolesAccess = objectStatement(statements, "system_roles_full_access", "/api/v0/roles");
@@ -82,7 +82,7 @@ public class PostgresTestConfiguration {
             Scope.OBJECT,
             "GET",
             path,
-            "export default () => true;"
+            "return true;"
         );
     }
 }
