@@ -64,7 +64,6 @@ final class JpaQueryExpressionBinder {
         };
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     private static <E> Predicate comparison(
         QueryExpression.Binary binary,
         Root<E> root,

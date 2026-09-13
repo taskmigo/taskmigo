@@ -38,6 +38,24 @@ final class DefaultQueryPredicates implements QueryPredicates {
     }
 
     @Override
+    public QueryPredicate<?> andUntyped(QueryPredicate<?> left, QueryPredicate<?> right) {
+        requireCompatible(left, right);
+        if (left.isAlwaysFalse()) {
+            return left;
+        }
+        if (right.isAlwaysFalse()) {
+            return right;
+        }
+        if (left.isAlwaysTrue()) {
+            return right;
+        }
+        if (right.isAlwaysTrue()) {
+            return left;
+        }
+        return QueryPredicateFactory.wrap(schema(left), binary(QueryExpression.BinaryOperator.AND, left, right));
+    }
+
+    @Override
     public <Q> QueryPredicate<Q> or(QueryPredicate<Q> left, QueryPredicate<Q> right) {
         requireCompatible(left, right);
         if (left.isAlwaysTrue()) {
@@ -72,10 +90,10 @@ final class DefaultQueryPredicates implements QueryPredicates {
         );
     }
 
-    private static <Q> QueryExpression binary(
+    private static QueryExpression binary(
         QueryExpression.BinaryOperator operator,
-        QueryPredicate<Q> left,
-        QueryPredicate<Q> right
+        QueryPredicate<?> left,
+        QueryPredicate<?> right
     ) {
         return new QueryExpression.Binary(
             operator,

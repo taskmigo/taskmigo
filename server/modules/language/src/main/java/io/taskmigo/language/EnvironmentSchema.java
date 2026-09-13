@@ -9,7 +9,6 @@ import java.util.TreeMap;
 import org.jspecify.annotations.Nullable;
 
 /// Defines the typed roots and paths visible to one compiled program.
-@SuppressWarnings("checkstyle:NeedBraces")
 public final class EnvironmentSchema {
 
     private final String identity;
@@ -20,9 +19,9 @@ public final class EnvironmentSchema {
 
     public EnvironmentSchema(String identity, Map<String, Root> roots) {
         Objects.requireNonNull(identity);
-        if (identity.isBlank() || roots.isEmpty()) throw new IllegalArgumentException(
-            "schema requires an identity and roots"
-        );
+        if (identity.isBlank() || roots.isEmpty()) {
+            throw new IllegalArgumentException("schema requires an identity and roots");
+        }
         this.identity = identity;
         this.roots = Map.copyOf(roots);
         this.dependencies = new DependencyCatalog(this.roots.keySet());
@@ -45,12 +44,18 @@ public final class EnvironmentSchema {
     /// Resolves a static path or a member of a declared dynamic map.
     public @Nullable Field resolve(String rootName, List<String> path) {
         Root root = this.roots.get(rootName);
-        if (root == null) return null;
-        if (path.isEmpty()) return root.value();
+        if (root == null) {
+            return null;
+        }
+        if (path.isEmpty()) {
+            return root.value();
+        }
         PathNode current = this.paths.get(rootName);
         boolean nullable = false;
         for (String segment : path) {
-            if (current == null) return null;
+            if (current == null) {
+                return null;
+            }
             PathNode child = current.children().get(segment);
             if (child == null) {
                 Field currentField = current.field();
@@ -60,10 +65,14 @@ public final class EnvironmentSchema {
                 return null;
             }
             current = child;
-            if (current.field() != null) nullable = nullable || Objects.requireNonNull(current.field()).nullable();
+            if (current.field() != null) {
+                nullable = nullable || Objects.requireNonNull(current.field()).nullable();
+            }
         }
         Field field = current == null ? null : current.field();
-        if (field == null) return null;
+        if (field == null) {
+            return null;
+        }
         return nullable == field.nullable()
             ? field
             : new Field(field.type(), nullable, field.symbolic(), field.dynamicMemberType());

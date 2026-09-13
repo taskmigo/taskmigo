@@ -8,7 +8,6 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /// Represents the immutable typed Semantic AST of one compiled Embedded Language program.
-@SuppressWarnings("checkstyle:DeclarationOrder")
 record SemanticAst(
     Expression expression,
     String sourceFingerprint,
@@ -20,6 +19,8 @@ record SemanticAst(
     int localSlotCount,
     Set<String> requiredRoots
 ) {
+    private static final LanguageDiagnostic.SourceSpan UNKNOWN_SPAN = new LanguageDiagnostic.SourceSpan(1, 0, 1, 0);
+
     SemanticAst {
         Objects.requireNonNull(expression);
         Objects.requireNonNull(sourceFingerprint);
@@ -342,8 +343,6 @@ record SemanticAst(
         ANY,
         NONE,
     }
-
-    private static final LanguageDiagnostic.SourceSpan UNKNOWN_SPAN = new LanguageDiagnostic.SourceSpan(1, 0, 1, 0);
 
     static Set<String> dependencies(Expression... expressions) {
         return RootDependencies.union(expressions);

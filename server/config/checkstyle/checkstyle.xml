@@ -14,13 +14,27 @@
     <module name="TreeWalker">
         <module name="SuppressWarningsHolder"/>
 
+        <!-- Permit only reviewed suppression names; every other warning must be fixed instead. -->
+        <module name="SuppressWarnings">
+            <property
+                name="format"
+                value="^(?!(?:NullableProblems|CanBeFinal|NotNullFieldNotInitialized|checkstyle:SpringDataQuery)$).*$"
+            />
+        </module>
+
         <!-- Prefer imports over fully-qualified type references. -->
         <module name="UnnecessaryFullyQualifiedType"/>
 
+        <!-- Require every Java source file to declare its package explicitly. -->
+        <module name="PackageDeclaration"/>
+
+        <!-- Require braces around every control-flow statement. -->
         <module name="NeedBraces"/>
 
+        <!-- Reject local variables that are never read. -->
         <module name="UnusedLocalVariable" />
 
+        <!-- Reject private fields that are never used. -->
         <module name="UnusedPrivateField"/>
 
         <!-- Require imported short forms for annotations. -->

@@ -9,7 +9,6 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /// Stores root dependencies as a compact bit mask while retaining the public Set contract.
-@SuppressWarnings("checkstyle:OverloadMethodsDeclarationOrder")
 final class RootDependencies extends AbstractSet<String> {
 
     private static final long[] EMPTY_WORDS = new long[0];
@@ -36,16 +35,20 @@ final class RootDependencies extends AbstractSet<String> {
         if (catalog.size() <= Long.SIZE) {
             return new RootDependencies(catalog, 1L << slot, EMPTY_WORDS);
         }
+
         long[] words = new long[wordCount(catalog)];
         words[slot >>> 6] |= 1L << (slot & 63);
+
         return new RootDependencies(catalog, 0L, words);
     }
 
     static Set<String> union(Iterable<? extends SemanticAst.Expression> expressions) {
         RootDependencies compact = null;
         HashSet<String> fallback = null;
+
         for (SemanticAst.Expression expression : expressions) {
             Set<String> dependencies = expression.dependencies();
+
             if (fallback != null) {
                 fallback.addAll(dependencies);
             } else if (dependencies instanceof RootDependencies roots) {
@@ -62,9 +65,11 @@ final class RootDependencies extends AbstractSet<String> {
                 fallback.addAll(dependencies);
             }
         }
+
         if (fallback != null) {
             return Set.copyOf(fallback);
         }
+
         return compact == null ? Set.of() : compact;
     }
 
@@ -72,38 +77,46 @@ final class RootDependencies extends AbstractSet<String> {
         return union(List.of(expressions));
     }
 
+    RootDependencies union(RootDependencies other) {
+        if (this.catalog != other.catalog) {
+            throw new IllegalArgumentException("dependency catalogs do not match");
+        }
+
+        if (this.words.length == 0) {
+            return new RootDependencies(this.catalog, this.mask | other.mask, EMPTY_WORDS);
+        }
+
+        long[] merged = this.words.clone();
+
+        for (int index = 0; index < merged.length; index++) {
+            merged[index] |= other.words[index];
+        }
+
+        return new RootDependencies(this.catalog, 0L, merged);
+    }
+
     static boolean intersects(Set<String> dependencies, Set<String> roots) {
         if (dependencies.isEmpty() || roots.isEmpty()) {
             return false;
         }
+
         if (dependencies instanceof RootDependencies compact) {
             for (String root : roots) {
                 if (compact.contains(root)) {
                     return true;
                 }
             }
+
             return false;
         }
+
         for (String root : roots) {
             if (dependencies.contains(root)) {
                 return true;
             }
         }
-        return false;
-    }
 
-    RootDependencies union(RootDependencies other) {
-        if (this.catalog != other.catalog) {
-            throw new IllegalArgumentException("dependency catalogs do not match");
-        }
-        if (this.words.length == 0) {
-            return new RootDependencies(this.catalog, this.mask | other.mask, EMPTY_WORDS);
-        }
-        long[] merged = this.words.clone();
-        for (int index = 0; index < merged.length; index++) {
-            merged[index] |= other.words[index];
-        }
-        return new RootDependencies(this.catalog, 0L, merged);
+        return false;
     }
 
     @Override
@@ -111,7 +124,9 @@ final class RootDependencies extends AbstractSet<String> {
         if (!(value instanceof String root)) {
             return false;
         }
+
         int slot = this.catalog.slot(root);
+
         return slot >= 0 && this.containsSlot(slot);
     }
 
@@ -120,10 +135,13 @@ final class RootDependencies extends AbstractSet<String> {
         if (this.words.length == 0) {
             return Long.bitCount(this.mask);
         }
+
         int size = 0;
+
         for (long word : this.words) {
             size += Long.bitCount(word);
         }
+
         return size;
     }
 
@@ -142,8 +160,10 @@ final class RootDependencies extends AbstractSet<String> {
                 if (this.next < 0) {
                     throw new NoSuchElementException();
                 }
+
                 int current = this.next;
                 this.next = this.find(current + 1);
+
                 return RootDependencies.this.catalog.root(current);
             }
 
@@ -153,6 +173,7 @@ final class RootDependencies extends AbstractSet<String> {
                         return slot;
                     }
                 }
+
                 return -1;
             }
         };
@@ -162,6 +183,7 @@ final class RootDependencies extends AbstractSet<String> {
         if (this.words.length == 0) {
             return (this.mask & (1L << slot)) != 0L;
         }
+
         return (this.words[slot >>> 6] & (1L << (slot & 63))) != 0L;
     }
 

@@ -60,7 +60,6 @@ final class JpaObjectAuthorizationExpressionBinder {
         };
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     private static <E> Predicate comparison(
         ObjectAuthorizationExpression.Binary binary,
         Root<E> root,
