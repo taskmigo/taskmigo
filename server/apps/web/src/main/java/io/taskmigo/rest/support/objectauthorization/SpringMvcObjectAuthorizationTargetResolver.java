@@ -79,16 +79,16 @@ public final class SpringMvcObjectAuthorizationTargetResolver
     }
 
     private Optional<ObjectAuthorizationSchema<?>> schema(HandlerMethod handler) {
-        List<MethodParameter> authorizationParameters = Arrays.stream(handler.getMethodParameters())
+        List<MethodParameter> predicateParameters = Arrays.stream(handler.getMethodParameters())
             .filter(parameter -> parameter.getParameterType() == ObjectAuthorizationPredicate.class)
             .toList();
-        if (authorizationParameters.isEmpty()) {
+        if (predicateParameters.isEmpty()) {
             return Optional.empty();
         }
-        if (authorizationParameters.size() != 1) {
+        if (predicateParameters.size() != 1) {
             throw new IllegalStateException("A handler may declare only one ObjectAuthorizationPredicate");
         }
-        Class<?> objectType = this.objectType(authorizationParameters.getFirst());
+        Class<?> objectType = this.objectType(predicateParameters.getFirst());
         return Optional.of(
             this.schemas
                 .stream()
