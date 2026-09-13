@@ -1,3 +1,4 @@
+---
 name: Request authorization allows when the deny policy does not match
 tags:
   - request
