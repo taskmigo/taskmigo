@@ -18,7 +18,7 @@ QC can add a case without editing TypeScript:
 
 The runner supports placeholders such as `{{runId}}`, `{{principal.id}}`, `{{principal.username}}`, `{{users.<alias>.id}}`, `{{users.<alias>.username}}`, and `{{statements.<alias>.id}}`. Files beginning with `_` are templates/documentation and are not executed.
 
-Each case starts by clearing direct Statements on the dedicated E2E principal, creates its fixtures, assigns the case Statements, executes the request, and clears direct Statements again in `finally`. Request-scope DENY cases must not target the cleanup endpoint `PATCH /api/v0/users/{principal.id}/statements`; the runner rejects such a case before assignment.
+Each case starts by clearing direct Statements on the dedicated E2E principal, creates its fixtures, assigns the case Statements, executes the request, and clears direct Statements again in `finally`. Request-scope DENY cases must not target the cleanup endpoint `PATCH /api/v0/users/{principal.id}/statements`; the runner rejects such a case before assignment. The Kubernetes integration environment is disposable and dedicated to this suite, so fixture resources created by a case do not need a public delete endpoint.
 
 ## Browser authentication coverage
 
