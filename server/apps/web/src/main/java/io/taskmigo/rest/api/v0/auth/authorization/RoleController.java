@@ -75,8 +75,8 @@ class RoleController {
         ObjectAuthorizationPredicate<RoleInfo> authorization
     ) {
         OffsetPage<RoleInfo> roles = this.access.listRoles(
-            pagination.page(),
-            pagination.pageSize(),
+            pagination.getPage(),
+            pagination.getPageSize(),
             filter.predicate(),
             authorization
         );

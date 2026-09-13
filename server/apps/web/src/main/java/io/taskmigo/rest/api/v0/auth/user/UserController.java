@@ -67,8 +67,8 @@ class UserController {
         ObjectAuthorizationPredicate<UserInfo> authorization
     ) {
         OffsetPage<UserInfo> users = this.users.list(
-            pagination.page(),
-            pagination.pageSize(),
+            pagination.getPage(),
+            pagination.getPageSize(),
             filter.predicate(),
             authorization
         );

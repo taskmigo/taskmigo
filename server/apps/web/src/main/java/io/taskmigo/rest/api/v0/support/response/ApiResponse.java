@@ -119,7 +119,7 @@ public record ApiResponse<T, M extends ApiResponse.Meta>(
         /// @param request the validated pagination request
         /// @param page the page result returned by the application service
         public OffsetPagination(OffsetPageRequest request, OffsetPage<?> page) {
-            this(new Offset(request.page(), request.pageSize(), page.totalItems(), page.totalPages()));
+            this(new Offset(request.getPage(), request.getPageSize(), page.totalItems(), page.totalPages()));
         }
     }
 

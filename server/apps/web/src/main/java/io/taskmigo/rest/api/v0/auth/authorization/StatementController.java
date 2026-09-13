@@ -71,8 +71,8 @@ class StatementController {
         ObjectAuthorizationPredicate<StatementInfo> authorization
     ) {
         OffsetPage<StatementInfo> page = this.statements.list(
-            pagination.page(),
-            pagination.pageSize(),
+            pagination.getPage(),
+            pagination.getPageSize(),
             filter.predicate(),
             authorization
         );
