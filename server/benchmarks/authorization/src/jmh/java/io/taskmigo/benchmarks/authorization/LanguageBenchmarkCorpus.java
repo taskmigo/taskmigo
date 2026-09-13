@@ -38,7 +38,9 @@ final class LanguageBenchmarkCorpus {
     }
 
     static BenchmarkCase caseAt(Complexity complexity, Mode mode, int index) {
-        if (index < 0 || index >= CASE_COUNT) throw new IllegalArgumentException("index");
+        if (index < 0 || index >= CASE_COUNT) {
+            throw new IllegalArgumentException("index");
+        }
         String source = switch (complexity) {
             case SIMPLE -> switch (mode) {
                 case PROGRAM -> simpleProgram(index);
@@ -60,7 +62,9 @@ final class LanguageBenchmarkCorpus {
     }
 
     static List<BenchmarkCase> cases(String complexity, String mode, int count) {
-        if (count < 1 || count > CASE_COUNT) throw new IllegalArgumentException();
+        if (count < 1 || count > CASE_COUNT) {
+            throw new IllegalArgumentException();
+        }
         Complexity c = Complexity.valueOf(complexity);
         Mode m = Mode.valueOf(mode);
         return IntStream.range(0, count)
@@ -357,8 +361,8 @@ final class LanguageBenchmarkCorpus {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException(e);
         }
-        for (Complexity c : List.of(Complexity.SIMPLE, Complexity.COMPLEX))
-            for (Mode m : List.of(Mode.PROGRAM, Mode.EXPRESSION))
+        for (Complexity c : List.of(Complexity.SIMPLE, Complexity.COMPLEX)) {
+            for (Mode m : List.of(Mode.PROGRAM, Mode.EXPRESSION)) {
                 for (int i = 0; i < CASE_COUNT; i++) {
                     BenchmarkCase bc = caseAt(c, m, i);
                     md.update(bc.id().getBytes(StandardCharsets.UTF_8));
@@ -366,11 +370,13 @@ final class LanguageBenchmarkCorpus {
                     md.update(bc.source().getBytes(StandardCharsets.UTF_8));
                     md.update((byte) 0);
                 }
+            }
+        }
         return HexFormat.of().formatHex(md.digest());
     }
 
     static void verifyContract() {
-        for (Complexity c : Complexity.values())
+        for (Complexity c : Complexity.values()) {
             for (Mode m : Mode.values()) {
                 Set<String> sources = new HashSet<>();
                 Set<String> shapes = new HashSet<>();
@@ -392,6 +398,7 @@ final class LanguageBenchmarkCorpus {
                     );
                 }
             }
+        }
         String actualDigest = digestAll();
         if (!EXPECTED_CORPUS_SHA256.equals(actualDigest)) {
             throw new IllegalStateException(
