@@ -38,7 +38,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.open-in-view=false",
         "spring.jpa.properties.hibernate.session_factory.statement_inspector=" +
-        "io.taskmigo.identity.persistence.query.JpaObjectAuthorizationPredicateBinderIntegrationTest$SqlCaptureStatementInspector",
+            "io.taskmigo.identity.persistence.query.JpaObjectAuthorizationPredicateBinderIntegrationTest$SqlCaptureStatementInspector",
     }
 )
 @Testcontainers
@@ -74,12 +74,13 @@ class JpaObjectAuthorizationPredicateBinderIntegrationTest {
     @DisplayName("translates object authorization predicate to the expected SQL")
     void shouldTranslateToExpectedSqlWhenObjectAuthorizationPredicateIsBound() {
         // Arrange
-        JpaObjectAuthorizationPredicateBinder<UserInfo, UserEntity> binder = new JpaObjectAuthorizationPredicateBinder<>(
-            UserInfo.class,
-            UserEntity.class,
-            Map.of("firstName", "firstName", "lastName", "lastName", "username", "username"),
-            Map.of("firstName", String.class, "lastName", String.class, "username", String.class)
-        );
+        JpaObjectAuthorizationPredicateBinder<UserInfo, UserEntity> binder =
+            new JpaObjectAuthorizationPredicateBinder<>(
+                UserInfo.class,
+                UserEntity.class,
+                Map.of("firstName", "firstName", "lastName", "lastName", "username", "username"),
+                Map.of("firstName", String.class, "lastName", String.class, "username", String.class)
+            );
         ObjectAuthorizationPredicate<UserInfo> authorization = ObjectAuthorizationPredicateModels.wrap(
             "test-user-schema",
             new ObjectAuthorizationExpression.Binary(
@@ -152,11 +153,8 @@ class JpaObjectAuthorizationPredicateBinderIntegrationTest {
         }
 
         static String userSelect() {
-            return SQL
-                .stream()
-                .filter(sql ->
-                    sql.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ").contains(" from users ")
-                )
+            return SQL.stream()
+                .filter(sql -> sql.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ").contains(" from users "))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("No SELECT from users was captured: " + SQL));
         }
