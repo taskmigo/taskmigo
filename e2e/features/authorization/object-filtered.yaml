@@ -1,0 +1,48 @@
+---
+name: Object authorization filters matching users from the API response
+tags:
+  - object
+  - filtering
+
+setup:
+  users:
+    - alias: hidden
+      username: object-hidden-{{runId}}
+      emails:
+        - object-hidden-{{runId}}@example.com
+      firstName: Matched
+      lastName: Matched
+    - alias: visible
+      username: object-visible-{{runId}}
+      emails:
+        - object-visible-{{runId}}@example.com
+      firstName: Visible
+      lastName: User
+
+  statements:
+    - effect: deny
+      scope: object
+      target:
+        method: GET
+        path: /api/v0/users
+      policy: |
+        return object.firstName == object.lastName && object.username != object.firstName;
+
+request:
+  method: GET
+  path: /api/v0/users?page=1&pageSize=100
+
+expected:
+  status: 200
+  body:
+    contains:
+      success: true
+      statusCode: 200
+      message:
+        code: resource.user.listed
+    collections:
+      - path: data
+        contains:
+          - username: "{{users.visible.username}}"
+        excludes:
+          - username: "{{users.hidden.username}}"

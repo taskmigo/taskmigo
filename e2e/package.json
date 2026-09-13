@@ -9,12 +9,14 @@
   "scripts": {
     "test": "playwright test",
     "test:auth": "playwright test --grep @auth",
+    "test:authorization": "playwright test --grep @authorization",
     "test:smoke": "playwright test --grep @smoke",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",
     "@types/node": "24.3.0",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "yaml": "2.8.1"
   }
 }

@@ -1,0 +1,22 @@
+---
+name: Request authorization denies a matching request
+tags:
+  - request
+  - deny
+
+setup:
+  statements:
+    - effect: deny
+      scope: request
+      target:
+        method: GET
+        path: /api/v0/users
+      policy: |
+        return principal.username == "system" && request.method == "GET";
+
+request:
+  method: GET
+  path: /api/v0/users?page=1&pageSize=100
+
+expected:
+  status: 403
