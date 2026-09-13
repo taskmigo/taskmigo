@@ -17,7 +17,7 @@ final class LanguageBenchmarkCorpus {
     private static final String EXPECTED_CORPUS_SHA256 =
         "55fa9fe1ac0618b077e5b103db3041c19d8a3dfa6a7af8cafd49b357170f6b0c";
     private static final Pattern LITERAL_PATTERN = Pattern.compile(
-        "\\\"(?:\\\\.|[^\\\"\\\\])*\\\"|\\b\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b"
+        "\"(?:\\\\.|[^\"\\\\])*\"|\\b\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?\\b"
     );
     private static final Pattern WHITESPACE_PATTERN = Pattern.compile("\\s+");
 
