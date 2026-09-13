@@ -23,11 +23,7 @@ import java.util.Map;
 
 RequestAuthorizationResult result = authorization.authorize(
   new AuthorizationPrincipal(userId, username),
-  new AuthorizationRequest(
-    "GET",
-    "/api/v0/projects/" + projectId,
-    Map.of("projectId", projectId.toString())
-  )
+  new AuthorizationRequest("GET", "/api/v0/projects/" + projectId, Map.of("projectId", projectId.toString()))
 );
 ```
 
@@ -56,6 +52,7 @@ Inject `ObjectAuthorization` and the schema for the resource:
 
 ```java
 private final ObjectAuthorization objectAuthorization;
+
 private final ObjectAuthorizationSchema<ProjectInfo> projectSchema;
 ```
 
@@ -71,11 +68,7 @@ ObjectAuthorizationPredicate<ProjectInfo> authorizationPredicate = objectAuthori
 Pass the predicate to the resource service together with the normal query filters:
 
 ```java
-return projects.list(
-  pagination,
-  filter.predicate(),
-  authorizationPredicate
-);
+return projects.list(pagination, filter.predicate(), authorizationPredicate);
 ```
 
 Object Authorization should be applied in the database before pagination.
