@@ -51,7 +51,9 @@ public final class ObjectAuthorizationPredicateArgumentResolver implements Handl
             .stream()
             .filter(candidate -> candidate.objectType().equals(objectType))
             .findFirst()
-            .orElseThrow(() -> new IllegalStateException("No Object Authorization Schema registered for " + objectType.getName()));
+            .orElseThrow(() ->
+                new IllegalStateException("No Object Authorization Schema registered for " + objectType.getName())
+            );
         Object value = webRequest.getAttribute(AuthorizationContext.ATTRIBUTE, RequestAttributes.SCOPE_REQUEST);
         if (!(value instanceof AuthorizationContext context)) {
             throw new IllegalStateException("authorization context is missing for object access");

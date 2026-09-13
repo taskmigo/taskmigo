@@ -73,6 +73,7 @@ class SpringMvcObjectAuthorizationTargetResolverTest {
     }
 
     private static final class TestController {
+
         void list(ObjectAuthorizationPredicate<TestObject> authorization) {}
     }
 

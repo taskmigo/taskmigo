@@ -22,7 +22,8 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 @Component
 @Primary
 public final class SpringMvcObjectAuthorizationTargetResolver
-    implements ObjectAuthorizationTargetResolver, SmartInitializingSingleton {
+    implements ObjectAuthorizationTargetResolver, SmartInitializingSingleton
+{
 
     private final ObjectProvider<RequestMappingHandlerMapping> handlerMappings;
     private final List<ObjectAuthorizationSchema<?>> schemas;
@@ -91,7 +92,9 @@ public final class SpringMvcObjectAuthorizationTargetResolver
             .stream()
             .filter(candidate -> candidate.objectType().equals(objectType))
             .findFirst()
-            .orElseThrow(() -> new IllegalStateException("No Object Authorization Schema registered for " + objectType.getName()));
+            .orElseThrow(() ->
+                new IllegalStateException("No Object Authorization Schema registered for " + objectType.getName())
+            );
     }
 
     private Class<?> objectType(MethodParameter parameter) {
