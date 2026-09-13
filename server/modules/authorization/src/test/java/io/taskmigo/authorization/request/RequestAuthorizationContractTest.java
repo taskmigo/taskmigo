@@ -85,12 +85,7 @@ class RequestAuthorizationContractTest {
                 principal("alice"),
                 new AuthorizationRequest("GET", "/api/v0/users/42", Map.of("userId", "42")),
                 List.of(
-                    statement(
-                        Effect.ALLOW,
-                        "*",
-                        "/api/v0/users/.*",
-                        "return request.pathVariables.userId == \"42\";"
-                    )
+                    statement(Effect.ALLOW, "*", "/api/v0/users/.*", "return request.pathVariables.userId == \"42\";")
                 ),
                 true
             ),
@@ -99,12 +94,7 @@ class RequestAuthorizationContractTest {
                 principal("alice"),
                 new AuthorizationRequest("GET", "/api/v0/users/41", Map.of("userId", "41")),
                 List.of(
-                    statement(
-                        Effect.ALLOW,
-                        "*",
-                        "/api/v0/users/.*",
-                        "return request.pathVariables.userId == \"42\";"
-                    )
+                    statement(Effect.ALLOW, "*", "/api/v0/users/.*", "return request.pathVariables.userId == \"42\";")
                 ),
                 false
             ),
