@@ -154,7 +154,9 @@ class JpaObjectAuthorizationPredicateBinderIntegrationTest {
         static String userSelect() {
             return SQL
                 .stream()
-                .filter(sql -> sql.toLowerCase(Locale.ROOT).contains(" from users "))
+                .filter(sql ->
+                    sql.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ").contains(" from users ")
+                )
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("No SELECT from users was captured: " + SQL));
         }
