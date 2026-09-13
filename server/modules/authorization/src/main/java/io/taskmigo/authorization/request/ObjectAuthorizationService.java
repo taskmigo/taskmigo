@@ -49,7 +49,7 @@ public class ObjectAuthorizationService implements ObjectAuthorization {
             for (var artifact : operation.snapshot().executableStatements()) {
                 var statement = artifact.statement();
                 if (statement.scope() == Scope.OBJECT && artifact.matches(operation.method(), operation.path())) {
-                    CompiledSource policy = operation.snapshot().compiledPolicy(statement);
+                    CompiledSource policy = artifact.policy();
                     ObjectAuthorizationExpressionValidator.validate(
                         policy.map(LanguageObjectAuthorizationExpressionVisitor.INSTANCE),
                         schema

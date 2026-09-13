@@ -9,8 +9,6 @@ import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.object.ObjectAuthorization;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchemaRegistry;
-import io.taskmigo.authorization.request.StatementArtifactFactory;
 import io.taskmigo.authorization.statement.ApiInfo;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
@@ -22,9 +20,10 @@ import io.taskmigo.identity.persistence.query.ObjectAuthorizationPredicateBinder
 import io.taskmigo.identity.persistence.query.QueryPredicateBinder;
 import io.taskmigo.identity.persistence.statement.StatementEntity;
 import io.taskmigo.identity.persistence.statement.StatementRepository;
+import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.LanguageCompiler;
-import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -232,12 +231,10 @@ class StatementServiceTest {
     }
 
     private static StatementExecutionArtifact executable(StatementInfo statement) {
-        return new StatementArtifactFactory(
-            new LanguageCompiler(),
-            List.of(),
-            ObjectAuthorizationSchemaRegistry.all(List.of())
-        )
-            .build(List.of(statement))
-            .getFirst();
+        return new StatementExecutionArtifact(
+            statement,
+            mock(CompiledSource.class),
+            Pattern.compile(statement.target().api().path())
+        );
     }
 }

@@ -7,7 +7,7 @@
         "authorization :: core",
         "authorization :: object",
         "authorization :: object-persistence",
-        "authorization :: request",
+        "authorization :: spi",
         "authorization :: statement",
         "authorization :: role",
     }

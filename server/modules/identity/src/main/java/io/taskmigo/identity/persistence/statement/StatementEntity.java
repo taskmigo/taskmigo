@@ -12,6 +12,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
@@ -46,6 +48,14 @@ public class StatementEntity {
 
     @Column(nullable = false, columnDefinition = "text")
     String policy;
+
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
+    @Nullable
+    Instant createdAt;
+
+    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
+    @Nullable
+    Instant updatedAt;
 
     protected StatementEntity() {}
 
@@ -96,5 +106,13 @@ public class StatementEntity {
 
     public UUID id() {
         return this.id;
+    }
+
+    public Instant createdAt() {
+        return Objects.requireNonNull(this.createdAt, "persisted Statement created_at is not initialized");
+    }
+
+    public Instant updatedAt() {
+        return Objects.requireNonNull(this.updatedAt, "persisted Statement updated_at is not initialized");
     }
 }

@@ -1,6 +1,8 @@
 package io.taskmigo.authorization.request;
 
 import io.taskmigo.authorization.core.AuthorizationException;
+import io.taskmigo.authorization.spi.EffectiveStatement;
+import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
@@ -15,16 +17,12 @@ import org.springframework.stereotype.Service;
 /// Evaluates request-targeted authorization Statements independently of the web security framework.
 @Service
 @SuppressWarnings("checkstyle:OverloadMethodsDeclarationOrder")
-public class RequestAuthorizationService implements RequestAuthorization {
+final class RequestAuthorizationService implements RequestAuthorization {
 
     private final EffectiveStatementResolver statements;
     private final StatementArtifactFactory artifacts;
 
-    /// Creates Request Authorization with effective-state resolution and compiled artifact services.
-    ///
-    /// @param statements resolves committed effective Statements
-    /// @param artifacts builds reusable compiled Statement artifacts
-    public RequestAuthorizationService(EffectiveStatementResolver statements, StatementArtifactFactory artifacts) {
+    RequestAuthorizationService(EffectiveStatementResolver statements, StatementArtifactFactory artifacts) {
         this.statements = statements;
         this.artifacts = artifacts;
     }
@@ -54,8 +52,8 @@ public class RequestAuthorizationService implements RequestAuthorization {
     /// @param roots the approved principal and request values for the operation
     /// @return an immutable authorization snapshot
     AuthorizationSnapshot snapshot(UUID userId, Map<String, ?> roots) {
-        List<StatementInfo> effectiveStatements = this.statements.resolve(userId);
-        return new AuthorizationSnapshot(userId, effectiveStatements, this.artifacts.build(effectiveStatements), roots);
+        List<EffectiveStatement> effectiveStatements = this.statements.resolve(userId);
+        return new AuthorizationSnapshot(userId, this.artifacts.build(effectiveStatements), roots);
     }
 
     /// Returns whether a user is allowed to perform an HTTP request.

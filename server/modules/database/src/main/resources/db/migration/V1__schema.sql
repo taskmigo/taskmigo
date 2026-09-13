@@ -88,11 +88,26 @@ CREATE TABLE statements (
     method VARCHAR(16) NOT NULL,
     path VARCHAR(2000) NOT NULL,
     policy TEXT NOT NULL,
+    created_at timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT uk_statements_name UNIQUE (name),
     CONSTRAINT ck_statements_effect CHECK (effect IN ('ALLOW', 'DENY')),
     CONSTRAINT ck_statements_scope CHECK (scope IN ('OBJECT', 'REQUEST')),
     CONSTRAINT ck_statements_policy_nonblank CHECK (btrim(policy) <> '')
 );
+
+CREATE FUNCTION set_statement_updated_at()
+RETURNS trigger AS $$
+BEGIN
+    NEW.updated_at = GREATEST(clock_timestamp(), OLD.updated_at + INTERVAL '1 microsecond');
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER set_statement_updated_at
+BEFORE UPDATE ON statements
+FOR EACH ROW
+EXECUTE FUNCTION set_statement_updated_at();
 
 CREATE TABLE role_statements (
     role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,

@@ -2,9 +2,10 @@ package io.taskmigo.authorization.request;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.taskmigo.authorization.spi.EffectiveStatement;
+import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
-import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.identity.authorization.role.RoleAuthorizationService;
 import io.taskmigo.identity.authorization.statement.StatementService;
 import io.taskmigo.identity.user.UserService;
@@ -64,11 +65,11 @@ class EffectiveStatementResolverIntegrationTest extends ApiIntegrationTestSuppor
 
         // Act
         this.statistics.clear();
-        List<StatementInfo> baseline = this.resolver.resolve(userId);
+        List<EffectiveStatement> baseline = this.resolver.resolve(userId);
         long baselineQueries = this.statistics.getPrepareStatementCount();
         this.createUnrelatedRoles(100);
         this.statistics.clear();
-        List<StatementInfo> afterGrowth = this.resolver.resolve(userId);
+        List<EffectiveStatement> afterGrowth = this.resolver.resolve(userId);
         long afterGrowthQueries = this.statistics.getPrepareStatementCount();
 
         // Assert
