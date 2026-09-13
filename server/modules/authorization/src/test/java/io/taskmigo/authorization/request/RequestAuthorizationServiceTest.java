@@ -7,9 +7,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.authorization.object.ObjectAuthorizationSchemaRegistry;
 import io.taskmigo.authorization.spi.EffectiveStatement;
 import io.taskmigo.authorization.spi.EffectiveStatementResolver;
+import io.taskmigo.authorization.spi.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.ApiInfo;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
@@ -32,7 +32,7 @@ class RequestAuthorizationServiceTest {
         new StatementArtifactFactory(
             new LanguageCompiler(),
             List.of(),
-            ObjectAuthorizationSchemaRegistry.all(List.of())
+            ObjectAuthorizationTargetResolver.all(List.of())
         )
     );
 
@@ -247,7 +247,7 @@ class RequestAuthorizationServiceTest {
             new StatementArtifactFactory(
                 new LanguageCompiler(),
                 List.of(),
-                ObjectAuthorizationSchemaRegistry.all(List.of())
+                ObjectAuthorizationTargetResolver.all(List.of())
             ).build(statements),
             Map.of("request", Map.of("method", "GET"))
         );

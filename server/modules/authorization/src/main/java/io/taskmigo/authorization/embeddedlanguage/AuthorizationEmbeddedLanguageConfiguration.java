@@ -1,7 +1,7 @@
 package io.taskmigo.authorization.embeddedlanguage;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchemaRegistry;
+import io.taskmigo.authorization.spi.ObjectAuthorizationTargetResolver;
 import io.taskmigo.language.LanguageCompiler;
 import java.util.List;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -20,10 +20,10 @@ public class AuthorizationEmbeddedLanguageConfiguration {
         return new LanguageCompiler(properties.limits());
     }
 
-    /// Provides an explicit all-schema registry when an application has not registered route mappings.
+    /// Provides an all-schema target resolver when an application has no transport-specific target metadata.
     @Bean
-    @ConditionalOnMissingBean(ObjectAuthorizationSchemaRegistry.class)
-    ObjectAuthorizationSchemaRegistry objectAuthorizationSchemaRegistry(List<ObjectAuthorizationSchema<?>> schemas) {
-        return ObjectAuthorizationSchemaRegistry.all(schemas);
+    @ConditionalOnMissingBean(ObjectAuthorizationTargetResolver.class)
+    ObjectAuthorizationTargetResolver objectAuthorizationTargetResolver(List<ObjectAuthorizationSchema<?>> schemas) {
+        return ObjectAuthorizationTargetResolver.all(schemas);
     }
 }

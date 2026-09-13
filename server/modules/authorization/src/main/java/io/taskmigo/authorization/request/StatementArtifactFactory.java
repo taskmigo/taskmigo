@@ -4,8 +4,8 @@ import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfile;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchemaRegistry;
 import io.taskmigo.authorization.spi.EffectiveStatement;
+import io.taskmigo.authorization.spi.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.authorization.statement.StatementInfo;
@@ -33,17 +33,17 @@ final class StatementArtifactFactory {
 
     private final LanguageCompiler compiler;
     private final EnvironmentSchema objectSchema;
-    private final ObjectAuthorizationSchemaRegistry schemaRegistry;
+    private final ObjectAuthorizationTargetResolver targetResolver;
     private final ConcurrentMap<UUID, CachedArtifacts> derived = new ConcurrentHashMap<>();
 
     StatementArtifactFactory(
         LanguageCompiler compiler,
         List<ObjectAuthorizationSchema<?>> schemas,
-        ObjectAuthorizationSchemaRegistry schemaRegistry
+        ObjectAuthorizationTargetResolver targetResolver
     ) {
         this.compiler = compiler;
         this.objectSchema = AuthorizationEmbeddedLanguageSchemas.object(List.copyOf(schemas));
-        this.schemaRegistry = schemaRegistry;
+        this.targetResolver = targetResolver;
     }
 
     /// Derives executable Statements while retaining only the newest observed reusable revision per Statement id.
@@ -108,7 +108,7 @@ final class StatementArtifactFactory {
         if (statement.scope() != Scope.OBJECT) {
             return List.of();
         }
-        return this.schemaRegistry
+        return this.targetResolver
             .applicable(statement.target().api().method(), statement.target().api().path())
             .stream()
             .map(ObjectAuthorizationSchema::identity)
