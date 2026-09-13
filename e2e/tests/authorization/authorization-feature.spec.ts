@@ -294,9 +294,7 @@ const resolveTemplate = (value: unknown, variables: JsonObject): unknown => {
   if (typeof value === "string") {
     const exact = /^\{\{\s*([^{}]+?)\s*\}\}$/.exec(value);
     if (exact) return requiredVariable(variables, exact[1]);
-    return value.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (_, path: string) =>
-      String(requiredVariable(variables, path)),
-    );
+    return value.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (_, path: string) => String(requiredVariable(variables, path)));
   }
   if (Array.isArray(value)) return value.map((item) => resolveTemplate(item, variables));
   if (isRecord(value)) {
@@ -354,7 +352,9 @@ const assertCleanupRouteIsNotDenied = (statement: StatementFixture, cleanupPath:
 };
 
 const loadFeature = (name: string): AuthorizationFeature => {
-  const parsed = parse(readFileSync(new URL(`../../features/authorization/${name}`, import.meta.url), "utf8")) as unknown;
+  const parsed = parse(
+    readFileSync(new URL(`../../features/authorization/${name}`, import.meta.url), "utf8"),
+  ) as unknown;
   if (!isRecord(parsed) || typeof parsed.name !== "string") {
     throw new Error(`Invalid authorization feature file: ${name}`);
   }
