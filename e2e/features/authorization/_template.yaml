@@ -16,6 +16,7 @@
 # Safety: a request-scope DENY must not target the cleanup endpoint
 # PATCH /api/v0/users/{principal.id}/statements.
 
+---
 name: QC authorization case
 tags:
   - request
