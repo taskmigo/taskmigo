@@ -20,7 +20,7 @@ permissions:
   contents: read
 
 env:
-  JMH_STATEMENT_COUNT: "500"
+  JMH_STATEMENT_COUNT: "1000"
   JMH_FORKS: "2"
   JMH_WARMUP_ITERATIONS: "3"
   JMH_WARMUP_TIME: 1s
@@ -74,6 +74,7 @@ jobs:
             -w "$JMH_WARMUP_TIME" \
             -i "$JMH_MEASUREMENT_ITERATIONS" \
             -r "$JMH_MEASUREMENT_TIME" \
+            -p statementCount="$JMH_STATEMENT_COUNT" \
             -foe true \
             -prof "$JMH_PROFILER:dir=$RUNNER_TEMP/jfr" \
             -prof gc \

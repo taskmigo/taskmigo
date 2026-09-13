@@ -1,22 +1,17 @@
 package io.taskmigo.benchmarks.authorization;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.openjdk.jmh.annotations.Scope.Thread;
 
+import io.taskmigo.language.CompilationProfile;
 import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.EnvironmentSchema;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageType;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Pattern;
-import java.util.stream.IntStream;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Mode;
@@ -26,156 +21,70 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.infra.Blackhole;
 
-/// Benchmarks compilation of representative request and object authorization policies.
+/// Benchmarks compilation across simple and complex program and expression source corpora.
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 public class EmbeddedLanguageCompilerBenchmark {
 
-    private static final int DATASET_SIZE = 500;
-    private static final String DATASET_ROOT = "/io/taskmigo/benchmarks/authorization/";
-    private static final Pattern STRING_LITERAL = Pattern.compile("'(?:\\\\.|[^'\\\\])*'|\"(?:\\\\.|[^\"\\\\])*\"");
-    private static final Pattern NUMBER_LITERAL = Pattern.compile("\\b\\d+(?:\\.\\d+)?\\b");
-
-    /// Measures compiling one deterministic batch of authorization policies.
+    /// Measures compiling one deterministic batch of generated benchmark sources.
     @Benchmark
     public void compileBatch(BenchmarkState state, Blackhole blackhole) {
-        List<CompiledSource> compiled = new ArrayList<>(state.policies.size());
-        for (String source : state.policies) {
-            compiled.add(state.compiler.compile(source, state.schema));
+        List<CompiledSource> compiled = new ArrayList<>(state.cases.size());
+        for (LanguageBenchmarkCorpus.BenchmarkCase benchmarkCase : state.cases) {
+            try {
+                compiled.add(state.compiler.compile(benchmarkCase.source(), state.schema, state.profile));
+            } catch (RuntimeException exception) {
+                throw new IllegalStateException(
+                    "Failed benchmark case " + benchmarkCase.id() + ":\n" + benchmarkCase.source(),
+                    exception
+                );
+            }
         }
         blackhole.consume(compiled);
     }
 
-    /// Holds the immutable compiler and loaded policy source used by each benchmark thread.
+    /// Holds the immutable compiler, schema, profile, and source corpus used by each benchmark thread.
     @State(Thread)
     public static class BenchmarkState {
 
-        @Param({ "REQUEST", "OBJECT" })
-        @SuppressWarnings({ "CanBeFinal", "FieldCanBeLocal", "FieldMayBeFinal" })
-        private String scopeName = "REQUEST";
-
         @Param({ "SIMPLE", "COMPLEX" })
         @SuppressWarnings({ "CanBeFinal", "FieldCanBeLocal", "FieldMayBeFinal" })
-        private String programType = "SIMPLE";
+        private String complexity = "SIMPLE";
 
-        @Param({ "500" })
+        @Param({ "PROGRAM", "EXPRESSION" })
         @SuppressWarnings({ "CanBeFinal", "FieldCanBeLocal", "FieldMayBeFinal" })
-        private String statementCount = "500";
+        private String compilationMode = "PROGRAM";
+
+        @Param({ "1000" })
+        @SuppressWarnings({ "CanBeFinal", "FieldCanBeLocal", "FieldMayBeFinal" })
+        private String statementCount = "1000";
 
         private final LanguageCompiler compiler = new LanguageCompiler();
-        private EnvironmentSchema schema = schema("REQUEST");
-        private List<String> policies = List.of();
+        private final EnvironmentSchema schema = schema();
+        private CompilationProfile profile = CompilationProfile.program();
+        private List<LanguageBenchmarkCorpus.BenchmarkCase> cases = List.of();
 
-        /// Loads deterministic policy sources before JMH starts measuring the benchmark.
+        /// Generates and validates the selected deterministic corpus before JMH starts measuring compilation.
         @Setup
         public void setUp() {
-            this.schema = schema(this.scopeName);
-            this.policies = policies(this.scopeName, this.programType, Integer.parseInt(this.statementCount));
-        }
-    }
-
-    private static List<String> policies(String scope, String policyType, int count) {
-        if (count < 1 || count > DATASET_SIZE) {
-            throw new IllegalArgumentException("statementCount must be between 1 and " + DATASET_SIZE);
-        }
-        List<String[]> rows = rows(datasetResource(policyType));
-        if (rows.size() != DATASET_SIZE) {
-            throw new IllegalStateException("Benchmark dataset must contain exactly " + DATASET_SIZE + " statements");
-        }
-        IntStream.range(0, rows.size()).forEach(index -> validateRow(rows.get(index), index));
-        validateDataset(rows, policyType);
-        int column = "REQUEST".equals(scope) ? 1 : 2;
-        List<String> policies = rows
-            .subList(0, count)
-            .stream()
-            .map(row -> row[column])
-            .toList();
-        if (policies.stream().distinct().count() != policies.size()) {
-            throw new IllegalStateException("Benchmark dataset must contain only unique statements");
-        }
-        return policies;
-    }
-
-    private static String datasetResource(String policyType) {
-        return switch (policyType) {
-            case "SIMPLE" -> DATASET_ROOT + "simple-statements.tsv";
-            case "COMPLEX" -> DATASET_ROOT + "complex-statements.tsv";
-            default -> throw new IllegalArgumentException("Unknown policy type: " + policyType);
-        };
-    }
-
-    private static int expectedStructuralFamilies(String policyType) {
-        return switch (policyType) {
-            case "SIMPLE" -> 100;
-            case "COMPLEX" -> 125;
-            default -> throw new IllegalArgumentException("Unknown policy type: " + policyType);
-        };
-    }
-
-    private static List<String[]> rows(String resource) {
-        var stream = EmbeddedLanguageCompilerBenchmark.class.getResourceAsStream(resource);
-        if (stream == null) {
-            throw new IllegalStateException("Missing benchmark dataset: " + resource);
-        }
-        try (var reader = new BufferedReader(new InputStreamReader(stream, UTF_8))) {
-            String header = reader.readLine();
-            if (!"id\trequest\tobject".equals(header)) {
-                throw new IllegalStateException("Invalid benchmark dataset header: " + resource);
-            }
-            return reader
-                .lines()
-                .map(line -> line.split("\\t", -1))
-                .toList();
-        } catch (IOException exception) {
-            throw new IllegalStateException("Cannot read benchmark dataset: " + resource, exception);
-        }
-    }
-
-    private static void validateDataset(List<String[]> rows, String policyType) {
-        int expectedFamilies = expectedStructuralFamilies(policyType);
-        validateDatasetColumn(rows, 1, expectedFamilies);
-        validateDatasetColumn(rows, 2, expectedFamilies);
-    }
-
-    private static void validateDatasetColumn(List<String[]> rows, int column, int expectedFamilies) {
-        if (
-            rows
-                .stream()
-                .map(row -> row[column])
-                .distinct()
-                .count() != DATASET_SIZE
-        ) {
-            throw new IllegalStateException("Benchmark dataset must contain only unique statements");
-        }
-        long families = rows
-            .stream()
-            .map(row -> structuralFingerprint(row[column]))
-            .distinct()
-            .count();
-        if (families != expectedFamilies) {
-            throw new IllegalStateException(
-                "Benchmark dataset must contain exactly " + expectedFamilies + " structural families"
+            this.profile = profile(this.compilationMode);
+            this.cases = LanguageBenchmarkCorpus.cases(
+                this.complexity,
+                this.compilationMode,
+                Integer.parseInt(this.statementCount)
             );
         }
     }
 
-    /// Removes literal-only differences so changing a value does not count as structural diversity.
-    private static String structuralFingerprint(String source) {
-        String normalized = STRING_LITERAL.matcher(source).replaceAll("'#'");
-        normalized = NUMBER_LITERAL.matcher(normalized).replaceAll("#");
-        return normalized.replaceAll("\\s+", " ").trim();
+    private static CompilationProfile profile(String mode) {
+        return switch (mode) {
+            case "PROGRAM" -> CompilationProfile.program();
+            case "EXPRESSION" -> CompilationProfile.expression();
+            default -> throw new IllegalArgumentException("Unknown compilation mode: " + mode);
+        };
     }
 
-    private static void validateRow(String[] row, int index) {
-        if (row.length != 3 || row[1].isBlank() || row[2].isBlank()) {
-            throw new IllegalStateException("Invalid benchmark dataset row: " + index);
-        }
-        if (!row[0].equals("%03d".formatted(index))) {
-            throw new IllegalStateException("Benchmark dataset IDs must be contiguous from 000 to 499");
-        }
-    }
-
-    private static EnvironmentSchema schema(String scope) {
+    private static EnvironmentSchema schema() {
         MapBuilder roots = new MapBuilder();
         roots.add(
             "principal",
@@ -202,50 +111,47 @@ public class EmbeddedLanguageCompilerBenchmark {
                 field(LanguageType.Scalar.NUMBER)
             )
         );
-        if ("REQUEST".equals(scope)) {
-            roots.add(
-                "request",
-                Map.of(
-                    "method",
-                    field(LanguageType.Scalar.STRING),
-                    "path",
-                    field(LanguageType.Scalar.STRING),
-                    "pathVariables",
-                    dynamicString(),
-                    "version",
-                    field(LanguageType.Scalar.NUMBER),
-                    "sequence",
-                    field(LanguageType.Scalar.NUMBER)
-                )
-            );
-        } else {
-            roots.add(
-                "object",
-                Map.of(
-                    "ownerId",
-                    field(LanguageType.Scalar.STRING),
-                    "status",
-                    field(LanguageType.Scalar.STRING),
-                    "kind",
-                    field(LanguageType.Scalar.STRING),
-                    "tenantId",
-                    field(LanguageType.Scalar.STRING),
-                    "visibility",
-                    field(LanguageType.Scalar.STRING),
-                    "enabled",
-                    field(LanguageType.Scalar.BOOL),
-                    "score",
-                    field(LanguageType.Scalar.NUMBER),
-                    "version",
-                    field(LanguageType.Scalar.NUMBER),
-                    "priority",
-                    field(LanguageType.Scalar.NUMBER),
-                    "rank",
-                    field(LanguageType.Scalar.NUMBER)
-                )
-            );
-        }
-        return new EnvironmentSchema("benchmark." + scope.toLowerCase(), roots.build());
+        roots.add(
+            "request",
+            Map.of(
+                "method",
+                field(LanguageType.Scalar.STRING),
+                "path",
+                field(LanguageType.Scalar.STRING),
+                "pathVariables",
+                dynamicString(),
+                "version",
+                field(LanguageType.Scalar.NUMBER),
+                "sequence",
+                field(LanguageType.Scalar.NUMBER)
+            )
+        );
+        roots.add(
+            "object",
+            Map.of(
+                "ownerId",
+                field(LanguageType.Scalar.STRING),
+                "status",
+                field(LanguageType.Scalar.STRING),
+                "kind",
+                field(LanguageType.Scalar.STRING),
+                "tenantId",
+                field(LanguageType.Scalar.STRING),
+                "visibility",
+                field(LanguageType.Scalar.STRING),
+                "enabled",
+                field(LanguageType.Scalar.BOOL),
+                "score",
+                field(LanguageType.Scalar.NUMBER),
+                "version",
+                field(LanguageType.Scalar.NUMBER),
+                "priority",
+                field(LanguageType.Scalar.NUMBER),
+                "rank",
+                field(LanguageType.Scalar.NUMBER)
+            )
+        );
+        return new EnvironmentSchema("benchmark.authorization", roots.build());
     }
 
     private static EnvironmentSchema.Field field(LanguageType type) {
