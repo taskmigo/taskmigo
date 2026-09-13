@@ -11,6 +11,8 @@ import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchemaRegistration;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchemaRegistry;
+import io.taskmigo.authorization.spi.EffectiveStatement;
+import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.ApiInfo;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
@@ -19,6 +21,7 @@ import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.TargetInfo;
 import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.LanguageCompiler;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -207,7 +210,9 @@ class ObjectAuthorizationServiceTest {
             "return true;"
         );
         StatementInfo objectStatement = statement(Effect.ALLOW, "return object.name == \"alice\";");
-        Mockito.when(resolver.resolve(userId)).thenReturn(List.of(requestStatement, objectStatement));
+        Mockito.when(resolver.resolve(userId)).thenReturn(
+            List.of(effective(requestStatement), effective(objectStatement))
+        );
         RequestAuthorizationService requestAuthorization = new RequestAuthorizationService(resolver, this.artifacts);
 
         // Act
@@ -250,12 +255,16 @@ class ObjectAuthorizationServiceTest {
     }
 
     private AuthorizationOperation operation(StatementInfo statement) {
-        List<StatementExecutionArtifact> executable = this.artifacts.build(List.of(statement));
+        List<StatementExecutionArtifact> executable = this.artifacts.build(List.of(effective(statement)));
         return new AuthorizationOperation(
-            new AuthorizationSnapshot(UUID.randomUUID(), List.of(statement), executable, Map.of()),
+            new AuthorizationSnapshot(UUID.randomUUID(), executable, Map.of()),
             "GET",
             "/api/v0/objects"
         );
+    }
+
+    private static EffectiveStatement effective(StatementInfo statement) {
+        return new EffectiveStatement(statement, Instant.EPOCH);
     }
 
     private static StatementInfo statement(Effect effect, String policy) {

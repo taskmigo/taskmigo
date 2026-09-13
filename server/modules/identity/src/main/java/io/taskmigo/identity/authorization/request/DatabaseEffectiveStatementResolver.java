@@ -1,7 +1,7 @@
 package io.taskmigo.identity.authorization.request;
 
-import io.taskmigo.authorization.request.EffectiveStatementResolver;
-import io.taskmigo.authorization.statement.StatementInfo;
+import io.taskmigo.authorization.spi.EffectiveStatement;
+import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.identity.persistence.group.GroupEntity;
 import io.taskmigo.identity.persistence.group.GroupRepository;
 import io.taskmigo.identity.persistence.role.RoleEntity;
@@ -46,14 +46,21 @@ public class DatabaseEffectiveStatementResolver implements EffectiveStatementRes
     /// Each hierarchy frontier is fetched in one targeted batch and traversed with visited-node semantics, so shared
     /// descendants and corrupted cycles cannot cause duplicate results or infinite traversal. The independent
     /// repeatable-read transaction intentionally isolates the authorization snapshot from any caller transaction.
-    /// Results are ordered by Statement id.
+    /// Results are ordered by Statement id and include each row's database-owned `updated_at` revision.
     ///
     /// @param userId the User whose effective authorization Statements are required
-    /// @return every effective Statement exactly once
+    /// @return every effective Statement exactly once with its persisted revision
     /// @throws UserException if the User does not exist
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ, propagation = Propagation.REQUIRES_NEW)
     @Override
-    public List<StatementInfo> resolve(UUID userId) {
+    public List<EffectiveStatement> resolve(UUID userId) {
+        return this.resolveEntities(userId)
+            .stream()
+            .map(entity -> new EffectiveStatement(entity.info(), entity.updatedAt()))
+            .toList();
+    }
+
+    private List<StatementEntity> resolveEntities(UUID userId) {
         UserEntity user = this.users
             .findById(userId)
             .orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"));
@@ -88,7 +95,6 @@ public class DatabaseEffectiveStatementResolver implements EffectiveStatementRes
             .findAllByIdIn(statementIds)
             .stream()
             .sorted((left, right) -> left.id().compareTo(right.id()))
-            .map(StatementEntity::info)
             .toList();
     }
 }

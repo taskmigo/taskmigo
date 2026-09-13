@@ -3,8 +3,9 @@ package io.taskmigo.rest.api.v0.auth.user;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.authorization.request.EffectiveStatementResolver;
 import io.taskmigo.authorization.role.RoleInfo;
+import io.taskmigo.authorization.spi.EffectiveStatement;
+import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.identity.authorization.role.RoleService;
 import io.taskmigo.identity.group.GroupService;
@@ -222,7 +223,12 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
         this.users.setStatements(user, List.of(directStatement, sharedStatement));
 
         // Act
-        List<String> names = this.statementResolver.resolve(user).stream().map(StatementInfo::name).toList();
+        List<String> names = this.statementResolver
+            .resolve(user)
+            .stream()
+            .map(EffectiveStatement::statement)
+            .map(StatementInfo::name)
+            .toList();
 
         // Assert
         assertThat(names).containsExactlyInAnyOrder(

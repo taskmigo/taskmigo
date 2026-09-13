@@ -8,6 +8,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.taskmigo.authorization.spi.EffectiveStatement;
 import io.taskmigo.authorization.statement.ApiInfo;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
@@ -21,6 +22,7 @@ import io.taskmigo.identity.persistence.statement.StatementEntity;
 import io.taskmigo.identity.persistence.statement.StatementRepository;
 import io.taskmigo.identity.persistence.user.UserEntity;
 import io.taskmigo.identity.persistence.user.UserRepository;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -94,7 +96,12 @@ class EffectiveStatementResolverTest {
         );
 
         // Act
-        List<String> names = this.resolver.resolve(USER_ID).stream().map(StatementInfo::name).toList();
+        List<String> names = this.resolver
+            .resolve(USER_ID)
+            .stream()
+            .map(EffectiveStatement::statement)
+            .map(StatementInfo::name)
+            .toList();
 
         // Assert
         assertThat(names).containsExactly("direct", "shared", "inherited", "group");
@@ -130,7 +137,7 @@ class EffectiveStatementResolverTest {
         when(this.statements.findAllByIdIn(anyCollection())).thenReturn(resolvedStatements);
 
         // Act
-        List<StatementInfo> result = this.resolver.resolve(USER_ID);
+        List<EffectiveStatement> result = this.resolver.resolve(USER_ID);
 
         // Assert
         assertThat(result).hasSize(500);
@@ -166,6 +173,7 @@ class EffectiveStatementResolverTest {
                 "return true;"
             )
         );
+        when(statement.updatedAt()).thenReturn(Instant.EPOCH);
         return statement;
     }
 

@@ -1,8 +1,6 @@
 package io.taskmigo.authorization.request;
 
 import io.taskmigo.authorization.statement.StatementExecutionArtifact;
-import io.taskmigo.authorization.statement.StatementInfo;
-import io.taskmigo.language.CompiledSource;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -13,34 +11,11 @@ import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /// Captures the immutable authorization state used throughout one request or authorization operation.
-record AuthorizationSnapshot(
-    UUID userId,
-    List<StatementInfo> statements,
-    List<StatementExecutionArtifact> executableStatements,
-    Map<String, ?> roots
-) {
+record AuthorizationSnapshot(UUID userId, List<StatementExecutionArtifact> executableStatements, Map<String, ?> roots) {
     /// Creates a snapshot with immutable executable Statements and authorization input values.
     public AuthorizationSnapshot {
-        List<StatementInfo> effectiveStatements = List.copyOf(statements);
-        statements = effectiveStatements;
         executableStatements = List.copyOf(executableStatements);
-        if (
-            executableStatements.size() != statements.size() ||
-            executableStatements.stream().anyMatch(artifact -> !effectiveStatements.contains(artifact.statement()))
-        ) {
-            throw new IllegalArgumentException("authorization snapshot artifacts do not match effective Statements");
-        }
         roots = immutableMap(roots);
-    }
-
-    /// Returns the compiled Language source associated with an effective Statement.
-    public CompiledSource compiledPolicy(StatementInfo statement) {
-        return this.executableStatements
-            .stream()
-            .filter(artifact -> artifact.statement().id().equals(statement.id()))
-            .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("authorization snapshot is missing a compiled policy"))
-            .policy();
     }
 
     private static Map<String, ?> immutableMap(Map<String, ?> values) {

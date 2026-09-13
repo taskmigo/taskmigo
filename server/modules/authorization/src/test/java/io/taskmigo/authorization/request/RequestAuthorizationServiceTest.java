@@ -8,12 +8,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationSchemaRegistry;
+import io.taskmigo.authorization.spi.EffectiveStatement;
+import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.ApiInfo;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.TargetInfo;
 import io.taskmigo.language.LanguageCompiler;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -44,7 +47,7 @@ class RequestAuthorizationServiceTest {
     void shouldAllowRequestWhenMatchingAllowStatementExists() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        when(this.statements.resolve(userId)).thenReturn(List.of(statement(Effect.ALLOW)));
+        when(this.statements.resolve(userId)).thenReturn(List.of(effective(Effect.ALLOW)));
 
         // Act
         RequestAuthorizationDecision result = this.service.authorize(
@@ -69,7 +72,7 @@ class RequestAuthorizationServiceTest {
     void shouldDenyRequestWhenMatchingDenyStatementExists() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        when(this.statements.resolve(userId)).thenReturn(List.of(statement(Effect.ALLOW), statement(Effect.DENY)));
+        when(this.statements.resolve(userId)).thenReturn(List.of(effective(Effect.ALLOW), effective(Effect.DENY)));
 
         // Act
         RequestAuthorizationDecision result = this.service.authorize(
@@ -95,7 +98,7 @@ class RequestAuthorizationServiceTest {
         // Arrange
         UUID userId = UUID.randomUUID();
         when(this.statements.resolve(userId)).thenReturn(
-            List.of(statement(Effect.ALLOW, "return request.method == \"GET\";"))
+            List.of(effective(Effect.ALLOW, "return request.method == \"GET\";"))
         );
 
         // Act
@@ -130,8 +133,8 @@ class RequestAuthorizationServiceTest {
         UUID userId = UUID.randomUUID();
         when(this.statements.resolve(userId)).thenReturn(
             List.of(
-                statement(Effect.ALLOW, "return request.method == \"GET\";"),
-                statement(Effect.DENY, "return principal.username == \"blocked\";")
+                effective(Effect.ALLOW, "return request.method == \"GET\";"),
+                effective(Effect.DENY, "return principal.username == \"blocked\";")
             )
         );
 
@@ -166,7 +169,7 @@ class RequestAuthorizationServiceTest {
         // Arrange
         UUID userId = UUID.randomUUID();
         when(this.statements.resolve(userId)).thenReturn(
-            List.of(statement(Effect.ALLOW, "return request.method == ;"))
+            List.of(effective(Effect.ALLOW, "return request.method == ;"))
         );
 
         // Act
@@ -212,7 +215,7 @@ class RequestAuthorizationServiceTest {
         // Arrange
         UUID userId = UUID.randomUUID();
         when(this.statements.resolve(userId)).thenReturn(
-            List.of(statement(Effect.ALLOW, "return request.pathVariables.userId == \"42\";"))
+            List.of(effective(Effect.ALLOW, "return request.pathVariables.userId == \"42\";"))
         );
 
         // Act
@@ -238,10 +241,9 @@ class RequestAuthorizationServiceTest {
     void shouldReuseAuthorizationSnapshotWhenRequestStateChanges() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        List<StatementInfo> statements = List.of(statement(Effect.ALLOW));
+        List<EffectiveStatement> statements = List.of(effective(Effect.ALLOW));
         AuthorizationSnapshot snapshot = new AuthorizationSnapshot(
             userId,
-            statements,
             new StatementArtifactFactory(
                 new LanguageCompiler(),
                 List.of(),
@@ -269,7 +271,7 @@ class RequestAuthorizationServiceTest {
     void shouldResolveEffectiveStatementsForEveryAuthorizationOperation() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        when(this.statements.resolve(userId)).thenReturn(List.of(statement(Effect.ALLOW)));
+        when(this.statements.resolve(userId)).thenReturn(List.of(effective(Effect.ALLOW)));
 
         // Act
         this.service.authorize(userId, "GET", "/api/v0/users", Map.of());
@@ -290,7 +292,7 @@ class RequestAuthorizationServiceTest {
     void shouldReturnReusableContextWhenTypedRequestAuthorizationSucceeds() {
         // Arrange
         UUID userId = UUID.randomUUID();
-        when(this.statements.resolve(userId)).thenReturn(List.of(statement(Effect.ALLOW)));
+        when(this.statements.resolve(userId)).thenReturn(List.of(effective(Effect.ALLOW)));
 
         // Act
         RequestAuthorizationResult result = this.service.authorize(
@@ -316,7 +318,7 @@ class RequestAuthorizationServiceTest {
         // Arrange
         UUID userId = UUID.randomUUID();
         when(this.statements.resolve(userId)).thenReturn(
-            List.of(statement(Effect.ALLOW), statement(Effect.DENY, "return true;"))
+            List.of(effective(Effect.ALLOW), effective(Effect.DENY, "return true;"))
         );
 
         // Act
@@ -331,8 +333,12 @@ class RequestAuthorizationServiceTest {
         assertThat(result.allowed()).isFalse();
     }
 
-    private static StatementInfo statement(Effect effect) {
-        return statement(effect, "return true;");
+    private static EffectiveStatement effective(Effect effect) {
+        return effective(effect, "return true;");
+    }
+
+    private static EffectiveStatement effective(Effect effect, String policy) {
+        return new EffectiveStatement(statement(effect, policy), Instant.EPOCH);
     }
 
     private static StatementInfo statement(Effect effect, String policy) {
