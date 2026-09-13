@@ -4,7 +4,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 
-import { e2eApiEnvironment, e2eEnvironment } from "../support/environment";
+import { e2eApiEnvironment, e2eEnvironment } from "../support/environment.js";
 
 type JsonObject = Record<string, unknown>;
 
