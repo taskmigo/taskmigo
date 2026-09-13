@@ -11,10 +11,7 @@ public interface ObjectAuthorizationTargetResolver {
 
     /// Creates the framework-free fallback that applies every known schema to every target.
     static ObjectAuthorizationTargetResolver all(Collection<? extends ObjectAuthorizationSchema<?>> schemas) {
-        List<ObjectAuthorizationSchema<?>> declared = schemas
-            .stream()
-            .map(schema -> (ObjectAuthorizationSchema<?>) schema)
-            .toList();
+        List<ObjectAuthorizationSchema<?>> declared = List.copyOf(schemas);
         return (method, path) -> declared;
     }
 }

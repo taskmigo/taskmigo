@@ -7,7 +7,6 @@ import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.authorization.role.RoleService;
 import io.taskmigo.identity.authorization.statement.StatementService;
-import io.taskmigo.identity.group.GroupInfo;
 import io.taskmigo.identity.group.GroupService;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.UserService;
