@@ -1,0 +1,64 @@
+# Copy this file to a new *.yaml file in this directory and fill in the case.
+# Files beginning with '_' are documentation/templates and are not executed.
+#
+# The runner uses the deployed public HTTP API only. It creates fixtures first,
+# creates the listed Statements, assigns them directly to the E2E principal,
+# sends `request`, checks `expected`, and clears direct Statements afterward.
+#
+# Available placeholders:
+#   {{runId}}
+#   {{principal.id}}
+#   {{principal.username}}
+#   {{users.<alias>.id}}
+#   {{users.<alias>.username}}
+#   {{statements.<alias>.id}}
+#
+# Safety: a request-scope DENY must not target the cleanup endpoint
+# PATCH /api/v0/users/{principal.id}/statements.
+
+name: QC authorization case
+tags:
+  - request
+
+setup:
+  users:
+    - alias: target
+      username: qc-target-{{runId}}
+      emails:
+        - qc-target-{{runId}}@example.com
+      firstName: QC
+      lastName: Target
+
+  statements:
+    - alias: policy
+      effect: deny
+      scope: request
+      target:
+        method: GET
+        path: /api/v0/users
+      policy: |
+        return principal.username == "system" && request.method == "GET";
+
+request:
+  method: GET
+  path: /api/v0/users?page=1&pageSize=100
+  # headers:
+  #   X-Test-Header: value
+  # body:
+  #   any: json-compatible value
+
+expected:
+  status: 403
+  # `contains` is a recursive partial match against the JSON response body.
+  # body:
+  #   contains:
+  #     success: false
+  #     statusCode: 403
+  #
+  # `collections` asserts partial objects inside a response array.
+  #   collections:
+  #     - path: data
+  #       contains:
+  #         - username: "{{users.target.username}}"
+  #       excludes:
+  #         - username: some-hidden-user
