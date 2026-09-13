@@ -48,8 +48,8 @@ class GroupController {
         ObjectAuthorizationPredicate<GroupInfo> authorization
     ) {
         OffsetPage<GroupInfo> groups = this.groups.list(
-            pagination.page(),
-            pagination.pageSize(),
+            pagination.getPage(),
+            pagination.getPageSize(),
             filter.predicate(),
             authorization
         );

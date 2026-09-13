@@ -18,16 +18,8 @@ public final class OffsetPageRequest {
     @Schema(description = "Number of items per page", defaultValue = "20", minimum = "1", maximum = "100")
     private int pageSize = 20;
 
-    public int page() {
-        return this.page;
-    }
-
     public int getPage() {
         return this.page;
-    }
-
-    public int pageSize() {
-        return this.pageSize;
     }
 
     public int getPageSize() {
