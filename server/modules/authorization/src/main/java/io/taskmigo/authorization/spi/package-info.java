@@ -1,4 +1,4 @@
-/// Defines persistence-facing authorization ports without exposing request-evaluation implementation details.
+/// Defines integration-facing authorization ports without exposing request-evaluation implementation details.
 @NamedInterface("spi")
 @NullMarked
 package io.taskmigo.authorization.spi;

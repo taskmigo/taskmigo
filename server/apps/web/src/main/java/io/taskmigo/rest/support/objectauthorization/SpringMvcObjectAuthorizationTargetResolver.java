@@ -6,6 +6,7 @@ import io.taskmigo.authorization.spi.ObjectAuthorizationTargetResolver;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.regex.Pattern;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
@@ -60,10 +61,11 @@ public final class SpringMvcObjectAuthorizationTargetResolver
     }
 
     private List<Route> routes(RequestMappingInfo mapping, HandlerMethod handler) {
-        ObjectAuthorizationSchema<?> schema = this.schema(handler);
-        if (schema == null) {
+        Optional<ObjectAuthorizationSchema<?>> schema = this.schema(handler);
+        if (schema.isEmpty()) {
             return List.of();
         }
+        ObjectAuthorizationSchema<?> declaredSchema = schema.orElseThrow();
         String version = mapping.getVersionCondition().getVersion();
         List<String> methods = mapping.getMethodsCondition().getMethods().isEmpty()
             ? List.of("*")
@@ -72,29 +74,30 @@ public final class SpringMvcObjectAuthorizationTargetResolver
             .getPatternValues()
             .stream()
             .map(pattern -> version == null ? pattern : pattern.replace("{version}", version))
-            .flatMap(route -> methods.stream().map(method -> new Route(method, route, schema)))
+            .flatMap(route -> methods.stream().map(method -> new Route(method, route, declaredSchema)))
             .toList();
     }
 
-    private ObjectAuthorizationSchema<?> schema(HandlerMethod handler) {
-        List<Class<?>> objectTypes = Arrays.stream(handler.getMethodParameters())
+    private Optional<ObjectAuthorizationSchema<?>> schema(HandlerMethod handler) {
+        List<MethodParameter> authorizationParameters = Arrays.stream(handler.getMethodParameters())
             .filter(parameter -> parameter.getParameterType() == ObjectAuthorizationPredicate.class)
-            .map(this::objectType)
             .toList();
-        if (objectTypes.isEmpty()) {
-            return null;
+        if (authorizationParameters.isEmpty()) {
+            return Optional.empty();
         }
-        if (objectTypes.size() != 1) {
+        if (authorizationParameters.size() != 1) {
             throw new IllegalStateException("A handler may declare only one ObjectAuthorizationPredicate");
         }
-        Class<?> objectType = objectTypes.getFirst();
-        return this.schemas
-            .stream()
-            .filter(candidate -> candidate.objectType().equals(objectType))
-            .findFirst()
-            .orElseThrow(() ->
-                new IllegalStateException("No Object Authorization Schema registered for " + objectType.getName())
-            );
+        Class<?> objectType = this.objectType(authorizationParameters.getFirst());
+        return Optional.of(
+            this.schemas
+                .stream()
+                .filter(candidate -> candidate.objectType().equals(objectType))
+                .findFirst()
+                .orElseThrow(() ->
+                    new IllegalStateException("No Object Authorization Schema registered for " + objectType.getName())
+                )
+        );
     }
 
     private Class<?> objectType(MethodParameter parameter) {

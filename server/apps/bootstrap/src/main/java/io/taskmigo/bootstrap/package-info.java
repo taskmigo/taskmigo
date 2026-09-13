@@ -3,6 +3,7 @@
     allowedDependencies = {
         "authorization :: object",
         "authorization :: role",
+        "authorization :: spi",
         "authorization :: statement",
         "identity :: user",
         "identity :: group",
