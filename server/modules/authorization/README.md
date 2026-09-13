@@ -1,6 +1,6 @@
 # Authorization
 
-Use this module to make authorization decisions for HTTP requests and to restrict which objects a user may see.
+Use this module to decide whether a user may perform a request and to restrict which objects that user may see.
 
 ## Add the module
 
@@ -10,7 +10,7 @@ dependencies {
 }
 ```
 
-## Request authorization
+## Authorize a request
 
 Inject `RequestAuthorization`, then pass the authenticated user and current request.
 
@@ -20,60 +20,46 @@ import io.taskmigo.authorization.request.AuthorizationRequest;
 import io.taskmigo.authorization.request.RequestAuthorization;
 import io.taskmigo.authorization.request.RequestAuthorizationResult;
 import java.util.Map;
-import java.util.UUID;
 
-final class ProjectAuthorization {
-
-  private final RequestAuthorization authorization;
-
-  ProjectAuthorization(RequestAuthorization authorization) {
-    this.authorization = authorization;
-  }
-
-  RequestAuthorizationResult authorize(UUID userId, String username, UUID projectId) {
-    return this.authorization.authorize(
-      new AuthorizationPrincipal(userId, username),
-      new AuthorizationRequest(
-        "GET",
-        "/api/v0/projects/" + projectId,
-        Map.of("projectId", projectId.toString())
-      )
-    );
-  }
-}
+RequestAuthorizationResult result = authorization.authorize(
+  new AuthorizationPrincipal(userId, username),
+  new AuthorizationRequest(
+    "GET",
+    "/api/v0/projects/" + projectId,
+    Map.of("projectId", projectId.toString())
+  )
+);
 ```
 
 Check the result before continuing:
 
 ```java
-RequestAuthorizationResult result = authorization.authorize(principal, request);
-
 if (!result.granted()) {
   // Reject the request.
   return;
 }
 ```
 
-The returned `AuthorizationContext` must be reused for Object Authorization in the same request:
+The result also contains an `AuthorizationContext` for the current operation:
 
 ```java
 AuthorizationContext context = result.context();
 ```
 
-Do not cache or reuse that context across unrelated requests.
+Reuse this context when Object Authorization is needed later in the same request. Do not cache or reuse it across unrelated requests.
 
-## Object authorization
+## Authorize objects
 
-Use `ObjectAuthorization` when a list/query must return only objects visible to the current user.
+Use `ObjectAuthorization` when a list or query must return only objects visible to the current user.
 
-Inject:
+Inject `ObjectAuthorization` and the schema for the resource:
 
 ```java
 private final ObjectAuthorization objectAuthorization;
 private final ObjectAuthorizationSchema<ProjectInfo> projectSchema;
 ```
 
-Then authorize the object query with the same `AuthorizationContext` produced by Request Authorization:
+Then authorize the object query with the same `AuthorizationContext` returned by Request Authorization:
 
 ```java
 ObjectAuthorizationPredicate<ProjectInfo> authorizationPredicate = objectAuthorization.authorize(
@@ -82,7 +68,7 @@ ObjectAuthorizationPredicate<ProjectInfo> authorizationPredicate = objectAuthori
 );
 ```
 
-Pass that predicate to the persistence layer together with the normal query filters:
+Pass the predicate to the resource service together with the normal query filters:
 
 ```java
 return projects.list(
@@ -92,69 +78,13 @@ return projects.list(
 );
 ```
 
-The resource-owning module is responsible for translating `ObjectAuthorizationPredicate<Q>` into its database query.
-
-Object Authorization must be applied before pagination.
-
-## Adding Object Authorization to a new resource
-
-A resource that supports Object Authorization needs an `ObjectAuthorizationSchema<Q>` describing the fields that policies may reference.
-
-Example:
-
-```java
-@Bean
-ObjectAuthorizationSchema<ProjectInfo> projectObjectAuthorizationSchema() {
-  List<ObjectAuthorizationField> fields = List.of(
-    new ObjectAuthorizationField(
-      ObjectAuthorizationPath.parse("id"),
-      ResolvableType.forClass(UUID.class),
-      false
-    ),
-    new ObjectAuthorizationField(
-      ObjectAuthorizationPath.parse("name"),
-      ResolvableType.forClass(String.class),
-      false
-    )
-  );
-
-  return new ObjectAuthorizationSchema<>() {
-    @Override
-    public Class<ProjectInfo> objectType() {
-      return ProjectInfo.class;
-    }
-
-    @Override
-    public Optional<ObjectAuthorizationField> field(ObjectAuthorizationPath path) {
-      return fields.stream().filter((field) -> field.path().equals(path)).findFirst();
-    }
-
-    @Override
-    public Collection<ObjectAuthorizationField> fields() {
-      return fields;
-    }
-  };
-}
-```
-
-Register the API route that uses the schema:
-
-```java
-@Bean
-ObjectAuthorizationSchemaRegistry objectAuthorizationSchemaRegistry(
-  ObjectAuthorizationSchema<ProjectInfo> projects
-) {
-  return ObjectAuthorizationSchemaRegistry.of(
-    List.of(new ObjectAuthorizationSchemaRegistration("GET", "/api/v0/projects", projects))
-  );
-}
-```
+Object Authorization should be applied in the database before pagination.
 
 ## Statements
 
-Authorization rules are stored as Statements.
+Authorization rules are defined as Statements.
 
-Example Request Statement:
+A Request Statement controls whether the request itself is allowed:
 
 ```yaml
 name: read-projects
@@ -168,7 +98,7 @@ policy: |
   return request.method == "GET";
 ```
 
-Example Object Statement:
+An Object Statement controls which objects are visible:
 
 ```yaml
 name: read-own-projects
@@ -182,7 +112,7 @@ policy: |
   return object.ownerId == principal.id;
 ```
 
-Available policy roots are:
+Policies can use these roots:
 
 | Root        | Request Statement | Object Statement |
 | ----------- | ----------------- | ---------------- |
@@ -227,4 +157,4 @@ ObjectAuthorizationPredicate
 Database query
 ```
 
-For the full authorization semantics and constraints, see the [Authorization specification](https://github.com/taskmigo/specification/tree/next/specification/002.%20Authorization).
+For advanced behavior and constraints, see the [Authorization specification](https://github.com/taskmigo/specification/tree/next/specification/002.%20Authorization).
