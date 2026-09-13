@@ -1,0 +1,27 @@
+name: Request authorization allows when the deny policy does not match
+tags:
+  - request
+  - allow
+
+setup:
+  statements:
+    - effect: deny
+      scope: request
+      target:
+        method: GET
+        path: /api/v0/users
+      policy: |
+        return request.method == "POST";
+
+request:
+  method: GET
+  path: /api/v0/users?page=1&pageSize=100
+
+expected:
+  status: 200
+  body:
+    contains:
+      success: true
+      statusCode: 200
+      message:
+        code: resource.user.listed
