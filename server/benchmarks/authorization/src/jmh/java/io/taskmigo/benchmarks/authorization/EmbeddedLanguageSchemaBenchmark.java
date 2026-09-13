@@ -32,8 +32,7 @@ public class EmbeddedLanguageSchemaBenchmark {
     public static class SchemaState {
 
         @Param({ "10", "1000" })
-        @SuppressWarnings("CanBeFinal")
-        private String fieldCount = "10";
+        public String fieldCount = "10";
 
         private Map<String, EnvironmentSchema.Root> roots = Map.of();
 

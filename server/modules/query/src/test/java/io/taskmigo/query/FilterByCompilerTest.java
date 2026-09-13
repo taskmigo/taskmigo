@@ -238,7 +238,10 @@ class FilterByCompilerTest {
         QueryPredicate<CustomerQuery> right = new FilterByCompiler().compile(incompatible, "object.name == \"Phong\"");
 
         // Act + Assert
-        assertThatThrownBy(() -> QueryPredicates.standard().and(left, right))
+        assertThatThrownBy(() -> {
+            QueryPredicate<CustomerQuery> combined = QueryPredicates.standard().and(left, right);
+            assertThat(combined).isNotNull();
+        })
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("incompatible");
     }

@@ -19,7 +19,7 @@ import org.jspecify.annotations.Nullable;
 
 @Entity
 @Table(name = "statements")
-@SuppressWarnings({ "CanBeFinal", "NotNullFieldNotInitialized" })
+@SuppressWarnings("NotNullFieldNotInitialized")
 public class StatementEntity {
 
     @Id

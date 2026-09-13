@@ -35,19 +35,16 @@ public class UserEntity {
     @ElementCollection
     @CollectionTable(name = "user_emails", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "normalized_email", nullable = false, length = 320)
-    @SuppressWarnings("CanBeFinal")
     Set<String> emails = new HashSet<>();
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "role_id", nullable = false)
-    @SuppressWarnings("CanBeFinal")
     Set<UUID> roleIds = new HashSet<>();
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_statements", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "statement_id", nullable = false)
-    @SuppressWarnings("CanBeFinal")
     Set<UUID> statementIds = new HashSet<>();
 
     @Enumerated(EnumType.STRING)

@@ -18,7 +18,7 @@
         <module name="SuppressWarnings">
             <property
                 name="format"
-                value="^(?!(?:NullableProblems|CanBeFinal|NotNullFieldNotInitialized|checkstyle:SpringDataQuery)$).*$"
+                value="^(?!(?:NullableProblems|NotNullFieldNotInitialized|checkstyle:SpringDataQuery)$).*$"
             />
         </module>
 

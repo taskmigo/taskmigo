@@ -49,8 +49,7 @@ public class EmbeddedLanguageRuntimeBenchmark {
     public static class RuntimeState {
 
         @Param({ "10", "1000" })
-        @SuppressWarnings("CanBeFinal")
-        private String listSize = "10";
+        public String listSize = "10";
 
         private @Nullable CompiledSource compiled;
         private Map<String, ?> roots = Map.of();
