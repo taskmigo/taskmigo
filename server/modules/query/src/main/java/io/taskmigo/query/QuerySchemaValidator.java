@@ -3,14 +3,13 @@ package io.taskmigo.query;
 import io.taskmigo.query.persistence.QueryExpression;
 
 /// Validates that symbolic object paths and operators belong to an explicit Query Schema.
-@SuppressWarnings("checkstyle:UnusedLocalVariable")
 final class QuerySchemaValidator {
 
     private QuerySchemaValidator() {}
 
     static <Q> void validate(QueryExpression expression, QuerySchema<Q> schema) {
         switch (expression) {
-            case QueryExpression.Literal ignored -> {
+            case QueryExpression.Literal _ -> {
             }
             case QueryExpression.Reference reference -> validateReference(reference, schema);
             case QueryExpression.ListValue list -> list.values().forEach(value -> validate(value, schema));

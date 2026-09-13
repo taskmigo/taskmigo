@@ -15,11 +15,6 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 import org.jspecify.annotations.Nullable;
 
 /// Compiles the generated ANTLR parse tree directly into typed Language Semantic AST.
-@SuppressWarnings({
-    "checkstyle:OverloadMethodsDeclarationOrder",
-    "checkstyle:UnnecessaryFullyQualifiedType",
-    "ConstantValue",
-})
 final class LanguageCompilerVisitor {
 
     private final EnvironmentSchema schema;

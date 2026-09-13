@@ -78,7 +78,8 @@ include:
   # - name: UnusedLibrary
   - name: IgnoreResultOfCall
   - name: ResultOfObjectAllocationIgnored
-  - name: CanBeFinal
+  # Too much false positives for now. We can enable it later when we have more time to fix the issues.
+  # - name: CanBeFinal
   - name: UnnecessaryBreak
   - name: UnnecessaryCallToStringValueOf
   - name: UnnecessaryConstantArrayCreationExpression

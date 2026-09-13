@@ -18,10 +18,7 @@ public interface QueryPredicates {
     <Q> QueryPredicate<Q> not(QueryPredicate<Q> predicate);
 
     /// Composes predicates whose contract is selected reflectively by a web adapter.
-    @SuppressWarnings("unchecked")
-    default QueryPredicate<?> andUntyped(QueryPredicate<?> left, QueryPredicate<?> right) {
-        return this.and((QueryPredicate<Object>) left, (QueryPredicate<Object>) right);
-    }
+    QueryPredicate<?> andUntyped(QueryPredicate<?> left, QueryPredicate<?> right);
 
     /// Returns the standard logical composer.
     static QueryPredicates standard() {

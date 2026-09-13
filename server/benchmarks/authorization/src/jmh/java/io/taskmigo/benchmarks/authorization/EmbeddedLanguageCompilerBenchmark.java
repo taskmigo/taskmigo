@@ -48,16 +48,13 @@ public class EmbeddedLanguageCompilerBenchmark {
     public static class BenchmarkState {
 
         @Param({ "SIMPLE", "COMPLEX" })
-        @SuppressWarnings({ "CanBeFinal", "FieldCanBeLocal", "FieldMayBeFinal" })
-        private String complexity = "SIMPLE";
+        public String complexity = "SIMPLE";
 
         @Param({ "PROGRAM", "EXPRESSION" })
-        @SuppressWarnings({ "CanBeFinal", "FieldCanBeLocal", "FieldMayBeFinal" })
-        private String compilationMode = "PROGRAM";
+        public String compilationMode = "PROGRAM";
 
         @Param({ "1000" })
-        @SuppressWarnings({ "CanBeFinal", "FieldCanBeLocal", "FieldMayBeFinal" })
-        private String statementCount = "1000";
+        public String statementCount = "1000";
 
         private final LanguageCompiler compiler = new LanguageCompiler();
         private final EnvironmentSchema schema = schema();

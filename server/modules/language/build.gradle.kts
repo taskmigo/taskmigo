@@ -20,22 +20,6 @@ tasks.withType<Checkstyle>().configureEach {
     exclude("**/EmbeddedLanguage*.java")
 }
 
-configurations.runtimeClasspath {
-    exclude(group = "org.antlr", module = "antlr4")
-    exclude(group = "org.antlr", module = "ST4")
-    exclude(group = "org.antlr", module = "antlr-runtime")
-    exclude(group = "org.abego.treelayout", module = "org.abego.treelayout.core")
-    exclude(group = "com.ibm.icu", module = "icu4j")
-}
-
-configurations.runtimeElements {
-    exclude(group = "org.antlr", module = "antlr4")
-    exclude(group = "org.antlr", module = "ST4")
-    exclude(group = "org.antlr", module = "antlr-runtime")
-    exclude(group = "org.abego.treelayout", module = "org.abego.treelayout.core")
-    exclude(group = "com.ibm.icu", module = "icu4j")
-}
-
 description = "Taskmigo Language"
 
 dependencies {

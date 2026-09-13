@@ -64,7 +64,6 @@ final class JpaQueryExpressionBinder {
         };
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     private static <E> Predicate comparison(
         QueryExpression.Binary binary,
         Root<E> root,
@@ -89,15 +88,76 @@ final class JpaQueryExpressionBinder {
         return switch (binary.operator()) {
             case EQUAL -> builder.equal(firstOperand, secondOperand);
             case NOT_EQUAL -> builder.notEqual(firstOperand, secondOperand);
-            case GREATER -> builder.greaterThan((Expression) firstOperand, (Expression) secondOperand);
-            case GREATER_OR_EQUAL -> builder.greaterThanOrEqualTo(
-                (Expression) firstOperand,
-                (Expression) secondOperand
+            case GREATER -> orderedComparison(
+                firstOperand,
+                secondOperand,
+                binary,
+                builder,
+                types,
+                JpaCriteriaComparisons.Operator.GREATER
             );
-            case LESS -> builder.lessThan((Expression) firstOperand, (Expression) secondOperand);
-            case LESS_OR_EQUAL -> builder.lessThanOrEqualTo((Expression) firstOperand, (Expression) secondOperand);
+            case GREATER_OR_EQUAL -> orderedComparison(
+                firstOperand,
+                secondOperand,
+                binary,
+                builder,
+                types,
+                JpaCriteriaComparisons.Operator.GREATER_OR_EQUAL
+            );
+            case LESS -> orderedComparison(
+                firstOperand,
+                secondOperand,
+                binary,
+                builder,
+                types,
+                JpaCriteriaComparisons.Operator.LESS
+            );
+            case LESS_OR_EQUAL -> orderedComparison(
+                firstOperand,
+                secondOperand,
+                binary,
+                builder,
+                types,
+                JpaCriteriaComparisons.Operator.LESS_OR_EQUAL
+            );
             default -> throw unsupported("comparison operator");
         };
+    }
+
+    private static <E> Predicate orderedComparison(
+        Expression<?> left,
+        Expression<?> right,
+        QueryExpression.Binary binary,
+        CriteriaBuilder builder,
+        Map<String, Class<?>> types,
+        JpaCriteriaComparisons.Operator operator
+    ) {
+        return JpaCriteriaComparisons.ordered(builder, left, right, orderedType(binary, types), operator);
+    }
+
+    private static Class<?> orderedType(QueryExpression.Binary binary, Map<String, Class<?>> types) {
+        Class<?> type = referenceType(binary.left(), types);
+        if (type != null) {
+            return type;
+        }
+        type = referenceType(binary.right(), types);
+        if (type != null) {
+            return type;
+        }
+        if (binary.left() instanceof QueryExpression.Literal literal && literal.value() != null) {
+            return literal.value().getClass();
+        }
+        if (binary.right() instanceof QueryExpression.Literal literal && literal.value() != null) {
+            return literal.value().getClass();
+        }
+        throw unsupported("ordered comparison type");
+    }
+
+    private static @Nullable Class<?> referenceType(QueryExpression expression, Map<String, Class<?>> types) {
+        if (expression instanceof QueryExpression.Reference reference) {
+            return types.get(String.join(".", reference.path()));
+        }
+        return null;
     }
 
     private static <E> Predicate in(

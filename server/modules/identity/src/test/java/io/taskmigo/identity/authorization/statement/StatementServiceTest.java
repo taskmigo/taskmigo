@@ -37,25 +37,24 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-@SuppressWarnings("checkstyle:UnusedPrivateField")
 class StatementServiceTest {
 
     private static final String VALID_POLICY = "return true;";
 
-    @Mock
-    private StatementRepository statements;
-
     @Spy
-    private StatementPolicyValidator policyValidator = new StatementPolicyValidator(
+    StatementPolicyValidator policyValidator = new StatementPolicyValidator(
         mock(ObjectAuthorization.class),
         new LanguageCompiler()
     );
 
     @Mock
-    private QueryPredicateBinder<StatementInfo, StatementEntity> queryBinder;
+    QueryPredicateBinder<StatementInfo, StatementEntity> queryBinder;
 
     @Mock
-    private ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> objectBinder;
+    ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> objectBinder;
+
+    @Mock
+    private StatementRepository statements;
 
     @InjectMocks
     private StatementService service;

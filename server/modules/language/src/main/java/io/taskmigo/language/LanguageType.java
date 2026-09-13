@@ -5,7 +5,6 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /// Represents a statically checked Embedded Language value type.
-@SuppressWarnings("checkstyle:NeedBraces")
 public sealed interface LanguageType permits LanguageType.Scalar, LanguageType.ListType, LanguageType.StructuredType {
     /// Primitive language types.
     enum Scalar implements LanguageType {
@@ -26,7 +25,11 @@ public sealed interface LanguageType permits LanguageType.Scalar, LanguageType.L
     record StructuredType(String name, Map<String, EnvironmentSchema.Field> fields) implements LanguageType {
         public StructuredType {
             Objects.requireNonNull(name);
-            if (name.isBlank()) throw new IllegalArgumentException("structured type name must not be blank");
+
+            if (name.isBlank()) {
+                throw new IllegalArgumentException("structured type name must not be blank");
+            }
+
             fields = Map.copyOf(fields);
         }
 
