@@ -3,9 +3,7 @@ package io.taskmigo.rest.api.v0.auth.authorization;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.taskmigo.authorization.object.ObjectAuthorization;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
-import io.taskmigo.authorization.request.AuthorizationContext;
+import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.authorization.role.RoleAuthorizationService;
@@ -42,23 +40,17 @@ class RoleController {
     private final RoleService access;
     private final RoleAuthorizationService roleAuthorization;
     private final StatementService statements;
-    private final ObjectAuthorization objectAuthorization;
-    private final ObjectAuthorizationSchema<RoleInfo> objectSchema;
     private final ApiResponseFactory responses;
 
     RoleController(
         RoleService access,
         RoleAuthorizationService roleAuthorization,
         StatementService statements,
-        ObjectAuthorization objectAuthorization,
-        ObjectAuthorizationSchema<RoleInfo> objectSchema,
         ApiResponseFactory responses
     ) {
         this.access = access;
         this.roleAuthorization = roleAuthorization;
         this.statements = statements;
-        this.objectAuthorization = objectAuthorization;
-        this.objectSchema = objectSchema;
         this.responses = responses;
     }
 
@@ -80,13 +72,13 @@ class RoleController {
     ResponseEntity<ApiResponse<List<RoleInfo>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         FilteredQuery<RoleInfo> filter,
-        AuthorizationContext context
+        ObjectAuthorizationPredicate<RoleInfo> authorization
     ) {
         OffsetPage<RoleInfo> roles = this.access.listRoles(
             pagination.page(),
             pagination.pageSize(),
             filter.predicate(),
-            this.objectAuthorization.authorize(context, this.objectSchema)
+            authorization
         );
         return this.responses.ok(
             roles.items(),

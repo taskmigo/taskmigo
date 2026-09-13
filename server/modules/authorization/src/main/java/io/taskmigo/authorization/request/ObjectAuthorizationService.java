@@ -7,10 +7,10 @@ import io.taskmigo.authorization.object.ObjectAuthorization;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicates;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchemaRegistry;
 import io.taskmigo.authorization.object.persistence.ObjectAuthorizationExpression;
 import io.taskmigo.authorization.object.persistence.ObjectAuthorizationExpressionValidator;
 import io.taskmigo.authorization.object.persistence.ObjectAuthorizationPredicateModels;
+import io.taskmigo.authorization.spi.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.language.CompiledSource;
@@ -27,12 +27,12 @@ import org.springframework.stereotype.Service;
 public class ObjectAuthorizationService implements ObjectAuthorization {
 
     private final LanguageCompiler compiler;
-    private final ObjectAuthorizationSchemaRegistry schemaRegistry;
+    private final ObjectAuthorizationTargetResolver targetResolver;
 
-    /// Creates the service with the compiler and application-owned object route registry.
-    public ObjectAuthorizationService(LanguageCompiler compiler, ObjectAuthorizationSchemaRegistry schemaRegistry) {
+    /// Creates the service with the compiler and application-owned Object Authorization target resolver.
+    public ObjectAuthorizationService(LanguageCompiler compiler, ObjectAuthorizationTargetResolver targetResolver) {
         this.compiler = compiler;
-        this.schemaRegistry = schemaRegistry;
+        this.targetResolver = targetResolver;
     }
 
     @Override
@@ -77,7 +77,7 @@ public class ObjectAuthorizationService implements ObjectAuthorization {
     /// Validates an object policy independently against every schema governed by its target.
     @Override
     public void validatePolicy(String policy, String method, String path) {
-        List<ObjectAuthorizationSchema<?>> applicable = this.schemaRegistry.applicable(method, path);
+        List<ObjectAuthorizationSchema<?>> applicable = this.targetResolver.applicable(method, path);
         if (applicable.isEmpty()) {
             throw new AuthorizationException("Object Statement target matches no registered object schema route");
         }

@@ -3,8 +3,8 @@ package io.taskmigo.authorization.request;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfile;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchemaRegistry;
 import io.taskmigo.authorization.spi.EffectiveStatement;
+import io.taskmigo.authorization.spi.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.ApiInfo;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
@@ -24,7 +24,7 @@ class StatementArtifactFactoryTest {
     private final StatementArtifactFactory factory = new StatementArtifactFactory(
         new LanguageCompiler(),
         List.of(),
-        ObjectAuthorizationSchemaRegistry.all(List.of())
+        ObjectAuthorizationTargetResolver.all(List.of())
     );
 
     /**

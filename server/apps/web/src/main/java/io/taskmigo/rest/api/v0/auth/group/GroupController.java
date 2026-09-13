@@ -3,9 +3,7 @@ package io.taskmigo.rest.api.v0.auth.group;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.taskmigo.authorization.object.ObjectAuthorization;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
-import io.taskmigo.authorization.request.AuthorizationContext;
+import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.group.GroupInfo;
 import io.taskmigo.identity.group.GroupService;
@@ -35,19 +33,10 @@ import org.springframework.web.bind.annotation.RestController;
 class GroupController {
 
     private final GroupService groups;
-    private final ObjectAuthorization objectAuthorization;
-    private final ObjectAuthorizationSchema<GroupInfo> objectSchema;
     private final ApiResponseFactory responses;
 
-    GroupController(
-        GroupService groups,
-        ObjectAuthorization objectAuthorization,
-        ObjectAuthorizationSchema<GroupInfo> objectSchema,
-        ApiResponseFactory responses
-    ) {
+    GroupController(GroupService groups, ApiResponseFactory responses) {
         this.groups = groups;
-        this.objectAuthorization = objectAuthorization;
-        this.objectSchema = objectSchema;
         this.responses = responses;
     }
 
@@ -56,13 +45,13 @@ class GroupController {
     ResponseEntity<ApiResponse<List<GroupInfo>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         FilteredQuery<GroupInfo> filter,
-        AuthorizationContext context
+        ObjectAuthorizationPredicate<GroupInfo> authorization
     ) {
         OffsetPage<GroupInfo> groups = this.groups.list(
             pagination.page(),
             pagination.pageSize(),
             filter.predicate(),
-            this.objectAuthorization.authorize(context, this.objectSchema)
+            authorization
         );
         return this.responses.ok(
             groups.items(),

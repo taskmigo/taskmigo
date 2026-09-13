@@ -9,10 +9,9 @@ import io.taskmigo.authorization.object.ObjectAuthorizationField;
 import io.taskmigo.authorization.object.ObjectAuthorizationPath;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchemaRegistration;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchemaRegistry;
 import io.taskmigo.authorization.spi.EffectiveStatement;
 import io.taskmigo.authorization.spi.EffectiveStatementResolver;
+import io.taskmigo.authorization.spi.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.ApiInfo;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
@@ -38,11 +37,11 @@ class ObjectAuthorizationServiceTest {
     private final StatementArtifactFactory artifacts = new StatementArtifactFactory(
         new LanguageCompiler(),
         List.of(this.schema),
-        ObjectAuthorizationSchemaRegistry.all(List.of(this.schema))
+        ObjectAuthorizationTargetResolver.all(List.of(this.schema))
     );
     private final ObjectAuthorizationService service = new ObjectAuthorizationService(
         new LanguageCompiler(),
-        ObjectAuthorizationSchemaRegistry.all(List.of(this.schema))
+        ObjectAuthorizationTargetResolver.all(List.of(this.schema))
     );
 
     /**
@@ -158,9 +157,9 @@ class ObjectAuthorizationServiceTest {
     }
 
     /**
-     * Verifies that Object policy activation validates only schemas whose registered routes match the target.
+     * Verifies that Object policy activation validates only schemas whose application routes match the target.
      *
-     * Given: two routes with different fields and a policy valid only for the first route.
+     * Given: two target resolutions with different fields and a policy valid only for the first target.
      * Expect: the first target succeeds and the unrelated second target rejects the policy.
      */
     @Test
@@ -168,14 +167,11 @@ class ObjectAuthorizationServiceTest {
     void shouldValidateObjectPolicyAgainstApplicableSchemasOnly() {
         // Arrange
         ObjectAuthorizationSchema<TestObject> otherSchema = schema("other");
+        ObjectAuthorizationTargetResolver targetResolver = (method, path) ->
+            "/api/v0/objects".equals(path) ? List.of(this.schema) : List.of(otherSchema);
         ObjectAuthorizationService targetedService = new ObjectAuthorizationService(
             new LanguageCompiler(),
-            ObjectAuthorizationSchemaRegistry.of(
-                List.of(
-                    new ObjectAuthorizationSchemaRegistration("GET", "/api/v0/objects", this.schema),
-                    new ObjectAuthorizationSchemaRegistration("GET", "/api/v0/other", otherSchema)
-                )
-            )
+            targetResolver
         );
         String policy = "return object.name == \"alice\";";
 
@@ -242,7 +238,7 @@ class ObjectAuthorizationServiceTest {
         ObjectAuthorizationSchema<TestObject> apiSchema = schema("target.api.path");
         ObjectAuthorizationService apiService = new ObjectAuthorizationService(
             new LanguageCompiler(),
-            ObjectAuthorizationSchemaRegistry.all(List.of(apiSchema))
+            ObjectAuthorizationTargetResolver.all(List.of(apiSchema))
         );
 
         // Act + Assert
