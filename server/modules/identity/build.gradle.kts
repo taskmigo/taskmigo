@@ -25,8 +25,4 @@ dependencies {
     implementation(libs.guava)
 
     testImplementation(libs.spring.boot.starter.test)
-    testImplementation(libs.spring.boot.testcontainers)
-    testImplementation(libs.testcontainers.junit.jupiter)
-    testImplementation(libs.testcontainers.postgresql)
-    testRuntimeOnly(libs.postgresql.driver)
 }
