@@ -19,7 +19,7 @@ The default Secret name is `taskmigo-secrets` and the chart expects these keys:
 | Key                   | Used by                                                   |
 | --------------------- | --------------------------------------------------------- |
 | `database-password`   | Migration, web, worker                                    |
-| `user-password`       | Migration system-user encoded password                    |
+| `user-password`       | Migration root-user encoded password                      |
 | `auth-client-secret`  | Browser OAuth client reconciliation and client runtime    |
 | `auth-session-secret` | Client session encryption; must be at least 32 characters |
 

@@ -40,7 +40,7 @@ spec:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           env:
             {{- include "taskmigo.databaseEnv" . | nindent 12 }}
-            - name: TASKMIGO_USER_PASSWORD
+            - name: TASKMIGO_SYSTEM_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.database.existingSecret | quote }}

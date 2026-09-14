@@ -7,6 +7,7 @@ import io.taskmigo.identity.authorization.statement.StatementService;
 import io.taskmigo.identity.oauth.RegisteredClientDefinition;
 import io.taskmigo.identity.oauth.RegisteredClientRepository;
 import io.taskmigo.identity.oauth.RegisteredClientType;
+import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserService;
 import java.util.List;
 import java.util.UUID;
@@ -59,7 +60,7 @@ public class PostgresTestConfiguration {
                 "Highest-privilege integration-test role.",
                 List.of(fullAccess, usersAccess, rolesAccess, groupsAccess, statementsAccess)
             );
-            users.setRoles(users.findForAuthentication("system").orElseThrow().id(), List.of(roleId));
+            users.setRoles(users.findForAuthentication(SystemUser.USERNAME).orElseThrow().id(), List.of(roleId));
             if (clients.findByClientId("integration-client") == null) {
                 clients.save(
                     new RegisteredClientDefinition(

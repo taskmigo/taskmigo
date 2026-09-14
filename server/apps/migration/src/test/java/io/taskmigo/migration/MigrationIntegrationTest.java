@@ -36,7 +36,7 @@ import org.springframework.test.context.TestConstructor;
 
 @SpringBootTest(
     properties = {
-        "TASKMIGO_USER_PASSWORD={bcrypt}$2a$10$06C0Iz4cZk50m6RPxwd5EOshPgze.x4RV7xU2b7gubrUnzMNnOOmW",
+        "TASKMIGO_SYSTEM_PASSWORD={bcrypt}$2a$10$06C0Iz4cZk50m6RPxwd5EOshPgze.x4RV7xU2b7gubrUnzMNnOOmW",
         "taskmigo.registered-clients.cli.registration.client-id=integration-client",
         "taskmigo.registered-clients.cli.registration.client-secret=integration-secret",
         "taskmigo.registered-clients.cli.registration.client-authentication-methods=client_secret_basic",

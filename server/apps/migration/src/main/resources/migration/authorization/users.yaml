@@ -1,7 +1,7 @@
 ---
 users:
   - username: system
-    password: ${TASKMIGO_USER_PASSWORD:}
+    password: ${TASKMIGO_SYSTEM_PASSWORD:}
     email:
       - system@example.com
     firstName: System
