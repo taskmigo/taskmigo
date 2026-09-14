@@ -17,11 +17,6 @@ import org.springframework.test.context.TestConstructor;
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = {
-        "spring.security.oauth2.authorizationserver.client.cli.registration.client-id=integration-client",
-        "spring.security.oauth2.authorizationserver.client.cli.registration.client-secret=integration-secret",
-        "spring.security.oauth2.authorizationserver.client.cli.registration.client-authentication-methods=client_secret_basic",
-        "spring.security.oauth2.authorizationserver.client.cli.registration.authorization-grant-types=client_credentials",
-        "spring.security.oauth2.authorizationserver.client.cli.registration.scopes=taskmigo.api",
         "taskmigo.security.signing-key-file=build/test-data/oauth-signing-key.pem",
         "taskmigo.security.signing-key-auto-create=true",
     }
@@ -44,7 +39,11 @@ public abstract class ApiIntegrationTestSupport {
 
         TaskmigoApiClient created = new TaskmigoApiClient(
             URI.create("http://localhost:" + this.port),
-            new TaskmigoApiClient.ClientCredentials("integration-client", "integration-secret", "taskmigo.api")
+            new TaskmigoApiClient.ClientCredentials(
+                "internal__integration-client",
+                "integration-secret",
+                "taskmigo.api"
+            )
         );
         this.api = created;
         return created;

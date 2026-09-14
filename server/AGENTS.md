@@ -23,7 +23,7 @@ The [Taskmigo specification repository](https://github.com/taskmigo/specificatio
 ## Server map
 
 - `apps/web` contains HTTP adapters, OAuth endpoints, REST APIs, and OpenAPI configuration.
-- `apps/bootstrap` runs database migration and initial data setup.
+- `apps/migration` runs database migration and initial data setup.
 - `apps/worker` contains background processing.
 - `modules/` contains reusable domain and application modules.
 - `benchmarks/` contains performance benchmarks and is not a replacement for functional tests.

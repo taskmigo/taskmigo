@@ -15,8 +15,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
-import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @TestConfiguration(proxyBeanMethods = false)
@@ -34,7 +34,7 @@ public class PostgresTestConfiguration {
         RoleAuthorizationService access,
         StatementService statements,
         PasswordEncoder passwordEncoder,
-        JdbcRegisteredClientRepository clients
+        RegisteredClientRepository clients
     ) {
         return arguments -> {
             if (!users.reconcileSystemUser(passwordEncoder.encode("integration-password"))) {
@@ -59,10 +59,10 @@ public class PostgresTestConfiguration {
                 List.of(fullAccess, usersAccess, rolesAccess, groupsAccess, statementsAccess)
             );
             users.setRoles(users.findForAuthentication("system").orElseThrow().id(), List.of(roleId));
-            if (clients.findByClientId("integration-client") == null) {
+            if (clients.findByClientId("internal__integration-client") == null) {
                 clients.save(
-                    RegisteredClient.withId("integration-client")
-                        .clientId("integration-client")
+                    RegisteredClient.withId("internal__integration-client")
+                        .clientId("internal__integration-client")
                         .clientSecret(passwordEncoder.encode("integration-secret"))
                         .clientName("Integration client")
                         .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)

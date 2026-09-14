@@ -51,7 +51,7 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
     /**
      * Verifies that the user collection exposes the shared offset pagination contract.
      *
-     * Given: the application contains bootstrap and test Users.
+     * Given: the application contains migration and test Users.
      * Expect: GET users returns an offset page with the requested page size and pagination metadata.
      */
     @Test

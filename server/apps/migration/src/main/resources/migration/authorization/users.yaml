@@ -1,0 +1,9 @@
+---
+users:
+  - username: admin
+    email: []
+    firstName: Admin
+    lastName: User
+    roles:
+      - Administrator
+    statements: []

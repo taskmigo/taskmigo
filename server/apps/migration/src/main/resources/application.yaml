@@ -1,0 +1,46 @@
+---
+spring:
+  config:
+    import: classpath:application-database.yaml
+  main:
+    web-application-type: none
+  flyway:
+    enabled: true
+    validate-migration-naming: true
+
+taskmigo:
+  migration:
+    user:
+      password: ${TASKMIGO_MIGRATION_USER_PASSWORD:}
+      emails: []
+      first-name: ${TASKMIGO_MIGRATION_USER_FIRST_NAME:System}
+      last-name: ${TASKMIGO_MIGRATION_USER_LAST_NAME:User}
+      roles:
+        - System Operator
+      statements: []
+    registered-clients:
+      browser:
+        absent: ${TASKMIGO_MIGRATION_BROWSER_CLIENT_ABSENT:false}
+        registration:
+          client-id: taskmigo-client
+          client-secret: ${TASKMIGO_MIGRATION_REGISTERED_CLIENTS_BROWSER_REGISTRATION_CLIENT_SECRET:}
+          client-name: Taskmigo browser client
+          client-authentication-methods:
+            - client_secret_basic
+          authorization-grant-types:
+            - authorization_code
+            - refresh_token
+          redirect-uris:
+            - ${TASKMIGO_MIGRATION_BROWSER_CLIENT_URL:http://localhost:3000}/api/auth/callback
+          post-logout-redirect-uris:
+            - ${TASKMIGO_MIGRATION_BROWSER_CLIENT_URL:http://localhost:3000}/
+          scopes:
+            - openid
+            - profile
+            - taskmigo.api
+        require-proof-key: true
+        require-authorization-consent: false
+        token:
+          access-token-time-to-live: 5m
+          refresh-token-time-to-live: 8h
+          reuse-refresh-tokens: false

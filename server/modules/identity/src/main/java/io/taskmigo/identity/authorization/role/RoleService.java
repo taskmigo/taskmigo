@@ -89,7 +89,7 @@ public class RoleService {
         }
     }
 
-    /// Resolves a Role name for bootstrap references, including persisted definitions from prior runs.
+    /// Resolves a Role name for migration references, including persisted definitions from prior runs.
     @Transactional(readOnly = true)
     public UUID requireRoleByName(String name) {
         return this.roles

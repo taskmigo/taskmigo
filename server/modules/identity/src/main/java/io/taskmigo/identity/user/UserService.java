@@ -58,7 +58,7 @@ public class UserService {
     ) {
         String requiredUsername = required(username, "username");
         if (SystemUser.USERNAME.equals(requiredUsername)) {
-            throw new UserException(UserException.Type.BAD_REQUEST, "Username is reserved for the bootstrap user");
+            throw new UserException(UserException.Type.BAD_REQUEST, "Username is reserved for the system user");
         }
 
         try {
@@ -170,15 +170,18 @@ public class UserService {
         this.users.flush();
     }
 
-    /// Reconciles a bootstrap User while preserving credentials and account status.
+    /// Reconciles a managed User while preserving account status.
+    ///
+    /// A non-null password hash becomes the account credential; a null hash leaves the existing credential unchanged.
     @Transactional
-    public UUID reconcileBootstrapUser(
+    public UUID reconcileManagedUser(
         @Nullable String username,
         @Nullable Collection<String> emails,
         @Nullable String firstName,
         @Nullable String lastName,
         Collection<UUID> roleIds,
-        Collection<UUID> statementIds
+        Collection<UUID> statementIds,
+        @Nullable String passwordHash
     ) {
         String requiredUsername = required(username, "username");
         Set<String> requestedEmails = normalizeEmails(emails);
@@ -195,6 +198,7 @@ public class UserService {
                 required(lastName, "lastName")
             );
             user.replaceStatementIds(requestedStmtIds);
+            user.setPasswordHash(passwordHash);
             this.users.saveAndFlush(user);
             return user.id();
         }
@@ -203,15 +207,18 @@ public class UserService {
         user.updateProfile(required(firstName, "firstName"), required(lastName, "lastName"));
         user.replaceRoleIds(requestedRoleIds);
         user.replaceStatementIds(requestedStmtIds);
+        if (passwordHash != null) {
+            user.setPasswordHash(passwordHash);
+        }
         this.users.flush();
         return user.id();
     }
 
-    /// Ensures the reserved bootstrap username exists as a regular persisted user.
+    /// Ensures the reserved system username exists as a regular persisted user.
     ///
-    /// Existing profile, status, and credentials are preserved. When an existing bootstrap user has no
-    /// password credential yet, a supplied initialization hash is persisted once. A new bootstrap user requires an
-    /// initialization password hash.
+    /// Existing profile, status, and credentials are preserved. When an existing system user has no password
+    /// credential yet, a supplied initialization hash is persisted once. A new system user requires an initialization
+    /// password hash.
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public boolean reconcileSystemUser(@Nullable String initialPasswordHash) {
         Optional<UserEntity> existing = this.users.findByUsername(SystemUser.USERNAME);

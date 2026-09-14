@@ -13,9 +13,10 @@ include(
     ":modules:query",
     ":modules:authorization",
     ":modules:database",
+    ":modules:security",
     ":modules:identity",
     ":benchmarks:authorization",
-    ":apps:bootstrap",
+    ":apps:migration",
     ":apps:web",
     ":apps:worker",
 )
