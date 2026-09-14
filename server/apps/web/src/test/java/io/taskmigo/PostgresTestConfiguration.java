@@ -4,7 +4,9 @@ import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.identity.authorization.role.RoleAuthorizationService;
 import io.taskmigo.identity.authorization.statement.StatementService;
-import io.taskmigo.identity.oauth.InternalClientMetadata;
+import io.taskmigo.identity.oauth.RegisteredClientDefinition;
+import io.taskmigo.identity.oauth.RegisteredClientRepository;
+import io.taskmigo.identity.oauth.RegisteredClientType;
 import io.taskmigo.identity.user.UserService;
 import java.util.List;
 import java.util.UUID;
@@ -16,7 +18,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @TestConfiguration(proxyBeanMethods = false)
@@ -59,17 +60,18 @@ public class PostgresTestConfiguration {
                 List.of(fullAccess, usersAccess, rolesAccess, groupsAccess, statementsAccess)
             );
             users.setRoles(users.findForAuthentication("system").orElseThrow().id(), List.of(roleId));
-            if (clients.findByClientId("internal__integration-client") == null) {
+            if (clients.findByClientId("integration-client") == null) {
                 clients.save(
-                    RegisteredClient.withId("internal__integration-client")
-                        .clientId("internal__integration-client")
-                        .clientSecret(passwordEncoder.encode("integration-secret"))
-                        .clientName("Integration client")
-                        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                        .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                        .scope(InternalClientMetadata.API_SCOPE)
-                        .clientSettings(InternalClientMetadata.settings(false, false))
-                        .build()
+                    new RegisteredClientDefinition(
+                        RegisteredClient.withId("integration-client")
+                            .clientId("integration-client")
+                            .clientSecret(passwordEncoder.encode("integration-secret"))
+                            .clientName("Integration client")
+                            .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                            .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                            .build(),
+                        RegisteredClientType.INTERNAL
+                    )
                 );
             }
         };

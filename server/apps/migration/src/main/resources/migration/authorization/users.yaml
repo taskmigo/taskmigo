@@ -1,5 +1,16 @@
 ---
 users:
+  - username: system
+    password: ${TASKMIGO_USER_PASSWORD:}
+    email:
+      - system@example.com
+    firstName: System
+    lastName: User
+    roles:
+      - System Operator
+    statements:
+      - system_operator_request_all
+
   - username: admin
     email: []
     firstName: Admin

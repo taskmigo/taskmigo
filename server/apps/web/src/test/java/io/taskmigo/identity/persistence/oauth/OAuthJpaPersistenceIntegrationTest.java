@@ -3,6 +3,9 @@ package io.taskmigo.identity.persistence.oauth;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.taskmigo.PostgresTestConfiguration;
+import io.taskmigo.identity.oauth.RegisteredClientDefinition;
+import io.taskmigo.identity.oauth.RegisteredClientRepository;
+import io.taskmigo.identity.oauth.RegisteredClientType;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
@@ -13,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2DeviceCode;
 import org.springframework.security.oauth2.core.OAuth2RefreshToken;
@@ -27,7 +31,6 @@ import org.springframework.security.oauth2.server.authorization.OAuth2Authorizat
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.test.context.TestConstructor;
 
 @SpringBootTest(
@@ -55,6 +58,38 @@ class OAuthJpaPersistenceIntegrationTest {
     }
 
     /**
+     * Verifies that registered-client classification uses the Taskmigo-owned table.
+     *
+     * Given: a registered client with a user classification.
+     * Expect: the complete definition can be loaded with the same classification without changing the Spring
+     * Authorization Server client model.
+     */
+    @Test
+    @DisplayName("round-trips registered client classification through JPA")
+    void shouldRoundTripRegisteredClientClassificationWhenClientIsSaved() {
+        // Arrange
+        RegisteredClient client = RegisteredClient.withId("classification-client")
+            .clientId("classification-client")
+            .clientSecret("classification-secret")
+            .clientName("Classification client")
+            .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+            .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+            .build();
+        RegisteredClientDefinition definition = new RegisteredClientDefinition(client, RegisteredClientType.USER);
+
+        // Act
+        this.clients.save(definition);
+        RegisteredClientDefinition reloaded = this.clients.findDefinitionByClientId("classification-client");
+
+        // Assert
+        assertThat(reloaded).isNotNull();
+        assertThat(reloaded.type()).isEqualTo(RegisteredClientType.USER);
+        assertThat(reloaded.registeredClient().getClientId()).isEqualTo("classification-client");
+        this.clients.deleteById("classification-client");
+        assertThat(this.clients.findDefinitionByClientId("classification-client")).isNull();
+    }
+
+    /**
      * Verifies that all SAS token variants and their metadata survive a JPA round-trip.
      *
      * Given: one registered client and an authorization containing state, authorization code, access token,
@@ -66,7 +101,7 @@ class OAuthJpaPersistenceIntegrationTest {
     @DisplayName("round-trips authorization tokens and metadata through JPA")
     void shouldRoundTripAuthorizationTokensWhenAuthorizationIsSaved() {
         // Arrange
-        RegisteredClient client = this.clients.findByClientId("internal__integration-client");
+        RegisteredClient client = this.clients.findByClientId("integration-client");
         assertThat(client).isNotNull();
         Instant issuedAt = Instant.parse("2026-01-01T00:00:00Z");
         Instant expiresAt = Instant.parse("2026-01-01T01:00:00Z");
@@ -75,7 +110,7 @@ class OAuthJpaPersistenceIntegrationTest {
             .id("jpa-authorization-test")
             .principalName("system")
             .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-            .authorizedScopes(Set.of("taskmigo.api"))
+            .authorizedScopes(Set.of())
             .attribute(OAuth2ParameterNames.STATE, "jpa-state-test")
             .attribute("request_attribute", "value")
             .token(new OAuth2AuthorizationCode("jpa-code-test", issuedAt, expiresAt), metadata ->
@@ -87,7 +122,7 @@ class OAuthJpaPersistenceIntegrationTest {
                     "jpa-access-test",
                     issuedAt,
                     expiresAt,
-                    Set.of("taskmigo.api")
+                    Set.of()
                 ),
                 metadata -> metadata.put("access_metadata", "value")
             )
@@ -133,7 +168,7 @@ class OAuthJpaPersistenceIntegrationTest {
         assertThat(code.getToken().getTokenValue()).isEqualTo("jpa-code-test");
         assertThat(code.getMetadata()).containsEntry("code_metadata", "value");
         assertThat(access.getToken().getTokenValue()).isEqualTo("jpa-access-test");
-        assertThat(access.getToken().getScopes()).containsExactly("taskmigo.api");
+        assertThat(access.getToken().getScopes()).isEmpty();
         assertThat(refresh.getToken().getTokenValue()).isEqualTo("jpa-refresh-test");
         assertThat(idToken.getToken().getClaims()).containsEntry("email", "system@example.com");
         assertThat(userCode.getToken().getTokenValue()).isEqualTo("jpa-user-code-test");
@@ -174,10 +209,10 @@ class OAuthJpaPersistenceIntegrationTest {
     @DisplayName("round-trips authorization consent through JPA")
     void shouldRoundTripConsentWhenConsentIsSaved() {
         // Arrange
-        RegisteredClient client = this.clients.findByClientId("internal__integration-client");
+        RegisteredClient client = this.clients.findByClientId("integration-client");
         assertThat(client).isNotNull();
         OAuth2AuthorizationConsent consent = OAuth2AuthorizationConsent.withId(client.getId(), "system")
-            .authority(new SimpleGrantedAuthority("SCOPE_taskmigo.api"))
+            .authority(new SimpleGrantedAuthority("ROLE_SYSTEM_OPERATOR"))
             .build();
 
         // Act
@@ -188,7 +223,7 @@ class OAuthJpaPersistenceIntegrationTest {
         assertThat(reloaded).isNotNull();
         assertThat(reloaded.getAuthorities())
             .extracting(authority -> authority.getAuthority())
-            .containsExactly("SCOPE_taskmigo.api");
+            .containsExactly("ROLE_SYSTEM_OPERATOR");
         this.consents.remove(consent);
         assertThat(this.consents.findById(client.getId(), "system")).isNull();
     }

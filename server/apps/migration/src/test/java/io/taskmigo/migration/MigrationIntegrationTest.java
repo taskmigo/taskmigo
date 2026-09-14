@@ -9,7 +9,9 @@ import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.identity.authorization.role.RoleService;
 import io.taskmigo.identity.authorization.statement.StatementService;
-import io.taskmigo.identity.oauth.InternalClientMetadata;
+import io.taskmigo.identity.oauth.RegisteredClientDefinition;
+import io.taskmigo.identity.oauth.RegisteredClientRepository;
+import io.taskmigo.identity.oauth.RegisteredClientType;
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.UserService;
@@ -30,30 +32,26 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.test.context.TestConstructor;
 
 @SpringBootTest(
     properties = {
-        "taskmigo.migration.user.password=integration-password",
-        "taskmigo.migration.user.first-name=Integration",
-        "taskmigo.migration.user.last-name=Administrator",
-        "taskmigo.migration.user.emails[0]=system@example.com",
-        "taskmigo.migration.user.roles[0]=System Operator",
-        "taskmigo.migration.user.statements[0]=system_operator_request_all",
-        "taskmigo.migration.registered-clients.cli.registration.client-id=internal__integration-client",
-        "taskmigo.migration.registered-clients.cli.registration.client-secret=integration-secret",
-        "taskmigo.migration.registered-clients.cli.registration.client-authentication-methods=client_secret_basic",
-        "taskmigo.migration.registered-clients.cli.registration.authorization-grant-types=client_credentials",
-        "taskmigo.migration.registered-clients.cli.registration.scopes=taskmigo.api",
-        "taskmigo.migration.registered-clients.browser.registration.client-secret=browser-integration-secret",
-        "taskmigo.migration.registered-clients.browser.registration.redirect-uris[0]=http://localhost:3000/api/auth/callback",
-        "taskmigo.migration.registered-clients.browser.registration.post-logout-redirect-uris[0]=http://localhost:3000/",
+        "TASKMIGO_USER_PASSWORD={bcrypt}$2a$10$06C0Iz4cZk50m6RPxwd5EOshPgze.x4RV7xU2b7gubrUnzMNnOOmW",
+        "taskmigo.registered-clients.cli.registration.client-id=integration-client",
+        "taskmigo.registered-clients.cli.registration.client-secret=integration-secret",
+        "taskmigo.registered-clients.cli.registration.client-authentication-methods=client_secret_basic",
+        "taskmigo.registered-clients.cli.registration.authorization-grant-types=client_credentials",
+        "taskmigo.registered-clients.browser.registration.client-secret=browser-integration-secret",
+        "taskmigo.registered-clients.browser.registration.redirect-uris[0]=http://localhost:3000/api/auth/callback",
+        "taskmigo.registered-clients.browser.registration.post-logout-redirect-uris[0]=http://localhost:3000/",
     }
 )
 @Import(PostgresTestConfiguration.class)
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 class MigrationIntegrationTest {
+
+    private static final String INTEGRATION_PASSWORD_HASH =
+        "{bcrypt}$2a$10$06C0Iz4cZk50m6RPxwd5EOshPgze.x4RV7xU2b7gubrUnzMNnOOmW";
 
     private final Flyway flyway;
     private final MigrationProperties properties;
@@ -99,7 +97,7 @@ class MigrationIntegrationTest {
 
         // Act
         var system = this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow();
-        RegisteredClient internal = this.storedClient("internal__integration-client");
+        RegisteredClientDefinition internal = this.storedDefinition("integration-client");
         RegisteredClient browser = this.storedClient(BrowserClientMetadata.CLIENT_ID);
 
         // Assert
@@ -108,15 +106,16 @@ class MigrationIntegrationTest {
         assertThat(
             this.passwordEncoder.matches("integration-password", Objects.requireNonNull(system.passwordHash()))
         ).isTrue();
+        assertThat(system.passwordHash()).isEqualTo(INTEGRATION_PASSWORD_HASH);
         assertThat(this.users.require(system.id()))
             .extracting(UserInfo::firstName, UserInfo::lastName, UserInfo::emails)
-            .containsExactly("Integration", "Administrator", Set.of("system@example.com"));
+            .containsExactly("System", "User", Set.of("system@example.com"));
         assertThat(this.users.findForAuthentication("admin")).isPresent();
         assertThat(this.users.roleIds(system.id())).hasSize(1);
-        assertThat(InternalClientMetadata.isManaged(internal)).isTrue();
-        assertThat(internal.getClientId()).startsWith(InternalClientMetadata.CLIENT_ID_PREFIX);
-        assertThat(internal.getAuthorizationGrantTypes()).containsExactly(AuthorizationGrantType.CLIENT_CREDENTIALS);
-        assertThat(BrowserClientMetadata.isManaged(browser)).isTrue();
+        assertThat(internal.type()).isEqualTo(RegisteredClientType.INTERNAL);
+        assertThat(internal.registeredClient().getAuthorizationGrantTypes()).containsExactly(
+            AuthorizationGrantType.CLIENT_CREDENTIALS
+        );
         assertThat(browser.getClientAuthenticationMethods()).containsExactly(
             ClientAuthenticationMethod.CLIENT_SECRET_BASIC
         );
@@ -126,11 +125,7 @@ class MigrationIntegrationTest {
         );
         assertThat(browser.getRedirectUris()).containsExactly("http://localhost:3000/api/auth/callback");
         assertThat(browser.getPostLogoutRedirectUris()).containsExactly("http://localhost:3000/");
-        assertThat(browser.getScopes()).containsExactlyInAnyOrder(
-            OidcScopes.OPENID,
-            OidcScopes.PROFILE,
-            InternalClientMetadata.API_SCOPE
-        );
+        assertThat(browser.getScopes()).containsExactlyInAnyOrder(OidcScopes.OPENID, OidcScopes.PROFILE);
         assertThat(browser.getClientSettings().isRequireProofKey()).isTrue();
         assertThat(browser.getClientSettings().isRequireAuthorizationConsent()).isFalse();
         assertThat(browser.getTokenSettings().isReuseRefreshTokens()).isFalse();
@@ -154,7 +149,8 @@ class MigrationIntegrationTest {
         // Assert
         assertThat(client).isInstanceOf(OAuth2AuthorizationServerProperties.Client.class);
         assertThat(client.isAbsent()).isFalse();
-        assertThat(registration.getClientId()).isEqualTo("internal__integration-client");
+        assertThat(registration.getClientId()).isEqualTo("integration-client");
+        assertThat(client.getType()).isEqualTo(RegisteredClientType.INTERNAL);
         assertThat(client.isRequireProofKey()).isTrue();
         assertThat(client.getToken().getAccessTokenTimeToLive()).isEqualTo(Duration.ofMinutes(5));
     }
@@ -177,8 +173,8 @@ class MigrationIntegrationTest {
         this.users.reconcileManagedUser(
             SystemUser.USERNAME,
             Set.of("system@example.com"),
-            "Integration",
-            "Administrator",
+            "System",
+            "User",
             Set.of(this.access.requireRoleByName("System Operator")),
             Set.of(this.statements.requireByName("system_operator_request_all")),
             this.passwordEncoder.encode(rotatedPassword)
@@ -195,11 +191,11 @@ class MigrationIntegrationTest {
         this.users.reconcileManagedUser(
             SystemUser.USERNAME,
             Set.of("system@example.com"),
-            "Integration",
-            "Administrator",
+            "System",
+            "User",
             Set.of(this.access.requireRoleByName("System Operator")),
             Set.of(this.statements.requireByName("system_operator_request_all")),
-            this.passwordEncoder.encode("integration-password")
+            INTEGRATION_PASSWORD_HASH
         );
     }
 
@@ -213,7 +209,7 @@ class MigrationIntegrationTest {
     @DisplayName("preserves managed identities during repeated migration")
     void shouldPreserveManagedIdentitiesWhenMigrationRunsAgain() {
         // Arrange
-        String internalId = this.storedClient("internal__integration-client").getId();
+        String internalId = this.storedClient("integration-client").getId();
         String browserId = this.storedClient(BrowserClientMetadata.CLIENT_ID).getId();
         UUID systemId = this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().id();
 
@@ -221,7 +217,7 @@ class MigrationIntegrationTest {
         this.clientReconciler.reconcile(this.properties.registeredClients());
 
         // Assert
-        assertThat(this.storedClient("internal__integration-client").getId()).isEqualTo(internalId);
+        assertThat(this.storedClient("integration-client").getId()).isEqualTo(internalId);
         assertThat(this.storedClient(BrowserClientMetadata.CLIENT_ID).getId()).isEqualTo(browserId);
         assertThat(this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().id()).isEqualTo(systemId);
     }
@@ -287,14 +283,14 @@ class MigrationIntegrationTest {
     /**
      * Verifies that concurrent reconciliation creates one persisted registration for the same internal client.
      *
-     * Given: two concurrent reconciliation calls with one `internal__` client identifier.
+     * Given: two concurrent reconciliation calls with one internal client identifier.
      * Expect: one registration id is stored and both calls complete successfully.
      */
     @Test
     @DisplayName("creates one registration during concurrent internal client reconciliation")
     void shouldCreateOneRegistrationWhenInternalClientReconciliationIsConcurrent() throws Exception {
         // Arrange
-        String clientId = "internal__concurrent-" + UUID.randomUUID();
+        String clientId = "concurrent-" + UUID.randomUUID();
         var configuredClients = Map.of("concurrent", client(clientId, "concurrent-secret"));
 
         // Act
@@ -310,21 +306,43 @@ class MigrationIntegrationTest {
     }
 
     /**
-     * Verifies that an internal client without the required namespace is rejected before persistence.
+     * Verifies that an internal client may use an ordinary client identifier.
      *
-     * Given: a machine-client definition whose client id does not start with `internal__`.
-     * Expect: migration throws an explicit prefix validation error.
+     * Given: an internal machine client without a reserved identifier prefix.
+     * Expect: migration persists the client because ownership is represented by its classification.
      */
     @Test
-    @DisplayName("rejects internal clients without the required prefix")
-    void shouldRejectInternalClientWhenClientIdHasNoRequiredPrefix() {
+    @DisplayName("accepts internal clients without a reserved prefix")
+    void shouldAcceptInternalClientWhenClientIdHasNoReservedPrefix() {
         // Arrange
-        var configuredClients = Map.of("invalid", client("invalid-internal-client", "secret"));
+        String clientId = "ordinary-internal-" + UUID.randomUUID();
 
-        // Act + Assert
-        assertThatThrownBy(() -> this.clientReconciler.reconcile(configuredClients)).hasMessageContaining(
-            "must start with internal__"
-        );
+        // Act
+        this.clientReconciler.reconcile(Map.of("ordinary", client(clientId, "secret")));
+
+        // Assert
+        assertThat(this.storedDefinition(clientId).type()).isEqualTo(RegisteredClientType.INTERNAL);
+    }
+
+    /**
+     * Verifies that user-created clients use the same reconciliation contract with a distinct persisted type.
+     *
+     * Given: a user client definition with an ordinary client identifier.
+     * Expect: migration persists it as a user client without requiring an internal naming convention.
+     */
+    @Test
+    @DisplayName("reconciles user-created clients with their persisted type")
+    void shouldReconcileUserClientWhenTypeIsUser() {
+        // Arrange
+        String clientId = "user-client-" + UUID.randomUUID();
+        var definition = client(clientId, "user-secret");
+        definition.setType(RegisteredClientType.USER);
+
+        // Act
+        this.clientReconciler.reconcile(Map.of("user", definition));
+
+        // Assert
+        assertThat(this.storedDefinition(clientId).type()).isEqualTo(RegisteredClientType.USER);
     }
 
     /**
@@ -337,7 +355,7 @@ class MigrationIntegrationTest {
     @DisplayName("rejects duplicate registered client identifiers")
     void shouldRejectDuplicateClientIdsBeforePersistence() {
         // Arrange
-        String clientId = "internal__duplicate-" + UUID.randomUUID();
+        String clientId = "duplicate-" + UUID.randomUUID();
         var configuredClients = Map.of(
             "first",
             client(clientId, "first-secret"),
@@ -353,31 +371,33 @@ class MigrationIntegrationTest {
     }
 
     /**
-     * Verifies that an unmanaged client cannot be adopted by migration.
+     * Verifies that migration cannot change a client classification implicitly.
      *
-     * Given: an unmanaged persisted machine client and a matching migration definition.
-     * Expect: migration fails without replacing the unmanaged registration.
+     * Given: a persisted user client and an internal migration definition with the same client id.
+     * Expect: migration fails without replacing the persisted definition.
      */
     @Test
-    @DisplayName("refuses to adopt an unmanaged internal OAuth client")
-    void shouldRejectClientWhenInternalClientIsUnmanaged() {
+    @DisplayName("rejects registered client type mismatch")
+    void shouldRejectClientWhenRegisteredClientTypeDiffers() {
         // Arrange
-        String clientId = "internal__unmanaged-" + UUID.randomUUID();
+        String clientId = "type-mismatch-" + UUID.randomUUID();
         this.clients.save(
-            RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId(clientId)
-                .clientSecret(this.passwordEncoder.encode("secret"))
-                .clientName("Unmanaged")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .scope(InternalClientMetadata.API_SCOPE)
-                .build()
+            new RegisteredClientDefinition(
+                RegisteredClient.withId(UUID.randomUUID().toString())
+                    .clientId(clientId)
+                    .clientSecret(this.passwordEncoder.encode("secret"))
+                    .clientName("User client")
+                    .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                    .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                    .build(),
+                RegisteredClientType.USER
+            )
         );
 
         // Act + Assert
         assertThatThrownBy(() ->
-            this.clientReconciler.reconcile(Map.of("unmanaged", client(clientId, "secret")))
-        ).hasMessageContaining("Refusing to adopt or remove unmanaged OAuth client");
+            this.clientReconciler.reconcile(Map.of("type-mismatch", client(clientId, "secret")))
+        ).hasMessageContaining("Registered client type mismatch");
     }
 
     /**
@@ -390,7 +410,7 @@ class MigrationIntegrationTest {
     @DisplayName("removes managed registered client when client is marked absent")
     void shouldRemoveManagedRegisteredClientWhenClientIsAbsent() {
         // Arrange
-        String clientId = "internal__absent-" + UUID.randomUUID();
+        String clientId = "absent-" + UUID.randomUUID();
         this.clientReconciler.reconcile(Map.of("absent", client(clientId, "secret")));
 
         // Act
@@ -410,7 +430,7 @@ class MigrationIntegrationTest {
     @DisplayName("retains managed clients omitted from configuration")
     void shouldRetainManagedClientWhenDefinitionIsRemoved() {
         // Arrange
-        String clientId = "internal__retained-" + UUID.randomUUID();
+        String clientId = "retained-" + UUID.randomUUID();
         this.clientReconciler.reconcile(Map.of("retained", client(clientId, "secret")));
 
         // Act
@@ -424,6 +444,10 @@ class MigrationIntegrationTest {
         return Objects.requireNonNull(this.clients.findByClientId(clientId));
     }
 
+    private RegisteredClientDefinition storedDefinition(String clientId) {
+        return Objects.requireNonNull(this.clients.findDefinitionByClientId(clientId));
+    }
+
     private static MigrationProperties.ManagedClientProperties client(String clientId, String clientSecret) {
         var definition = new MigrationProperties.ManagedClientProperties();
         var registration = definition.getRegistration();
@@ -434,9 +458,10 @@ class MigrationIntegrationTest {
         registration.setAuthorizationGrantTypes(Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS.getValue()));
         registration.setRedirectUris(Set.of());
         registration.setPostLogoutRedirectUris(Set.of());
-        registration.setScopes(Set.of(InternalClientMetadata.API_SCOPE));
+        registration.setScopes(Set.of());
         definition.setRequireProofKey(false);
         definition.setRequireAuthorizationConsent(false);
+        definition.setType(RegisteredClientType.INTERNAL);
         return definition;
     }
 

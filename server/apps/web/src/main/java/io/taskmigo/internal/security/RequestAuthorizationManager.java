@@ -14,7 +14,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
@@ -46,10 +45,6 @@ final class RequestAuthorizationManager implements AuthorizationManager<RequestA
         if (!(current instanceof JwtAuthenticationToken token)) {
             return new AuthorizationDecision(false);
         }
-        if (!hasAuthority(current, "SCOPE_taskmigo.api")) {
-            return new AuthorizationDecision(false);
-        }
-
         Jwt jwt = token.getToken();
         String principalType = jwt.getClaimAsString("principal_type");
         if (!"user".equals(principalType) && !"service".equals(principalType)) {
@@ -90,9 +85,5 @@ final class RequestAuthorizationManager implements AuthorizationManager<RequestA
     private static String principalUsername(Jwt jwt, Authentication authentication) {
         String username = jwt.getClaimAsString("principal_username");
         return username == null ? authentication.getName() : username;
-    }
-
-    private static boolean hasAuthority(Authentication authentication, String expected) {
-        return authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).anyMatch(expected::equals);
     }
 }

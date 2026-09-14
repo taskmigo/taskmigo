@@ -125,19 +125,20 @@ tasks:
           | {{.KUBECTL}} apply -f -
 
         if ! {{.KUBECTL}} -n "{{.NAMESPACE}}" get secret taskmigo-secrets >/dev/null 2>&1; then
+          default_user_password='{bcrypt}$2a$10$RfYQDs9yQAhdTeMocZx1BO1FnpHqVtc5RBtqnTZev2las1/FflZdO'
           if [ "${CI:-false}" = true ]; then
             command -v openssl >/dev/null || {
               echo "openssl is required to generate CI credentials." >&2
               exit 1
             }
             database_password="${DATABASE_PASSWORD:-$(openssl rand -hex 16)}"
-            migration_password="${MIGRATION_USER_PASSWORD:-$(openssl rand -hex 16)}"
+            user_password="${TASKMIGO_USER_PASSWORD:-$default_user_password}"
             auth_client_secret="${AUTH_CLIENT_SECRET:-$(openssl rand -hex 32)}"
             auth_session_secret="${AUTH_SESSION_SECRET:-$(openssl rand -hex 32)}"
             test_client_secret="${INTEGRATION_TEST_CLIENT_SECRET:-$(openssl rand -hex 32)}"
           else
             database_password="${DATABASE_PASSWORD:-taskmigo}"
-            migration_password="${MIGRATION_USER_PASSWORD:-taskmigo}"
+            user_password="${TASKMIGO_USER_PASSWORD:-$default_user_password}"
             auth_client_secret="${AUTH_CLIENT_SECRET:-taskmigo-local-browser-secret}"
             auth_session_secret="${AUTH_SESSION_SECRET:-taskmigo-local-session-secret-0123456789abcdef}"
             test_client_secret="${INTEGRATION_TEST_CLIENT_SECRET:-taskmigo-local-test-client-secret}"
@@ -145,7 +146,7 @@ tasks:
 
           {{.KUBECTL}} -n "{{.NAMESPACE}}" create secret generic taskmigo-secrets \
             --from-literal=database-password="$database_password" \
-            --from-literal=migration-user-password="$migration_password" \
+            --from-literal=user-password="$user_password" \
             --from-literal=auth-client-secret="$auth_client_secret" \
             --from-literal=auth-session-secret="$auth_session_secret" \
             --from-literal=integration-test-client-secret="$test_client_secret"
@@ -306,9 +307,12 @@ tasks:
         if [ "${CI:-false}" = true ]; then
           printf 'Taskmigo is ready.\n\nURL:      http://{{.PUBLIC_HOST}}\nAPI:      http://{{.PUBLIC_HOST}}/api\nOIDC:     http://{{.PUBLIC_HOST}}/.well-known/openid-configuration\nAPI docs: http://{{.PUBLIC_HOST}}/api/docs\nHost entry: {{.MINIKUBE_IP}} {{.PUBLIC_HOST}}\nCredentials: stored in secret/taskmigo-secrets\n'
         else
-          password="$({{.KUBECTL}} -n "{{.NAMESPACE}}" get secret taskmigo-secrets \
-            -o go-template='{{`{{index .data "migration-user-password" | base64decode}}`}}')"
-          printf 'Taskmigo is ready.\n\nURL:      http://{{.PUBLIC_HOST}}\nAPI:      http://{{.PUBLIC_HOST}}/api\nOIDC:     http://{{.PUBLIC_HOST}}/.well-known/openid-configuration\nAPI docs: http://{{.PUBLIC_HOST}}/api/docs\nHost entry: {{.MINIKUBE_IP}} {{.PUBLIC_HOST}}\nUsername: system\nPassword: %s\n' "$password"
+          if [ -n "${TASKMIGO_USER_PASSWORD:-}" ]; then
+            password_message='Password: supplied through TASKMIGO_USER_PASSWORD as an encoded hash'
+          else
+            password_message='Password: taskmigo (default)'
+          fi
+          printf 'Taskmigo is ready.\n\nURL:      http://{{.PUBLIC_HOST}}\nAPI:      http://{{.PUBLIC_HOST}}/api\nOIDC:     http://{{.PUBLIC_HOST}}/.well-known/openid-configuration\nAPI docs: http://{{.PUBLIC_HOST}}/api/docs\nHost entry: {{.MINIKUBE_IP}} {{.PUBLIC_HOST}}\nUsername: system\n%s\n' "$password_message"
         fi
 
   kubernetes:deploy:

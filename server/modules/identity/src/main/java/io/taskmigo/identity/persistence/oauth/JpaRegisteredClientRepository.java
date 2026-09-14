@@ -1,10 +1,13 @@
 package io.taskmigo.identity.persistence.oauth;
 
+import io.taskmigo.identity.oauth.RegisteredClientDefinition;
 import io.taskmigo.identity.oauth.RegisteredClientRepository;
+import io.taskmigo.identity.oauth.RegisteredClientType;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
+import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
@@ -21,10 +24,16 @@ import org.springframework.util.Assert;
 public class JpaRegisteredClientRepository implements RegisteredClientRepository {
 
     private final RegisteredClientEntityRepository repository;
+    private final RegisteredClientMetadataEntityRepository metadataRepository;
     private final OAuthPersistenceCodec codec;
 
-    JpaRegisteredClientRepository(RegisteredClientEntityRepository repository, OAuthPersistenceCodec codec) {
+    JpaRegisteredClientRepository(
+        RegisteredClientEntityRepository repository,
+        RegisteredClientMetadataEntityRepository metadataRepository,
+        OAuthPersistenceCodec codec
+    ) {
         this.repository = repository;
+        this.metadataRepository = metadataRepository;
         this.codec = codec;
     }
 
@@ -32,7 +41,15 @@ public class JpaRegisteredClientRepository implements RegisteredClientRepository
     @Transactional
     public void save(RegisteredClient registeredClient) {
         Assert.notNull(registeredClient, "registeredClient cannot be null");
-        this.repository.save(this.toEntity(registeredClient));
+        this.save(new RegisteredClientDefinition(registeredClient, RegisteredClientType.USER));
+    }
+
+    @Override
+    @Transactional
+    public void save(RegisteredClientDefinition definition) {
+        Assert.notNull(definition, "definition cannot be null");
+        this.repository.save(this.toEntity(definition.registeredClient()));
+        this.metadataRepository.save(this.toMetadataEntity(definition));
     }
 
     @Override
@@ -49,6 +66,20 @@ public class JpaRegisteredClientRepository implements RegisteredClientRepository
         return this.repository.findByClientId(clientId).map(this::toObject).orElse(null);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public @Nullable RegisteredClientDefinition findDefinitionById(String id) {
+        Assert.hasText(id, "id cannot be empty");
+        return this.repository.findById(id).map(this::toDefinition).orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public @Nullable RegisteredClientDefinition findDefinitionByClientId(String clientId) {
+        Assert.hasText(clientId, "clientId cannot be empty");
+        return this.repository.findByClientId(clientId).map(this::toDefinition).orElse(null);
+    }
+
     /// Deletes one registered client for the migration reconciler.
     ///
     /// This operation intentionally removes only the registered-client row. The
@@ -58,7 +89,22 @@ public class JpaRegisteredClientRepository implements RegisteredClientRepository
     @Transactional
     public void deleteById(String id) {
         Assert.hasText(id, "id cannot be empty");
+        this.metadataRepository.findById(id).ifPresent(this.metadataRepository::delete);
         this.repository.deleteById(id);
+    }
+
+    private RegisteredClientDefinition toDefinition(RegisteredClientEntity entity) {
+        RegisteredClientMetadataEntity metadata = this.metadataRepository
+            .findById(entity.id)
+            .orElseThrow(() ->
+                new DataRetrievalFailureException(
+                    "Metadata for RegisteredClient with id '" + entity.id + "' was not found"
+                )
+            );
+        return new RegisteredClientDefinition(
+            this.toObject(entity),
+            RegisteredClientType.requireValid(Objects.requireNonNull(metadata.type))
+        );
     }
 
     private RegisteredClient toObject(RegisteredClientEntity entity) {
@@ -117,6 +163,13 @@ public class JpaRegisteredClientRepository implements RegisteredClientRepository
         entity.scopes = this.codec.writeDelimited(registeredClient.getScopes());
         entity.clientSettings = this.codec.writeMap(registeredClient.getClientSettings().getSettings());
         entity.tokenSettings = this.codec.writeMap(registeredClient.getTokenSettings().getSettings());
+        return entity;
+    }
+
+    private RegisteredClientMetadataEntity toMetadataEntity(RegisteredClientDefinition definition) {
+        RegisteredClientMetadataEntity entity = new RegisteredClientMetadataEntity();
+        entity.registeredClientId = definition.registeredClient().getId();
+        entity.type = definition.type();
         return entity;
     }
 

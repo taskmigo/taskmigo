@@ -1,6 +1,7 @@
 package io.taskmigo.migration;
 
-import io.taskmigo.identity.oauth.InternalClientMetadata;
+import io.taskmigo.identity.oauth.RegisteredClientDefinition;
+import io.taskmigo.identity.oauth.RegisteredClientType;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
@@ -37,43 +38,49 @@ final class RegisteredClientFactory {
             "Registration is required: " + registrationId
         );
         String clientId = requiredClientId(registrationId, registration.getClientId());
+        String type = requiredType(registrationId, definition.getType());
+        if (BrowserClientMetadata.CLIENT_ID.equals(clientId) && !RegisteredClientType.INTERNAL.equals(type)) {
+            throw new IllegalStateException("Browser client must have type internal: " + clientId);
+        }
         if (definition.isAbsent()) {
-            if (
-                !BrowserClientMetadata.CLIENT_ID.equals(clientId) &&
-                !InternalClientMetadata.hasRequiredClientIdPrefix(clientId)
-            ) {
-                throw new IllegalStateException("Internal client-id must start with internal__: " + clientId);
-            }
             return;
         }
         if (BrowserClientMetadata.CLIENT_ID.equals(clientId)) {
             validateBrowser(clientId, registration);
-        } else {
+        } else if (RegisteredClientType.INTERNAL.equals(type)) {
             validateInternal(clientId, registration);
+        } else {
+            validateUser(clientId, registration);
         }
     }
 
-    RegisteredClient create(
+    RegisteredClientDefinition create(
         String registrationId,
         MigrationProperties.ManagedClientProperties definition,
-        @Nullable RegisteredClient existing
+        @Nullable RegisteredClientDefinition existing
     ) {
         OAuth2AuthorizationServerProperties.Registration registration = definition.getRegistration();
         String clientId = requiredClientId(registrationId, registration.getClientId());
+        String type = requiredType(registrationId, definition.getType());
         boolean browser = BrowserClientMetadata.CLIENT_ID.equals(clientId);
-        String secret = requiredSecret(clientId, registration.getClientSecret());
+        @Nullable
+        String secret = registration.getClientSecret();
         RegisteredClient.Builder builder =
             existing == null
                 ? RegisteredClient.withId(registrationId).clientId(clientId)
-                : RegisteredClient.from(existing).clientId(clientId);
+                : RegisteredClient.from(existing.registeredClient()).clientId(clientId);
 
-        return builder
-            .clientSecret(this.encodedSecret(secret, existing))
+        if (secret != null && !secret.isBlank()) {
+            builder.clientSecret(Objects.requireNonNull(this.encodedSecret(secret, existing)));
+        }
+        RegisteredClient client = builder
             .clientName(
                 registration.getClientName() == null || registration.getClientName().isBlank()
                     ? browser
                         ? "Taskmigo browser client"
-                        : "Internal " + clientId
+                        : RegisteredClientType.INTERNAL.equals(type)
+                          ? "Internal " + clientId
+                          : "User " + clientId
                     : registration.getClientName()
             )
             .clientAuthenticationMethods(methods -> {
@@ -104,15 +111,13 @@ final class RegisteredClientFactory {
                 scopes.clear();
                 scopes.addAll(registration.getScopes());
             })
-            .clientSettings(this.clientSettings(definition, browser))
+            .clientSettings(this.clientSettings(definition))
             .tokenSettings(this.tokenSettings(definition.getToken()))
             .build();
+        return new RegisteredClientDefinition(client, type);
     }
 
-    private static ClientSettings clientSettings(
-        MigrationProperties.ManagedClientProperties definition,
-        boolean browser
-    ) {
+    private static ClientSettings clientSettings(MigrationProperties.ManagedClientProperties definition) {
         ClientSettings.Builder builder = ClientSettings.builder()
             .requireProofKey(definition.isRequireProofKey())
             .requireAuthorizationConsent(definition.isRequireAuthorizationConsent());
@@ -124,7 +129,6 @@ final class RegisteredClientFactory {
                 jwsAlgorithm(definition.getTokenEndpointAuthenticationSigningAlgorithm())
             );
         }
-        builder.setting(browser ? "taskmigo.browser-client.managed" : "taskmigo.internal-client.managed", "v1");
         return builder.build();
     }
 
@@ -171,6 +175,14 @@ final class RegisteredClientFactory {
         return clientId;
     }
 
+    private static String requiredType(String registrationId, String type) {
+        try {
+            return RegisteredClientType.requireValid(type);
+        } catch (IllegalArgumentException exception) {
+            throw new IllegalStateException("Invalid registered client type: " + registrationId, exception);
+        }
+    }
+
     private static void validateBrowser(
         String clientId,
         OAuth2AuthorizationServerProperties.Registration registration
@@ -192,8 +204,8 @@ final class RegisteredClientFactory {
                 "Browser client must use authorization_code and refresh_token: " + clientId
             );
         }
-        if (!Set.of("openid", "profile", InternalClientMetadata.API_SCOPE).equals(registration.getScopes())) {
-            throw new IllegalStateException("Browser client must use OIDC and Taskmigo API scopes: " + clientId);
+        if (!Set.of("openid", "profile").equals(registration.getScopes())) {
+            throw new IllegalStateException("Browser client must use only OIDC scopes: " + clientId);
         }
         if (registration.getRedirectUris().isEmpty() || registration.getPostLogoutRedirectUris().isEmpty()) {
             throw new IllegalStateException("Browser client redirect URIs are required: " + clientId);
@@ -205,9 +217,6 @@ final class RegisteredClientFactory {
         String clientId,
         OAuth2AuthorizationServerProperties.Registration registration
     ) {
-        if (!InternalClientMetadata.hasRequiredClientIdPrefix(clientId)) {
-            throw new IllegalStateException("Internal client-id must start with internal__: " + clientId);
-        }
         if (
             !Set.of(ClientAuthenticationMethod.CLIENT_SECRET_BASIC.getValue()).equals(
                 registration.getClientAuthenticationMethods()
@@ -222,8 +231,8 @@ final class RegisteredClientFactory {
         ) {
             throw new IllegalStateException("Internal client must use only client_credentials: " + clientId);
         }
-        if (!Set.of(InternalClientMetadata.API_SCOPE).equals(registration.getScopes())) {
-            throw new IllegalStateException("Internal client must use only taskmigo.api scope: " + clientId);
+        if (!registration.getScopes().isEmpty()) {
+            throw new IllegalStateException("Internal client must not define OAuth scopes: " + clientId);
         }
         if (!registration.getRedirectUris().isEmpty() || !registration.getPostLogoutRedirectUris().isEmpty()) {
             throw new IllegalStateException("Internal client must not define redirect URIs: " + clientId);
@@ -231,8 +240,21 @@ final class RegisteredClientFactory {
         requiredSecret(clientId, registration.getClientSecret());
     }
 
-    private String encodedSecret(String secret, @Nullable RegisteredClient existing) {
-        String existingSecret = existing == null ? null : existing.getClientSecret();
+    private static void validateUser(String clientId, OAuth2AuthorizationServerProperties.Registration registration) {
+        if (
+            registration
+                .getClientAuthenticationMethods()
+                .contains(ClientAuthenticationMethod.CLIENT_SECRET_BASIC.getValue())
+        ) {
+            requiredSecret(clientId, registration.getClientSecret());
+        }
+    }
+
+    private @Nullable String encodedSecret(@Nullable String secret, @Nullable RegisteredClientDefinition existing) {
+        if (secret == null || secret.isBlank()) {
+            return null;
+        }
+        String existingSecret = existing == null ? null : existing.registeredClient().getClientSecret();
         if (
             existingSecret != null &&
             (secret.equals(existingSecret) || this.passwordEncoder.matches(secret, existingSecret))

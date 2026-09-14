@@ -16,12 +16,12 @@ the deployed stack.
 
 The default Secret name is `taskmigo-secrets` and the chart expects these keys:
 
-| Key                       | Used by                                                   |
-| ------------------------- | --------------------------------------------------------- |
-| `database-password`       | Migration, web, worker                                    |
-| `migration-user-password` | Migration system-user reconciliation                      |
-| `auth-client-secret`      | Browser OAuth client reconciliation and client runtime    |
-| `auth-session-secret`     | Client session encryption; must be at least 32 characters |
+| Key                   | Used by                                                   |
+| --------------------- | --------------------------------------------------------- |
+| `database-password`   | Migration, web, worker                                    |
+| `user-password`       | Migration system-user encoded password                    |
+| `auth-client-secret`  | Browser OAuth client reconciliation and client runtime    |
+| `auth-session-secret` | Client session encryption; must be at least 32 characters |
 
 When the Helm integration test OAuth client is enabled, the Secret must additionally contain `integration-test-client-secret`.
 
@@ -33,7 +33,7 @@ Create the Secret outside Helm so upgrades never rotate credentials implicitly:
 kubectl create namespace taskmigo
 kubectl -n taskmigo create secret generic taskmigo-secrets \
   --from-literal=database-password='replace-me' \
-  --from-literal=migration-user-password='replace-me' \
+  --from-literal=user-password='{bcrypt}$2a$10$RfYQDs9yQAhdTeMocZx1BO1FnpHqVtc5RBtqnTZev2las1/FflZdO' \
   --from-literal=auth-client-secret='replace-me' \
   --from-literal=auth-session-secret='replace-with-at-least-32-characters'
 ```

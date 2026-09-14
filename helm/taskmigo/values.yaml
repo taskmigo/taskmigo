@@ -36,13 +36,13 @@ migration:
     pullPolicy: IfNotPresent
   backoffLimit: 3
   activeDeadlineSeconds: 600
-  migrationUserPasswordKey: migration-user-password
+  userPasswordKey: user-password
   browserClient:
     enabled: true
     clientSecretKey: auth-client-secret
   testClient:
     enabled: false
-    clientId: internal__helm-test
+    clientId: helm-test
     clientSecretKey: integration-test-client-secret
   resources: {}
   extraEnv: []
@@ -97,7 +97,7 @@ client:
     clientSecretKey: auth-client-secret
     sessionSecretKey: auth-session-secret
     allowInsecureRequests: true
-    scope: openid profile taskmigo.api
+    scope: openid profile
     oidcStateVersion: v1
     callbackPath: /api/auth/callback
     postLogoutRedirectPath: /
@@ -149,5 +149,5 @@ tests:
     pullPolicy: IfNotPresent
   oauthClient:
     enabled: false
-    clientId: internal__helm-test
+    clientId: helm-test
     clientSecretKey: integration-test-client-secret

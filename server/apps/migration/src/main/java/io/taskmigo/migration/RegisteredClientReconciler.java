@@ -1,6 +1,6 @@
 package io.taskmigo.migration;
 
-import io.taskmigo.identity.oauth.InternalClientMetadata;
+import io.taskmigo.identity.oauth.RegisteredClientDefinition;
 import io.taskmigo.identity.oauth.RegisteredClientRepository;
 import java.util.HashSet;
 import java.util.Map;
@@ -10,7 +10,6 @@ import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.TransientDataAccessException;
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -63,23 +62,18 @@ final class RegisteredClientReconciler implements ApplicationRunner {
 
     private void reconcile(Map.Entry<String, MigrationProperties.ManagedClientProperties> configuredClient) {
         String clientId = Objects.requireNonNull(configuredClient.getValue().getRegistration().getClientId());
-        RegisteredClient existing = this.clients.findByClientId(clientId);
-        if (existing != null && !this.isManaged(clientId, existing)) {
-            throw new IllegalStateException("Refusing to adopt or remove unmanaged OAuth client: " + clientId);
+        RegisteredClientDefinition existing = this.clients.findDefinitionByClientId(clientId);
+        String type = configuredClient.getValue().getType();
+        if (existing != null && !existing.type().equals(type)) {
+            throw new IllegalStateException("Registered client type mismatch: " + clientId);
         }
         if (configuredClient.getValue().isAbsent()) {
             if (existing != null) {
-                this.clients.deleteById(existing.getId());
+                this.clients.deleteById(existing.registeredClient().getId());
             }
             return;
         }
         this.clients.save(this.clientFactory.create(configuredClient.getKey(), configuredClient.getValue(), existing));
-    }
-
-    private boolean isManaged(String clientId, RegisteredClient existing) {
-        return BrowserClientMetadata.CLIENT_ID.equals(clientId)
-            ? BrowserClientMetadata.isManaged(existing)
-            : InternalClientMetadata.isManaged(existing);
     }
 
     private void validate(Map<String, MigrationProperties.ManagedClientProperties> configuredClients) {
