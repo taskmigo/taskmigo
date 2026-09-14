@@ -147,7 +147,7 @@ public class StatementService {
         }
     }
 
-    /// Resolves a Statement name for bootstrap references, including persisted definitions from prior runs.
+    /// Resolves a Statement name for migration references, including persisted definitions from prior runs.
     @Transactional(readOnly = true)
     public UUID requireByName(String name) {
         return this.statements

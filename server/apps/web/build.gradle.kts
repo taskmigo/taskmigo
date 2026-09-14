@@ -22,13 +22,14 @@ dependencies {
     implementation(project(":modules:foundation"))
     implementation(project(":modules:query"))
     implementation(project(":modules:authorization"))
-    // Provides shared datasource/JPA configuration; apps/bootstrap owns migration execution.
+    // Provides shared datasource/JPA configuration; apps/migration owns migration execution.
     implementation(project(":modules:database"))
+    implementation(project(":modules:security"))
     implementation(project(":modules:identity"))
     runtimeOnly(libs.jspecify)
-    implementation(libs.spring.boot.starter.jdbc)
     implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.spring.boot.starter.validation)
+    implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.boot.starter.oauth2.authorization.server)
     implementation(libs.spring.boot.starter.oauth2.resource.server)
     implementation(libs.springdoc.openapi.starter.webmvc.scalar)

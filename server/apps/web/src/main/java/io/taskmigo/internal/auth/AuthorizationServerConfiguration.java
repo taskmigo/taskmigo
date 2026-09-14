@@ -15,8 +15,6 @@ import org.springframework.security.config.annotation.web.configuration.OAuth2Au
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.factory.PasswordEncoderFactories;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
@@ -29,11 +27,6 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties({ IdentityProperties.class, OAuth2AuthorizationServerProperties.class })
 class AuthorizationServerConfiguration {
-
-    @Bean
-    PasswordEncoder passwordEncoder() {
-        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
-    }
 
     @Bean
     UserDetailsService interactiveUsers(UserService userService) {

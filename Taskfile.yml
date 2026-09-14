@@ -30,7 +30,7 @@ tasks:
         {{.HELM}} template taskmigo helm/taskmigo \
           --set tests.enabled=true \
           --set tests.oauthClient.enabled=true \
-          --set bootstrap.testClient.enabled=true \
+          --set migration.testClient.enabled=true \
           >/dev/null
         {{.HELM}} template taskmigo helm/taskmigo \
           --set gateway.enabled=true \
@@ -105,7 +105,7 @@ tasks:
       - |
         set -euo pipefail
         printf '%s\n' \
-          taskmigo-bootstrap:{{.IMAGE_TAG}} \
+          taskmigo-migration:{{.IMAGE_TAG}} \
           taskmigo-web:{{.IMAGE_TAG}} \
           taskmigo-worker:{{.IMAGE_TAG}} \
           taskmigo-client:{{.IMAGE_TAG}} \
@@ -125,19 +125,20 @@ tasks:
           | {{.KUBECTL}} apply -f -
 
         if ! {{.KUBECTL}} -n "{{.NAMESPACE}}" get secret taskmigo-secrets >/dev/null 2>&1; then
+          default_user_password='{bcrypt}$2a$10$RfYQDs9yQAhdTeMocZx1BO1FnpHqVtc5RBtqnTZev2las1/FflZdO'
           if [ "${CI:-false}" = true ]; then
             command -v openssl >/dev/null || {
               echo "openssl is required to generate CI credentials." >&2
               exit 1
             }
             database_password="${DATABASE_PASSWORD:-$(openssl rand -hex 16)}"
-            bootstrap_password="${BOOTSTRAP_USER_PASSWORD:-$(openssl rand -hex 16)}"
+            system_password="${TASKMIGO_SYSTEM_PASSWORD:-$default_user_password}"
             auth_client_secret="${AUTH_CLIENT_SECRET:-$(openssl rand -hex 32)}"
             auth_session_secret="${AUTH_SESSION_SECRET:-$(openssl rand -hex 32)}"
             test_client_secret="${INTEGRATION_TEST_CLIENT_SECRET:-$(openssl rand -hex 32)}"
           else
             database_password="${DATABASE_PASSWORD:-taskmigo}"
-            bootstrap_password="${BOOTSTRAP_USER_PASSWORD:-taskmigo}"
+            system_password="${TASKMIGO_SYSTEM_PASSWORD:-$default_user_password}"
             auth_client_secret="${AUTH_CLIENT_SECRET:-taskmigo-local-browser-secret}"
             auth_session_secret="${AUTH_SESSION_SECRET:-taskmigo-local-session-secret-0123456789abcdef}"
             test_client_secret="${INTEGRATION_TEST_CLIENT_SECRET:-taskmigo-local-test-client-secret}"
@@ -145,7 +146,7 @@ tasks:
 
           {{.KUBECTL}} -n "{{.NAMESPACE}}" create secret generic taskmigo-secrets \
             --from-literal=database-password="$database_password" \
-            --from-literal=bootstrap-user-password="$bootstrap_password" \
+            --from-literal=user-password="$system_password" \
             --from-literal=auth-client-secret="$auth_client_secret" \
             --from-literal=auth-session-secret="$auth_session_secret" \
             --from-literal=integration-test-client-secret="$test_client_secret"
@@ -154,7 +155,7 @@ tasks:
         {{.KUBECTL}} -n "{{.NAMESPACE}}" apply -f deploy/minikube/postgresql.yaml
 
   kubernetes:database:ready:
-    desc: Wait until PostgreSQL is ready for bootstrap
+    desc: Wait until PostgreSQL is ready for migration
     internal: true
     cmds:
       - '{{.KUBECTL}} -n "{{.NAMESPACE}}" rollout status deployment/postgresql --timeout=120s'
@@ -212,10 +213,10 @@ tasks:
           --namespace "{{.NAMESPACE}}" \
           --timeout 10m \
           --set-string fullnameOverride={{.RELEASE}} \
-          --set bootstrap.image.repository=taskmigo-bootstrap \
-          --set bootstrap.image.tag={{.IMAGE_TAG}} \
-          --set bootstrap.image.pullPolicy=Never \
-          --set bootstrap.testClient.enabled=true \
+          --set migration.image.repository=taskmigo-migration \
+          --set migration.image.tag={{.IMAGE_TAG}} \
+          --set migration.image.pullPolicy=Never \
+          --set migration.testClient.enabled=true \
           --set web.image.repository=taskmigo-web \
           --set web.image.tag={{.IMAGE_TAG}} \
           --set web.image.pullPolicy=Never \
@@ -249,7 +250,7 @@ tasks:
         set -euo pipefail
 
         {{.KUBECTL}} -n "{{.NAMESPACE}}" wait \
-          --for=condition=complete job/{{.RELEASE}}-bootstrap \
+          --for=condition=complete job/{{.RELEASE}}-migration \
           --timeout=120s
         {{.KUBECTL}} -n "{{.NAMESPACE}}" rollout status \
           deployment/{{.RELEASE}}-web --timeout=180s
@@ -297,7 +298,7 @@ tasks:
         test "$api_status" = 401
 
   kubernetes:info:
-    desc: Print local endpoints and bootstrap credentials
+    desc: Print local endpoints and migration credentials
     vars:
       MINIKUBE_IP:
         sh: minikube -p "{{.PROFILE}}" ip
@@ -306,9 +307,12 @@ tasks:
         if [ "${CI:-false}" = true ]; then
           printf 'Taskmigo is ready.\n\nURL:      http://{{.PUBLIC_HOST}}\nAPI:      http://{{.PUBLIC_HOST}}/api\nOIDC:     http://{{.PUBLIC_HOST}}/.well-known/openid-configuration\nAPI docs: http://{{.PUBLIC_HOST}}/api/docs\nHost entry: {{.MINIKUBE_IP}} {{.PUBLIC_HOST}}\nCredentials: stored in secret/taskmigo-secrets\n'
         else
-          password="$({{.KUBECTL}} -n "{{.NAMESPACE}}" get secret taskmigo-secrets \
-            -o go-template='{{`{{index .data "bootstrap-user-password" | base64decode}}`}}')"
-          printf 'Taskmigo is ready.\n\nURL:      http://{{.PUBLIC_HOST}}\nAPI:      http://{{.PUBLIC_HOST}}/api\nOIDC:     http://{{.PUBLIC_HOST}}/.well-known/openid-configuration\nAPI docs: http://{{.PUBLIC_HOST}}/api/docs\nHost entry: {{.MINIKUBE_IP}} {{.PUBLIC_HOST}}\nUsername: system\nPassword: %s\n' "$password"
+          if [ -n "${TASKMIGO_SYSTEM_PASSWORD:-}" ]; then
+            password_message='Password: supplied through TASKMIGO_SYSTEM_PASSWORD as an encoded hash'
+          else
+            password_message='Password: taskmigo (default)'
+          fi
+          printf 'Taskmigo is ready.\n\nURL:      http://{{.PUBLIC_HOST}}\nAPI:      http://{{.PUBLIC_HOST}}/api\nOIDC:     http://{{.PUBLIC_HOST}}/.well-known/openid-configuration\nAPI docs: http://{{.PUBLIC_HOST}}/api/docs\nHost entry: {{.MINIKUBE_IP}} {{.PUBLIC_HOST}}\nUsername: system\n%s\n' "$password_message"
         fi
 
   kubernetes:deploy:

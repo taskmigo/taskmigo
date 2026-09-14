@@ -29,7 +29,7 @@ class IdentityPackageArchitectureTest {
             .resideInAnyPackage(
                 "io.taskmigo.rest..",
                 "io.taskmigo.internal..",
-                "io.taskmigo.bootstrap..",
+                "io.taskmigo.migration..",
                 "io.taskmigo.worker.."
             );
 

@@ -1,0 +1,79 @@
+{{- if .Values.migration.enabled }}
+{{- $browserClientEnabled := and .Values.migration.browserClient.enabled .Values.client.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "taskmigo.fullname" . }}-migration
+  labels:
+    {{- include "taskmigo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migration
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: {{ .Values.migration.backoffLimit }}
+  activeDeadlineSeconds: {{ .Values.migration.activeDeadlineSeconds }}
+  template:
+    metadata:
+      labels:
+        {{- include "taskmigo.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migration
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      serviceAccountName: {{ include "taskmigo.serviceAccountName" . }}
+      restartPolicy: Never
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: migration
+          image: "{{ .Values.migration.image.repository }}:{{ default .Chart.AppVersion .Values.migration.image.tag }}"
+          imagePullPolicy: {{ .Values.migration.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          env:
+            {{- include "taskmigo.databaseEnv" . | nindent 12 }}
+            - name: TASKMIGO_SYSTEM_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | quote }}
+                  key: {{ .Values.migration.userPasswordKey | quote }}
+            - name: TASKMIGO_BROWSER_CLIENT_ABSENT
+              value: {{ not $browserClientEnabled | quote }}
+            - name: TASKMIGO_BROWSER_CLIENT_URL
+              value: {{ include "taskmigo.clientUrl" . | quote }}
+            {{- if $browserClientEnabled }}
+            - name: TASKMIGO_REGISTERED_CLIENTS_BROWSER_REGISTRATION_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | quote }}
+                  key: {{ .Values.migration.browserClient.clientSecretKey | quote }}
+            {{- end }}
+            {{- if .Values.migration.testClient.enabled }}
+            - name: TASKMIGO_REGISTERED_CLIENTS_HELMTEST_TYPE
+              value: internal
+            - name: TASKMIGO_REGISTERED_CLIENTS_HELMTEST_REGISTRATION_CLIENT_ID
+              value: {{ .Values.migration.testClient.clientId | quote }}
+            - name: TASKMIGO_REGISTERED_CLIENTS_HELMTEST_REGISTRATION_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | quote }}
+                  key: {{ .Values.migration.testClient.clientSecretKey | quote }}
+            - name: TASKMIGO_REGISTERED_CLIENTS_HELMTEST_REGISTRATION_CLIENT_AUTHENTICATION_METHODS
+              value: client_secret_basic
+            - name: TASKMIGO_REGISTERED_CLIENTS_HELMTEST_REGISTRATION_AUTHORIZATION_GRANT_TYPES
+              value: client_credentials
+            {{- end }}
+            {{- with .Values.migration.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml .Values.migration.resources | nindent 12 }}
+{{- end }}

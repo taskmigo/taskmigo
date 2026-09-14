@@ -8,7 +8,7 @@ The current suite verifies the browser authentication path end to end:
 
 1. Open the protected `/account` page without a session.
 2. Follow the redirect to the deployed Spring Authorization Server.
-3. Sign in with the bootstrap `system` user.
+3. Sign in with the migration-managed `system` user.
 4. Complete the OAuth Authorization Code + PKCE callback through the Next.js BFF.
 5. Verify the authenticated account page, BFF session API, HttpOnly session cookie, and session persistence after reload.
 
@@ -21,7 +21,7 @@ The suite requires:
 - `E2E_USERNAME`: interactive username.
 - `E2E_PASSWORD`: interactive password.
 
-GitHub Actions deploys the Kubernetes environment first, resolves the Minikube Gateway hostnames and bootstrap credential, and then invokes this suite directly from `e2e/`. That workflow integration is glue only; Playwright setup and execution are not Taskfile responsibilities.
+GitHub Actions deploys the Kubernetes environment first, resolves the Minikube Gateway hostnames and migration credential, and then invokes this suite directly from `e2e/`. That workflow integration is glue only; Playwright setup and execution are not Taskfile responsibilities.
 
 On CI, Playwright's built-in GitHub reporter adds failure annotations and its built-in HTML reporter captures the detailed results, traces, screenshots, and videos. The workflow uploads that report and updates one pull-request comment with the overall result and workflow link. Re-running the workflow updates the same bot comment instead of creating another one.
 

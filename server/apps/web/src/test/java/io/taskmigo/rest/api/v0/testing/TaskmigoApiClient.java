@@ -37,7 +37,7 @@ public final class TaskmigoApiClient {
                 .uri("/oauth2/token")
                 .headers(headers -> headers.setBasicAuth(credentials.clientId(), credentials.clientSecret()))
                 .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                .body("grant_type=client_credentials&scope=" + credentials.scope())
+                .body("grant_type=client_credentials")
                 .retrieve()
                 .body(TokenResponse.class)
         ).access_token();
@@ -114,7 +114,7 @@ public final class TaskmigoApiClient {
     }
 
     /// OAuth client credentials used by the integration-test server.
-    public record ClientCredentials(String clientId, String clientSecret, String scope) {}
+    public record ClientCredentials(String clientId, String clientSecret) {}
 
     /// Payload accepted by `POST /api/v0/roles`.
     public record CreateRoleRequest(String name, @Nullable String description, @Nullable Collection<UUID> roleIds) {}

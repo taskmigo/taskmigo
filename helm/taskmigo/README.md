@@ -1,6 +1,6 @@
 # Taskmigo Helm chart
 
-This chart deploys the Taskmigo bootstrap job, web server, worker, and browser client. PostgreSQL is intentionally external to the chart so schema migration can run as a Helm `pre-install` / `pre-upgrade` hook before runtime workloads are created.
+This chart deploys the Taskmigo migration job, web server, worker, and browser client. PostgreSQL is intentionally external to the chart so schema migration can run as a Helm `pre-install` / `pre-upgrade` hook before runtime workloads are created.
 
 For a complete local Minikube deployment, run `task kubernetes:deploy` from the repository root. The Taskfile builds and
 loads the local images, provisions PostgreSQL and credentials, installs Envoy Gateway, installs this chart, and verifies
@@ -16,12 +16,12 @@ the deployed stack.
 
 The default Secret name is `taskmigo-secrets` and the chart expects these keys:
 
-| Key                       | Used by                                                   |
-| ------------------------- | --------------------------------------------------------- |
-| `database-password`       | Bootstrap, web, worker                                    |
-| `bootstrap-user-password` | Bootstrap system-user reconciliation                      |
-| `auth-client-secret`      | Browser OAuth client reconciliation and client runtime    |
-| `auth-session-secret`     | Client session encryption; must be at least 32 characters |
+| Key                   | Used by                                                   |
+| --------------------- | --------------------------------------------------------- |
+| `database-password`   | Migration, web, worker                                    |
+| `user-password`       | Migration root-user encoded password                      |
+| `auth-client-secret`  | Browser OAuth client reconciliation and client runtime    |
+| `auth-session-secret` | Client session encryption; must be at least 32 characters |
 
 When the Helm integration test OAuth client is enabled, the Secret must additionally contain `integration-test-client-secret`.
 
@@ -33,7 +33,7 @@ Create the Secret outside Helm so upgrades never rotate credentials implicitly:
 kubectl create namespace taskmigo
 kubectl -n taskmigo create secret generic taskmigo-secrets \
   --from-literal=database-password='replace-me' \
-  --from-literal=bootstrap-user-password='replace-me' \
+  --from-literal=user-password='{bcrypt}$2a$10$RfYQDs9yQAhdTeMocZx1BO1FnpHqVtc5RBtqnTZev2las1/FflZdO' \
   --from-literal=auth-client-secret='replace-me' \
   --from-literal=auth-session-secret='replace-with-at-least-32-characters'
 ```
@@ -54,12 +54,12 @@ helm upgrade --install taskmigo ./helm/taskmigo \
 
 The lifecycle is:
 
-1. Helm runs the bootstrap Job before install or upgrade.
-2. Bootstrap runs Flyway migrations and reconciles installation state such as the system user and managed OAuth clients.
+1. Helm runs the migration Job before install or upgrade.
+2. Migration runs Flyway migrations and reconciles installation state such as the system user and managed OAuth clients.
 3. Only after the hook succeeds does Helm create or update web, worker, and client workloads.
 4. Web and worker do not include Flyway and only consume the migrated schema.
 
-A failed bootstrap hook fails the Helm release before runtime workloads are changed.
+A failed migration hook fails the Helm release before runtime workloads are changed.
 
 ## Gateway API
 
@@ -124,6 +124,6 @@ For a cross-namespace shared Gateway, its listeners must allow routes from the T
 
 ## Test
 
-The chart includes an optional Helm test pod. With `tests.enabled=true`, it validates OIDC discovery, the unauthenticated API contract, and the browser client. With both `tests.oauthClient.enabled=true` and `bootstrap.testClient.enabled=true`, bootstrap also provisions a test-only machine client and the Helm test obtains a real access token before calling the authenticated API.
+The chart includes an optional Helm test pod. With `tests.enabled=true`, it validates OIDC discovery, the unauthenticated API contract, and the browser client. With both `tests.oauthClient.enabled=true` and `migration.testClient.enabled=true`, migration also provisions a test-only machine client and the Helm test obtains a real access token before calling the authenticated API.
 
 The repository GitHub Actions integration workflow exercises this mode against a disposable Minikube cluster and PostgreSQL instance.
