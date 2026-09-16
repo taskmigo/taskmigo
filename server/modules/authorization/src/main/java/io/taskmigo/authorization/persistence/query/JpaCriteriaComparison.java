@@ -10,12 +10,7 @@ final class JpaCriteriaComparison {
 
     private JpaCriteriaComparison() {}
 
-    static Predicate greaterThan(
-        CriteriaBuilder builder,
-        Expression<?> left,
-        Expression<?> right,
-        Class<?> type
-    ) {
+    static Predicate greaterThan(CriteriaBuilder builder, Expression<?> left, Expression<?> right, Class<?> type) {
         return compare(builder, left, right, type, Operator.GREATER);
     }
 
@@ -28,12 +23,7 @@ final class JpaCriteriaComparison {
         return compare(builder, left, right, type, Operator.GREATER_OR_EQUAL);
     }
 
-    static Predicate lessThan(
-        CriteriaBuilder builder,
-        Expression<?> left,
-        Expression<?> right,
-        Class<?> type
-    ) {
+    static Predicate lessThan(CriteriaBuilder builder, Expression<?> left, Expression<?> right, Class<?> type) {
         return compare(builder, left, right, type, Operator.LESS);
     }
 
