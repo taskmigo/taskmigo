@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 
 /// Evaluates request-targeted authorization Statements independently of the web security framework.
 @Service
-@SuppressWarnings("checkstyle:OverloadMethodsDeclarationOrder")
 final class RequestAuthorizationService implements RequestAuthorization {
 
     private final EffectiveStatementResolver statements;
@@ -44,16 +43,6 @@ final class RequestAuthorizationService implements RequestAuthorization {
         } catch (AuthorizationException exception) {
             return new RequestAuthorizationResult(false, new FailedAuthorizationContext());
         }
-    }
-
-    /// Creates the one authorization snapshot used by a request operation.
-    ///
-    /// @param userId the user whose effective authorization state is captured
-    /// @param roots the approved principal and request values for the operation
-    /// @return an immutable authorization snapshot
-    AuthorizationSnapshot snapshot(UUID userId, Map<String, ?> roots) {
-        List<EffectiveStatement> effectiveStatements = this.statements.resolve(userId);
-        return new AuthorizationSnapshot(userId, this.artifacts.build(effectiveStatements), roots);
     }
 
     /// Returns whether a user is allowed to perform an HTTP request.
@@ -112,6 +101,16 @@ final class RequestAuthorizationService implements RequestAuthorization {
             }
         }
         return new RequestAuthorizationDecision(allowed);
+    }
+
+    /// Creates the one authorization snapshot used by a request operation.
+    ///
+    /// @param userId the user whose effective authorization state is captured
+    /// @param roots the approved principal and request values for the operation
+    /// @return an immutable authorization snapshot
+    AuthorizationSnapshot snapshot(UUID userId, Map<String, ?> roots) {
+        List<EffectiveStatement> effectiveStatements = this.statements.resolve(userId);
+        return new AuthorizationSnapshot(userId, this.artifacts.build(effectiveStatements), roots);
     }
 
     private static boolean constantTrue(CompiledSource policy) {
