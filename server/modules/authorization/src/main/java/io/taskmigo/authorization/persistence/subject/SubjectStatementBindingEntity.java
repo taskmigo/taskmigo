@@ -13,7 +13,7 @@ import java.util.UUID;
     name = "subject_statement_bindings",
     uniqueConstraints = @UniqueConstraint(columnNames = { "subject_type", "subject_id", "statement_id" })
 )
-@SuppressWarnings({ "CanBeFinal", "NotNullFieldNotInitialized" })
+@SuppressWarnings("NotNullFieldNotInitialized")
 public class SubjectStatementBindingEntity {
 
     @Id
