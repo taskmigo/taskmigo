@@ -18,40 +18,33 @@ import io.taskmigo.language.LanguageCompiler;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.Spy;
-import org.mockito.junit.jupiter.MockitoExtension;
 
-@ExtendWith(MockitoExtension.class)
-@SuppressWarnings("checkstyle:UnusedPrivateField")
 class StatementServiceTest {
 
     private static final String VALID_POLICY = "return true;";
 
-    @Mock
     private StatementRepository statements;
-
-    @Spy
-    private StatementPolicyValidator policyValidator = new StatementPolicyValidator(
-        mock(ObjectAuthorization.class),
-        new LanguageCompiler()
-    );
-
-    @Mock
-    private QueryPredicateBinder<StatementInfo, StatementEntity> queryBinder;
-
-    @Mock
-    private ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> objectBinder;
-
-    @InjectMocks
     private StatementService service;
+
+    @BeforeEach
+    void setUp() {
+        this.statements = mock(StatementRepository.class);
+        StatementPolicyValidator policyValidator = new StatementPolicyValidator(
+            mock(ObjectAuthorization.class),
+            new LanguageCompiler()
+        );
+        QueryPredicateBinder<StatementInfo, StatementEntity> queryBinder = mock(QueryPredicateBinder.class);
+        ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> objectBinder = mock(
+            ObjectAuthorizationPredicateBinder.class
+        );
+        this.service = new StatementService(this.statements, policyValidator, queryBinder, objectBinder);
+    }
 
     @Test
     @DisplayName("normalizes a valid statement before saving it")
