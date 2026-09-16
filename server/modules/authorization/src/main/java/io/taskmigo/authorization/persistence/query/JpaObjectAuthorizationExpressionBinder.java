@@ -87,11 +87,7 @@ final class JpaObjectAuthorizationExpressionBinder {
             case EQUAL -> builder.equal(firstOperand, secondOperand);
             case NOT_EQUAL -> builder.notEqual(firstOperand, secondOperand);
             case GREATER -> JpaCriteriaComparison.greaterThan(builder, firstOperand, secondOperand);
-            case GREATER_OR_EQUAL -> JpaCriteriaComparison.greaterThanOrEqualTo(
-                builder,
-                firstOperand,
-                secondOperand
-            );
+            case GREATER_OR_EQUAL -> JpaCriteriaComparison.greaterThanOrEqualTo(builder, firstOperand, secondOperand);
             case LESS -> JpaCriteriaComparison.lessThan(builder, firstOperand, secondOperand);
             case LESS_OR_EQUAL -> JpaCriteriaComparison.lessThanOrEqualTo(builder, firstOperand, secondOperand);
             default -> throw unsupported("comparison operator");
