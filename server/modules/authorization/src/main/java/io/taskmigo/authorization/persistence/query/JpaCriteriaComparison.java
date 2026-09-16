@@ -10,29 +10,49 @@ final class JpaCriteriaComparison {
 
     private JpaCriteriaComparison() {}
 
-    static Predicate greaterThan(CriteriaBuilder builder, Expression<?> left, Expression<?> right) {
-        return compare(builder, left, right, Operator.GREATER);
+    static Predicate greaterThan(
+        CriteriaBuilder builder,
+        Expression<?> left,
+        Expression<?> right,
+        Class<?> type
+    ) {
+        return compare(builder, left, right, type, Operator.GREATER);
     }
 
-    static Predicate greaterThanOrEqualTo(CriteriaBuilder builder, Expression<?> left, Expression<?> right) {
-        return compare(builder, left, right, Operator.GREATER_OR_EQUAL);
+    static Predicate greaterThanOrEqualTo(
+        CriteriaBuilder builder,
+        Expression<?> left,
+        Expression<?> right,
+        Class<?> type
+    ) {
+        return compare(builder, left, right, type, Operator.GREATER_OR_EQUAL);
     }
 
-    static Predicate lessThan(CriteriaBuilder builder, Expression<?> left, Expression<?> right) {
-        return compare(builder, left, right, Operator.LESS);
+    static Predicate lessThan(
+        CriteriaBuilder builder,
+        Expression<?> left,
+        Expression<?> right,
+        Class<?> type
+    ) {
+        return compare(builder, left, right, type, Operator.LESS);
     }
 
-    static Predicate lessThanOrEqualTo(CriteriaBuilder builder, Expression<?> left, Expression<?> right) {
-        return compare(builder, left, right, Operator.LESS_OR_EQUAL);
+    static Predicate lessThanOrEqualTo(
+        CriteriaBuilder builder,
+        Expression<?> left,
+        Expression<?> right,
+        Class<?> type
+    ) {
+        return compare(builder, left, right, type, Operator.LESS_OR_EQUAL);
     }
 
     private static Predicate compare(
         CriteriaBuilder builder,
         Expression<?> left,
         Expression<?> right,
+        Class<?> type,
         Operator operator
     ) {
-        Class<?> type = comparisonType(left, right);
         if (type == String.class) {
             return compareComparable(builder, left.as(String.class), right.as(String.class), operator);
         }
@@ -74,18 +94,6 @@ final class JpaCriteriaComparison {
             case LESS -> builder.lt(left, right);
             case LESS_OR_EQUAL -> builder.le(left, right);
         };
-    }
-
-    private static Class<?> comparisonType(Expression<?> left, Expression<?> right) {
-        Class<?> leftType = left.getJavaType();
-        if (leftType != null && leftType != Object.class) {
-            return leftType;
-        }
-        Class<?> rightType = right.getJavaType();
-        if (rightType != null && rightType != Object.class) {
-            return rightType;
-        }
-        return Object.class;
     }
 
     private static boolean isNumber(Class<?> type) {
