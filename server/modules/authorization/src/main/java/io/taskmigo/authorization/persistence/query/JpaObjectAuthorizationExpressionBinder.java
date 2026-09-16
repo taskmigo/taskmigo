@@ -135,7 +135,8 @@ final class JpaObjectAuthorizationExpressionBinder {
         ObjectAuthorizationExpression right,
         Map<String, Class<?>> types
     ) {
-        @Nullable Class<?> type = referenceType(left, types);
+        @Nullable
+        Class<?> type = referenceType(left, types);
         if (type == null) {
             type = referenceType(right, types);
         }
@@ -143,7 +144,8 @@ final class JpaObjectAuthorizationExpressionBinder {
             return type;
         }
 
-        @Nullable Object literal = literalValue(left);
+        @Nullable
+        Object literal = literalValue(left);
         if (literal == null) {
             literal = literalValue(right);
         }
@@ -164,7 +166,8 @@ final class JpaObjectAuthorizationExpressionBinder {
             return null;
         }
         String logical = String.join(".", reference.path());
-        @Nullable Class<?> type = types.get(logical);
+        @Nullable
+        Class<?> type = types.get(logical);
         if (type == null) {
             throw failure("Persistence type is not bound: " + logical);
         }
@@ -181,8 +184,8 @@ final class JpaObjectAuthorizationExpressionBinder {
                 case ADD, SUBTRACT, MULTIPLY, DIVIDE -> true;
                 default -> false;
             };
-            case ObjectAuthorizationExpression.Unary unary ->
-                unary.operator() == ObjectAuthorizationExpression.UnaryOperator.MINUS;
+            case ObjectAuthorizationExpression.Unary unary -> unary.operator() ==
+                ObjectAuthorizationExpression.UnaryOperator.MINUS;
             default -> false;
         };
     }
