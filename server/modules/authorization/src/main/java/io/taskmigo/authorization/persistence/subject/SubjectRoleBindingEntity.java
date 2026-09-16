@@ -13,7 +13,7 @@ import java.util.UUID;
     name = "subject_role_bindings",
     uniqueConstraints = @UniqueConstraint(columnNames = { "subject_type", "subject_id", "role_id" })
 )
-@SuppressWarnings({ "CanBeFinal", "NotNullFieldNotInitialized" })
+@SuppressWarnings("NotNullFieldNotInitialized")
 public class SubjectRoleBindingEntity {
 
     @Id
