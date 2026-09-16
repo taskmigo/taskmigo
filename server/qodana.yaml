@@ -78,7 +78,6 @@ include:
   # - name: UnusedLibrary
   - name: IgnoreResultOfCall
   - name: ResultOfObjectAllocationIgnored
-  - name: CanBeFinal
   - name: UnnecessaryBreak
   - name: UnnecessaryCallToStringValueOf
   - name: UnnecessaryConstantArrayCreationExpression
@@ -168,6 +167,9 @@ include:
 exclude:
   # Preserve the explicit-this policy represented by the two Unqualified* rules.
   - name: UnnecessaryThis
+
+  # JPA/JMH-managed fields are intentionally mutable from framework code; requiring final adds noise.
+  - name: CanBeFinal
 
   # Preserve mandatory braces for every control-flow statement.
   - name: SingleStatementInBlock
