@@ -75,12 +75,7 @@ public class FilterByCompiler {
 
     /// Compiles a schema selected through Spring's generic type resolution.
     public QueryPredicate<?> compileUntyped(QuerySchema<?> schema, @Nullable String source) {
-        return this.compileUntypedInternal(schema, source);
-    }
-
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    private QueryPredicate<?> compileUntypedInternal(QuerySchema<?> schema, @Nullable String source) {
-        return this.compile((QuerySchema) schema, source);
+        return this.compile(schema, source);
     }
 
     private static <Q> EnvironmentSchema environment(QuerySchema<Q> schema) {
