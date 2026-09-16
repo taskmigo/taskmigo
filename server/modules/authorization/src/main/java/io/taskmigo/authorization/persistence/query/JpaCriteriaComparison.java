@@ -89,13 +89,15 @@ final class JpaCriteriaComparison {
     }
 
     private static boolean isNumber(Class<?> type) {
-        return Number.class.isAssignableFrom(type) ||
-        type == byte.class ||
-        type == short.class ||
-        type == int.class ||
-        type == long.class ||
-        type == float.class ||
-        type == double.class;
+        return (
+            Number.class.isAssignableFrom(type) ||
+            type == byte.class ||
+            type == short.class ||
+            type == int.class ||
+            type == long.class ||
+            type == float.class ||
+            type == double.class
+        );
     }
 
     private enum Operator {
