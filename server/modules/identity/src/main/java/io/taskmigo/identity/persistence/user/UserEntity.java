@@ -34,7 +34,6 @@ public class UserEntity {
     @ElementCollection
     @CollectionTable(name = "user_emails", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "normalized_email", nullable = false, length = 320)
-    @SuppressWarnings("CanBeFinal")
     Set<String> emails = new HashSet<>();
 
     @Enumerated(EnumType.STRING)
