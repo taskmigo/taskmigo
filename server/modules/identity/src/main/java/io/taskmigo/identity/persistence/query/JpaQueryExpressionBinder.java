@@ -64,7 +64,6 @@ final class JpaQueryExpressionBinder {
         };
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     private static <E> Predicate comparison(
         QueryExpression.Binary binary,
         Root<E> root,
@@ -86,16 +85,19 @@ final class JpaQueryExpressionBinder {
         }
         Expression<?> firstOperand = comparisonValue(binary.left(), binary.right(), root, builder, paths, types);
         Expression<?> secondOperand = comparisonValue(binary.right(), binary.left(), root, builder, paths, types);
+        Class<?> type = comparisonType(binary.left(), binary.right(), types);
         return switch (binary.operator()) {
             case EQUAL -> builder.equal(firstOperand, secondOperand);
             case NOT_EQUAL -> builder.notEqual(firstOperand, secondOperand);
-            case GREATER -> builder.greaterThan((Expression) firstOperand, (Expression) secondOperand);
-            case GREATER_OR_EQUAL -> builder.greaterThanOrEqualTo(
-                (Expression) firstOperand,
-                (Expression) secondOperand
+            case GREATER -> JpaCriteriaComparison.greaterThan(builder, firstOperand, secondOperand, type);
+            case GREATER_OR_EQUAL -> JpaCriteriaComparison.greaterThanOrEqualTo(
+                builder,
+                firstOperand,
+                secondOperand,
+                type
             );
-            case LESS -> builder.lessThan((Expression) firstOperand, (Expression) secondOperand);
-            case LESS_OR_EQUAL -> builder.lessThanOrEqualTo((Expression) firstOperand, (Expression) secondOperand);
+            case LESS -> JpaCriteriaComparison.lessThan(builder, firstOperand, secondOperand, type);
+            case LESS_OR_EQUAL -> JpaCriteriaComparison.lessThanOrEqualTo(builder, firstOperand, secondOperand, type);
             default -> throw unsupported("comparison operator");
         };
     }
@@ -126,6 +128,58 @@ final class JpaQueryExpressionBinder {
             default -> throw unsupported("IN values");
         }
         return left.in(candidates.toArray(Expression<?>[]::new));
+    }
+
+    private static Class<?> comparisonType(QueryExpression left, QueryExpression right, Map<String, Class<?>> types) {
+        @Nullable
+        Class<?> type = referenceType(left, types);
+        if (type == null) {
+            type = referenceType(right, types);
+        }
+        if (type != null) {
+            return type;
+        }
+
+        @Nullable
+        Object literal = literalValue(left);
+        if (literal == null) {
+            literal = literalValue(right);
+        }
+        if (literal != null) {
+            return literal.getClass();
+        }
+        if (isNumericExpression(left) || isNumericExpression(right)) {
+            return Number.class;
+        }
+        throw unsupported("ordered comparison type");
+    }
+
+    private static @Nullable Class<?> referenceType(QueryExpression expression, Map<String, Class<?>> types) {
+        if (!(expression instanceof QueryExpression.Reference reference)) {
+            return null;
+        }
+        String logical = String.join(".", reference.path());
+        @Nullable
+        Class<?> type = types.get(logical);
+        if (type == null) {
+            throw failure("Persistence type is not bound: " + logical);
+        }
+        return type;
+    }
+
+    private static @Nullable Object literalValue(QueryExpression expression) {
+        return expression instanceof QueryExpression.Literal literal ? literal.value() : null;
+    }
+
+    private static boolean isNumericExpression(QueryExpression expression) {
+        return switch (expression) {
+            case QueryExpression.Binary binary -> switch (binary.operator()) {
+                case ADD, SUBTRACT, MULTIPLY, DIVIDE -> true;
+                default -> false;
+            };
+            case QueryExpression.Unary unary -> unary.operator() == QueryExpression.UnaryOperator.MINUS;
+            default -> false;
+        };
     }
 
     private static <E> Expression<?> comparisonValue(
