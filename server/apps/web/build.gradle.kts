@@ -21,7 +21,7 @@ dependencies {
     implementation(platform(libs.spring.boot.bom))
     implementation(project(":modules:foundation"))
     implementation(project(":modules:query"))
-    implementation(project(":modules:authorization"))
+    implementation(project(":modules:access-control"))
     // Provides shared datasource/JPA configuration; apps/bootstrap owns migration execution.
     implementation(project(":modules:database"))
     implementation(project(":modules:identity"))

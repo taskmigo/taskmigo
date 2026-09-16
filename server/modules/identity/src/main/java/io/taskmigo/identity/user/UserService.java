@@ -1,7 +1,9 @@
 package io.taskmigo.identity.user;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.authorization.subject.SubjectGrantService;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.persistence.query.ObjectAuthorizationPredicateBinder;
 import io.taskmigo.identity.persistence.query.QueryPredicateBinder;
 import io.taskmigo.identity.persistence.user.UserEntity;
@@ -22,32 +24,28 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
-/// Manages global users, credentials, and profile data.
+/// Manages global users, credentials, and profile data while delegating authorization grants to Access Control.
 @Service
 public class UserService {
 
     private final UserRepository users;
+    private final SubjectGrantService grants;
     private final QueryPredicateBinder<UserInfo, UserEntity> queryBinder;
     private final ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> objectBinder;
 
     UserService(
         UserRepository users,
+        SubjectGrantService grants,
         QueryPredicateBinder<UserInfo, UserEntity> queryBinder,
         ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> objectBinder
     ) {
         this.users = users;
+        this.grants = grants;
         this.queryBinder = queryBinder;
         this.objectBinder = objectBinder;
     }
 
-    /// Creates a user with optional direct Role assignments.
-    ///
-    /// @param username the unique login name for the new User
-    /// @param emails the email addresses associated with the new User
-    /// @param firstName the User's given name
-    /// @param lastName the User's family name
-    /// @param roleIds the directly assigned Roles
-    /// @return the id of the created User
+    /// Creates a User and delegates optional direct Role assignments to Access Control.
     @Transactional
     public UUID create(
         @Nullable String username,
@@ -63,37 +61,26 @@ public class UserService {
 
         try {
             UUID id = UUID.randomUUID();
-            Set<UUID> requestedRoleIds = roleIds == null ? Set.of() : Set.copyOf(roleIds);
             this.users.saveAndFlush(
                 new UserEntity(
                     id,
                     requiredUsername,
                     normalizeEmails(emails),
-                    requestedRoleIds,
                     required(firstName, "firstName"),
                     required(lastName, "lastName")
                 )
             );
+            this.grants.setRoles(IdentitySubjects.user(id), roleIds == null ? Set.of() : roleIds);
             return id;
         } catch (DataIntegrityViolationException exception) {
             throw new UserException(UserException.Type.CONFLICT, "Username or email already exists", exception);
         }
     }
 
-    /// Returns a stable user snapshot for cross-module validation and presentation.
+    /// Returns a stable User snapshot for cross-module validation and presentation.
     @Transactional(readOnly = true)
     public UserInfo require(UUID id) {
-        UserEntity user = this.users
-            .findById(id)
-            .orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"));
-        return new UserInfo(
-            user.id(),
-            user.username(),
-            user.firstName(),
-            user.lastName(),
-            user.emails(),
-            user.displayName()
-        );
+        return info(this.requireEntity(id));
     }
 
     /// Finds persisted identity, credentials, and account state for an authentication adapter without exposing the entity.
@@ -132,42 +119,25 @@ public class UserService {
         );
     }
 
-    /// Returns the direct Role ids assigned to a User.
-    ///
-    /// @param userId the User whose effective Roles are resolved
-    /// @return the deduplicated direct Role ids
+    /// Returns the direct Role ids bound to a User by Access Control.
     @Transactional(readOnly = true)
     public Set<UUID> roleIds(UUID userId) {
-        UserEntity user = this.users
-            .findById(userId)
-            .orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"));
-        return user.roleIds();
+        this.requireEntity(userId);
+        return this.grants.roleIds(IdentitySubjects.user(userId));
     }
 
-    /// Replaces the Statements directly assigned to a User.
-    ///
-    /// Duplicate ids are normalized. Statement existence is validated by the web orchestration layer before this
-    /// owner-module mutation is invoked.
-    ///
-    /// @param userId the User whose direct Statements are replaced
-    /// @param statementIds the complete desired set of directly assigned Statements
+    /// Replaces the Statements directly bound to a User through Access Control.
     @Transactional
     public void setStatements(UUID userId, Collection<UUID> statementIds) {
-        UserEntity user = this.users
-            .findById(userId)
-            .orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"));
-        user.replaceStatementIds(Set.copyOf(statementIds));
-        this.users.flush();
+        this.requireEntity(userId);
+        this.grants.setStatements(IdentitySubjects.user(userId), statementIds);
     }
 
-    /// Replaces the direct Role assignments for a User.
+    /// Replaces the Roles directly bound to a User through Access Control.
     @Transactional
     public void setRoles(UUID userId, Collection<UUID> roleIds) {
-        UserEntity user = this.users
-            .findById(userId)
-            .orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"));
-        user.replaceRoleIds(Set.copyOf(roleIds));
-        this.users.flush();
+        this.requireEntity(userId);
+        this.grants.setRoles(IdentitySubjects.user(userId), roleIds);
     }
 
     /// Reconciles a bootstrap User while preserving credentials and account status.
@@ -182,36 +152,27 @@ public class UserService {
     ) {
         String requiredUsername = required(username, "username");
         Set<String> requestedEmails = normalizeEmails(emails);
-        Set<UUID> requestedRoleIds = Set.copyOf(roleIds);
-        Set<UUID> requestedStmtIds = Set.copyOf(statementIds);
         UserEntity user = this.users.findByUsername(requiredUsername).orElse(null);
         if (user == null) {
             user = new UserEntity(
                 UUID.randomUUID(),
                 requiredUsername,
                 requestedEmails,
-                requestedRoleIds,
                 required(firstName, "firstName"),
                 required(lastName, "lastName")
             );
-            user.replaceStatementIds(requestedStmtIds);
             this.users.saveAndFlush(user);
-            return user.id();
+        } else {
+            user.replaceEmails(requestedEmails);
+            user.updateProfile(required(firstName, "firstName"), required(lastName, "lastName"));
+            this.users.flush();
         }
-
-        user.replaceEmails(requestedEmails);
-        user.updateProfile(required(firstName, "firstName"), required(lastName, "lastName"));
-        user.replaceRoleIds(requestedRoleIds);
-        user.replaceStatementIds(requestedStmtIds);
-        this.users.flush();
+        this.grants.setRoles(IdentitySubjects.user(user.id()), roleIds);
+        this.grants.setStatements(IdentitySubjects.user(user.id()), statementIds);
         return user.id();
     }
 
-    /// Ensures the reserved bootstrap username exists as a regular persisted user.
-    ///
-    /// Existing profile, status, and credentials are preserved. When an existing bootstrap user has no
-    /// password credential yet, a supplied initialization hash is persisted once. A new bootstrap user requires an
-    /// initialization password hash.
+    /// Ensures the reserved bootstrap username exists as a regular persisted User.
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public boolean reconcileSystemUser(@Nullable String initialPasswordHash) {
         Optional<UserEntity> existing = this.users.findByUsername(SystemUser.USERNAME);
@@ -231,13 +192,18 @@ public class UserService {
             UUID.randomUUID(),
             SystemUser.USERNAME,
             Set.of(),
-            Set.of(),
             SystemUser.FIRST_NAME,
             SystemUser.LAST_NAME
         );
         user.setPasswordHash(initialPasswordHash);
         this.users.saveAndFlush(user);
         return true;
+    }
+
+    private UserEntity requireEntity(UUID userId) {
+        return this.users
+            .findById(userId)
+            .orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"));
     }
 
     private static Set<String> normalizeEmails(@Nullable Collection<String> emails) {

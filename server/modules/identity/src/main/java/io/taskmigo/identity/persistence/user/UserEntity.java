@@ -6,7 +6,6 @@ import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
@@ -38,18 +37,6 @@ public class UserEntity {
     @SuppressWarnings("CanBeFinal")
     Set<String> emails = new HashSet<>();
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "role_id", nullable = false)
-    @SuppressWarnings("CanBeFinal")
-    Set<UUID> roleIds = new HashSet<>();
-
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_statements", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "statement_id", nullable = false)
-    @SuppressWarnings("CanBeFinal")
-    Set<UUID> statementIds = new HashSet<>();
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
     UserStatus status;
@@ -60,18 +47,10 @@ public class UserEntity {
 
     protected UserEntity() {}
 
-    public UserEntity(
-        UUID id,
-        String username,
-        Set<String> emails,
-        Set<UUID> roleIds,
-        String firstName,
-        String lastName
-    ) {
+    public UserEntity(UUID id, String username, Set<String> emails, String firstName, String lastName) {
         this.id = id;
         this.username = username;
         this.emails.addAll(emails);
-        this.roleIds.addAll(roleIds);
         this.firstName = firstName;
         this.lastName = lastName;
         this.status = UserStatus.ACTIVE;
@@ -110,27 +89,9 @@ public class UserEntity {
         return this.id;
     }
 
-    public Set<UUID> roleIds() {
-        return Set.copyOf(this.roleIds);
-    }
-
-    public Set<UUID> statementIds() {
-        return Set.copyOf(this.statementIds);
-    }
-
     public void replaceEmails(Set<String> emails) {
         this.emails.clear();
         this.emails.addAll(emails);
-    }
-
-    public void replaceRoleIds(Set<UUID> roleIds) {
-        this.roleIds.clear();
-        this.roleIds.addAll(roleIds);
-    }
-
-    public void replaceStatementIds(Set<UUID> statementIds) {
-        this.statementIds.clear();
-        this.statementIds.addAll(statementIds);
     }
 
     public void updateProfile(String firstName, String lastName) {

@@ -37,13 +37,6 @@ CREATE TABLE roles (
     description VARCHAR(1000)
 );
 
-CREATE TABLE user_roles (
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    PRIMARY KEY (user_id, role_id)
-);
-CREATE INDEX ix_user_roles_role_id ON user_roles(role_id);
-
 CREATE TABLE role_hierarchy (
     parent_role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
     child_role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
@@ -71,13 +64,6 @@ CREATE TABLE group_hierarchy_closure (
     PRIMARY KEY (ancestor_group_id, descendant_group_id)
 );
 CREATE INDEX ix_group_hierarchy_closure_descendant_group_id ON group_hierarchy_closure(descendant_group_id);
-
-CREATE TABLE group_roles (
-    group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
-    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
-    PRIMARY KEY (group_id, role_id)
-);
-CREATE INDEX ix_group_roles_role_id ON group_roles(role_id);
 
 CREATE TABLE statements (
     id UUID PRIMARY KEY,
@@ -116,12 +102,25 @@ CREATE TABLE role_statements (
 );
 CREATE INDEX ix_role_statements_statement_id ON role_statements(statement_id);
 
-CREATE TABLE user_statements (
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    statement_id UUID NOT NULL REFERENCES statements(id) ON DELETE CASCADE,
-    PRIMARY KEY (user_id, statement_id)
+CREATE TABLE subject_role_bindings (
+    id UUID PRIMARY KEY,
+    subject_type VARCHAR(100) NOT NULL,
+    subject_id UUID NOT NULL,
+    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    CONSTRAINT uk_subject_role_bindings_subject_role UNIQUE (subject_type, subject_id, role_id)
 );
-CREATE INDEX ix_user_statements_statement_id ON user_statements(statement_id);
+CREATE INDEX ix_subject_role_bindings_subject ON subject_role_bindings(subject_type, subject_id);
+CREATE INDEX ix_subject_role_bindings_role_id ON subject_role_bindings(role_id);
+
+CREATE TABLE subject_statement_bindings (
+    id UUID PRIMARY KEY,
+    subject_type VARCHAR(100) NOT NULL,
+    subject_id UUID NOT NULL,
+    statement_id UUID NOT NULL REFERENCES statements(id) ON DELETE CASCADE,
+    CONSTRAINT uk_subject_statement_bindings_subject_statement UNIQUE (subject_type, subject_id, statement_id)
+);
+CREATE INDEX ix_subject_statement_bindings_subject ON subject_statement_bindings(subject_type, subject_id);
+CREATE INDEX ix_subject_statement_bindings_statement_id ON subject_statement_bindings(statement_id);
 
 CREATE TABLE oauth2_registered_client (
     id varchar(100) NOT NULL,

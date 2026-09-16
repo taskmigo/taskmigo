@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.authorization.role.RoleInfo;
-import io.taskmigo.identity.authorization.role.RoleService;
+import io.taskmigo.authorization.role.RoleService;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -39,12 +39,6 @@ class RoleHierarchyIntegrationTest {
         this.jdbc = jdbc;
     }
 
-    /**
-     * Verifies that duplicate direct edges produce one edge and the closure contains shared transitive descendants.
-     *
-     * Given: a diamond-shaped Role hierarchy with duplicate requested child ids.
-     * Expect: direct and closure tables contain deduplicated reflexive-transitive relationships.
-     */
     @Test
     @DisplayName("persists unique role edges and resolves transitive descendants")
     void shouldResolveTransitiveDescendantsWhenUniqueRoleEdgesArePersisted() {
@@ -86,12 +80,6 @@ class RoleHierarchyIntegrationTest {
         ).isEqualTo(1);
     }
 
-    /**
-     * Verifies that rejected cycle mutations leave both direct hierarchy and closure data unchanged.
-     *
-     * Given: a valid root-to-leaf Role chain followed by two invalid cycle replacements.
-     * Expect: the original transitive relationship remains effective after both failures.
-     */
     @Test
     @DisplayName("rejects role cycles without changing existing edges")
     void shouldPreserveExistingEdgesWhenRoleCycleIsRejected() {

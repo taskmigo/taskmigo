@@ -5,10 +5,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
 import io.taskmigo.authorization.role.RoleInfo;
+import io.taskmigo.authorization.role.RoleService;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
-import io.taskmigo.identity.authorization.role.RoleService;
-import io.taskmigo.identity.authorization.statement.StatementService;
+import io.taskmigo.authorization.statement.StatementService;
 import io.taskmigo.identity.oauth.InternalClientMetadata;
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserInfo;
@@ -139,38 +139,22 @@ class BootstrapIntegrationTest {
         );
     }
 
-    /**
-     * Verifies that bootstrap authorization data uses the canonical Statement model and normal Role assignment path.
-     *
-     * Given: the system bootstrap has reconciled the YAML authorization bundle.
-     * Expect: the canonical statement is present and the system user receives it through the managed system role.
-     */
     @Test
     @DisplayName("reconciles built-in statements through normal role assignments")
     void shouldAssignBuiltInStatementsWhenBootstrapRuns() {
-        // Arrange
         var system = this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow();
 
-        // Act
         var statements = this.statements.list(1, 100).items();
         var roles = this.access.effectiveRoles(this.users.roleIds(system.id()));
 
-        // Assert
         assertThat(statements).extracting(StatementInfo::name).contains("system_operator_request_all");
         assertThat(roles).extracting(RoleInfo::name).contains("System Operator");
         assertThat(this.users.roleIds(system.id())).hasSize(1);
     }
 
-    /**
-     * Verifies that every managed bootstrap Statement uses the final Embedded Language contract.
-     *
-     * Given: the five Statements declared in the managed bootstrap authorization bundle.
-     * Expect: every definition is persisted with a canonical scope and a non-blank direct-body policy.
-     */
     @Test
     @DisplayName("persists Embedded Language policies for every built-in statement")
     void shouldPersistEmbeddedLanguagePoliciesWhenBootstrapRuns() {
-        // Arrange
         Map<String, Scope> builtInScopes = Map.of(
             "system_operator_request_all",
             Scope.REQUEST,
@@ -184,10 +168,8 @@ class BootstrapIntegrationTest {
             Scope.OBJECT
         );
 
-        // Act
         var persistedStatements = this.statements.list(1, 100).items();
 
-        // Assert
         assertThat(persistedStatements)
             .filteredOn(statement -> builtInScopes.containsKey(statement.name()))
             .hasSize(builtInScopes.size())
@@ -197,16 +179,9 @@ class BootstrapIntegrationTest {
             });
     }
 
-    /**
-     * Verifies that a bootstrap User definition is upserted without replacing persisted credentials.
-     *
-     * Given: a User is absent, or already exists with a password credential.
-     * Expect: bootstrap creates the absent User and preserves the existing User identity and password.
-     */
     @Test
     @DisplayName("upserts users from bootstrap data")
     void shouldUpsertBootstrapUserWhenUserIsMissingOrPresent() {
-        // Arrange
         String username = "bootstrap-user";
         UUID roleId = this.access.requireRoleByName("System Operator");
         UUID statementId = this.statements.requireByName("system_operator_request_all");
@@ -222,7 +197,6 @@ class BootstrapIntegrationTest {
             this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()
         );
 
-        // Act
         UUID reconciledId = this.users.reconcileBootstrapUser(
             username,
             Set.of("updated@example.com"),
@@ -232,7 +206,6 @@ class BootstrapIntegrationTest {
             Set.of(statementId)
         );
 
-        // Assert
         assertThat(reconciledId).isEqualTo(createdId);
         assertThat(this.users.require(createdId))
             .extracting(UserInfo::firstName, UserInfo::emails)

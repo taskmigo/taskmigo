@@ -4,7 +4,6 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
@@ -49,11 +48,6 @@ public class GroupEntity {
     @ManyToMany(mappedBy = "childGroups")
     Set<GroupEntity> parentGroups = new LinkedHashSet<>();
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "group_roles", joinColumns = @JoinColumn(name = "group_id"))
-    @Column(name = "role_id", nullable = false)
-    Set<UUID> roleIds = new LinkedHashSet<>();
-
     protected GroupEntity() {}
 
     public GroupEntity(UUID id, String name, @Nullable String description) {
@@ -78,10 +72,6 @@ public class GroupEntity {
         return Set.copyOf(this.memberIds);
     }
 
-    public Set<UUID> roleIds() {
-        return Set.copyOf(this.roleIds);
-    }
-
     public Set<GroupEntity> childGroups() {
         return Set.copyOf(this.childGroups);
     }
@@ -97,10 +87,5 @@ public class GroupEntity {
 
     public void addMember(UUID userId) {
         this.memberIds.add(userId);
-    }
-
-    public void replaceRoleIds(Set<UUID> roleIds) {
-        this.roleIds.clear();
-        this.roleIds.addAll(roleIds);
     }
 }

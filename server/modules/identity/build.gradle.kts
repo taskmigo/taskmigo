@@ -2,7 +2,7 @@ plugins {
     `java-library`
 }
 
-description = "Taskmigo identity resources, persistence, and authorization integration"
+description = "Taskmigo Identity bounded context and Access Control integration"
 
 dependencies {
     compileOnly(platform(libs.spring.modulith.bom))
@@ -14,7 +14,7 @@ dependencies {
     implementation(platform(libs.spring.boot.bom))
     api(project(":modules:foundation"))
     api(project(":modules:query"))
-    api(project(":modules:authorization"))
+    api(project(":modules:access-control"))
     implementation(project(":modules:language"))
 
     implementation(libs.spring.boot.starter.data.jpa)

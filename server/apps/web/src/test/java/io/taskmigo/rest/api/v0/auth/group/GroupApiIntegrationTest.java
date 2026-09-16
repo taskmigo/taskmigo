@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.authorization.role.RoleInfo;
-import io.taskmigo.identity.authorization.role.RoleService;
+import io.taskmigo.authorization.role.RoleService;
 import io.taskmigo.identity.group.GroupService;
 import io.taskmigo.rest.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.CreateGroupRequest;
@@ -54,8 +54,9 @@ class GroupApiIntegrationTest extends ApiIntegrationTestSupport {
         ).isEqualTo(1);
         assertThat(
             this.jdbc.queryForObject(
-                "select count(*) from group_roles where group_id = ? and role_id = ?",
+                "select count(*) from subject_role_bindings where subject_type = ? and subject_id = ? and role_id = ?",
                 Integer.class,
+                "identity:group",
                 created,
                 employee
             )
