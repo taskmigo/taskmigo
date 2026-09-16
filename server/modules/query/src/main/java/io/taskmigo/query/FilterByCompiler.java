@@ -24,7 +24,6 @@ import org.springframework.stereotype.Service;
 
 /// Compiles the optional HTTP filterBy expression against an explicit Query Schema.
 @Service
-@SuppressWarnings({ "checkstyle:OneStatementPerLine", "checkstyle:UnusedLocalVariable" })
 public class FilterByCompiler {
 
     private static final CompilationProfile PROFILE = new CompilationProfile(
