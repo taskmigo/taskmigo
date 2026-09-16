@@ -60,7 +60,6 @@ final class JpaObjectAuthorizationExpressionBinder {
         };
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
     private static <E> Predicate comparison(
         ObjectAuthorizationExpression.Binary binary,
         Root<E> root,
@@ -87,13 +86,14 @@ final class JpaObjectAuthorizationExpressionBinder {
         return switch (binary.operator()) {
             case EQUAL -> builder.equal(firstOperand, secondOperand);
             case NOT_EQUAL -> builder.notEqual(firstOperand, secondOperand);
-            case GREATER -> builder.greaterThan((Expression) firstOperand, (Expression) secondOperand);
-            case GREATER_OR_EQUAL -> builder.greaterThanOrEqualTo(
-                (Expression) firstOperand,
-                (Expression) secondOperand
+            case GREATER -> JpaCriteriaComparison.greaterThan(builder, firstOperand, secondOperand);
+            case GREATER_OR_EQUAL -> JpaCriteriaComparison.greaterThanOrEqualTo(
+                builder,
+                firstOperand,
+                secondOperand
             );
-            case LESS -> builder.lessThan((Expression) firstOperand, (Expression) secondOperand);
-            case LESS_OR_EQUAL -> builder.lessThanOrEqualTo((Expression) firstOperand, (Expression) secondOperand);
+            case LESS -> JpaCriteriaComparison.lessThan(builder, firstOperand, secondOperand);
+            case LESS_OR_EQUAL -> JpaCriteriaComparison.lessThanOrEqualTo(builder, firstOperand, secondOperand);
             default -> throw unsupported("comparison operator");
         };
     }
