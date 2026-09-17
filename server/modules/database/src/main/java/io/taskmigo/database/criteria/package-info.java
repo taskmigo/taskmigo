@@ -1,2 +1,2 @@
-/// Provides shared, domain-neutral JPA Criteria utilities.
+@org.jspecify.annotations.NullMarked
 package io.taskmigo.database.criteria;
