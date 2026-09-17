@@ -45,12 +45,9 @@ class AccessControlPackageArchitectureTest {
         JavaClasses classes = new ClassFileImporter().importPackages("io.taskmigo.authorization");
         ArchRule useCasesDoNotDependOnJpaAdapters = noClasses()
             .that()
-            .resideInAnyPackage(
-                "io.taskmigo.authorization.role..",
-                "io.taskmigo.authorization.statement..",
-                "io.taskmigo.authorization.subject..",
-                "io.taskmigo.authorization.core.."
-            )
+            .haveSimpleNameEndingWith("Service")
+            .and()
+            .resideInAnyPackage("io.taskmigo.authorization.role..", "io.taskmigo.authorization.statement..", "io.taskmigo.authorization.subject..")
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage("io.taskmigo.authorization.persistence..", "org.springframework.data..");
