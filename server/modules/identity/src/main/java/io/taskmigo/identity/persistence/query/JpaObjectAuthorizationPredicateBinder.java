@@ -3,6 +3,7 @@ package io.taskmigo.identity.persistence.query;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.persistence.ObjectAuthorizationPredicateModel;
 import java.util.Map;
+import org.jspecify.annotations.NonNull;
 import org.springframework.data.jpa.domain.Specification;
 
 /// Creates a resource-owned Object Authorization predicate binder for an entity mapping.
@@ -37,7 +38,7 @@ public final class JpaObjectAuthorizationPredicateBinder<Q, E> implements Object
     }
 
     @Override
-    public Specification<E> bind(ObjectAuthorizationPredicate<Q> predicate) {
+    public Specification<E> bind(@NonNull ObjectAuthorizationPredicate<Q> predicate) {
         if (!(predicate instanceof ObjectAuthorizationPredicateModel model)) {
             throw new IllegalArgumentException("unsupported Object Authorization Predicate implementation");
         }
