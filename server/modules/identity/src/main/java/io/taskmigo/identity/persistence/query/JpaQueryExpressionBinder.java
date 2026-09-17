@@ -131,7 +131,6 @@ final class JpaQueryExpressionBinder {
     }
 
     private static Class<?> comparisonType(QueryExpression left, QueryExpression right, Map<String, Class<?>> types) {
-        @Nullable
         Class<?> type = referenceType(left, types);
         if (type == null) {
             type = referenceType(right, types);
@@ -140,7 +139,6 @@ final class JpaQueryExpressionBinder {
             return type;
         }
 
-        @Nullable
         Object literal = literalValue(left);
         if (literal == null) {
             literal = literalValue(right);
@@ -159,7 +157,6 @@ final class JpaQueryExpressionBinder {
             return null;
         }
         String logical = String.join(".", reference.path());
-        @Nullable
         Class<?> type = types.get(logical);
         if (type == null) {
             throw failure("Persistence type is not bound: " + logical);
