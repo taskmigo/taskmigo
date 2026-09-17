@@ -6,7 +6,7 @@
         "language :: ast",
         "query",
         "query :: persistence",
-        "database",
+        "database :: criteria",
     }
 )
 @NullMarked
