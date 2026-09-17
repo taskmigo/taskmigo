@@ -15,7 +15,12 @@ public final class JpaCriteriaComparison {
     private JpaCriteriaComparison() {}
 
     /// Builds a greater-than predicate for two expressions of the supplied type.
-    public static Predicate greaterThan(CriteriaBuilder builder, Expression<?> left, Expression<?> right, Class<?> type) {
+    public static Predicate greaterThan(
+        CriteriaBuilder builder,
+        Expression<?> left,
+        Expression<?> right,
+        Class<?> type
+    ) {
         return compare(builder, left, right, type, Operator.GREATER);
     }
 
