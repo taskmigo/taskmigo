@@ -9,6 +9,7 @@ import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.persistence.query.ObjectAuthorizationPredicateBinder;
 import io.taskmigo.authorization.persistence.query.QueryPredicateBinder;
 import io.taskmigo.authorization.persistence.statement.StatementEntity;
+import io.taskmigo.authorization.persistence.statement.JpaStatementOperations;
 import io.taskmigo.authorization.persistence.statement.StatementRepository;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.query.QueryPredicate;
@@ -24,7 +25,7 @@ class StatementActivationResultTypeTest {
     void shouldActivateRequestStatementWithNonBooleanProgramResult() {
         StatementRepository repository = mock(StatementRepository.class);
         when(repository.existsByName("non_boolean_request")).thenReturn(false);
-        StatementService service = new StatementService(
+        JpaStatementOperations service = new JpaStatementOperations(
             repository,
             new StatementPolicyValidator(mock(ObjectAuthorization.class), new LanguageCompiler()),
             new QueryBinderStub(),
