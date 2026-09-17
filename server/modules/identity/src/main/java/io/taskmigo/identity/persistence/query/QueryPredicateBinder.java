@@ -1,7 +1,6 @@
 package io.taskmigo.identity.persistence.query;
 
 import io.taskmigo.query.QueryPredicate;
-import org.jspecify.annotations.NonNull;
 import org.springframework.data.jpa.domain.Specification;
 
 /// Binds one resource-owned logical Query Predicate to its persistence model.
@@ -13,5 +12,5 @@ public interface QueryPredicateBinder<Q, E> {
     Class<E> domainType();
 
     /// Converts a trusted logical predicate into a database-side specification.
-    Specification<E> bind(@NonNull QueryPredicate<Q> predicate);
+    Specification<E> bind(QueryPredicate<Q> predicate);
 }
