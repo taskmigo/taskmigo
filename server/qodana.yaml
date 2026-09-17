@@ -168,8 +168,18 @@ exclude:
   # Preserve the explicit-this policy represented by the two Unqualified* rules.
   - name: UnnecessaryThis
 
-  # JPA/JMH-managed fields are intentionally mutable from framework code; requiring final adds noise.
-  - name: CanBeFinal
+  # Do not require fields to become final merely because static analysis sees no source assignment.
+  - name: FieldMayBeFinal
+
+  # JMH @Param fields are framework-managed and intentionally remain fields.
+  - name: FieldCanBeLocal
+    paths:
+      - benchmarks/authorization/src/jmh
+
+  # ANTLR-generated parser accessor contracts make these branch checks look constant to the IDE analyzer.
+  - name: ConstantValue
+    paths:
+      - modules/language/src/main/java/io/taskmigo/language/LanguageCompilerVisitor.java
 
   # Preserve mandatory braces for every control-flow statement.
   - name: SingleStatementInBlock
