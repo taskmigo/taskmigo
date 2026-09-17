@@ -47,7 +47,11 @@ class AccessControlPackageArchitectureTest {
             .that()
             .haveSimpleNameEndingWith("Service")
             .and()
-            .resideInAnyPackage("io.taskmigo.authorization.role..", "io.taskmigo.authorization.statement..", "io.taskmigo.authorization.subject..")
+            .resideInAnyPackage(
+                "io.taskmigo.authorization.role..",
+                "io.taskmigo.authorization.statement..",
+                "io.taskmigo.authorization.subject.."
+            )
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage("io.taskmigo.authorization.persistence..", "org.springframework.data..");
