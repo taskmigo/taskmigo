@@ -1,9 +1,9 @@
 package io.taskmigo;
 
+import io.taskmigo.authorization.role.RoleAuthorizationService;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
-import io.taskmigo.identity.authorization.role.RoleAuthorizationService;
-import io.taskmigo.identity.authorization.statement.StatementService;
+import io.taskmigo.authorization.statement.StatementService;
 import io.taskmigo.identity.oauth.InternalClientMetadata;
 import io.taskmigo.identity.user.UserService;
 import java.util.List;

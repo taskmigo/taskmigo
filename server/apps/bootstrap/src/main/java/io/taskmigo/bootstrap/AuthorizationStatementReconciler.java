@@ -1,10 +1,10 @@
 package io.taskmigo.bootstrap;
 
+import io.taskmigo.authorization.role.RoleAuthorizationService;
+import io.taskmigo.authorization.role.RoleService;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
-import io.taskmigo.identity.authorization.role.RoleAuthorizationService;
-import io.taskmigo.identity.authorization.role.RoleService;
-import io.taskmigo.identity.authorization.statement.StatementService;
+import io.taskmigo.authorization.statement.StatementService;
 import io.taskmigo.identity.user.UserService;
 import java.io.InputStream;
 import java.util.LinkedHashMap;

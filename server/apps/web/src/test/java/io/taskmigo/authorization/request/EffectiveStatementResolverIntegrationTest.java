@@ -2,12 +2,12 @@ package io.taskmigo.authorization.request;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.taskmigo.authorization.role.RoleAuthorizationService;
 import io.taskmigo.authorization.spi.EffectiveStatement;
 import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
-import io.taskmigo.identity.authorization.role.RoleAuthorizationService;
-import io.taskmigo.identity.authorization.statement.StatementService;
+import io.taskmigo.authorization.statement.StatementService;
 import io.taskmigo.identity.user.UserService;
 import io.taskmigo.rest.api.v0.testing.ApiIntegrationTestSupport;
 import jakarta.persistence.EntityManagerFactory;
@@ -43,16 +43,9 @@ class EffectiveStatementResolverIntegrationTest extends ApiIntegrationTestSuppor
         this.statistics.setStatisticsEnabled(true);
     }
 
-    /**
-     * Verifies that effective Statement resolution stays targeted as unrelated authorization data grows.
-     *
-     * Given: a User with one Role containing 500 Statements, followed by 100 unrelated Roles.
-     * Expect: both resolutions return 500 Statements and perform the same bounded number of SQL statements.
-     */
     @Test
     @DisplayName("keeps effective statement resolution bounded as unrelated roles grow")
     void shouldKeepQueryCountBoundedWhenUnrelatedRolesAreAdded() {
-        // Arrange
         List<UUID> statementIds = this.createStatements(500);
         UUID roleId = this.roleAssignments.reconcile("performance-role-" + UUID.randomUUID(), null, statementIds);
         UUID userId = this.users.create(
@@ -63,7 +56,6 @@ class EffectiveStatementResolverIntegrationTest extends ApiIntegrationTestSuppor
             List.of(roleId)
         );
 
-        // Act
         this.statistics.clear();
         List<EffectiveStatement> baseline = this.resolver.resolve(userId);
         long baselineQueries = this.statistics.getPrepareStatementCount();
@@ -72,7 +64,6 @@ class EffectiveStatementResolverIntegrationTest extends ApiIntegrationTestSuppor
         List<EffectiveStatement> afterGrowth = this.resolver.resolve(userId);
         long afterGrowthQueries = this.statistics.getPrepareStatementCount();
 
-        // Assert
         assertThat(baseline).hasSize(500);
         assertThat(afterGrowth).hasSize(500);
         assertThat(baselineQueries).isLessThanOrEqualTo(12);

@@ -1,0 +1,105 @@
+package io.taskmigo.authorization.persistence.statement;
+
+import io.taskmigo.authorization.statement.ApiInfo;
+import io.taskmigo.authorization.statement.Effect;
+import io.taskmigo.authorization.statement.Scope;
+import io.taskmigo.authorization.statement.StatementDefinition;
+import io.taskmigo.authorization.statement.StatementInfo;
+import io.taskmigo.authorization.statement.TargetInfo;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.Objects;
+import java.util.UUID;
+import org.jspecify.annotations.Nullable;
+
+@Entity
+@Table(name = "statements")
+@SuppressWarnings("NotNullFieldNotInitialized")
+public class StatementEntity {
+
+    @Id
+    UUID id;
+
+    @Column(nullable = false, unique = true)
+    String name;
+
+    @Column(length = 1000)
+    @Nullable
+    String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    Effect effect;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 16)
+    Scope scope;
+
+    @Column(nullable = false, length = 16)
+    String method;
+
+    @Column(nullable = false, length = 2000)
+    String path;
+
+    @Column(nullable = false, columnDefinition = "text")
+    String policy;
+
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
+    @Nullable
+    Instant createdAt;
+
+    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
+    @Nullable
+    Instant updatedAt;
+
+    protected StatementEntity() {}
+
+    public StatementEntity(UUID id, StatementDefinition definition) {
+        this.id = id;
+        this.name = definition.name();
+        this.description = definition.description();
+        this.effect = definition.effect();
+        this.scope = definition.scope();
+        this.method = definition.method();
+        this.path = definition.path();
+        this.policy = definition.policy();
+    }
+
+    public void update(StatementDefinition definition) {
+        this.description = definition.description();
+        this.effect = definition.effect();
+        this.scope = definition.scope();
+        this.method = definition.method();
+        this.path = definition.path();
+        this.policy = definition.policy();
+    }
+
+    public StatementInfo info() {
+        return new StatementInfo(
+            this.id,
+            this.name,
+            this.description,
+            this.effect,
+            this.scope,
+            new TargetInfo(new ApiInfo(this.method, this.path)),
+            this.policy
+        );
+    }
+
+    public UUID id() {
+        return this.id;
+    }
+
+    public Instant createdAt() {
+        return Objects.requireNonNull(this.createdAt, "persisted Statement created_at is not initialized");
+    }
+
+    public Instant updatedAt() {
+        return Objects.requireNonNull(this.updatedAt, "persisted Statement updated_at is not initialized");
+    }
+}

@@ -1,9 +1,11 @@
 package io.taskmigo.identity.group;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.role.RoleAccess;
 import io.taskmigo.authorization.role.RoleInfo;
+import io.taskmigo.authorization.subject.SubjectGrantService;
+import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.persistence.group.GroupEntity;
 import io.taskmigo.identity.persistence.group.GroupHierarchy;
 import io.taskmigo.identity.persistence.group.GroupHierarchyClosureWriter;
@@ -15,6 +17,7 @@ import io.taskmigo.query.QueryPredicate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -24,14 +27,14 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/// Manages global groups and their memberships.
+/// Manages global groups and their memberships while delegating authorization grants to Access Control.
 @Service
 public class GroupService {
 
     private final GroupRepository groups;
     private final GroupHierarchyClosureWriter closureWriter;
     private final UserService users;
-    private final RoleAccess access;
+    private final SubjectGrantService grants;
     private final QueryPredicateBinder<GroupInfo, GroupEntity> queryBinder;
     private final ObjectAuthorizationPredicateBinder<GroupInfo, GroupEntity> objectBinder;
 
@@ -39,14 +42,14 @@ public class GroupService {
         GroupRepository groups,
         GroupHierarchyClosureWriter closureWriter,
         UserService users,
-        RoleAccess access,
+        SubjectGrantService grants,
         QueryPredicateBinder<GroupInfo, GroupEntity> queryBinder,
         ObjectAuthorizationPredicateBinder<GroupInfo, GroupEntity> objectBinder
     ) {
         this.groups = groups;
         this.closureWriter = closureWriter;
         this.users = users;
-        this.access = access;
+        this.grants = grants;
         this.queryBinder = queryBinder;
         this.objectBinder = objectBinder;
     }
@@ -76,16 +79,7 @@ public class GroupService {
         return this.create(name, description, Set.of(), Set.of());
     }
 
-    /// Creates a Group and its direct child-Group and Role relationships as one atomic operation.
-    ///
-    /// Duplicate ids are normalized. Creation fails without persisting the Group when a child Group or Role does not
-    /// exist or the resulting Group graph would be cyclic.
-    ///
-    /// @param name the display name of the Group
-    /// @param description the optional explanation of the Group's purpose
-    /// @param childGroupIds the optional direct child Groups inherited by the new Group
-    /// @param roleIds the optional Roles directly included by the new Group
-    /// @return the id of the created Group
+    /// Creates a Group and its direct child-Group relationships and Access Control Role bindings atomically.
     @Transactional
     public UUID create(
         @Nullable String name,
@@ -95,7 +89,7 @@ public class GroupService {
     ) {
         UUID id = UUID.randomUUID();
         Set<UUID> requestedChildIds = childGroupIds == null ? Set.of() : Set.copyOf(childGroupIds);
-        Set<UUID> requestedRoleIds = roleIds == null ? Set.of() : Set.copyOf(roleIds);
+        Collection<UUID> requestedRoleIds = roleIds == null ? Set.of() : roleIds;
         List<GroupEntity> allGroups = new ArrayList<>(this.groups.findAllForUpdate());
         List<GroupEntity> children = requireChildGroups(requestedChildIds, allGroups);
         try {
@@ -103,15 +97,14 @@ public class GroupService {
         } catch (IllegalArgumentException exception) {
             throw new GroupException(GroupException.Type.BAD_REQUEST, hierarchyFailureMessage(exception));
         }
-        this.access.requireRoles(requestedRoleIds);
 
         GroupEntity group = new GroupEntity(id, required(name, "name"), description);
         group.addChildGroups(children);
-        group.replaceRoleIds(requestedRoleIds);
         this.groups.save(group);
         allGroups.add(group);
         this.groups.flush();
         this.refreshClosure(allGroups);
+        this.grants.setRoles(IdentitySubjects.group(id), requestedRoleIds);
         return id;
     }
 
@@ -124,8 +117,6 @@ public class GroupService {
     }
 
     /// Validates that every supplied Group id exists.
-    ///
-    /// @param ids the Group ids to validate
     @Transactional(readOnly = true)
     public void requireGroups(Collection<UUID> ids) {
         Set<UUID> requestedIds = Set.copyOf(ids);
@@ -139,26 +130,22 @@ public class GroupService {
         return this.groups.findDistinctByMemberIdsContains(userId).stream().map(GroupEntity::id).toList();
     }
 
-    /// Resolves a User's direct and Group-derived Roles, including every inherited descendant Role.
-    ///
-    /// @param userId the User whose effective Roles are resolved
-    /// @return the deduplicated effective Roles in stable id order
+    /// Resolves a User's direct and Group-derived Roles through Access Control subject bindings.
     @Transactional(readOnly = true)
     public List<RoleInfo> effectiveRolesForUser(UUID userId) {
-        Set<UUID> roleIds = new HashSet<>(this.users.roleIds(userId));
-        for (UUID groupId : this.groupsForUser(userId)) {
-            this.effectiveRoles(groupId).forEach(role -> roleIds.add(role.id()));
+        this.users.require(userId);
+        LinkedHashSet<SubjectRef> subjects = new LinkedHashSet<>();
+        subjects.add(IdentitySubjects.user(userId));
+        List<UUID> directGroupIds = this.groupsForUser(userId);
+        if (!directGroupIds.isEmpty()) {
+            this.groups
+                .findDescendantGroupIds(directGroupIds)
+                .forEach(groupId -> subjects.add(IdentitySubjects.group(groupId)));
         }
-        return this.access.effectiveRoles(roleIds);
+        return this.grants.effectiveRoles(subjects);
     }
 
     /// Replaces a Group's direct child Groups after validating the resulting global graph.
-    ///
-    /// Duplicate child ids are normalized. The replacement is rejected before persistence when a child does not
-    /// exist or would make the Group graph cyclic. Concurrent hierarchy writers are serialized before validation.
-    ///
-    /// @param parentGroupId the Group whose outgoing hierarchy edges are replaced
-    /// @param childGroupIds the complete desired set of direct child Groups
     @Transactional
     public void setChildGroups(UUID parentGroupId, Collection<UUID> childGroupIds) {
         Set<UUID> requestedIds = Set.copyOf(childGroupIds);
@@ -176,38 +163,20 @@ public class GroupService {
         this.refreshClosure(allGroups);
     }
 
-    /// Replaces the Roles directly included by a Group.
-    ///
-    /// Duplicate ids are normalized and the mutation is rejected before persistence when any Role does not exist.
-    ///
-    /// @param groupId the Group whose direct Roles are replaced
-    /// @param roleIds the complete desired set of directly included Roles
+    /// Replaces the Roles directly bound to a Group through Access Control.
     @Transactional
     public void setRoles(UUID groupId, Collection<UUID> roleIds) {
-        GroupEntity group = this.entity(groupId);
-        Set<UUID> requestedIds = Set.copyOf(roleIds);
-        this.access.requireRoles(requestedIds);
-        group.replaceRoleIds(requestedIds);
-        this.groups.flush();
+        this.entity(groupId);
+        this.grants.setRoles(IdentitySubjects.group(groupId), roleIds);
     }
 
-    /// Resolves all Roles included by a Group or any descendant Group, including inherited descendant Roles.
-    ///
-    /// Every Role is returned once in deterministic id order. Traversal terminates if persisted hierarchy data is
-    /// cyclic.
-    ///
-    /// @param groupId the Group at the root of the downward traversal
-    /// @return all effective Roles for the Group
+    /// Resolves Roles bound to a Group or any descendant Group, including inherited descendant Roles.
     @Transactional(readOnly = true)
     public List<RoleInfo> effectiveRoles(UUID groupId) {
         this.entity(groupId);
-        List<UUID> reachableGroupIds = this.groups.findDescendantGroupIds(Set.of(groupId));
-
-        Set<UUID> roleIds = new HashSet<>();
-        for (GroupEntity group : this.groups.findDistinctByIdIn(reachableGroupIds)) {
-            roleIds.addAll(group.roleIds());
-        }
-        return this.access.effectiveRoles(roleIds);
+        LinkedHashSet<SubjectRef> subjects = new LinkedHashSet<>();
+        this.groups.findDescendantGroupIds(Set.of(groupId)).forEach(id -> subjects.add(IdentitySubjects.group(id)));
+        return this.grants.effectiveRoles(subjects);
     }
 
     private GroupEntity entity(UUID id) {

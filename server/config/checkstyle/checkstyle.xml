@@ -14,6 +14,14 @@
     <module name="TreeWalker">
         <module name="SuppressWarningsHolder"/>
 
+        <!-- Permit only reviewed suppression names; every other warning must be fixed instead. -->
+        <module name="SuppressWarnings">
+            <property
+                name="format"
+                value="^(?!(?:NullableProblems|NotNullFieldNotInitialized|checkstyle:SpringDataQuery)$).*$"
+            />
+        </module>
+
         <!-- Prefer imports over fully-qualified type references. -->
         <module name="UnnecessaryFullyQualifiedType"/>
 

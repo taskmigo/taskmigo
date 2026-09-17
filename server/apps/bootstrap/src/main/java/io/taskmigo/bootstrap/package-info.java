@@ -8,8 +8,6 @@
         "identity :: user",
         "identity :: group",
         "identity :: oauth",
-        "identity :: role-management",
-        "identity :: statement-management",
     }
 )
 @NullMarked

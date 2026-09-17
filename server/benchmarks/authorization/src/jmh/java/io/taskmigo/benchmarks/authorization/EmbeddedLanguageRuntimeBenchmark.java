@@ -49,7 +49,6 @@ public class EmbeddedLanguageRuntimeBenchmark {
     public static class RuntimeState {
 
         @Param({ "10", "1000" })
-        @SuppressWarnings({ "CanBeFinal", "FieldCanBeLocal", "FieldMayBeFinal" })
         private String listSize = "10";
 
         private @Nullable CompiledSource compiled;

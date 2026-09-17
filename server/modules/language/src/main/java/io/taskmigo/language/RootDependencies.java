@@ -9,7 +9,6 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /// Stores root dependencies as a compact bit mask while retaining the public Set contract.
-@SuppressWarnings("checkstyle:OverloadMethodsDeclarationOrder")
 final class RootDependencies extends AbstractSet<String> {
 
     private static final long[] EMPTY_WORDS = new long[0];
@@ -72,6 +71,20 @@ final class RootDependencies extends AbstractSet<String> {
         return union(List.of(expressions));
     }
 
+    RootDependencies union(RootDependencies other) {
+        if (this.catalog != other.catalog) {
+            throw new IllegalArgumentException("dependency catalogs do not match");
+        }
+        if (this.words.length == 0) {
+            return new RootDependencies(this.catalog, this.mask | other.mask, EMPTY_WORDS);
+        }
+        long[] merged = this.words.clone();
+        for (int index = 0; index < merged.length; index++) {
+            merged[index] |= other.words[index];
+        }
+        return new RootDependencies(this.catalog, 0L, merged);
+    }
+
     static boolean intersects(Set<String> dependencies, Set<String> roots) {
         if (dependencies.isEmpty() || roots.isEmpty()) {
             return false;
@@ -90,20 +103,6 @@ final class RootDependencies extends AbstractSet<String> {
             }
         }
         return false;
-    }
-
-    RootDependencies union(RootDependencies other) {
-        if (this.catalog != other.catalog) {
-            throw new IllegalArgumentException("dependency catalogs do not match");
-        }
-        if (this.words.length == 0) {
-            return new RootDependencies(this.catalog, this.mask | other.mask, EMPTY_WORDS);
-        }
-        long[] merged = this.words.clone();
-        for (int index = 0; index < merged.length; index++) {
-            merged[index] |= other.words[index];
-        }
-        return new RootDependencies(this.catalog, 0L, merged);
     }
 
     @Override

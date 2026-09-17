@@ -15,7 +15,6 @@ import java.util.concurrent.ConcurrentMap;
 import org.springframework.core.ResolvableType;
 
 /// Builds the consumer-owned Language schemas used by authorization.
-@SuppressWarnings("checkstyle:OverloadMethodsDeclarationOrder")
 public final class AuthorizationEmbeddedLanguageSchemas {
 
     private static final EnvironmentSchema REQUEST = new EnvironmentSchema(

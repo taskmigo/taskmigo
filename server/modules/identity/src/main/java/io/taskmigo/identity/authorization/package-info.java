@@ -1,4 +1,4 @@
-/// Provides identity-owned persistence adapters for authorization resources.
+/// Adapts Identity-owned subjects and membership state to Access Control published contracts.
 @NullMarked
 package io.taskmigo.identity.authorization;
 

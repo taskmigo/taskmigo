@@ -78,7 +78,6 @@ include:
   # - name: UnusedLibrary
   - name: IgnoreResultOfCall
   - name: ResultOfObjectAllocationIgnored
-  - name: CanBeFinal
   - name: UnnecessaryBreak
   - name: UnnecessaryCallToStringValueOf
   - name: UnnecessaryConstantArrayCreationExpression
@@ -168,6 +167,19 @@ include:
 exclude:
   # Preserve the explicit-this policy represented by the two Unqualified* rules.
   - name: UnnecessaryThis
+
+  # Do not require fields to become final merely because static analysis sees no source assignment.
+  - name: FieldMayBeFinal
+
+  # JMH @Param fields are framework-managed and intentionally remain fields.
+  - name: FieldCanBeLocal
+    paths:
+      - benchmarks/authorization/src/jmh
+
+  # ANTLR-generated parser accessor contracts make these branch checks look constant to the IDE analyzer.
+  - name: ConstantValue
+    paths:
+      - modules/language/src/main/java/io/taskmigo/language/LanguageCompilerVisitor.java
 
   # Preserve mandatory braces for every control-flow statement.
   - name: SingleStatementInBlock

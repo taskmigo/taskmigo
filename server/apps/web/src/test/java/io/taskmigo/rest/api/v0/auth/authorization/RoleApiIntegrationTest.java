@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.authorization.role.RoleInfo;
-import io.taskmigo.identity.authorization.role.RoleService;
+import io.taskmigo.authorization.role.RoleService;
 import io.taskmigo.rest.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.CreateRoleRequest;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.CreateStatementRequest;
@@ -95,29 +95,20 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
             .contains("\"totalPages\":");
     }
 
-    /**
-     * Verifies that a Role's direct Statement set is replaced as a complete desired set.
-     *
-     * Given: a Role and two Statements, followed by assignments containing a duplicate and then one replacement.
-     * Expect: the join table contains each requested Statement once and the removed Statement is no longer assigned.
-     */
     @Test
     @DisplayName("replaces a role's direct statements")
     void shouldReplaceRoleStatementsWhenAssignmentsAreProvided() {
-        // Arrange
         UUID role = this.api()
             .roles()
             .create(new CreateRoleRequest(uniqueRoleName("StatementRole"), null, Set.of()));
         UUID first = this.createStatement("role-first-" + UUID.randomUUID());
         UUID second = this.createStatement("role-second-" + UUID.randomUUID());
 
-        // Act
         this.api()
             .roles()
             .replaceStatements(role, List.of(first, first, second));
         this.api().roles().replaceStatements(role, List.of(second));
 
-        // Assert
         assertThat(
             this.jdbc.queryForList(
                 "select statement_id from role_statements where role_id = ? order by statement_id",
@@ -127,30 +118,21 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
         ).containsExactly(second);
     }
 
-    /**
-     * Verifies that invalid Statement references do not partially replace a Role's existing assignments.
-     *
-     * Given: a Role assigned to one valid Statement and a replacement request containing an unknown Statement id.
-     * Expect: the request is rejected and the original one-row relationship remains unchanged.
-     */
     @Test
     @DisplayName("rejects unknown role statements without changing assignments")
     void shouldPreserveRoleStatementsWhenStatementIsUnknown() {
-        // Arrange
         UUID role = this.api()
             .roles()
             .create(new CreateRoleRequest(uniqueRoleName("InvalidStatementRole"), null, Set.of()));
         UUID statement = this.createStatement("role-existing-" + UUID.randomUUID());
         this.api().roles().replaceStatements(role, List.of(statement));
 
-        // Act
         assertThatThrownBy(() ->
             this.api().roles().replaceStatements(role, List.of(UUID.randomUUID()))
         ).isInstanceOfSatisfying(HttpClientErrorException.BadRequest.class, exception ->
             assertThat(exception.getResponseBodyAsString()).contains("One or more Statements do not exist")
         );
 
-        // Assert
         assertThat(
             this.jdbc.queryForObject(
                 "select count(*) from role_statements where role_id = ? and statement_id = ?",

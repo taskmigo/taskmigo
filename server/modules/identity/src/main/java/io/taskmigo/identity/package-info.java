@@ -1,15 +1,14 @@
-/// Owns identity resources and their trusted persistence integrations.
+/// Owns Identity resources and their trusted persistence integrations.
 @ApplicationModule(
     allowedDependencies = {
         "foundation",
         "query",
         "query :: persistence",
-        "authorization :: core",
         "authorization :: object",
         "authorization :: object-persistence",
         "authorization :: spi",
-        "authorization :: statement",
         "authorization :: role",
+        "authorization :: subject",
     }
 )
 @NullMarked

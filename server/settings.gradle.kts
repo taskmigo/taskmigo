@@ -11,7 +11,7 @@ include(
     ":modules:foundation",
     ":modules:language",
     ":modules:query",
-    ":modules:authorization",
+    ":modules:access-control",
     ":modules:database",
     ":modules:identity",
     ":benchmarks:authorization",
@@ -19,3 +19,5 @@ include(
     ":apps:web",
     ":apps:worker",
 )
+
+project(":modules:access-control").projectDir = file("modules/authorization")

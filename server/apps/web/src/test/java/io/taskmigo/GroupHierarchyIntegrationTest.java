@@ -3,9 +3,9 @@ package io.taskmigo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.taskmigo.authorization.role.RoleException;
 import io.taskmigo.authorization.role.RoleInfo;
-import io.taskmigo.identity.authorization.role.RoleException;
-import io.taskmigo.identity.authorization.role.RoleService;
+import io.taskmigo.authorization.role.RoleService;
 import io.taskmigo.identity.group.GroupException;
 import io.taskmigo.identity.group.GroupService;
 import java.util.List;
@@ -44,12 +44,6 @@ class GroupHierarchyIntegrationTest {
         this.jdbc = jdbc;
     }
 
-    /**
-     * Verifies that a Group closure contains self and multi-level relationships while direct edges stay unique.
-     *
-     * Given: a Group hierarchy with a three-level branch and duplicate child and Role assignments.
-     * Expect: effective Roles and closure rows include every reachable node exactly once.
-     */
     @Test
     @DisplayName("persists unique group edges and resolves descendant roles")
     void shouldResolveDescendantRolesWhenUniqueGroupEdgesArePersisted() {
@@ -101,20 +95,15 @@ class GroupHierarchyIntegrationTest {
         ).isEqualTo(1);
         assertThat(
             this.jdbc.queryForObject(
-                "select count(*) from group_roles where group_id = ? and role_id = ?",
+                "select count(*) from subject_role_bindings where subject_type = ? and subject_id = ? and role_id = ?",
                 Integer.class,
+                "identity:group",
                 platform,
                 developer
             )
         ).isEqualTo(1);
     }
 
-    /**
-     * Verifies that rejected cycle mutations leave both direct hierarchy and closure data unchanged.
-     *
-     * Given: a valid root-to-leaf Group chain followed by two invalid cycle replacements.
-     * Expect: the original transitive Role relationship remains effective after both failures.
-     */
     @Test
     @DisplayName("rejects group cycles without changing existing edges")
     void shouldPreserveExistingEdgesWhenGroupCycleIsRejected() {
@@ -145,12 +134,6 @@ class GroupHierarchyIntegrationTest {
         ).isEqualTo(1);
     }
 
-    /**
-     * Verifies that invalid Group and Role assignments fail before changing the existing hierarchy.
-     *
-     * Given: a valid Group-to-Role assignment followed by unknown relationship ids.
-     * Expect: validation errors are raised and the original effective Role remains available.
-     */
     @Test
     @DisplayName("rejects unknown group relationships without changing existing edges")
     void shouldPreserveExistingEdgesWhenGroupRelationshipIsUnknown() {
