@@ -57,6 +57,24 @@ jobs:
           args: >-
             --project-dir server
 
+      - name: Publish Qodana results to job summary
+        if: ${{ always() }}
+        shell: bash
+        env:
+          SARIF_FILE: ${{ runner.temp }}/qodana/results/qodana.sarif.json
+        run: |
+          {
+            echo "## Qodana results"
+            echo
+            if [[ -f "$SARIF_FILE" ]]; then
+              echo '```json'
+              jq '{results: [.runs[]?.results[]?]}' "$SARIF_FILE"
+              echo '```'
+            else
+              echo "Qodana did not produce a SARIF report."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
