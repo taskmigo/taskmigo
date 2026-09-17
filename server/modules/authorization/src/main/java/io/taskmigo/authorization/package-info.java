@@ -1,6 +1,13 @@
 /// Owns the Access Control bounded context: authorization policy lifecycle, Roles, Statements, subject grants, and decisions.
 @ApplicationModule(
-    allowedDependencies = { "foundation", "language", "language :: ast", "query", "query :: persistence" }
+    allowedDependencies = {
+        "foundation",
+        "language",
+        "language :: ast",
+        "query",
+        "query :: persistence",
+        "database",
+    }
 )
 @NullMarked
 package io.taskmigo.authorization;

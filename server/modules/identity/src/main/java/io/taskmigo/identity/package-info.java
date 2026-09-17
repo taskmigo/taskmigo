@@ -2,6 +2,7 @@
 @ApplicationModule(
     allowedDependencies = {
         "foundation",
+        "database",
         "query",
         "query :: persistence",
         "authorization :: object",
