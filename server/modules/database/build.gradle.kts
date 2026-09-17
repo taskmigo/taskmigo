@@ -5,8 +5,14 @@ plugins {
 description = "Shared database configuration, migrations, and PostgreSQL runtime support"
 
 dependencies {
+    compileOnly(platform(libs.spring.modulith.bom))
+    compileOnly(libs.spring.modulith.starter.core)
+
     implementation(platform(libs.spring.boot.bom))
-    implementation(libs.spring.boot.starter.data.jpa)
+    api(libs.spring.boot.starter.data.jpa)
 
     runtimeOnly(libs.postgresql.driver)
+
+    testImplementation(libs.archunit.junit5)
+    testImplementation("org.junit.jupiter:junit-jupiter")
 }

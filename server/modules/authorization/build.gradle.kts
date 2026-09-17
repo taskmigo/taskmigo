@@ -17,6 +17,7 @@ dependencies {
     api(project(":modules:foundation"))
     api(project(":modules:language"))
     api(project(":modules:query"))
+    implementation(project(":modules:database"))
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(platform(libs.guava.bom))
     implementation(libs.guava)

@@ -1,20 +1,31 @@
-package io.taskmigo.authorization.persistence.query;
+package io.taskmigo.database.criteria;
 
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
 import java.util.UUID;
 
-/// Applies ordered JPA Criteria comparisons without raw or unchecked Expression casts.
-final class JpaCriteriaComparison {
+/// Builds ordered JPA Criteria comparisons while preserving the Java type of
+/// each expression.
+///
+/// This is shared technical infrastructure only: bounded contexts continue to
+/// own their resource schemas, logical paths, and entity mappings.
+public final class JpaCriteriaComparison {
 
     private JpaCriteriaComparison() {}
 
-    static Predicate greaterThan(CriteriaBuilder builder, Expression<?> left, Expression<?> right, Class<?> type) {
+    /// Builds a greater-than predicate for two expressions of the supplied type.
+    public static Predicate greaterThan(
+        CriteriaBuilder builder,
+        Expression<?> left,
+        Expression<?> right,
+        Class<?> type
+    ) {
         return compare(builder, left, right, type, Operator.GREATER);
     }
 
-    static Predicate greaterThanOrEqualTo(
+    /// Builds a greater-than-or-equal predicate for two expressions of the supplied type.
+    public static Predicate greaterThanOrEqualTo(
         CriteriaBuilder builder,
         Expression<?> left,
         Expression<?> right,
@@ -23,11 +34,13 @@ final class JpaCriteriaComparison {
         return compare(builder, left, right, type, Operator.GREATER_OR_EQUAL);
     }
 
-    static Predicate lessThan(CriteriaBuilder builder, Expression<?> left, Expression<?> right, Class<?> type) {
+    /// Builds a less-than predicate for two expressions of the supplied type.
+    public static Predicate lessThan(CriteriaBuilder builder, Expression<?> left, Expression<?> right, Class<?> type) {
         return compare(builder, left, right, type, Operator.LESS);
     }
 
-    static Predicate lessThanOrEqualTo(
+    /// Builds a less-than-or-equal predicate for two expressions of the supplied type.
+    public static Predicate lessThanOrEqualTo(
         CriteriaBuilder builder,
         Expression<?> left,
         Expression<?> right,

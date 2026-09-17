@@ -15,6 +15,7 @@ dependencies {
     api(project(":modules:foundation"))
     api(project(":modules:query"))
     api(project(":modules:access-control"))
+    implementation(project(":modules:database"))
     implementation(project(":modules:language"))
 
     implementation(libs.spring.boot.starter.data.jpa)
