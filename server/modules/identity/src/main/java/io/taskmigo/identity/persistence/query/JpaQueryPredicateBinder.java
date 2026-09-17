@@ -3,7 +3,6 @@ package io.taskmigo.identity.persistence.query;
 import io.taskmigo.query.QueryPredicate;
 import io.taskmigo.query.persistence.QueryPredicateModel;
 import java.util.Map;
-import org.jspecify.annotations.NonNull;
 import org.springframework.data.jpa.domain.Specification;
 
 /// Creates an Identity-owned Query Predicate binder for a flat or nested entity mapping.
@@ -38,7 +37,7 @@ public final class JpaQueryPredicateBinder<Q, E> implements QueryPredicateBinder
     }
 
     @Override
-    public Specification<E> bind(@NonNull QueryPredicate<Q> predicate) {
+    public Specification<E> bind(QueryPredicate<Q> predicate) {
         if (!(predicate instanceof QueryPredicateModel model)) {
             throw new IllegalArgumentException("unsupported Query Predicate implementation");
         }
