@@ -1,6 +1,7 @@
 package io.taskmigo.identity.persistence.query;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
+import org.jspecify.annotations.NonNull;
 import org.springframework.data.jpa.domain.Specification;
 
 /// Binds one resource-owned Object Authorization predicate to its persistence model.
@@ -12,5 +13,5 @@ public interface ObjectAuthorizationPredicateBinder<Q, E> {
     Class<E> domainType();
 
     /// Converts a trusted logical predicate into a database-side specification.
-    Specification<E> bind(ObjectAuthorizationPredicate<Q> predicate);
+    Specification<E> bind(@NonNull ObjectAuthorizationPredicate<Q> predicate);
 }
