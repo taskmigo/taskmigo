@@ -38,15 +38,17 @@ class DefaultStatementServiceTest {
     void createRejectsDuplicateNames() {
         // Arrange
         StatementDefinition definition = definition("projects.read");
-        when(this.policyValidator.validate(
-            "projects.read",
-            null,
-            Effect.ALLOW,
-            Scope.REQUEST,
-            "GET",
-            "/projects",
-            "true"
-        )).thenReturn(definition);
+        when(
+            this.policyValidator.validate(
+                "projects.read",
+                null,
+                Effect.ALLOW,
+                Scope.REQUEST,
+                "GET",
+                "/projects",
+                "true"
+            )
+        ).thenReturn(definition);
         when(this.statements.existsByName("projects.read")).thenReturn(true);
 
         // Act / Assert
