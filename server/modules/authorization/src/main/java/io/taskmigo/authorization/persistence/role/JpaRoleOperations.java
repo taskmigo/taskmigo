@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -54,12 +55,12 @@ public class JpaRoleOperations implements RoleService, RoleStore {
     }
 
     @Override
-    public java.util.Optional<RoleState> find(UUID id) {
+    public Optional<RoleState> find(UUID id) {
         return this.roles.findById(id).map(JpaRoleOperations::state);
     }
 
     @Override
-    public java.util.Optional<RoleState> findByName(String name) {
+    public Optional<RoleState> findByName(String name) {
         return this.roles.findByName(name).map(JpaRoleOperations::state);
     }
 
