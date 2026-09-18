@@ -19,7 +19,6 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -90,7 +89,7 @@ public class DefaultGroupService implements GroupService {
     @Override
     @Transactional
     public void addMember(UUID groupId, UUID userId) {
-        requireGroup(this.groups.find(groupId));
+        this.requireGroup(groupId);
         this.users.require(userId);
         this.groups.addMember(groupId, userId);
     }
@@ -152,14 +151,14 @@ public class DefaultGroupService implements GroupService {
     @Override
     @Transactional
     public void setRoles(UUID groupId, Collection<UUID> roleIds) {
-        requireGroup(this.groups.find(groupId));
+        this.requireGroup(groupId);
         this.grants.setRoles(IdentitySubjects.group(groupId), roleIds);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<RoleInfo> effectiveRoles(UUID groupId) {
-        requireGroup(this.groups.find(groupId));
+        this.requireGroup(groupId);
         LinkedHashSet<SubjectRef> subjects = new LinkedHashSet<>();
         this.groups.descendantGroupIds(Set.of(groupId)).forEach(id -> subjects.add(IdentitySubjects.group(id)));
         return this.grants.effectiveRoles(subjects);
@@ -173,8 +172,10 @@ public class DefaultGroupService implements GroupService {
             .orElseThrow(() -> new GroupException(GroupException.Type.NOT_FOUND, "Group not found"));
     }
 
-    private static GroupState requireGroup(Optional<GroupState> group) {
-        return group.orElseThrow(() -> new GroupException(GroupException.Type.NOT_FOUND, "Group not found"));
+    private void requireGroup(UUID id) {
+        if (this.groups.find(id).isEmpty()) {
+            throw new GroupException(GroupException.Type.NOT_FOUND, "Group not found");
+        }
     }
 
     private static void requireChildren(Set<UUID> childIds, Collection<GroupState> groups) {
