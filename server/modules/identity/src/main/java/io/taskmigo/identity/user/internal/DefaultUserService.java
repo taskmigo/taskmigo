@@ -131,15 +131,7 @@ public class DefaultUserService implements UserService {
         if (existing == null) {
             id = UUID.randomUUID();
             this.users.create(
-                new UserState(
-                    id,
-                    requiredUsername,
-                    requestedEmails,
-                    requiredFirstName,
-                    requiredLastName,
-                    true,
-                    null
-                )
+                new UserState(id, requiredUsername, requestedEmails, requiredFirstName, requiredLastName, true, null)
             );
         } else {
             id = existing.id();
