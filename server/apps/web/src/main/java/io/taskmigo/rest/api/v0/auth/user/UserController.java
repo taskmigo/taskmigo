@@ -96,7 +96,7 @@ class UserController {
         );
     }
 
-    @Schema(name = "UserResponse")
+    @Schema(name = "UserInfo")
     record Response(
         UUID id,
         String username,
