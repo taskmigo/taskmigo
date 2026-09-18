@@ -1,4 +1,4 @@
-package io.taskmigo.identity.persistence.group;
+package io.taskmigo.identity.group.hierarchy;
 
 import com.google.common.graph.Graph;
 import com.google.common.graph.GraphBuilder;
@@ -7,44 +7,32 @@ import com.google.common.graph.ImmutableGraph;
 import com.google.common.graph.MutableGraph;
 import com.google.common.graph.Traverser;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+/// Applies and validates the directed Group hierarchy independently of persistence.
 public final class GroupHierarchy {
 
     private final ImmutableGraph<UUID> graph;
-
-    GroupHierarchy(Map<UUID, ? extends Collection<UUID>> childrenByParent) {
-        MutableGraph<UUID> graph = newGraph();
-        childrenByParent.forEach((parent, children) -> {
-            graph.addNode(parent);
-            children.forEach(child -> graph.putEdge(parent, child));
-        });
-        this.graph = ImmutableGraph.copyOf(graph);
-    }
 
     private GroupHierarchy(Graph<UUID> graph) {
         this.graph = ImmutableGraph.copyOf(graph);
     }
 
-    public static GroupHierarchy from(Collection<GroupEntity> groups) {
-        Map<UUID, Set<UUID>> childrenByParent = new HashMap<>();
-        for (GroupEntity group : groups) {
-            Set<UUID> children = new HashSet<>();
-            for (GroupEntity child : group.childGroups) {
-                children.add(child.id);
-            }
-            childrenByParent.put(group.id, children);
-        }
-        return new GroupHierarchy(childrenByParent);
+    /// Creates a Group graph from persistence-neutral parent-to-child edges.
+    public static GroupHierarchy from(Map<UUID, ? extends Collection<UUID>> childrenByParent) {
+        MutableGraph<UUID> graph = GraphBuilder.directed().allowsSelfLoops(true).build();
+        childrenByParent.forEach((parent, children) -> {
+            graph.addNode(parent);
+            children.forEach(child -> graph.putEdge(parent, child));
+        });
+        return new GroupHierarchy(graph);
     }
 
+    /// Returns a validated graph with one Group's direct children replaced.
     public GroupHierarchy replacingChildren(UUID parent, Collection<UUID> children) {
         MutableGraph<UUID> replaced = Graphs.copyOf(this.graph);
         replaced.addNode(parent);
@@ -56,12 +44,14 @@ public final class GroupHierarchy {
         return candidate;
     }
 
-    List<UUID> reachableFrom(UUID root) {
+    /// Returns every reachable Group from one root in deterministic identifier order.
+    public List<UUID> reachableFrom(UUID root) {
         return this.reachableFrom(List.of(root));
     }
 
+    /// Returns every reachable Group from the supplied roots in deterministic identifier order.
     public List<UUID> reachableFrom(Collection<UUID> roots) {
-        Set<UUID> knownRoots = roots.stream().filter(this.graph.nodes()::contains).collect(Collectors.toSet());
+        List<UUID> knownRoots = roots.stream().filter(this.graph.nodes()::contains).distinct().sorted().toList();
         if (knownRoots.isEmpty()) {
             return List.of();
         }
@@ -72,11 +62,7 @@ public final class GroupHierarchy {
 
     private void requireAcyclic() {
         if (Graphs.hasCycle(this.graph)) {
-            throw new IllegalArgumentException("Group hierarchy must be acyclic");
+            throw new GroupHierarchyException("Group hierarchy must be acyclic");
         }
-    }
-
-    private static MutableGraph<UUID> newGraph() {
-        return GraphBuilder.directed().allowsSelfLoops(true).build();
     }
 }
