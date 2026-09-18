@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /// Coordinates User creation with initial Access Control and Group assignments.
 @Service
-final class UserRegistrationApplicationService implements UserRegistrationService {
+class UserRegistrationApplicationService implements UserRegistrationService {
 
     private final UserService users;
     private final RoleService roles;
