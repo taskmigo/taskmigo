@@ -303,16 +303,6 @@ public class JpaRoleOperations implements RoleStore {
         return info(role, Set.of());
     }
 
-    private static RoleState state(RoleEntity role) {
-        return new RoleState(
-            role.id(),
-            role.name(),
-            role.description(),
-            role.statementIds(),
-            role.childRoles().stream().map(RoleEntity::id).collect(Collectors.toSet())
-        );
-    }
-
     private static RoleInfo info(RoleEntity role, Set<UUID> ancestors) {
         if (ancestors.contains(role.id())) {
             return new RoleInfo(role.id(), role.name(), role.description(), List.of());
@@ -326,6 +316,16 @@ public class JpaRoleOperations implements RoleStore {
             .map(child -> info(child, nextAncestors))
             .toList();
         return new RoleInfo(role.id(), role.name(), role.description(), children);
+    }
+
+    private static RoleState state(RoleEntity role) {
+        return new RoleState(
+            role.id(),
+            role.name(),
+            role.description(),
+            role.statementIds(),
+            role.childRoles().stream().map(RoleEntity::id).collect(Collectors.toSet())
+        );
     }
 }
 
