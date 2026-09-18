@@ -48,7 +48,11 @@ public class PostgresTestConfiguration {
             UUID usersAccess = objectStatement(authorization, "system_users_full_access", "/api/v0/users");
             UUID rolesAccess = objectStatement(authorization, "system_roles_full_access", "/api/v0/roles");
             UUID groupsAccess = objectStatement(authorization, "system_groups_full_access", "/api/v0/groups");
-            UUID statementsAccess = objectStatement(authorization, "system_statements_full_access", "/api/v0/statements");
+            UUID statementsAccess = objectStatement(
+                authorization,
+                "system_statements_full_access",
+                "/api/v0/statements"
+            );
             UUID roleId = authorization.reconcileRole(
                 "System Operator",
                 "Highest-privilege integration-test role.",

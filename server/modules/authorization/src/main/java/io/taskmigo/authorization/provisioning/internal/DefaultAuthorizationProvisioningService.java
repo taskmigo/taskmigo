@@ -55,8 +55,10 @@ final class DefaultAuthorizationProvisioningService implements AuthorizationProv
         @Nullable String path,
         @Nullable String policy
     ) {
-        @Nullable Effect parsedEffect = effect == null ? null : Effect.from(effect);
-        @Nullable Scope parsedScope = scope == null ? null : Scope.from(scope);
+        @Nullable
+        Effect parsedEffect = effect == null ? null : Effect.from(effect);
+        @Nullable
+        Scope parsedScope = scope == null ? null : Scope.from(scope);
         StatementDefinition definition = this.policyValidator.validate(
             name,
             description,
