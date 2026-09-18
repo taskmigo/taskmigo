@@ -19,6 +19,7 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -172,7 +173,7 @@ public class DefaultGroupService implements GroupService {
             .orElseThrow(() -> new GroupException(GroupException.Type.NOT_FOUND, "Group not found"));
     }
 
-    private static GroupState requireGroup(java.util.Optional<GroupState> group) {
+    private static GroupState requireGroup(Optional<GroupState> group) {
         return group.orElseThrow(() -> new GroupException(GroupException.Type.NOT_FOUND, "Group not found"));
     }
 
