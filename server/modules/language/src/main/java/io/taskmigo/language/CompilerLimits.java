@@ -54,6 +54,6 @@ public record CompilerLimits(
 
     /// Returns the cache identity of this compiler contract.
     public String fingerprint() {
-        return Sha256Fingerprint.of(this.toString());
+        return LanguageFingerprint.of(this.toString());
     }
 }

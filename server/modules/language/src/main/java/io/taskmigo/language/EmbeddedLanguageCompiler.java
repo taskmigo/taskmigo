@@ -98,7 +98,7 @@ final class EmbeddedLanguageCompiler {
         }
         return new SemanticAst(
             expression,
-            Sha256Fingerprint.of(source),
+            LanguageFingerprint.of(source),
             schema.fingerprint(),
             this.compilerFingerprint,
             profile.mode(),

@@ -63,7 +63,7 @@ class IdentityPackageArchitectureTest {
     /**
      * Verifies that Identity domain and application packages do not reach into JPA adapters.
      *
-     * Given: production User, Group, and Identity authorization packages.
+     * Given: production User, Group, provisioning, and Identity authorization packages.
      * Expect: their dependencies exclude Identity persistence, Spring Data, and JPA packages.
      */
     @Test
@@ -92,29 +92,39 @@ class IdentityPackageArchitectureTest {
     }
 
     /**
-     * Verifies that published Identity contracts remain independent from HTTP serialization concerns.
+     * Verifies that published Identity contracts remain independent from framework-specific representation and OAuth
+     * server implementation concerns.
      *
-     * Given: production User and Group contract packages.
-     * Expect: those classes do not depend on Jackson, Spring Web, or Servlet APIs.
+     * Given: production provisioning, User, Group, and Identity authorization contract packages.
+     * Expect: those classes do not depend on Spring Core type descriptors, Jackson 2/3, Spring Web, Servlet, or Spring
+     * Authorization Server implementation APIs.
      */
     @Test
-    @DisplayName("keeps Identity contracts transport neutral")
-    void shouldKeepContractsTransportNeutralWhenIdentityPackagesAreInspected() {
+    @DisplayName("keeps Identity contracts framework neutral")
+    void shouldKeepContractsFrameworkNeutralWhenIdentityPackagesAreInspected() {
         // Arrange
         JavaClasses classes = productionClasses();
-        ArchRule contractsDoNotDependOnTransport = noClasses()
+        ArchRule contractsDoNotDependOnFrameworkDetails = noClasses()
             .that()
             .resideInAnyPackage(
                 "io.taskmigo.identity.provisioning..",
                 "io.taskmigo.identity.user..",
-                "io.taskmigo.identity.group.."
+                "io.taskmigo.identity.group..",
+                "io.taskmigo.identity.authorization.."
             )
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage("com.fasterxml.jackson..", "org.springframework.web..", "jakarta.servlet..");
+            .resideInAnyPackage(
+                "org.springframework.core..",
+                "com.fasterxml.jackson..",
+                "tools.jackson..",
+                "org.springframework.web..",
+                "jakarta.servlet..",
+                "org.springframework.security.oauth2.server.authorization.."
+            );
 
         // Act + Assert
-        contractsDoNotDependOnTransport.check(classes);
+        contractsDoNotDependOnFrameworkDetails.check(classes);
     }
 
     /**

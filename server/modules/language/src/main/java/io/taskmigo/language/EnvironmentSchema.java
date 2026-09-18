@@ -112,7 +112,7 @@ public final class EnvironmentSchema {
                     value.append('|').append(path).append(':').append(field)
                 );
             });
-        return Sha256Fingerprint.of(value.toString());
+        return LanguageFingerprint.of(value.toString());
     }
 
     /// Describes one schema root and its fields.
