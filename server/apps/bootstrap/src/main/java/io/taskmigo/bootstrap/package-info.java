@@ -9,7 +9,6 @@
         "identity :: provisioning",
         "identity :: user",
         "identity :: group",
-        "identity :: oauth",
     }
 )
 @NullMarked
