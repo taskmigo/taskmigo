@@ -49,8 +49,8 @@ class StatementController {
         UUID id = this.statements.create(
             request.name(),
             request.description(),
-            request.effect(),
-            request.scope(),
+            Effect.from(request.effect()),
+            Scope.from(request.scope()),
             request.target().api().method(),
             request.target().api().path(),
             request.policy()
@@ -116,8 +116,8 @@ class StatementController {
     record Request(
         @NotBlank @Nullable String name,
         @Nullable String description,
-        @NotNull Effect effect,
-        @NotNull Scope scope,
+        @NotBlank @Nullable String effect,
+        @NotBlank @Nullable String scope,
         @NotNull Target target,
         @NotBlank String policy
     ) {}
