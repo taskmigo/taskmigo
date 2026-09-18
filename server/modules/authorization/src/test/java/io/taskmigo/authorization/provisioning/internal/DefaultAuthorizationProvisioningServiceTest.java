@@ -50,20 +50,13 @@ class DefaultAuthorizationProvisioningServiceTest {
             "true"
         );
         UUID id = UUID.randomUUID();
-        when(validator.validate("projects.read", null, Effect.ALLOW, Scope.REQUEST, "GET", "/projects", "true"))
-            .thenReturn(definition);
+        when(
+            validator.validate("projects.read", null, Effect.ALLOW, Scope.REQUEST, "GET", "/projects", "true")
+        ).thenReturn(definition);
         when(statements.findIdByName("projects.read")).thenReturn(Optional.of(id));
         var service = service(roles, statements, validator);
 
-        UUID result = service.reconcileStatement(
-            "projects.read",
-            null,
-            "allow",
-            "request",
-            "GET",
-            "/projects",
-            "true"
-        );
+        UUID result = service.reconcileStatement("projects.read", null, "allow", "request", "GET", "/projects", "true");
 
         assertThat(result).isEqualTo(id);
         verify(statements).update(id, definition);
