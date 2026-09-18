@@ -1,4 +1,3 @@
-@NullMarked
 package io.taskmigo.authorization.statement.internal;
 
 import io.taskmigo.authorization.core.AuthorizationException;
