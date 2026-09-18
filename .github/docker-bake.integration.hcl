@@ -1,5 +1,5 @@
 group "integration" {
-  targets = ["bootstrap", "web", "worker", "client"]
+  targets = ["migration", "web", "worker", "client"]
 }
 
 target "_server" {
@@ -7,10 +7,10 @@ target "_server" {
   dockerfile = "Dockerfile"
 }
 
-target "bootstrap" {
+target "migration" {
   inherits = ["_server"]
-  target   = "bootstrap"
-  tags     = ["taskmigo-bootstrap:integration"]
+  target   = "migration"
+  tags     = ["taskmigo-migration:integration"]
 }
 
 target "web" {
