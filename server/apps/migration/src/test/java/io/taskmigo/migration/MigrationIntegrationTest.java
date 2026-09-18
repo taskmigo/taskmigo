@@ -5,16 +5,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
 import io.taskmigo.authorization.role.RoleInfo;
+import io.taskmigo.authorization.role.RoleService;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
-import io.taskmigo.authorization.role.RoleService;
 import io.taskmigo.authorization.statement.StatementService;
-import io.taskmigo.security.oauth.RegisteredClientDefinition;
-import io.taskmigo.security.oauth.RegisteredClientRepository;
-import io.taskmigo.security.oauth.RegisteredClientType;
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.UserService;
+import io.taskmigo.security.oauth.RegisteredClientDefinition;
+import io.taskmigo.security.oauth.RegisteredClientRepository;
+import io.taskmigo.security.oauth.RegisteredClientType;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
@@ -126,7 +126,11 @@ class MigrationIntegrationTest {
         );
         assertThat(browser.getRedirectUris()).containsExactly("http://localhost:3000/api/auth/callback");
         assertThat(browser.getPostLogoutRedirectUris()).containsExactly("http://localhost:3000/");
-        assertThat(browser.getScopes()).containsExactlyInAnyOrder(OidcScopes.OPENID, OidcScopes.PROFILE, BrowserClientMetadata.API_SCOPE);
+        assertThat(browser.getScopes()).containsExactlyInAnyOrder(
+            OidcScopes.OPENID,
+            OidcScopes.PROFILE,
+            BrowserClientMetadata.API_SCOPE
+        );
         assertThat(browser.getClientSettings().isRequireProofKey()).isTrue();
         assertThat(browser.getClientSettings().isRequireAuthorizationConsent()).isFalse();
         assertThat(browser.getTokenSettings().isReuseRefreshTokens()).isFalse();

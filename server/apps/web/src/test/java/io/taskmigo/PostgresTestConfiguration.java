@@ -74,7 +74,10 @@ public class PostgresTestConfiguration {
                             .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                             .scope("taskmigo.api")
                             .clientSettings(
-                                ClientSettings.builder().requireProofKey(false).requireAuthorizationConsent(false).build()
+                                ClientSettings.builder()
+                                    .requireProofKey(false)
+                                    .requireAuthorizationConsent(false)
+                                    .build()
                             )
                             .build(),
                         RegisteredClientType.INTERNAL

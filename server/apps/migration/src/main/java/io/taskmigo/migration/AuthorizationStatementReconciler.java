@@ -58,7 +58,8 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
         UsersFile usersFile = this.resolve(this.read("users.yaml", UsersFile.class));
         List<User> users = values(usersFile.users());
 
-        List<User> systems = users.stream()
+        List<User> systems = users
+            .stream()
             .filter(user -> SystemUser.USERNAME.equals(user.username().trim()))
             .toList();
         if (systems.size() != 1) {
@@ -69,7 +70,11 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
         Map<String, UUID> statementIds = this.reconcileStatements(values(statementsFile.statements()));
         Map<String, UUID> roleIds = this.reconcileRoles(values(rolesFile.roles()), statementIds);
         for (User user : users) {
-            if (!SystemUser.USERNAME.equals(user.username().trim()) && user.password() != null && !user.password().isBlank()) {
+            if (
+                !SystemUser.USERNAME.equals(user.username().trim()) &&
+                user.password() != null &&
+                !user.password().isBlank()
+            ) {
                 throw new IllegalStateException("Only the system user may define a password in users.yaml");
             }
             this.reconcileUser(user, roleIds, statementIds);
@@ -84,17 +89,22 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
     }
 
     private UsersFile resolve(UsersFile usersFile) {
-        return new UsersFile(values(usersFile.users()).stream().map(user ->
-            new User(
-                this.resolveRequired(user.username()),
-                this.resolve(user.password()),
-                this.resolveList(user.email()),
-                this.resolveRequired(user.firstName()),
-                this.resolveRequired(user.lastName()),
-                this.resolveList(user.roles()),
-                this.resolveList(user.statements())
-            )
-        ).toList());
+        return new UsersFile(
+            values(usersFile.users())
+                .stream()
+                .map(user ->
+                    new User(
+                        this.resolveRequired(user.username()),
+                        this.resolve(user.password()),
+                        this.resolveList(user.email()),
+                        this.resolveRequired(user.firstName()),
+                        this.resolveRequired(user.lastName()),
+                        this.resolveList(user.roles()),
+                        this.resolveList(user.statements())
+                    )
+                )
+                .toList()
+        );
     }
 
     private @Nullable String resolve(@Nullable String value) {
@@ -123,13 +133,22 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
         Map<String, UUID> result = new LinkedHashMap<>();
         for (Statement definition : definitions) {
             if (result.containsKey(definition.name())) {
-                throw new AuthorizationProvisioningException("Duplicate managed authorization Statement: " + definition.name());
+                throw new AuthorizationProvisioningException(
+                    "Duplicate managed authorization Statement: " + definition.name()
+                );
             }
-            result.put(definition.name(), this.authorization.reconcileStatement(
-                definition.name(), definition.description(), Effect.from(definition.effect()),
-                Scope.from(definition.scope()), definition.target().api().method(),
-                definition.target().api().path(), definition.policy()
-            ));
+            result.put(
+                definition.name(),
+                this.authorization.reconcileStatement(
+                    definition.name(),
+                    definition.description(),
+                    Effect.from(definition.effect()),
+                    Scope.from(definition.scope()),
+                    definition.target().api().method(),
+                    definition.target().api().path(),
+                    definition.policy()
+                )
+            );
         }
         return result;
     }
@@ -138,21 +157,39 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
         Map<String, UUID> result = new LinkedHashMap<>();
         for (Role definition : definitions) {
             if (result.containsKey(definition.name())) {
-                throw new AuthorizationProvisioningException("Duplicate managed authorization Role: " + definition.name());
+                throw new AuthorizationProvisioningException(
+                    "Duplicate managed authorization Role: " + definition.name()
+                );
             }
-            List<UUID> ids = values(definition.statements()).stream()
-                .map(name -> this.resolveStatement(statementIds, name)).toList();
-            result.put(definition.name(), this.authorization.reconcileRole(definition.name(), definition.description(), ids));
+            List<UUID> ids = values(definition.statements())
+                .stream()
+                .map(name -> this.resolveStatement(statementIds, name))
+                .toList();
+            result.put(
+                definition.name(),
+                this.authorization.reconcileRole(definition.name(), definition.description(), ids)
+            );
         }
         return result;
     }
 
     private void reconcileUser(User user, Map<String, UUID> roleIds, Map<String, UUID> statementIds) {
-        Set<UUID> roles = values(user.roles()).stream()
-            .map(roleName -> this.resolveRole(roleIds, roleName)).collect(Collectors.toSet());
-        Set<UUID> statements = values(user.statements()).stream()
-            .map(statementName -> this.resolveStatement(statementIds, statementName)).collect(Collectors.toSet());
-        this.identity.reconcileUser(user.username(), user.email(), user.firstName(), user.lastName(), roles, statements);
+        Set<UUID> roles = values(user.roles())
+            .stream()
+            .map(roleName -> this.resolveRole(roleIds, roleName))
+            .collect(Collectors.toSet());
+        Set<UUID> statements = values(user.statements())
+            .stream()
+            .map(statementName -> this.resolveStatement(statementIds, statementName))
+            .collect(Collectors.toSet());
+        this.identity.reconcileUser(
+            user.username(),
+            user.email(),
+            user.firstName(),
+            user.lastName(),
+            roles,
+            statements
+        );
     }
 
     private UUID resolveStatement(Map<String, UUID> values, String name) {
@@ -168,23 +205,50 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
     }
 
     private record StatementsFile(@Nullable List<Statement> statements) {
-        private StatementsFile { statements = values(statements); }
+        private StatementsFile {
+            statements = values(statements);
+        }
     }
+
     private record RolesFile(@Nullable List<Role> roles) {
-        private RolesFile { roles = values(roles); }
+        private RolesFile {
+            roles = values(roles);
+        }
     }
+
     private record UsersFile(@Nullable List<User> users) {
-        private UsersFile { users = values(users); }
+        private UsersFile {
+            users = values(users);
+        }
     }
-    private record Statement(String name, String description, String effect, String scope, Target target, String policy) {}
+
+    private record Statement(
+        String name,
+        String description,
+        String effect,
+        String scope,
+        Target target,
+        String policy
+    ) {}
+
     private record Target(Api api) {}
+
     private record Api(String method, String path) {}
+
     private record Role(String name, String description, @Nullable List<String> statements) {
-        private Role { statements = values(statements); }
+        private Role {
+            statements = values(statements);
+        }
     }
+
     private record User(
-        String username, @Nullable String password, List<String> email, String firstName, String lastName,
-        List<String> roles, List<String> statements
+        String username,
+        @Nullable String password,
+        List<String> email,
+        String firstName,
+        String lastName,
+        List<String> roles,
+        List<String> statements
     ) {
         private User {
             email = values(email);
