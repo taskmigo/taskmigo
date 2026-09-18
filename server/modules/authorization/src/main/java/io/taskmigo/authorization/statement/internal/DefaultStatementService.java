@@ -20,12 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 /// Orchestrates Statement use cases without depending on a persistence implementation.
 @Service
-class DefaultStatementService implements StatementService {
+public class DefaultStatementService implements StatementService {
 
     private final StatementStore statements;
     private final StatementPolicyValidator policyValidator;
 
-    DefaultStatementService(StatementStore statements, StatementPolicyValidator policyValidator) {
+    public DefaultStatementService(StatementStore statements, StatementPolicyValidator policyValidator) {
         this.statements = statements;
         this.policyValidator = policyValidator;
     }
