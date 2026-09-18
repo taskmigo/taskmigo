@@ -159,9 +159,7 @@ class DefaultRoleService implements RoleService {
     }
 
     private static RoleHierarchy hierarchy(Collection<RoleState> roles) {
-        Map<UUID, Set<UUID>> children = roles
-            .stream()
-            .collect(Collectors.toMap(RoleState::id, RoleState::childIds));
+        Map<UUID, Set<UUID>> children = roles.stream().collect(Collectors.toMap(RoleState::id, RoleState::childIds));
         return RoleHierarchy.from(children);
     }
 
