@@ -1,13 +1,11 @@
 package io.taskmigo.authorization.statement;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-
 /// Defines whether a matching authorization Statement grants or denies access.
 public enum Effect {
     ALLOW,
     DENY;
 
-    @JsonCreator
+    /// Parses the canonical lowercase effect name used by external configuration adapters.
     public static Effect from(String value) {
         return switch (value) {
             case "allow" -> ALLOW;
