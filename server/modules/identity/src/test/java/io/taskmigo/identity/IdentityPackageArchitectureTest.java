@@ -106,4 +106,26 @@ class IdentityPackageArchitectureTest {
         // Act + Assert
         contractsDoNotDependOnTransport.check(classes);
     }
+    /**
+     * Verifies that Group hierarchy rules remain independent from persistence implementation details.
+     *
+     * Given: classes in the Group hierarchy domain package.
+     * Expect: hierarchy rules do not depend on Identity persistence or JPA types.
+     */
+    @Test
+    @DisplayName("keeps Group hierarchy independent from persistence")
+    void shouldKeepGroupHierarchyIndependentWhenIdentityPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = new ClassFileImporter().importPackages("io.taskmigo.identity");
+        ArchRule hierarchyDoesNotDependOnPersistence = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.identity.group.hierarchy..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage("io.taskmigo.identity.persistence..", "jakarta.persistence..", "org.springframework.data..");
+
+        // Act + Assert
+        hierarchyDoesNotDependOnPersistence.check(classes);
+    }
+
 }
