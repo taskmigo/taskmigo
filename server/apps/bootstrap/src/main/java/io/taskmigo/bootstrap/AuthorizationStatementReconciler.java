@@ -2,6 +2,8 @@ package io.taskmigo.bootstrap;
 
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningService;
+import io.taskmigo.authorization.statement.Effect;
+import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
 import java.io.InputStream;
 import java.util.LinkedHashMap;
@@ -71,8 +73,8 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
                 this.authorization.reconcileStatement(
                     definition.name(),
                     definition.description(),
-                    definition.effect(),
-                    definition.scope(),
+                    Effect.from(definition.effect()),
+                    Scope.from(definition.scope()),
                     definition.target().api().method(),
                     definition.target().api().path(),
                     definition.policy()
