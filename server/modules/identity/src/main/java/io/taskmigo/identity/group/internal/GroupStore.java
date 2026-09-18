@@ -14,13 +14,7 @@ import org.jspecify.annotations.Nullable;
 
 /// Defines persistence capabilities required by Group application use cases.
 public interface GroupStore {
-    record GroupState(
-        UUID id,
-        String name,
-        @Nullable String description,
-        Set<UUID> memberIds,
-        Set<UUID> childIds
-    ) {}
+    record GroupState(UUID id, String name, @Nullable String description, Set<UUID> memberIds, Set<UUID> childIds) {}
 
     List<GroupState> loadAllForUpdate();
 
