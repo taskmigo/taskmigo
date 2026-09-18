@@ -1,5 +1,6 @@
 package io.taskmigo.rest.api.v0.auth.group;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -42,7 +43,7 @@ class GroupController {
 
     @GetMapping("/groups")
     @Operation(summary = "List groups")
-    ResponseEntity<ApiResponse<List<GroupInfo>, ApiResponse.OffsetMeta>> list(
+    ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         FilteredQuery<GroupInfo> filter,
         ObjectAuthorizationPredicate<GroupInfo> authorization
@@ -54,7 +55,7 @@ class GroupController {
             authorization
         );
         return this.responses.ok(
-            groups.items(),
+            groups.items().stream().map(Response::from).toList(),
             new ApiResponse.OffsetPagination(pagination, groups),
             "resource.group.listed",
             "Groups listed"
@@ -71,6 +72,23 @@ class GroupController {
             "resource.group.created",
             "Group created"
         );
+    }
+
+    @Schema(name = "GroupResponse")
+    record Response(
+        UUID id,
+        String name,
+        @JsonInclude(JsonInclude.Include.NON_NULL) @Nullable String description,
+        List<Response> children
+    ) {
+        static Response from(GroupInfo group) {
+            return new Response(
+                group.id(),
+                group.name(),
+                group.description(),
+                group.children().stream().map(Response::from).toList()
+            );
+        }
     }
 
     @Schema(name = "CreateGroupRequest")
