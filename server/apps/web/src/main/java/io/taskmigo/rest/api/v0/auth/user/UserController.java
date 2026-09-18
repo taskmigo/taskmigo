@@ -97,7 +97,14 @@ class UserController {
     }
 
     @Schema(name = "UserResponse")
-    record Response(UUID id, String username, String firstName, String lastName, Set<String> emails, String displayName) {
+    record Response(
+        UUID id,
+        String username,
+        String firstName,
+        String lastName,
+        Set<String> emails,
+        String displayName
+    ) {
         static Response from(UserInfo user) {
             return new Response(
                 user.id(),
