@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /// Implements Role use cases independently from the JPA adapter.
 @Service
-final class DefaultRoleService implements RoleService {
+class DefaultRoleService implements RoleService {
 
     private final RoleStore roles;
 
