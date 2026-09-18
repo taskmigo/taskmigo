@@ -1,12 +1,12 @@
 package io.taskmigo.authorization.object;
 
+import io.taskmigo.foundation.TypeDescriptor;
 import java.util.Set;
-import org.springframework.core.ResolvableType;
 
 /// Describes one explicitly queryable Object Authorization path.
 public record ObjectAuthorizationField(
     ObjectAuthorizationPath path,
-    ResolvableType type,
+    TypeDescriptor type,
     boolean nullable,
     Set<ObjectAuthorizationOperator> operators
 ) {
@@ -15,7 +15,7 @@ public record ObjectAuthorizationField(
     }
 
     /// Creates a field with the standard scalar comparison operators.
-    public ObjectAuthorizationField(ObjectAuthorizationPath path, ResolvableType type, boolean nullable) {
+    public ObjectAuthorizationField(ObjectAuthorizationPath path, TypeDescriptor type, boolean nullable) {
         this(
             path,
             type,

@@ -7,6 +7,7 @@ import io.taskmigo.authorization.persistence.role.RoleEntity;
 import io.taskmigo.authorization.persistence.statement.StatementEntity;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.statement.StatementInfo;
+import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.query.QueryField;
 import io.taskmigo.query.QueryPath;
 import io.taskmigo.query.QuerySchema;
@@ -19,14 +20,13 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.ResolvableType;
 
 /// Registers Query Filtering, Object Authorization, and persistence mappings owned by Access Control.
 @Configuration(proxyBeanMethods = false)
 public class AuthorizationResourceSchemas {
 
-    private static final ResolvableType STRING_TYPE = ResolvableType.forClass(String.class);
-    private static final ResolvableType UUID_TYPE = ResolvableType.forClass(UUID.class);
+    private static final TypeDescriptor STRING_TYPE = TypeDescriptor.of(String.class);
+    private static final TypeDescriptor UUID_TYPE = TypeDescriptor.of(UUID.class);
 
     /// Registers the Role collection query contract.
     @Bean
@@ -120,7 +120,7 @@ public class AuthorizationResourceSchemas {
         );
     }
 
-    private static QueryField field(String path, ResolvableType type) {
+    private static QueryField field(String path, TypeDescriptor type) {
         return new QueryField(QueryPath.parse(path), type, false);
     }
 
@@ -128,7 +128,7 @@ public class AuthorizationResourceSchemas {
         return new QueryField(QueryPath.parse(path), STRING_TYPE, true);
     }
 
-    private static ObjectAuthorizationField objectField(String path, ResolvableType type) {
+    private static ObjectAuthorizationField objectField(String path, TypeDescriptor type) {
         return new ObjectAuthorizationField(ObjectAuthorizationPath.parse(path), type, false);
     }
 

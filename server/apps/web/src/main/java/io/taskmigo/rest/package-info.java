@@ -10,7 +10,6 @@
         "authorization :: statement",
         "identity :: user",
         "identity :: group",
-        "identity :: oauth",
     }
 )
 @NullMarked

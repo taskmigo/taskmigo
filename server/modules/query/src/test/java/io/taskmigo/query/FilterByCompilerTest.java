@@ -3,20 +3,20 @@ package io.taskmigo.query;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.taskmigo.foundation.TypeDescriptor;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.ResolvableType;
 
 class FilterByCompilerTest {
 
     private final QuerySchema<CustomerQuery> schema = new QuerySchema<>() {
         private final QueryField name = new QueryField(
             QueryPath.of("name"),
-            ResolvableType.forClass(String.class),
+            TypeDescriptor.of(String.class),
             false,
             Set.of(QueryOperator.EQ)
         );
@@ -126,13 +126,13 @@ class FilterByCompilerTest {
                 return List.of(
                     new QueryField(
                         QueryPath.of("name"),
-                        ResolvableType.forClass(String.class),
+                        TypeDescriptor.of(String.class),
                         false,
                         Set.of(QueryOperator.EQ)
                     ),
                     new QueryField(
                         QueryPath.of("email"),
-                        ResolvableType.forClass(String.class),
+                        TypeDescriptor.of(String.class),
                         false,
                         Set.of(QueryOperator.EQ)
                     )
@@ -163,8 +163,8 @@ class FilterByCompilerTest {
         // Arrange
         QuerySchema<StatementQuery> statementSchema = new QuerySchema<>() {
             private final List<QueryField> fields = List.of(
-                new QueryField(QueryPath.parse("target.api.method"), ResolvableType.forClass(String.class), false),
-                new QueryField(QueryPath.parse("target.api.path"), ResolvableType.forClass(String.class), false)
+                new QueryField(QueryPath.parse("target.api.method"), TypeDescriptor.of(String.class), false),
+                new QueryField(QueryPath.parse("target.api.path"), TypeDescriptor.of(String.class), false)
             );
 
             @Override
@@ -219,7 +219,7 @@ class FilterByCompilerTest {
             @Override
             public Optional<QueryField> field(QueryPath path) {
                 return Optional.of(
-                    new QueryField(path, ResolvableType.forClass(String.class), true, Set.of(QueryOperator.EQ))
+                    new QueryField(path, TypeDescriptor.of(String.class), true, Set.of(QueryOperator.EQ))
                 );
             }
 
@@ -228,7 +228,7 @@ class FilterByCompilerTest {
                 return List.of(
                     new QueryField(
                         QueryPath.of("name"),
-                        ResolvableType.forClass(String.class),
+                        TypeDescriptor.of(String.class),
                         true,
                         Set.of(QueryOperator.EQ)
                     )

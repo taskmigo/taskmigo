@@ -2,13 +2,13 @@ package io.taskmigo.authorization.object;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.taskmigo.foundation.TypeDescriptor;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.ResolvableType;
 
 class ObjectAuthorizationSchemaIdentityTest {
 
@@ -24,13 +24,13 @@ class ObjectAuthorizationSchemaIdentityTest {
         // Arrange
         ObjectAuthorizationField name = new ObjectAuthorizationField(
             ObjectAuthorizationPath.of("name"),
-            ResolvableType.forClass(String.class),
+            TypeDescriptor.of(String.class),
             false,
             Set.of(ObjectAuthorizationOperator.NE, ObjectAuthorizationOperator.EQ)
         );
         ObjectAuthorizationField score = new ObjectAuthorizationField(
             ObjectAuthorizationPath.of("score"),
-            ResolvableType.forClass(Integer.class),
+            TypeDescriptor.of(Integer.class),
             true,
             Set.of(ObjectAuthorizationOperator.GE, ObjectAuthorizationOperator.LT)
         );

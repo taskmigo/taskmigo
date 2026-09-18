@@ -1,11 +1,11 @@
-package io.taskmigo.identity.oauth;
+package io.taskmigo.bootstrap;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 
 /// Identifies Taskmigo-managed machine OAuth clients and their shared API scope.
-public final class InternalClientMetadata {
+final class InternalClientMetadata {
 
     public static final String API_SCOPE = "taskmigo.api";
 
