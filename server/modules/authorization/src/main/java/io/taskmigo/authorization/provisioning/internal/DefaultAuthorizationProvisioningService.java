@@ -55,7 +55,15 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
         @Nullable String path,
         @Nullable String policy
     ) {
-        StatementDefinition definition = this.policyValidator.validate(name, description, effect, scope, method, path, policy);
+        StatementDefinition definition = this.policyValidator.validate(
+            name,
+            description,
+            effect,
+            scope,
+            method,
+            path,
+            policy
+        );
 
         Optional<UUID> existingId = this.statements.findIdByName(definition.name());
         if (existingId.isEmpty()) {
