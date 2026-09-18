@@ -106,6 +106,7 @@ class IdentityPackageArchitectureTest {
         // Act + Assert
         contractsDoNotDependOnTransport.check(classes);
     }
+
     /**
      * Verifies that Group hierarchy rules remain independent from persistence implementation details.
      *
@@ -122,10 +123,13 @@ class IdentityPackageArchitectureTest {
             .resideInAnyPackage("io.taskmigo.identity.group.hierarchy..")
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage("io.taskmigo.identity.persistence..", "jakarta.persistence..", "org.springframework.data..");
+            .resideInAnyPackage(
+                "io.taskmigo.identity.persistence..",
+                "jakarta.persistence..",
+                "org.springframework.data.."
+            );
 
         // Act + Assert
         hierarchyDoesNotDependOnPersistence.check(classes);
     }
-
 }
