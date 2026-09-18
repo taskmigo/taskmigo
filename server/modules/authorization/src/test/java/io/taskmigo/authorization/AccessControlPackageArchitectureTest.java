@@ -59,4 +59,34 @@ class AccessControlPackageArchitectureTest {
         // Act + Assert
         useCasesDoNotDependOnJpaAdapters.check(classes);
     }
+
+    /**
+     * Verifies that published Access Control contracts remain independent from HTTP serialization concerns.
+     *
+     * Given: classes in the public Access Control contract packages.
+     * Expect: those classes do not depend on Jackson, Spring Web, or Servlet APIs.
+     */
+    @Test
+    @DisplayName("keeps Access Control contracts transport neutral")
+    void shouldKeepContractsTransportNeutralWhenAccessControlPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = new ClassFileImporter().importPackages("io.taskmigo.authorization");
+        ArchRule contractsDoNotDependOnTransport = noClasses()
+            .that()
+            .resideInAnyPackage(
+                "io.taskmigo.authorization.core..",
+                "io.taskmigo.authorization.object..",
+                "io.taskmigo.authorization.request..",
+                "io.taskmigo.authorization.role..",
+                "io.taskmigo.authorization.spi..",
+                "io.taskmigo.authorization.statement..",
+                "io.taskmigo.authorization.subject.."
+            )
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage("com.fasterxml.jackson..", "org.springframework.web..", "jakarta.servlet..");
+
+        // Act + Assert
+        contractsDoNotDependOnTransport.check(classes);
+    }
 }

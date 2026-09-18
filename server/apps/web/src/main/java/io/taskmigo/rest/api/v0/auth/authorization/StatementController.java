@@ -49,8 +49,8 @@ class StatementController {
         UUID id = this.statements.create(
             request.name(),
             request.description(),
-            request.effect(),
-            request.scope(),
+            Effect.from(request.effect()),
+            Scope.from(request.scope()),
             request.target().api().method(),
             request.target().api().path(),
             request.policy()
@@ -65,7 +65,7 @@ class StatementController {
 
     @GetMapping("/statements")
     @Operation(summary = "List authorization statements")
-    ResponseEntity<ApiResponse<List<StatementInfo>, ApiResponse.OffsetMeta>> list(
+    ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         FilteredQuery<StatementInfo> filter,
         ObjectAuthorizationPredicate<StatementInfo> authorization
@@ -77,19 +77,47 @@ class StatementController {
             authorization
         );
         return this.responses.ok(
-            page.items(),
+            page.items().stream().map(Response::from).toList(),
             new ApiResponse.OffsetPagination(pagination, page),
             "resource.statement.listed",
             "Statements listed"
         );
     }
 
+    @Schema(name = "StatementInfo")
+    record Response(
+        UUID id,
+        String name,
+        @Nullable String description,
+        Effect effect,
+        Scope scope,
+        TargetResponse target,
+        String policy
+    ) {
+        static Response from(StatementInfo statement) {
+            ApiInfo apiTarget = statement.target().api();
+            return new Response(
+                statement.id(),
+                statement.name(),
+                statement.description(),
+                statement.effect(),
+                statement.scope(),
+                new TargetResponse(new ApiResponseData(apiTarget.method(), apiTarget.path())),
+                statement.policy()
+            );
+        }
+    }
+
+    record TargetResponse(ApiResponseData api) {}
+
+    record ApiResponseData(String method, String path) {}
+
     @Schema(name = "CreateStatementRequest")
     record Request(
         @NotBlank @Nullable String name,
         @Nullable String description,
-        @NotNull Effect effect,
-        @NotNull Scope scope,
+        @NotBlank String effect,
+        @NotBlank String scope,
         @NotNull Target target,
         @NotBlank String policy
     ) {}

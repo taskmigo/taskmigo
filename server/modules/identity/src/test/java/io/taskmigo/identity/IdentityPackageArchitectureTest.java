@@ -84,4 +84,26 @@ class IdentityPackageArchitectureTest {
         // Act + Assert
         useCasesDoNotDependOnJpaAdapters.check(classes);
     }
+
+    /**
+     * Verifies that published Identity contracts remain independent from HTTP serialization concerns.
+     *
+     * Given: User and Group contract packages.
+     * Expect: those classes do not depend on Jackson, Spring Web, or Servlet APIs.
+     */
+    @Test
+    @DisplayName("keeps Identity contracts transport neutral")
+    void shouldKeepContractsTransportNeutralWhenIdentityPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = new ClassFileImporter().importPackages("io.taskmigo.identity");
+        ArchRule contractsDoNotDependOnTransport = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.identity.user..", "io.taskmigo.identity.group..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage("com.fasterxml.jackson..", "org.springframework.web..", "jakarta.servlet..");
+
+        // Act + Assert
+        contractsDoNotDependOnTransport.check(classes);
+    }
 }

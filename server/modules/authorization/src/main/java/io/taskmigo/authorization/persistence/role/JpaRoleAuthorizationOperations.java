@@ -4,6 +4,7 @@ import io.taskmigo.authorization.core.AuthorizationName;
 import io.taskmigo.authorization.role.RoleAuthorizationService;
 import io.taskmigo.authorization.role.RoleException;
 import io.taskmigo.authorization.role.RoleService;
+import io.taskmigo.authorization.statement.StatementService;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
@@ -16,16 +17,25 @@ import org.springframework.transaction.annotation.Transactional;
 public class JpaRoleAuthorizationOperations implements RoleAuthorizationService {
 
     private final RoleService roles;
+    private final StatementService statements;
     private final RoleRepository roleRepository;
 
-    public JpaRoleAuthorizationOperations(RoleService roles, RoleRepository roleRepository) {
+    public JpaRoleAuthorizationOperations(
+        RoleService roles,
+        StatementService statements,
+        RoleRepository roleRepository
+    ) {
         this.roles = roles;
+        this.statements = statements;
         this.roleRepository = roleRepository;
     }
 
     /// Reconciles a managed Role by stable name and replaces its direct Statement assignments.
     @Transactional
     public UUID reconcile(@Nullable String name, @Nullable String description, Collection<UUID> statementIds) {
+        Set<UUID> requestedIds = Set.copyOf(statementIds);
+        this.statements.requireStatements(requestedIds);
+
         String validName = AuthorizationName.requiredRole(name, "name");
         RoleEntity role = this.roleRepository.findByName(validName).orElse(null);
         UUID id;
@@ -36,7 +46,7 @@ public class JpaRoleAuthorizationOperations implements RoleAuthorizationService 
             id = role.id();
             role.updateDescription(description);
         }
-        role.replaceStatementIds(Set.copyOf(statementIds));
+        role.replaceStatementIds(requestedIds);
         this.roleRepository.flush();
         return id;
     }
@@ -44,10 +54,12 @@ public class JpaRoleAuthorizationOperations implements RoleAuthorizationService 
     /// Replaces the Statements directly assigned to a Role.
     @Transactional
     public void setStatements(UUID roleId, Collection<UUID> statementIds) {
+        Set<UUID> requestedIds = Set.copyOf(statementIds);
+        this.statements.requireStatements(requestedIds);
         RoleEntity role = this.roleRepository
             .findById(roleId)
             .orElseThrow(() -> new RoleException(RoleException.Type.BAD_REQUEST, "Role does not exist"));
-        role.replaceStatementIds(Set.copyOf(statementIds));
+        role.replaceStatementIds(requestedIds);
         this.roleRepository.flush();
     }
 }

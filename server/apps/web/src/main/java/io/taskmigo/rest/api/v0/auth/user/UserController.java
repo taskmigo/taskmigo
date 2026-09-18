@@ -4,11 +4,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.role.RoleService;
-import io.taskmigo.authorization.statement.StatementService;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.identity.group.GroupService;
 import io.taskmigo.identity.user.UserInfo;
+import io.taskmigo.identity.user.UserRegistrationService;
 import io.taskmigo.identity.user.UserService;
 import io.taskmigo.query.FilteredQuery;
 import io.taskmigo.rest.api.v0.support.pagination.OffsetPageRequest;
@@ -25,7 +23,6 @@ import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,28 +37,18 @@ import org.springframework.web.bind.annotation.RestController;
 class UserController {
 
     private final UserService users;
-    private final RoleService access;
-    private final GroupService groups;
-    private final StatementService statements;
+    private final UserRegistrationService registrations;
     private final ApiResponseFactory responses;
 
-    UserController(
-        UserService users,
-        RoleService access,
-        GroupService groups,
-        StatementService statements,
-        ApiResponseFactory responses
-    ) {
+    UserController(UserService users, UserRegistrationService registrations, ApiResponseFactory responses) {
         this.users = users;
-        this.access = access;
-        this.groups = groups;
-        this.statements = statements;
+        this.registrations = registrations;
         this.responses = responses;
     }
 
     @GetMapping("/users")
     @Operation(summary = "List users")
-    ResponseEntity<ApiResponse<List<UserInfo>, ApiResponse.OffsetMeta>> list(
+    ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         FilteredQuery<UserInfo> filter,
         ObjectAuthorizationPredicate<UserInfo> authorization
@@ -73,7 +60,7 @@ class UserController {
             authorization
         );
         return this.responses.ok(
-            users.items(),
+            users.items().stream().map(Response::from).toList(),
             new ApiResponse.OffsetPagination(pagination, users),
             "resource.user.listed",
             "Users listed"
@@ -81,42 +68,53 @@ class UserController {
     }
 
     @PatchMapping("/users/{userId}/statements")
-    @Transactional
     @Operation(summary = "Replace a user's direct statements")
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setStatements(
         @PathVariable UUID userId,
         @Valid @RequestBody StatementAssignmentRequest request
     ) {
-        Set<UUID> statementIds = request.statementIds() == null ? Set.of() : request.statementIds();
-        this.statements.requireStatements(statementIds);
-        this.users.setStatements(userId, statementIds);
+        this.users.setStatements(userId, request.statementIds() == null ? Set.of() : request.statementIds());
         return this.responses.ok("resource.user.statements.updated", "User statements updated");
     }
 
     @PostMapping("/users")
-    @Transactional
     @Operation(summary = "Create a new user")
     ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(@Valid @RequestBody Request request) {
-        Set<UUID> roleIds = request.roleIds() == null ? Set.of() : request.roleIds();
-        Set<UUID> groupIds = request.groupIds() == null ? Set.of() : request.groupIds();
-        this.access.requireRoles(roleIds);
-        this.groups.requireGroups(groupIds);
-        UUID id = this.users.create(
+        UUID id = this.registrations.register(
             request.username(),
             request.emails(),
             request.firstName(),
             request.lastName(),
-            roleIds
+            request.roleIds(),
+            request.groupIds()
         );
-        for (UUID groupId : groupIds) {
-            this.groups.addMember(groupId, id);
-        }
         return this.responses.created(
             URI.create("/api/v0/users/" + id),
             Map.of("id", id),
             "resource.user.created",
             "User created"
         );
+    }
+
+    @Schema(name = "UserInfo")
+    record Response(
+        UUID id,
+        String username,
+        String firstName,
+        String lastName,
+        Set<String> emails,
+        String displayName
+    ) {
+        static Response from(UserInfo user) {
+            return new Response(
+                user.id(),
+                user.username(),
+                user.firstName(),
+                user.lastName(),
+                user.emails(),
+                user.displayName()
+            );
+        }
     }
 
     @Schema(name = "CreateUserRequest")
