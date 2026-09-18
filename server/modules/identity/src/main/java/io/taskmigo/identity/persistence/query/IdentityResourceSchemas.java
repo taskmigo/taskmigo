@@ -3,6 +3,7 @@ package io.taskmigo.identity.persistence.query;
 import io.taskmigo.authorization.object.ObjectAuthorizationField;
 import io.taskmigo.authorization.object.ObjectAuthorizationPath;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.identity.group.GroupInfo;
 import io.taskmigo.identity.persistence.group.GroupEntity;
 import io.taskmigo.identity.persistence.user.UserEntity;
@@ -19,14 +20,13 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.ResolvableType;
 
 /// Registers query, authorization, and persistence mappings owned by the Identity capability.
 @Configuration(proxyBeanMethods = false)
 public class IdentityResourceSchemas {
 
-    private static final ResolvableType STRING_TYPE = ResolvableType.forClass(String.class);
-    private static final ResolvableType UUID_TYPE = ResolvableType.forClass(UUID.class);
+    private static final TypeDescriptor STRING_TYPE = TypeDescriptor.of(String.class);
+    private static final TypeDescriptor UUID_TYPE = TypeDescriptor.of(UUID.class);
 
     /// Registers the user collection query contract.
     @Bean
@@ -108,7 +108,7 @@ public class IdentityResourceSchemas {
         );
     }
 
-    private static QueryField field(String path, ResolvableType type) {
+    private static QueryField field(String path, TypeDescriptor type) {
         return new QueryField(QueryPath.parse(path), type, false);
     }
 
@@ -116,7 +116,7 @@ public class IdentityResourceSchemas {
         return new QueryField(QueryPath.parse(path), STRING_TYPE, true);
     }
 
-    private static ObjectAuthorizationField objectField(String path, ResolvableType type) {
+    private static ObjectAuthorizationField objectField(String path, TypeDescriptor type) {
         return new ObjectAuthorizationField(ObjectAuthorizationPath.parse(path), type, false);
     }
 

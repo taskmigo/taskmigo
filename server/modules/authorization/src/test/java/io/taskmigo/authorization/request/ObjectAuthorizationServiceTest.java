@@ -18,6 +18,7 @@ import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.TargetInfo;
+import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.LanguageCompiler;
 import java.time.Instant;
@@ -29,7 +30,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.springframework.core.ResolvableType;
 
 class ObjectAuthorizationServiceTest {
 
@@ -282,7 +282,7 @@ class ObjectAuthorizationServiceTest {
     private static ObjectAuthorizationSchema<TestObject> schema(String path) {
         ObjectAuthorizationField field = new ObjectAuthorizationField(
             ObjectAuthorizationPath.parse(path),
-            ResolvableType.forClass(String.class),
+            TypeDescriptor.of(String.class),
             false
         );
         return new ObjectAuthorizationSchema<>() {

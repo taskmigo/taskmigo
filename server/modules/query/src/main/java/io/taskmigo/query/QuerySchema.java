@@ -33,7 +33,7 @@ public interface QuerySchema<Q> {
         return (
             field.path().text() +
             ":" +
-            field.type().getType().getTypeName() +
+            field.type().identity() +
             ":" +
             field.nullable() +
             ":" +

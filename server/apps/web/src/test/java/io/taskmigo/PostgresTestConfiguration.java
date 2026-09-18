@@ -3,7 +3,6 @@ package io.taskmigo;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningService;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
-import io.taskmigo.identity.oauth.InternalClientMetadata;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
 import io.taskmigo.identity.user.UserService;
 import java.util.List;
@@ -17,6 +16,7 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
+import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @TestConfiguration(proxyBeanMethods = false)
@@ -69,8 +69,10 @@ public class PostgresTestConfiguration {
                         .clientName("Integration client")
                         .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                         .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                        .scope(InternalClientMetadata.API_SCOPE)
-                        .clientSettings(InternalClientMetadata.settings(false, false))
+                        .scope("taskmigo.api")
+                        .clientSettings(
+                            ClientSettings.builder().requireProofKey(false).requireAuthorizationConsent(false).build()
+                        )
                         .build()
                 );
             }

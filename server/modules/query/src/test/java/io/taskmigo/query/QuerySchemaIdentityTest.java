@@ -2,13 +2,13 @@ package io.taskmigo.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.taskmigo.foundation.TypeDescriptor;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.ResolvableType;
 
 class QuerySchemaIdentityTest {
 
@@ -24,13 +24,13 @@ class QuerySchemaIdentityTest {
         // Arrange
         QueryField name = new QueryField(
             QueryPath.of("name"),
-            ResolvableType.forClass(String.class),
+            TypeDescriptor.of(String.class),
             false,
             Set.of(QueryOperator.NE, QueryOperator.EQ)
         );
         QueryField score = new QueryField(
             QueryPath.of("score"),
-            ResolvableType.forClass(Integer.class),
+            TypeDescriptor.of(Integer.class),
             true,
             Set.of(QueryOperator.GE, QueryOperator.LT)
         );

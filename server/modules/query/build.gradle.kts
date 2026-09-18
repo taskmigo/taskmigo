@@ -11,7 +11,8 @@ dependencies {
     testImplementation(libs.spring.modulith.starter.test)
 
     implementation(platform(libs.spring.boot.bom))
-    api(libs.spring.boot.core.starter)
+    api(project(":modules:foundation"))
+    implementation(libs.spring.boot.core.starter)
     api(project(":modules:language"))
 
     testImplementation(libs.spring.boot.starter.test)

@@ -1,5 +1,6 @@
 package io.taskmigo.query;
 
+import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.language.CompilationFeature;
 import io.taskmigo.language.CompilationMode;
 import io.taskmigo.language.CompilationProfile;
@@ -19,7 +20,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
-import org.springframework.core.ResolvableType;
 import org.springframework.stereotype.Service;
 
 /// Compiles the optional HTTP filterBy expression against an explicit Query Schema.
@@ -132,8 +132,8 @@ public class FilterByCompiler {
         return new EnvironmentSchema.Field(toLanguageType(field.type()), field.nullable(), true);
     }
 
-    private static LanguageType toLanguageType(ResolvableType type) {
-        Class<?> raw = type.resolve(Object.class);
+    private static LanguageType toLanguageType(TypeDescriptor type) {
+        Class<?> raw = type.rawType();
         if (raw == String.class || raw == Character.class || raw == char.class || raw == UUID.class) {
             return LanguageType.Scalar.STRING;
         }
@@ -144,7 +144,10 @@ public class FilterByCompiler {
             return LanguageType.Scalar.NUMBER;
         }
         if (Collection.class.isAssignableFrom(raw)) {
-            return new LanguageType.ListType(toLanguageType(type.getGeneric(0)));
+            TypeDescriptor elementType = type.typeArguments().isEmpty()
+                ? TypeDescriptor.of(Object.class)
+                : type.typeArguments().getFirst();
+            return new LanguageType.ListType(toLanguageType(elementType));
         }
         return new LanguageType.StructuredType(raw.getName(), Map.of());
     }

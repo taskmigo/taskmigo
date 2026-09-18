@@ -1,6 +1,5 @@
 package io.taskmigo.bootstrap;
 
-import io.taskmigo.identity.oauth.InternalClientMetadata;
 import java.util.Objects;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;

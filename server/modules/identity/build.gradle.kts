@@ -21,7 +21,6 @@ dependencies {
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.jackson.databind)
     implementation(libs.spring.boot.core.starter)
-    implementation(libs.spring.security.oauth2.authorization.server)
     implementation(platform(libs.guava.bom))
     implementation(libs.guava)
 

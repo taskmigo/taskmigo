@@ -10,7 +10,6 @@ import io.taskmigo.authorization.role.RoleService;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.StatementService;
-import io.taskmigo.identity.oauth.InternalClientMetadata;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserInfo;
