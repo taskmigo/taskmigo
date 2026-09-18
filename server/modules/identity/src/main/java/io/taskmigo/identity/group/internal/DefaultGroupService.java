@@ -78,13 +78,7 @@ public class DefaultGroupService implements GroupService {
             throw new GroupException(GroupException.Type.BAD_REQUEST, hierarchyFailureMessage(exception));
         }
 
-        GroupState group = new GroupState(
-            id,
-            required(name, "name"),
-            description,
-            Set.of(),
-            requestedChildIds
-        );
+        GroupState group = new GroupState(id, required(name, "name"), description, Set.of(), requestedChildIds);
         this.groups.create(group);
         allGroups.add(group);
         this.groups.replaceClosure(allGroups, hierarchy);
@@ -95,7 +89,7 @@ public class DefaultGroupService implements GroupService {
     @Override
     @Transactional
     public void addMember(UUID groupId, UUID userId) {
-        requireGroup(groupId, this.groups.find(groupId));
+        requireGroup(this.groups.find(groupId));
         this.users.require(userId);
         this.groups.addMember(groupId, userId);
     }
@@ -157,18 +151,16 @@ public class DefaultGroupService implements GroupService {
     @Override
     @Transactional
     public void setRoles(UUID groupId, Collection<UUID> roleIds) {
-        requireGroup(groupId, this.groups.find(groupId));
+        requireGroup(this.groups.find(groupId));
         this.grants.setRoles(IdentitySubjects.group(groupId), roleIds);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<RoleInfo> effectiveRoles(UUID groupId) {
-        requireGroup(groupId, this.groups.find(groupId));
+        requireGroup(this.groups.find(groupId));
         LinkedHashSet<SubjectRef> subjects = new LinkedHashSet<>();
-        this.groups
-            .descendantGroupIds(Set.of(groupId))
-            .forEach(id -> subjects.add(IdentitySubjects.group(id)));
+        this.groups.descendantGroupIds(Set.of(groupId)).forEach(id -> subjects.add(IdentitySubjects.group(id)));
         return this.grants.effectiveRoles(subjects);
     }
 
@@ -180,7 +172,7 @@ public class DefaultGroupService implements GroupService {
             .orElseThrow(() -> new GroupException(GroupException.Type.NOT_FOUND, "Group not found"));
     }
 
-    private static GroupState requireGroup(UUID id, java.util.Optional<GroupState> group) {
+    private static GroupState requireGroup(java.util.Optional<GroupState> group) {
         return group.orElseThrow(() -> new GroupException(GroupException.Type.NOT_FOUND, "Group not found"));
     }
 
