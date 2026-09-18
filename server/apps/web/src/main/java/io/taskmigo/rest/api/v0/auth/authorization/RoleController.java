@@ -1,5 +1,6 @@
 package io.taskmigo.rest.api.v0.auth.authorization;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -7,7 +8,6 @@ import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.role.RoleAuthorizationService;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.role.RoleService;
-import io.taskmigo.authorization.statement.StatementService;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.FilteredQuery;
 import io.taskmigo.rest.api.v0.support.pagination.OffsetPageRequest;
@@ -23,7 +23,6 @@ import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,37 +38,27 @@ class RoleController {
 
     private final RoleService access;
     private final RoleAuthorizationService roleAuthorization;
-    private final StatementService statements;
     private final ApiResponseFactory responses;
 
-    RoleController(
-        RoleService access,
-        RoleAuthorizationService roleAuthorization,
-        StatementService statements,
-        ApiResponseFactory responses
-    ) {
+    RoleController(RoleService access, RoleAuthorizationService roleAuthorization, ApiResponseFactory responses) {
         this.access = access;
         this.roleAuthorization = roleAuthorization;
-        this.statements = statements;
         this.responses = responses;
     }
 
     @PatchMapping("/roles/{roleId}/statements")
     @Operation(summary = "Replace a role's direct statements")
-    @Transactional
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setStatements(
         @PathVariable UUID roleId,
         @Valid @RequestBody StatementAssignmentRequest request
     ) {
-        Set<UUID> statementIds = request.statementIds() == null ? Set.of() : request.statementIds();
-        this.statements.requireStatements(statementIds);
-        this.roleAuthorization.setStatements(roleId, statementIds);
+        this.roleAuthorization.setStatements(roleId, request.statementIds() == null ? Set.of() : request.statementIds());
         return this.responses.ok("resource.role.statements.updated", "Role statements updated");
     }
 
     @GetMapping("/roles")
     @Operation(summary = "List roles")
-    ResponseEntity<ApiResponse<List<RoleInfo>, ApiResponse.OffsetMeta>> list(
+    ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         FilteredQuery<RoleInfo> filter,
         ObjectAuthorizationPredicate<RoleInfo> authorization
@@ -81,7 +70,7 @@ class RoleController {
             authorization
         );
         return this.responses.ok(
-            roles.items(),
+            roles.items().stream().map(Response::from).toList(),
             new ApiResponse.OffsetPagination(pagination, roles),
             "resource.role.listed",
             "Roles listed"
@@ -100,6 +89,23 @@ class RoleController {
             "resource.role.created",
             "Role created"
         );
+    }
+
+    @Schema(name = "RoleResponse")
+    record Response(
+        UUID id,
+        String name,
+        @JsonInclude(JsonInclude.Include.NON_NULL) @Nullable String description,
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<Response> children
+    ) {
+        static Response from(RoleInfo role) {
+            return new Response(
+                role.id(),
+                role.name(),
+                role.description(),
+                role.children().stream().map(Response::from).toList()
+            );
+        }
     }
 
     @Schema(name = "CreateRoleRequest")
