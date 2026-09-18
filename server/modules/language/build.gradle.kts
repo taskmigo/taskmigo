@@ -45,6 +45,8 @@ dependencies {
     testImplementation(libs.spring.modulith.starter.test)
 
     implementation(libs.antlr.runtime)
+    implementation(platform(libs.guava.bom))
+    implementation(libs.guava)
     antlr(libs.antlr.tool)
     testImplementation(platform(libs.spring.boot.bom))
     testImplementation("org.junit.jupiter:junit-jupiter")

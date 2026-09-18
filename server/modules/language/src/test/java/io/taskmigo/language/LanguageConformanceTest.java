@@ -135,14 +135,15 @@ class LanguageConformanceTest {
     }
 
     /**
-     * Verifies the exact-source identity contract while retaining SHA-256 strength.
+     * Verifies the exact-source identity contract remains byte-for-byte compatible with the established SHA-256
+     * fingerprints, including UTF-8 source text.
      *
-     * Given: two sources that differ only by one literal.
-     * Expect: each source has a 256-bit lowercase-hex fingerprint and the identities differ.
+     * Given: known ASCII and non-ASCII source values plus a one-literal source change.
+     * Expect: fingerprints match the established values and distinct source text retains a distinct identity.
      */
     @Test
-    @DisplayName("uses collision resistant exact source identities")
-    void shouldChangeSourceFingerprintWhenExactSourceChanges() {
+    @DisplayName("preserves established exact source fingerprints")
+    void shouldPreserveSourceFingerprintWhenKnownSourcesAreCompiled() {
         // Arrange
         LanguageCompiler compiler = new LanguageCompiler();
         EnvironmentSchema schema = scalarSchema("unused", LanguageType.Scalar.STRING);
@@ -150,10 +151,18 @@ class LanguageConformanceTest {
         // Act
         CompiledSource first = compiler.compile("1 + 2", schema, CompilationProfile.expression());
         CompiledSource second = compiler.compile("1 + 3", schema, CompilationProfile.expression());
+        CompiledSource unicode = compiler.compile("\"café\"", schema, CompilationProfile.expression());
 
         // Assert
-        assertThat(first.sourceFingerprint()).matches("[0-9a-f]{64}");
-        assertThat(second.sourceFingerprint()).matches("[0-9a-f]{64}");
+        assertThat(first.sourceFingerprint()).isEqualTo(
+            "6212702c7a0d68f00b8b23b5aecfca631a96c20d2cad78cd874611ac87cdbce1"
+        );
+        assertThat(second.sourceFingerprint()).isEqualTo(
+            "526f0ef000e002fde8863eaeaafdd7aa049061ddc49afca8e6f579eeeb3a8a38"
+        );
+        assertThat(unicode.sourceFingerprint()).isEqualTo(
+            "28380feb8724d669bc8d4cf5b5a5bb1adbdc61b81ebd06f3fabc567b4f3b0fc5"
+        );
         assertThat(second.sourceFingerprint()).isNotEqualTo(first.sourceFingerprint());
     }
 

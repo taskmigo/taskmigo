@@ -9,6 +9,7 @@ dependencies {
     compileOnly(libs.spring.modulith.starter.core)
     testImplementation(platform(libs.spring.modulith.bom))
     testImplementation(libs.spring.modulith.starter.test)
+    testImplementation(libs.archunit.junit5)
 
     implementation(platform(libs.spring.boot.bom))
     api(project(":modules:foundation"))

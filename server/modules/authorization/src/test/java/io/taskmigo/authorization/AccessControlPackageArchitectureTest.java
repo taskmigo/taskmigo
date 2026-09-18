@@ -34,48 +34,17 @@ class AccessControlPackageArchitectureTest {
     }
 
     /**
-     * Verifies that Access Control domain and application packages do not reach into persistence adapters.
+     * Verifies that Access Control domain and application contracts do not reach into persistence adapters.
      *
-     * Given: production Role, Statement, and subject application/domain packages.
+     * Given: every production package that owns Access Control domain, application, or published SPI contracts.
      * Expect: their dependencies exclude Access Control persistence, Spring Data, and JPA packages.
      */
     @Test
-    @DisplayName("keeps Access Control use cases independent from JPA adapters")
-    void shouldKeepUseCasesIndependentWhenAccessControlPackagesAreInspected() {
+    @DisplayName("keeps Access Control contracts independent from persistence adapters")
+    void shouldKeepContractsIndependentWhenAccessControlPackagesAreInspected() {
         // Arrange
         JavaClasses classes = productionClasses();
-        ArchRule useCasesDoNotDependOnJpaAdapters = noClasses()
-            .that()
-            .resideInAnyPackage(
-                "io.taskmigo.authorization.provisioning..",
-                "io.taskmigo.authorization.role..",
-                "io.taskmigo.authorization.statement..",
-                "io.taskmigo.authorization.subject.."
-            )
-            .should()
-            .dependOnClassesThat()
-            .resideInAnyPackage(
-                "io.taskmigo.authorization.persistence..",
-                "org.springframework.data..",
-                "jakarta.persistence.."
-            );
-
-        // Act + Assert
-        useCasesDoNotDependOnJpaAdapters.check(classes);
-    }
-
-    /**
-     * Verifies that published Access Control contracts remain independent from HTTP serialization concerns.
-     *
-     * Given: production classes in the public Access Control contract packages.
-     * Expect: those classes do not depend on Jackson, Spring Web, or Servlet APIs.
-     */
-    @Test
-    @DisplayName("keeps Access Control contracts transport neutral")
-    void shouldKeepContractsTransportNeutralWhenAccessControlPackagesAreInspected() {
-        // Arrange
-        JavaClasses classes = productionClasses();
-        ArchRule contractsDoNotDependOnTransport = noClasses()
+        ArchRule contractsDoNotDependOnJpaAdapters = noClasses()
             .that()
             .resideInAnyPackage(
                 "io.taskmigo.authorization.core..",
@@ -89,10 +58,54 @@ class AccessControlPackageArchitectureTest {
             )
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage("com.fasterxml.jackson..", "org.springframework.web..", "jakarta.servlet..");
+            .resideInAnyPackage(
+                "io.taskmigo.authorization.persistence..",
+                "org.springframework.data..",
+                "jakarta.persistence.."
+            );
 
         // Act + Assert
-        contractsDoNotDependOnTransport.check(classes);
+        contractsDoNotDependOnJpaAdapters.check(classes);
+    }
+
+    /**
+     * Verifies that published Access Control contracts remain independent from framework-specific representation and
+     * OAuth server implementation concerns.
+     *
+     * Given: production classes in the public Access Control contract packages.
+     * Expect: those classes do not depend on Spring Core type descriptors, Jackson 2/3, Spring Web, Servlet, or Spring
+     * Authorization Server implementation APIs.
+     */
+    @Test
+    @DisplayName("keeps Access Control contracts framework neutral")
+    void shouldKeepContractsFrameworkNeutralWhenAccessControlPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule contractsDoNotDependOnFrameworkDetails = noClasses()
+            .that()
+            .resideInAnyPackage(
+                "io.taskmigo.authorization.core..",
+                "io.taskmigo.authorization.object..",
+                "io.taskmigo.authorization.provisioning..",
+                "io.taskmigo.authorization.request..",
+                "io.taskmigo.authorization.role..",
+                "io.taskmigo.authorization.spi..",
+                "io.taskmigo.authorization.statement..",
+                "io.taskmigo.authorization.subject.."
+            )
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "org.springframework.core..",
+                "com.fasterxml.jackson..",
+                "tools.jackson..",
+                "org.springframework.web..",
+                "jakarta.servlet..",
+                "org.springframework.security.oauth2.server.authorization.."
+            );
+
+        // Act + Assert
+        contractsDoNotDependOnFrameworkDetails.check(classes);
     }
 
     private static JavaClasses productionClasses() {
