@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,14 +33,14 @@ class DefaultRoleServiceTest {
     @DisplayName("creates a role through the application-owned store")
     void shouldCreateRoleThroughStoreWhenRequestHasNoChildren() {
         // Arrange
-        org.mockito.Mockito.when(roles.loadAllForUpdate()).thenReturn(List.of());
+        Mockito.when(roles.loadAllForUpdate()).thenReturn(List.of());
         ArgumentCaptor<RoleStore.RoleState> state = ArgumentCaptor.forClass(RoleStore.RoleState.class);
 
         // Act
         UUID id = service.createRole("  administrator  ", null, Set.of());
 
         // Assert
-        org.mockito.Mockito.verify(roles).create(state.capture());
+        Mockito.verify(roles).create(state.capture());
         assertThat(id).isEqualTo(state.getValue().id());
         assertThat(state.getValue().name()).isEqualTo("administrator");
         assertThat(state.getValue().childIds()).isEmpty();
