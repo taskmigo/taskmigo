@@ -94,7 +94,7 @@ class RoleController {
         );
     }
 
-    @Schema(name = "RoleResponse")
+    @Schema(name = "RoleInfo")
     record Response(
         UUID id,
         String name,
