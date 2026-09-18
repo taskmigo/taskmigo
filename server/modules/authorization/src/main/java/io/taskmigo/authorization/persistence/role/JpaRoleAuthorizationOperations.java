@@ -33,8 +33,8 @@ public class JpaRoleAuthorizationOperations implements RoleAuthorizationService 
     /// Reconciles a managed Role by stable name and replaces its direct Statement assignments.
     @Transactional
     public UUID reconcile(@Nullable String name, @Nullable String description, Collection<UUID> statementIds) {
-        Set<UUID> requestedStatementIds = Set.copyOf(statementIds);
-        this.statements.requireStatements(requestedStatementIds);
+        Set<UUID> requestedIds = Set.copyOf(statementIds);
+        this.statements.requireStatements(requestedIds);
 
         String validName = AuthorizationName.requiredRole(name, "name");
         RoleEntity role = this.roleRepository.findByName(validName).orElse(null);
@@ -46,7 +46,7 @@ public class JpaRoleAuthorizationOperations implements RoleAuthorizationService 
             id = role.id();
             role.updateDescription(description);
         }
-        role.replaceStatementIds(requestedStatementIds);
+        role.replaceStatementIds(requestedIds);
         this.roleRepository.flush();
         return id;
     }
@@ -54,12 +54,12 @@ public class JpaRoleAuthorizationOperations implements RoleAuthorizationService 
     /// Replaces the Statements directly assigned to a Role.
     @Transactional
     public void setStatements(UUID roleId, Collection<UUID> statementIds) {
-        Set<UUID> requestedStatementIds = Set.copyOf(statementIds);
-        this.statements.requireStatements(requestedStatementIds);
+        Set<UUID> requestedIds = Set.copyOf(statementIds);
+        this.statements.requireStatements(requestedIds);
         RoleEntity role = this.roleRepository
             .findById(roleId)
             .orElseThrow(() -> new RoleException(RoleException.Type.BAD_REQUEST, "Role does not exist"));
-        role.replaceStatementIds(requestedStatementIds);
+        role.replaceStatementIds(requestedIds);
         this.roleRepository.flush();
     }
 }
