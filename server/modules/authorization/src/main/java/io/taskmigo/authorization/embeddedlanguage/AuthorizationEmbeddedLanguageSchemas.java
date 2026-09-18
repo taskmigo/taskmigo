@@ -2,6 +2,7 @@ package io.taskmigo.authorization.embeddedlanguage;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationField;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.language.EnvironmentSchema;
 import io.taskmigo.language.LanguageContract;
 import io.taskmigo.language.LanguageType;
@@ -12,7 +13,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import org.springframework.core.ResolvableType;
 
 /// Builds the consumer-owned Language schemas used by authorization.
 public final class AuthorizationEmbeddedLanguageSchemas {
@@ -114,8 +114,8 @@ public final class AuthorizationEmbeddedLanguageSchemas {
         return new EnvironmentSchema.Field(new LanguageType.StructuredType(prefix, children), false, true);
     }
 
-    private static LanguageType languageType(ResolvableType type) {
-        Class<?> raw = type.resolve(Object.class);
+    private static LanguageType languageType(TypeDescriptor type) {
+        Class<?> raw = type.rawType();
         if (raw == String.class || raw == UUID.class || raw == Character.class || raw == char.class) {
             return LanguageType.Scalar.STRING;
         }
@@ -126,7 +126,10 @@ public final class AuthorizationEmbeddedLanguageSchemas {
             return LanguageType.Scalar.NUMBER;
         }
         if (Collection.class.isAssignableFrom(raw)) {
-            return new LanguageType.ListType(languageType(type.getGeneric(0)));
+            TypeDescriptor elementType = type.typeArguments().isEmpty()
+                ? TypeDescriptor.of(Object.class)
+                : type.typeArguments().getFirst();
+            return new LanguageType.ListType(languageType(elementType));
         }
         return new LanguageType.StructuredType(raw.getName(), Map.of());
     }
