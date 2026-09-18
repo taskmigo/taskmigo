@@ -12,7 +12,6 @@ import org.jspecify.annotations.Nullable;
 public interface RoleService {
     UUID createRole(@Nullable String name, @Nullable String description, @Nullable Collection<UUID> childRoleIds);
     void requireRoles(Collection<UUID> ids);
-    UUID requireRoleByName(String name);
     OffsetPage<RoleInfo> listRoles(
         int page,
         int perPage,

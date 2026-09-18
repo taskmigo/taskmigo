@@ -1,6 +1,6 @@
 package io.taskmigo.bootstrap;
 
-import io.taskmigo.identity.user.UserService;
+import io.taskmigo.identity.provisioning.IdentityProvisioningService;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
@@ -18,9 +18,13 @@ final class SystemUserReconciler implements ApplicationRunner {
 
     private final BootstrapUserProperties properties;
     private final PasswordEncoder passwordEncoder;
-    private final UserService users;
+    private final IdentityProvisioningService users;
 
-    SystemUserReconciler(BootstrapUserProperties properties, PasswordEncoder passwordEncoder, UserService users) {
+    SystemUserReconciler(
+        BootstrapUserProperties properties,
+        PasswordEncoder passwordEncoder,
+        IdentityProvisioningService users
+    ) {
         this.properties = properties;
         this.passwordEncoder = passwordEncoder;
         this.users = users;
@@ -37,11 +41,7 @@ final class SystemUserReconciler implements ApplicationRunner {
 
         for (int attempt = 1; ; attempt++) {
             try {
-                if (!this.users.reconcileSystemUser(initialPasswordHash)) {
-                    throw new IllegalStateException(
-                        "TASKMIGO_BOOTSTRAP_USER_PASSWORD must be set when the system user has not been initialized"
-                    );
-                }
+                this.users.reconcileSystemUser(initialPasswordHash);
                 return;
             } catch (TransientDataAccessException | DataIntegrityViolationException exception) {
                 if (attempt == MAX_RECONCILIATION_ATTEMPTS) {

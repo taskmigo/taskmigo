@@ -74,17 +74,6 @@ class DefaultRoleService implements RoleService {
 
     @Override
     @Transactional(readOnly = true)
-    public UUID requireRoleByName(String name) {
-        return this.roles
-            .findByName(AuthorizationName.requiredRole(name, "role reference"))
-            .map(RoleState::id)
-            .orElseThrow(() ->
-                new IllegalStateException("Built-in authorization Role reference does not exist: " + name)
-            );
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public OffsetPage<RoleInfo> listRoles(
         int page,
         int perPage,

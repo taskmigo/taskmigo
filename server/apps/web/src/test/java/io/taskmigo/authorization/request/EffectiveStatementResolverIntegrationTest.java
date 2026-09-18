@@ -3,6 +3,7 @@ package io.taskmigo.authorization.request;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.taskmigo.authorization.role.RoleAuthorizationService;
+import io.taskmigo.authorization.role.RoleService;
 import io.taskmigo.authorization.spi.EffectiveStatement;
 import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.Effect;
@@ -24,6 +25,7 @@ class EffectiveStatementResolverIntegrationTest extends ApiIntegrationTestSuppor
 
     private final EffectiveStatementResolver resolver;
     private final StatementService statements;
+    private final RoleService roles;
     private final RoleAuthorizationService roleAssignments;
     private final UserService users;
     private final Statistics statistics;
@@ -31,12 +33,14 @@ class EffectiveStatementResolverIntegrationTest extends ApiIntegrationTestSuppor
     EffectiveStatementResolverIntegrationTest(
         EffectiveStatementResolver resolver,
         StatementService statements,
+        RoleService roles,
         RoleAuthorizationService roleAssignments,
         UserService users,
         EntityManagerFactory entityManagerFactory
     ) {
         this.resolver = resolver;
         this.statements = statements;
+        this.roles = roles;
         this.roleAssignments = roleAssignments;
         this.users = users;
         this.statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
@@ -47,7 +51,8 @@ class EffectiveStatementResolverIntegrationTest extends ApiIntegrationTestSuppor
     @DisplayName("keeps effective statement resolution bounded as unrelated roles grow")
     void shouldKeepQueryCountBoundedWhenUnrelatedRolesAreAdded() {
         List<UUID> statementIds = this.createStatements(500);
-        UUID roleId = this.roleAssignments.reconcile("performance-role-" + UUID.randomUUID(), null, statementIds);
+        UUID roleId = this.roles.createRole("performance-role-" + UUID.randomUUID(), null, Set.of());
+        this.roleAssignments.setStatements(roleId, statementIds);
         UUID userId = this.users.create(
             "performance-user-" + UUID.randomUUID(),
             Set.of("performance-" + UUID.randomUUID() + "@example.com"),
@@ -82,7 +87,7 @@ class EffectiveStatementResolverIntegrationTest extends ApiIntegrationTestSuppor
 
     private void createUnrelatedRoles(int count) {
         IntStream.range(0, count).forEach(index ->
-            this.roleAssignments.reconcile("unrelated-role-" + index + "-" + UUID.randomUUID(), null, Set.of())
+            this.roles.createRole("unrelated-role-" + index + "-" + UUID.randomUUID(), null, Set.of())
         );
     }
 }

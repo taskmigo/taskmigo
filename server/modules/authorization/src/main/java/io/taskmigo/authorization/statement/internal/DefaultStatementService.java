@@ -1,7 +1,6 @@
 package io.taskmigo.authorization.statement.internal;
 
 import io.taskmigo.authorization.core.AuthorizationException;
-import io.taskmigo.authorization.core.AuthorizationName;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
@@ -12,7 +11,6 @@ import io.taskmigo.authorization.statement.StatementService;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
-import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
@@ -49,27 +47,6 @@ public class DefaultStatementService implements StatementService {
         return this.statements.create(definition);
     }
 
-    /// Reconciles a managed Statement by stable name without changing its identifier.
-    @Override
-    @Transactional
-    public UUID reconcile(
-        @Nullable String name,
-        @Nullable String description,
-        @Nullable Effect effect,
-        @Nullable Scope scope,
-        @Nullable String method,
-        @Nullable String path,
-        @Nullable String policy
-    ) {
-        StatementDefinition definition = this.validate(name, description, effect, scope, method, path, policy);
-        Optional<UUID> existingId = this.statements.findIdByName(definition.name());
-        if (existingId.isEmpty()) {
-            return this.statements.create(definition);
-        }
-        this.statements.update(existingId.orElseThrow(), definition);
-        return existingId.orElseThrow();
-    }
-
     /// Lists Statements in stable identifier order for offset pagination.
     @Override
     @Transactional(readOnly = true)
@@ -96,17 +73,6 @@ public class DefaultStatementService implements StatementService {
         if (!this.statements.containsAll(ids)) {
             throw new AuthorizationException("One or more Statements do not exist");
         }
-    }
-
-    /// Resolves a Statement name for bootstrap references.
-    @Override
-    @Transactional(readOnly = true)
-    public UUID requireByName(String name) {
-        return this.statements
-            .findIdByName(AuthorizationName.required(name, "statement reference"))
-            .orElseThrow(() ->
-                new IllegalStateException("Built-in authorization Statement reference does not exist: " + name)
-            );
     }
 
     private StatementDefinition validate(

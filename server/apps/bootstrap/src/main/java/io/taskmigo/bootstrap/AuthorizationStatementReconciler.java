@@ -1,11 +1,10 @@
 package io.taskmigo.bootstrap;
 
-import io.taskmigo.authorization.role.RoleAuthorizationService;
-import io.taskmigo.authorization.role.RoleService;
+import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
+import io.taskmigo.authorization.provisioning.AuthorizationProvisioningService;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
-import io.taskmigo.authorization.statement.StatementService;
-import io.taskmigo.identity.user.UserService;
+import io.taskmigo.identity.provisioning.IdentityProvisioningService;
 import java.io.InputStream;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,22 +28,16 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
 
     private static final String RESOURCE_PREFIX = "bootstrap/authorization/";
 
-    private final StatementService statements;
-    private final RoleAuthorizationService access;
-    private final RoleService roles;
-    private final UserService users;
+    private final AuthorizationProvisioningService authorization;
+    private final IdentityProvisioningService identity;
     private final YAMLMapper yaml = YAMLMapper.builder().build();
 
     AuthorizationStatementReconciler(
-        StatementService statements,
-        RoleAuthorizationService access,
-        RoleService roles,
-        UserService users
+        AuthorizationProvisioningService authorization,
+        IdentityProvisioningService identity
     ) {
-        this.statements = statements;
-        this.access = access;
-        this.roles = roles;
-        this.users = users;
+        this.authorization = authorization;
+        this.identity = identity;
     }
 
     @Override
@@ -71,11 +64,13 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
         Map<String, UUID> result = new LinkedHashMap<>();
         for (Statement definition : definitions) {
             if (result.containsKey(definition.name())) {
-                throw new IllegalStateException("Duplicate built-in authorization Statement: " + definition.name());
+                throw new AuthorizationProvisioningException(
+                    "Duplicate managed authorization Statement: " + definition.name()
+                );
             }
             result.put(
                 definition.name(),
-                this.statements.reconcile(
+                this.authorization.reconcileStatement(
                     definition.name(),
                     definition.description(),
                     Effect.from(definition.effect()),
@@ -93,13 +88,18 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
         Map<String, UUID> result = new LinkedHashMap<>();
         for (Role definition : definitions) {
             if (result.containsKey(definition.name())) {
-                throw new IllegalStateException("Duplicate built-in authorization Role: " + definition.name());
+                throw new AuthorizationProvisioningException(
+                    "Duplicate managed authorization Role: " + definition.name()
+                );
             }
             List<UUID> ids = values(definition.statements())
                 .stream()
                 .map(name -> this.resolveStatement(statementIds, name))
                 .toList();
-            result.put(definition.name(), this.access.reconcile(definition.name(), definition.description(), ids));
+            result.put(
+                definition.name(),
+                this.authorization.reconcileRole(definition.name(), definition.description(), ids)
+            );
         }
         return result;
     }
@@ -113,7 +113,7 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
             .stream()
             .map(statementName -> this.resolveStatement(statementIds, statementName))
             .collect(Collectors.toSet());
-        this.users.reconcileBootstrapUser(
+        this.identity.reconcileUser(
             user.username(),
             user.email(),
             user.firstName(),
@@ -124,11 +124,11 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
     }
 
     private UUID resolveStatement(Map<String, UUID> values, String name) {
-        return values.computeIfAbsent(name, this.statements::requireByName);
+        return values.computeIfAbsent(name, this.authorization::requireStatement);
     }
 
     private UUID resolveRole(Map<String, UUID> values, String name) {
-        return values.computeIfAbsent(name, this.roles::requireRoleByName);
+        return values.computeIfAbsent(name, this.authorization::requireRole);
     }
 
     private static <T> List<T> values(@Nullable List<T> values) {

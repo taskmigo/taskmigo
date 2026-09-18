@@ -74,6 +74,7 @@ class IdentityPackageArchitectureTest {
         ArchRule useCasesDoNotDependOnJpaAdapters = noClasses()
             .that()
             .resideInAnyPackage(
+                "io.taskmigo.identity.provisioning..",
                 "io.taskmigo.identity.user..",
                 "io.taskmigo.identity.group..",
                 "io.taskmigo.identity.authorization.."
@@ -103,7 +104,11 @@ class IdentityPackageArchitectureTest {
         JavaClasses classes = productionClasses();
         ArchRule contractsDoNotDependOnTransport = noClasses()
             .that()
-            .resideInAnyPackage("io.taskmigo.identity.user..", "io.taskmigo.identity.group..")
+            .resideInAnyPackage(
+                "io.taskmigo.identity.provisioning..",
+                "io.taskmigo.identity.user..",
+                "io.taskmigo.identity.group.."
+            )
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage("com.fasterxml.jackson..", "org.springframework.web..", "jakarta.servlet..");

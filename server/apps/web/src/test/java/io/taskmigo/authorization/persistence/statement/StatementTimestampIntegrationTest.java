@@ -2,6 +2,7 @@ package io.taskmigo.authorization.persistence.statement;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.taskmigo.authorization.provisioning.AuthorizationProvisioningService;
 import io.taskmigo.authorization.spi.EffectiveStatement;
 import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.Effect;
@@ -19,17 +20,20 @@ import org.junit.jupiter.api.Test;
 class StatementTimestampIntegrationTest extends ApiIntegrationTestSupport {
 
     private final StatementService statements;
+    private final AuthorizationProvisioningService provisioning;
     private final StatementRepository statementRepository;
     private final UserService users;
     private final EffectiveStatementResolver resolver;
 
     StatementTimestampIntegrationTest(
         StatementService statements,
+        AuthorizationProvisioningService provisioning,
         StatementRepository statementRepository,
         UserService users,
         EffectiveStatementResolver resolver
     ) {
         this.statements = statements;
+        this.provisioning = provisioning;
         this.statementRepository = statementRepository;
         this.users = users;
         this.resolver = resolver;
@@ -62,7 +66,7 @@ class StatementTimestampIntegrationTest extends ApiIntegrationTestSupport {
         Instant initialUpdatedAt = created.updatedAt();
         EffectiveStatement initialResolved = this.resolver.resolve(userId).getFirst();
 
-        this.statements.reconcile(
+        this.provisioning.reconcileStatement(
             statementName,
             "after",
             Effect.ALLOW,

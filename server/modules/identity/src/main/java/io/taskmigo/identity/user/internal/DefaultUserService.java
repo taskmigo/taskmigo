@@ -19,7 +19,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 /// Implements User use cases independently from the JPA adapter.
@@ -109,67 +108,6 @@ public class DefaultUserService implements UserService {
     public void setRoles(UUID userId, Collection<UUID> roleIds) {
         this.require(userId);
         this.grants.setRoles(IdentitySubjects.user(userId), roleIds);
-    }
-
-    @Override
-    @Transactional
-    public UUID reconcileBootstrapUser(
-        @Nullable String username,
-        @Nullable Collection<String> emails,
-        @Nullable String firstName,
-        @Nullable String lastName,
-        Collection<UUID> roleIds,
-        Collection<UUID> statementIds
-    ) {
-        String requiredUsername = required(username, "username");
-        Set<String> requestedEmails = normalizeEmails(emails);
-        String requiredFirstName = required(firstName, "firstName");
-        String requiredLastName = required(lastName, "lastName");
-
-        UserState existing = this.users.findByUsername(requiredUsername).orElse(null);
-        UUID id;
-        if (existing == null) {
-            id = UUID.randomUUID();
-            this.users.create(
-                new UserState(id, requiredUsername, requestedEmails, requiredFirstName, requiredLastName, true, null)
-            );
-        } else {
-            id = existing.id();
-            this.users.updateProfile(id, requestedEmails, requiredFirstName, requiredLastName);
-        }
-
-        this.grants.setRoles(IdentitySubjects.user(id), roleIds);
-        this.grants.setStatements(IdentitySubjects.user(id), statementIds);
-        return id;
-    }
-
-    @Override
-    @Transactional(isolation = Isolation.SERIALIZABLE)
-    public boolean reconcileSystemUser(@Nullable String initialPasswordHash) {
-        UserState existing = this.users.findByUsername(SystemUser.USERNAME).orElse(null);
-        if (existing != null) {
-            if (existing.passwordHash() == null && initialPasswordHash != null && !initialPasswordHash.isBlank()) {
-                this.users.updatePasswordHash(existing.id(), initialPasswordHash);
-            }
-            return true;
-        }
-
-        if (initialPasswordHash == null || initialPasswordHash.isBlank()) {
-            return false;
-        }
-
-        this.users.create(
-            new UserState(
-                UUID.randomUUID(),
-                SystemUser.USERNAME,
-                Set.of(),
-                SystemUser.FIRST_NAME,
-                SystemUser.LAST_NAME,
-                true,
-                initialPasswordHash
-            )
-        );
-        return true;
     }
 
     private static UserInfo info(UserState user) {

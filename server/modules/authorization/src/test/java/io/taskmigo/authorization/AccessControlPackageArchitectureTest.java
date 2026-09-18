@@ -47,6 +47,7 @@ class AccessControlPackageArchitectureTest {
         ArchRule useCasesDoNotDependOnJpaAdapters = noClasses()
             .that()
             .resideInAnyPackage(
+                "io.taskmigo.authorization.provisioning..",
                 "io.taskmigo.authorization.role..",
                 "io.taskmigo.authorization.statement..",
                 "io.taskmigo.authorization.subject.."
@@ -79,6 +80,7 @@ class AccessControlPackageArchitectureTest {
             .resideInAnyPackage(
                 "io.taskmigo.authorization.core..",
                 "io.taskmigo.authorization.object..",
+                "io.taskmigo.authorization.provisioning..",
                 "io.taskmigo.authorization.request..",
                 "io.taskmigo.authorization.role..",
                 "io.taskmigo.authorization.spi..",
