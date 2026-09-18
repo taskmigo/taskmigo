@@ -5,6 +5,9 @@ import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
 import io.taskmigo.identity.user.UserService;
+import io.taskmigo.security.oauth.RegisteredClientDefinition;
+import io.taskmigo.security.oauth.RegisteredClientRepository;
+import io.taskmigo.security.oauth.RegisteredClientType;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.boot.ApplicationRunner;
@@ -14,7 +17,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
-import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.testcontainers.postgresql.PostgreSQLContainer;
@@ -34,7 +36,7 @@ public class PostgresTestConfiguration {
         AuthorizationProvisioningService authorization,
         UserService users,
         PasswordEncoder passwordEncoder,
-        JdbcRegisteredClientRepository clients
+        RegisteredClientRepository clients
     ) {
         return arguments -> {
             identity.reconcileSystemUser(passwordEncoder.encode("integration-password"));
@@ -63,17 +65,20 @@ public class PostgresTestConfiguration {
             users.setRoles(users.findForAuthentication("system").orElseThrow().id(), List.of(roleId));
             if (clients.findByClientId("integration-client") == null) {
                 clients.save(
-                    RegisteredClient.withId("integration-client")
-                        .clientId("integration-client")
-                        .clientSecret(passwordEncoder.encode("integration-secret"))
-                        .clientName("Integration client")
-                        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                        .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                        .scope("taskmigo.api")
-                        .clientSettings(
-                            ClientSettings.builder().requireProofKey(false).requireAuthorizationConsent(false).build()
-                        )
-                        .build()
+                    new RegisteredClientDefinition(
+                        RegisteredClient.withId("integration-client")
+                            .clientId("integration-client")
+                            .clientSecret(passwordEncoder.encode("integration-secret"))
+                            .clientName("Integration client")
+                            .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                            .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                            .scope("taskmigo.api")
+                            .clientSettings(
+                                ClientSettings.builder().requireProofKey(false).requireAuthorizationConsent(false).build()
+                            )
+                            .build(),
+                        RegisteredClientType.INTERNAL
+                    )
                 );
             }
         };
