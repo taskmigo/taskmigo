@@ -9,7 +9,6 @@ import io.taskmigo.authorization.role.RoleException;
 import io.taskmigo.authorization.role.RoleHierarchy;
 import io.taskmigo.authorization.role.RoleHierarchyException;
 import io.taskmigo.authorization.role.RoleInfo;
-import io.taskmigo.authorization.role.RoleService;
 import io.taskmigo.authorization.role.internal.RoleStore;
 import io.taskmigo.authorization.role.internal.RoleStore.RoleState;
 import io.taskmigo.foundation.OffsetPage;
@@ -30,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /// Manages Access Control Roles and their hierarchy.
 @Service
-public class JpaRoleOperations implements RoleService, RoleStore {
+public class JpaRoleOperations implements RoleStore {
 
     private final RoleRepository roles;
     private final HierarchyClosureWriter closureWriter;
