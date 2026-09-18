@@ -10,6 +10,8 @@ import io.taskmigo.authorization.role.RoleHierarchy;
 import io.taskmigo.authorization.role.RoleHierarchyException;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.role.RoleService;
+import io.taskmigo.authorization.role.internal.RoleStore;
+import io.taskmigo.authorization.role.internal.RoleStore.RoleState;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.QueryPredicate;
 import java.util.ArrayList;
@@ -27,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /// Manages Access Control Roles and their hierarchy.
 @Service
-public class JpaRoleOperations implements RoleService {
+public class JpaRoleOperations implements RoleService, RoleStore {
 
     private final RoleRepository roles;
     private final HierarchyClosureWriter closureWriter;
@@ -44,6 +46,89 @@ public class JpaRoleOperations implements RoleService {
         this.closureWriter = closureWriter;
         this.queryBinder = queryBinder;
         this.objectBinder = objectBinder;
+    }
+
+    @Override
+    public List<RoleState> loadAllForUpdate() {
+        return this.roles.findAllForUpdate().stream().map(JpaRoleOperations::state).toList();
+    }
+
+    @Override
+    public java.util.Optional<RoleState> find(UUID id) {
+        return this.roles.findById(id).map(JpaRoleOperations::state);
+    }
+
+    @Override
+    public java.util.Optional<RoleState> findByName(String name) {
+        return this.roles.findByName(name).map(JpaRoleOperations::state);
+    }
+
+    @Override
+    public boolean containsAll(Collection<UUID> ids) {
+        return this.roles.findAllByIdIn(ids).size() == ids.size();
+    }
+
+    @Override
+    public void create(RoleState role) {
+        List<RoleEntity> children = this.roles.findAllByIdIn(role.childIds());
+        RoleEntity entity = new RoleEntity(role.id(), role.name(), role.description());
+        entity.addChildRoles(children);
+        entity.replaceStatementIds(role.statementIds());
+        this.roles.saveAndFlush(entity);
+    }
+
+    @Override
+    public void replaceChildren(UUID roleId, Set<UUID> childIds) {
+        RoleEntity role = this.roles.findById(roleId).orElseThrow();
+        role.replaceChildRoles(this.roles.findAllByIdIn(childIds));
+        this.roles.flush();
+    }
+
+    @Override
+    public void replaceStatements(UUID roleId, Set<UUID> statementIds) {
+        RoleEntity role = this.roles.findById(roleId).orElseThrow();
+        role.replaceStatementIds(statementIds);
+        this.roles.flush();
+    }
+
+    @Override
+    public void updateDescriptionAndStatements(UUID roleId, @Nullable String description, Set<UUID> statementIds) {
+        RoleEntity role = this.roles.findById(roleId).orElseThrow();
+        role.updateDescription(description);
+        role.replaceStatementIds(statementIds);
+        this.roles.flush();
+    }
+
+    @Override
+    public void replaceClosure(Collection<RoleState> states, RoleHierarchy hierarchy) {
+        List<RoleEntity> entities = this.roles.findAllByIdIn(states.stream().map(RoleState::id).toList());
+        this.closureWriter.replace(
+            entities,
+            RoleEntity::id,
+            roleId -> hierarchy.reachableFrom(Set.of(roleId)),
+            RoleHierarchyClosureEntity::new,
+            RoleHierarchyClosureEntity.class
+        );
+    }
+
+    @Override
+    public OffsetPage<RoleInfo> list(
+        int page,
+        int perPage,
+        QueryPredicate<RoleInfo> filter,
+        ObjectAuthorizationPredicate<RoleInfo> authorization
+    ) {
+        return this.listRoles(page, perPage, filter, authorization);
+    }
+
+    @Override
+    public List<UUID> descendantRoleIds(Collection<UUID> ancestorRoleIds) {
+        return this.roles.findDescendantRoleIds(ancestorRoleIds);
+    }
+
+    @Override
+    public List<RoleInfo> findByIds(Collection<UUID> ids) {
+        return this.roles.findDistinctByIdIn(ids).stream().map(JpaRoleOperations::info).toList();
     }
 
     /// Creates a Role and its direct child-Role relationships as one atomic operation.
@@ -218,6 +303,16 @@ public class JpaRoleOperations implements RoleService {
         return info(role, Set.of());
     }
 
+    private static RoleState state(RoleEntity role) {
+        return new RoleState(
+            role.id(),
+            role.name(),
+            role.description(),
+            role.statementIds(),
+            role.childRoles().stream().map(RoleEntity::id).collect(Collectors.toSet())
+        );
+    }
+
     private static RoleInfo info(RoleEntity role, Set<UUID> ancestors) {
         if (ancestors.contains(role.id())) {
             return new RoleInfo(role.id(), role.name(), role.description(), List.of());
@@ -233,3 +328,4 @@ public class JpaRoleOperations implements RoleService {
         return new RoleInfo(role.id(), role.name(), role.description(), children);
     }
 }
+
