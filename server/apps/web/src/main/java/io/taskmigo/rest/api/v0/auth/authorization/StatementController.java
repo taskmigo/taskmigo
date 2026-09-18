@@ -65,7 +65,7 @@ class StatementController {
 
     @GetMapping("/statements")
     @Operation(summary = "List authorization statements")
-    ResponseEntity<ApiResponse<List<StatementInfo>, ApiResponse.OffsetMeta>> list(
+    ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         FilteredQuery<StatementInfo> filter,
         ObjectAuthorizationPredicate<StatementInfo> authorization
@@ -77,12 +77,40 @@ class StatementController {
             authorization
         );
         return this.responses.ok(
-            page.items(),
+            page.items().stream().map(Response::from).toList(),
             new ApiResponse.OffsetPagination(pagination, page),
             "resource.statement.listed",
             "Statements listed"
         );
     }
+
+    @Schema(name = "StatementResponse")
+    record Response(
+        UUID id,
+        String name,
+        @Nullable String description,
+        Effect effect,
+        Scope scope,
+        TargetResponse target,
+        String policy
+    ) {
+        static Response from(StatementInfo statement) {
+            ApiInfo api = statement.target().api();
+            return new Response(
+                statement.id(),
+                statement.name(),
+                statement.description(),
+                statement.effect(),
+                statement.scope(),
+                new TargetResponse(new ApiResponseData(api.method(), api.path())),
+                statement.policy()
+            );
+        }
+    }
+
+    record TargetResponse(ApiResponseData api) {}
+
+    record ApiResponseData(String method, String path) {}
 
     @Schema(name = "CreateStatementRequest")
     record Request(
