@@ -84,7 +84,7 @@ class StatementController {
         );
     }
 
-    @Schema(name = "StatementResponse")
+    @Schema(name = "StatementInfo")
     record Response(
         UUID id,
         String name,
