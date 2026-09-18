@@ -52,7 +52,10 @@ class RoleController {
         @PathVariable UUID roleId,
         @Valid @RequestBody StatementAssignmentRequest request
     ) {
-        this.roleAuthorization.setStatements(roleId, request.statementIds() == null ? Set.of() : request.statementIds());
+        this.roleAuthorization.setStatements(
+            roleId,
+            request.statementIds() == null ? Set.of() : request.statementIds()
+        );
         return this.responses.ok("resource.role.statements.updated", "Role statements updated");
     }
 
