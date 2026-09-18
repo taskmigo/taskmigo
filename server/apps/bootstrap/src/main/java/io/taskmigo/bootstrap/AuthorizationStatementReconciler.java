@@ -78,8 +78,8 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
                 this.statements.reconcile(
                     definition.name(),
                     definition.description(),
-                    definition.effect(),
-                    definition.scope(),
+                    Effect.from(definition.effect()),
+                    Scope.from(definition.scope()),
                     definition.target().api().method(),
                     definition.target().api().path(),
                     definition.policy()
@@ -156,8 +156,8 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
     private record Statement(
         String name,
         String description,
-        Effect effect,
-        Scope scope,
+        String effect,
+        String scope,
         Target target,
         String policy
     ) {}
