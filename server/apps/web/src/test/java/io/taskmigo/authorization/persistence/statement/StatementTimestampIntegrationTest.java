@@ -69,8 +69,8 @@ class StatementTimestampIntegrationTest extends ApiIntegrationTestSupport {
         this.provisioning.reconcileStatement(
             statementName,
             "after",
-            "allow",
-            "request",
+            Effect.ALLOW,
+            Scope.REQUEST,
             "GET",
             "/timestamp",
             "return true;"
