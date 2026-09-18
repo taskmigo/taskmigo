@@ -42,7 +42,7 @@ class DefaultRoleServiceTest {
         // Assert
         Mockito.verify(roles).create(state.capture());
         assertThat(id).isEqualTo(state.getValue().id());
-        assertThat(state.getValue().name()).isEqualTo("administrator");
+        assertThat(state.getValue().name()).isEqualTo("  administrator  ");
         assertThat(state.getValue().childIds()).isEmpty();
     }
 }
