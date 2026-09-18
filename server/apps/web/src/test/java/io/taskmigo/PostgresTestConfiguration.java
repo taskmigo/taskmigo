@@ -1,6 +1,8 @@
 package io.taskmigo;
 
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningService;
+import io.taskmigo.authorization.statement.Effect;
+import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.identity.oauth.InternalClientMetadata;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
 import io.taskmigo.identity.user.UserService;
@@ -39,8 +41,8 @@ public class PostgresTestConfiguration {
             UUID fullAccess = authorization.reconcileStatement(
                 "system_operator_request_all",
                 "Allows the system administrator to access the versioned API.",
-                "allow",
-                "request",
+                Effect.ALLOW,
+                Scope.REQUEST,
                 "*",
                 "/api/v.*/.*",
                 "return true;"
@@ -79,8 +81,8 @@ public class PostgresTestConfiguration {
         return authorization.reconcileStatement(
             name,
             "Allows the system administrator to view every object.",
-            "allow",
-            "object",
+            Effect.ALLOW,
+            Scope.OBJECT,
             "GET",
             path,
             "return true;"
