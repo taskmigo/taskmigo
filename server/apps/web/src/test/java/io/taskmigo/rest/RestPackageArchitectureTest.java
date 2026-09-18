@@ -51,14 +51,21 @@ class RestPackageArchitectureTest {
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage("io.taskmigo.rest.api.v0.auth.authorization..", "io.taskmigo.rest.api.v0.auth.group..");
+        ArchRule restApiDoesNotOwnTransactions = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.rest.api..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage("org.springframework.transaction..");
 
         // Act
         apiDoesNotDependOnInternal.check(classes);
         sharedRestSupportDoesNotDependOnVersionedCode.check(classes);
         authorizationDoesNotDependOnOtherFeatures.check(classes);
         groupDoesNotDependOnOtherFeatures.check(classes);
+        userDoesNotDependOnOtherFeatures.check(classes);
 
         // Assert
-        userDoesNotDependOnOtherFeatures.check(classes);
+        restApiDoesNotOwnTransactions.check(classes);
     }
 }
