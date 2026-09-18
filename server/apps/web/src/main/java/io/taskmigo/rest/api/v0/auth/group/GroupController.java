@@ -74,7 +74,7 @@ class GroupController {
         );
     }
 
-    @Schema(name = "GroupResponse")
+    @Schema(name = "GroupInfo")
     record Response(
         UUID id,
         String name,
