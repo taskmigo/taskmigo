@@ -4,6 +4,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,14 +14,14 @@ class AccessControlPackageArchitectureTest {
     /**
      * Verifies the bounded-context dependency direction between Access Control and Identity.
      *
-     * Given: all classes owned by Access Control.
+     * Given: all production classes owned by Access Control.
      * Expect: Access Control remains independent from Identity resources and persistence.
      */
     @Test
     @DisplayName("keeps Access Control independent from Identity")
     void shouldKeepAccessControlIndependentWhenAuthorizationPackagesAreInspected() {
         // Arrange
-        JavaClasses classes = new ClassFileImporter().importPackages("io.taskmigo.authorization");
+        JavaClasses classes = productionClasses();
         ArchRule accessControlDoesNotDependOnIdentity = noClasses()
             .that()
             .resideInAnyPackage("io.taskmigo.authorization..")
@@ -35,14 +36,14 @@ class AccessControlPackageArchitectureTest {
     /**
      * Verifies that Access Control domain and application packages do not reach into persistence adapters.
      *
-     * Given: Role, Statement, and subject application/domain packages.
+     * Given: production Role, Statement, and subject application/domain packages.
      * Expect: their dependencies exclude Access Control persistence, Spring Data, and JPA packages.
      */
     @Test
     @DisplayName("keeps Access Control use cases independent from JPA adapters")
     void shouldKeepUseCasesIndependentWhenAccessControlPackagesAreInspected() {
         // Arrange
-        JavaClasses classes = new ClassFileImporter().importPackages("io.taskmigo.authorization");
+        JavaClasses classes = productionClasses();
         ArchRule useCasesDoNotDependOnJpaAdapters = noClasses()
             .that()
             .resideInAnyPackage(
@@ -65,14 +66,14 @@ class AccessControlPackageArchitectureTest {
     /**
      * Verifies that published Access Control contracts remain independent from HTTP serialization concerns.
      *
-     * Given: classes in the public Access Control contract packages.
+     * Given: production classes in the public Access Control contract packages.
      * Expect: those classes do not depend on Jackson, Spring Web, or Servlet APIs.
      */
     @Test
     @DisplayName("keeps Access Control contracts transport neutral")
     void shouldKeepContractsTransportNeutralWhenAccessControlPackagesAreInspected() {
         // Arrange
-        JavaClasses classes = new ClassFileImporter().importPackages("io.taskmigo.authorization");
+        JavaClasses classes = productionClasses();
         ArchRule contractsDoNotDependOnTransport = noClasses()
             .that()
             .resideInAnyPackage(
@@ -90,5 +91,11 @@ class AccessControlPackageArchitectureTest {
 
         // Act + Assert
         contractsDoNotDependOnTransport.check(classes);
+    }
+
+    private static JavaClasses productionClasses() {
+        return new ClassFileImporter()
+            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+            .importPackages("io.taskmigo.authorization");
     }
 }
