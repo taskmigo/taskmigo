@@ -95,14 +95,14 @@ class StatementController {
         String policy
     ) {
         static Response from(StatementInfo statement) {
-            ApiInfo api = statement.target().api();
+            ApiInfo apiTarget = statement.target().api();
             return new Response(
                 statement.id(),
                 statement.name(),
                 statement.description(),
                 statement.effect(),
                 statement.scope(),
-                new TargetResponse(new ApiResponseData(api.method(), api.path())),
+                new TargetResponse(new ApiResponseData(apiTarget.method(), apiTarget.path())),
                 statement.policy()
             );
         }
