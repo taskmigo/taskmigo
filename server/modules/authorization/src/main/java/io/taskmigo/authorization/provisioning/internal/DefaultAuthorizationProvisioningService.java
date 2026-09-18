@@ -49,25 +49,13 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
     public UUID reconcileStatement(
         @Nullable String name,
         @Nullable String description,
-        @Nullable String effect,
-        @Nullable String scope,
+        @Nullable Effect effect,
+        @Nullable Scope scope,
         @Nullable String method,
         @Nullable String path,
         @Nullable String policy
     ) {
-        @Nullable
-        Effect parsedEffect = effect == null ? null : Effect.from(effect);
-        @Nullable
-        Scope parsedScope = scope == null ? null : Scope.from(scope);
-        StatementDefinition definition = this.policyValidator.validate(
-            name,
-            description,
-            parsedEffect,
-            parsedScope,
-            method,
-            path,
-            policy
-        );
+        StatementDefinition definition = this.policyValidator.validate(name, description, effect, scope, method, path, policy);
 
         Optional<UUID> existingId = this.statements.findIdByName(definition.name());
         if (existingId.isEmpty()) {
