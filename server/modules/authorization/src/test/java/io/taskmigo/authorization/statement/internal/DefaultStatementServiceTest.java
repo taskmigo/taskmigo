@@ -67,15 +67,17 @@ class DefaultStatementServiceTest {
         // Arrange
         StatementDefinition definition = definition("projects.read");
         UUID id = UUID.randomUUID();
-        when(this.policyValidator.validate(
-            "projects.read",
-            null,
-            Effect.ALLOW,
-            Scope.REQUEST,
-            "GET",
-            "/projects",
-            "true"
-        )).thenReturn(definition);
+        when(
+            this.policyValidator.validate(
+                "projects.read",
+                null,
+                Effect.ALLOW,
+                Scope.REQUEST,
+                "GET",
+                "/projects",
+                "true"
+            )
+        ).thenReturn(definition);
         when(this.statements.findIdByName("projects.read")).thenReturn(Optional.of(id));
 
         // Act
