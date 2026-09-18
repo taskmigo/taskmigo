@@ -11,6 +11,7 @@ import io.taskmigo.authorization.persistence.query.QueryPredicateBinder;
 import io.taskmigo.authorization.persistence.statement.JpaStatementOperations;
 import io.taskmigo.authorization.persistence.statement.StatementEntity;
 import io.taskmigo.authorization.persistence.statement.StatementRepository;
+import io.taskmigo.authorization.statement.internal.DefaultStatementService;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.query.QueryPredicate;
 import org.junit.jupiter.api.DisplayName;
@@ -25,11 +26,9 @@ class StatementActivationResultTypeTest {
     void shouldActivateRequestStatementWithNonBooleanProgramResult() {
         StatementRepository repository = mock(StatementRepository.class);
         when(repository.existsByName("non_boolean_request")).thenReturn(false);
-        JpaStatementOperations service = new JpaStatementOperations(
-            repository,
-            new StatementPolicyValidator(mock(ObjectAuthorization.class), new LanguageCompiler()),
-            new QueryBinderStub(),
-            new ObjectBinderStub()
+        DefaultStatementService service = new DefaultStatementService(
+            new JpaStatementOperations(repository, new QueryBinderStub(), new ObjectBinderStub()),
+            new StatementPolicyValidator(mock(ObjectAuthorization.class), new LanguageCompiler())
         );
 
         service.create(

@@ -8,7 +8,6 @@ import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
-import org.jspecify.annotations.NullMarked;
 
 /// Defines persistence operations needed by Statement application use cases.
 public interface StatementStore {

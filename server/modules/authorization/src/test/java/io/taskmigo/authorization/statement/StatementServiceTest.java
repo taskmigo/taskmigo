@@ -12,9 +12,9 @@ import io.taskmigo.authorization.object.ObjectAuthorization;
 import io.taskmigo.authorization.persistence.query.ObjectAuthorizationPredicateBinder;
 import io.taskmigo.authorization.persistence.query.QueryPredicateBinder;
 import io.taskmigo.authorization.persistence.statement.JpaStatementOperations;
-import io.taskmigo.authorization.statement.internal.DefaultStatementService;
 import io.taskmigo.authorization.persistence.statement.StatementEntity;
 import io.taskmigo.authorization.persistence.statement.StatementRepository;
+import io.taskmigo.authorization.statement.internal.DefaultStatementService;
 import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.LanguageCompiler;
 import java.util.UUID;
@@ -45,7 +45,10 @@ class StatementServiceTest {
         ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> objectBinder = mock(
             ObjectAuthorizationPredicateBinder.class
         );
-        this.service = new DefaultStatementService(new JpaStatementOperations(this.statements, queryBinder, objectBinder), policyValidator);
+        this.service = new DefaultStatementService(
+            new JpaStatementOperations(this.statements, queryBinder, objectBinder),
+            policyValidator
+        );
     }
 
     @Test

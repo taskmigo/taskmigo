@@ -33,10 +33,10 @@ class AccessControlPackageArchitectureTest {
     }
 
     /**
-     * Verifies that Access Control's public use-case and domain packages do not reach into JPA adapters.
+     * Verifies that Access Control domain and application packages do not reach into persistence adapters.
      *
-     * Given: Role, Statement, and subject-binding application contracts.
-     * Expect: their dependencies exclude Access Control persistence and Spring Data packages.
+     * Given: Role, Statement, and subject application/domain packages.
+     * Expect: their dependencies exclude Access Control persistence, Spring Data, and JPA packages.
      */
     @Test
     @DisplayName("keeps Access Control use cases independent from JPA adapters")
@@ -45,8 +45,6 @@ class AccessControlPackageArchitectureTest {
         JavaClasses classes = new ClassFileImporter().importPackages("io.taskmigo.authorization");
         ArchRule useCasesDoNotDependOnJpaAdapters = noClasses()
             .that()
-            .haveSimpleNameEndingWith("Service")
-            .and()
             .resideInAnyPackage(
                 "io.taskmigo.authorization.role..",
                 "io.taskmigo.authorization.statement..",
@@ -54,7 +52,11 @@ class AccessControlPackageArchitectureTest {
             )
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage("io.taskmigo.authorization.persistence..", "org.springframework.data..");
+            .resideInAnyPackage(
+                "io.taskmigo.authorization.persistence..",
+                "org.springframework.data..",
+                "jakarta.persistence.."
+            );
 
         // Act + Assert
         useCasesDoNotDependOnJpaAdapters.check(classes);

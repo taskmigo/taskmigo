@@ -60,10 +60,10 @@ class IdentityPackageArchitectureTest {
     }
 
     /**
-     * Verifies that Identity's public use-case and domain packages do not reach into JPA adapters.
+     * Verifies that Identity domain and application packages do not reach into JPA adapters.
      *
-     * Given: User and Group application contracts.
-     * Expect: their dependencies exclude Identity persistence and Spring Data packages.
+     * Given: User, Group, and Identity authorization packages.
+     * Expect: their dependencies exclude Identity persistence, Spring Data, and JPA packages.
      */
     @Test
     @DisplayName("keeps Identity use cases independent from JPA adapters")
@@ -79,7 +79,11 @@ class IdentityPackageArchitectureTest {
             )
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage("io.taskmigo.identity.persistence..", "org.springframework.data..");
+            .resideInAnyPackage(
+                "io.taskmigo.identity.persistence..",
+                "org.springframework.data..",
+                "jakarta.persistence.."
+            );
 
         // Act + Assert
         useCasesDoNotDependOnJpaAdapters.check(classes);
