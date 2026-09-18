@@ -1,7 +1,8 @@
-package io.taskmigo.identity.authorization;
+package io.taskmigo.identity.persistence.integration;
 
 import io.taskmigo.authorization.spi.EffectiveSubjectResolver;
 import io.taskmigo.authorization.subject.SubjectRef;
+import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.persistence.group.GroupEntity;
 import io.taskmigo.identity.persistence.group.GroupRepository;
 import io.taskmigo.identity.persistence.user.UserRepository;
@@ -20,7 +21,7 @@ public class IdentityEffectiveSubjectResolver implements EffectiveSubjectResolve
     private final UserRepository users;
     private final GroupRepository groups;
 
-    IdentityEffectiveSubjectResolver(UserRepository users, GroupRepository groups) {
+    public IdentityEffectiveSubjectResolver(UserRepository users, GroupRepository groups) {
         this.users = users;
         this.groups = groups;
     }

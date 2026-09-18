@@ -1,4 +1,6 @@
-/// Owns opaque authorization subjects and subject-binding operations.
+/// Owns opaque authorization subjects, contracts, and application use cases.
+///
+/// JPA adapters remain private in the owning persistence package.
 @NamedInterface("subject")
 @NullMarked
 package io.taskmigo.authorization.subject;

@@ -1,4 +1,6 @@
-/// Owns users, credentials, profiles, and authentication data.
+/// Owns User contracts and application use cases for credentials and profiles.
+///
+/// JPA adapters remain private in the owning persistence package.
 @NamedInterface("user")
 @NullMarked
 package io.taskmigo.identity.user;

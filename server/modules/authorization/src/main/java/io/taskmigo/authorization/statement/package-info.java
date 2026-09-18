@@ -1,4 +1,6 @@
-/// Defines immutable authorization Statement contracts shared by policy evaluation and resource persistence modules.
+/// Owns authorization Statement contracts and application use cases.
+///
+/// JPA adapters remain private in the owning persistence package.
 @NamedInterface("statement")
 @NullMarked
 package io.taskmigo.authorization.statement;
