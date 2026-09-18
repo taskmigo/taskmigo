@@ -20,7 +20,11 @@ public class JpaRoleAuthorizationOperations implements RoleAuthorizationService 
     private final StatementService statements;
     private final RoleRepository roleRepository;
 
-    public JpaRoleAuthorizationOperations(RoleService roles, StatementService statements, RoleRepository roleRepository) {
+    public JpaRoleAuthorizationOperations(
+        RoleService roles,
+        StatementService statements,
+        RoleRepository roleRepository
+    ) {
         this.roles = roles;
         this.statements = statements;
         this.roleRepository = roleRepository;
