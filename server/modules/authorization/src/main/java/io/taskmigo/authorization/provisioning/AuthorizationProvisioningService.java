@@ -1,5 +1,7 @@
 package io.taskmigo.authorization.provisioning;
 
+import io.taskmigo.authorization.statement.Effect;
+import io.taskmigo.authorization.statement.Scope;
 import java.util.Collection;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -9,8 +11,8 @@ public interface AuthorizationProvisioningService {
     UUID reconcileStatement(
         @Nullable String name,
         @Nullable String description,
-        @Nullable String effect,
-        @Nullable String scope,
+        @Nullable Effect effect,
+        @Nullable Scope scope,
         @Nullable String method,
         @Nullable String path,
         @Nullable String policy
