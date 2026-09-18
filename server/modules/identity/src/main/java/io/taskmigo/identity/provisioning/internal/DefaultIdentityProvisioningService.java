@@ -20,7 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /// Reconciles managed Identity state without exposing provisioning semantics through runtime User services.
 @Service
-final class DefaultIdentityProvisioningService implements IdentityProvisioningService {
+class DefaultIdentityProvisioningService implements IdentityProvisioningService {
 
     private final UserStore users;
     private final SubjectGrantService grants;

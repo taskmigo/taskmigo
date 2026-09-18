@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /// Reconciles managed authorization state without exposing provisioning semantics through runtime services.
 @Service
-final class DefaultAuthorizationProvisioningService implements AuthorizationProvisioningService {
+class DefaultAuthorizationProvisioningService implements AuthorizationProvisioningService {
 
     private final RoleService roleService;
     private final RoleStore roles;
