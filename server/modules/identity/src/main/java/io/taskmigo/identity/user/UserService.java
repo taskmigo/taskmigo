@@ -29,13 +29,4 @@ public interface UserService {
     Set<UUID> roleIds(UUID userId);
     void setStatements(UUID userId, Collection<UUID> statementIds);
     void setRoles(UUID userId, Collection<UUID> roleIds);
-    UUID reconcileBootstrapUser(
-        @Nullable String username,
-        @Nullable Collection<String> emails,
-        @Nullable String firstName,
-        @Nullable String lastName,
-        Collection<UUID> roleIds,
-        Collection<UUID> statementIds
-    );
-    boolean reconcileSystemUser(@Nullable String initialPasswordHash);
 }

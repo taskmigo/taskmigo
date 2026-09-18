@@ -18,15 +18,6 @@ public interface StatementService {
         @Nullable String path,
         @Nullable String policy
     );
-    UUID reconcile(
-        @Nullable String name,
-        @Nullable String description,
-        @Nullable Effect effect,
-        @Nullable Scope scope,
-        @Nullable String method,
-        @Nullable String path,
-        @Nullable String policy
-    );
     OffsetPage<StatementInfo> list(int page, int perPage);
     OffsetPage<StatementInfo> list(
         int page,
@@ -35,5 +26,4 @@ public interface StatementService {
         ObjectAuthorizationPredicate<StatementInfo> authorization
     );
     void requireStatements(Collection<UUID> ids);
-    UUID requireByName(String name);
 }

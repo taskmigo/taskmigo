@@ -1,10 +1,8 @@
 package io.taskmigo;
 
-import io.taskmigo.authorization.role.RoleAuthorizationService;
-import io.taskmigo.authorization.statement.Effect;
-import io.taskmigo.authorization.statement.Scope;
-import io.taskmigo.authorization.statement.StatementService;
+import io.taskmigo.authorization.provisioning.AuthorizationProvisioningService;
 import io.taskmigo.identity.oauth.InternalClientMetadata;
+import io.taskmigo.identity.provisioning.IdentityProvisioningService;
 import io.taskmigo.identity.user.UserService;
 import java.util.List;
 import java.util.UUID;
@@ -30,30 +28,28 @@ public class PostgresTestConfiguration {
 
     @Bean
     ApplicationRunner persistedRuntimeStateFixture(
+        IdentityProvisioningService identity,
+        AuthorizationProvisioningService authorization,
         UserService users,
-        RoleAuthorizationService access,
-        StatementService statements,
         PasswordEncoder passwordEncoder,
         JdbcRegisteredClientRepository clients
     ) {
         return arguments -> {
-            if (!users.reconcileSystemUser(passwordEncoder.encode("integration-password"))) {
-                throw new IllegalStateException("Failed to create persisted system-user test fixture");
-            }
-            UUID fullAccess = statements.reconcile(
+            identity.reconcileSystemUser(passwordEncoder.encode("integration-password"));
+            UUID fullAccess = authorization.reconcileStatement(
                 "system_operator_request_all",
                 "Allows the system administrator to access the versioned API.",
-                Effect.ALLOW,
-                Scope.REQUEST,
+                "allow",
+                "request",
                 "*",
                 "/api/v.*/.*",
                 "return true;"
             );
-            UUID usersAccess = objectStatement(statements, "system_users_full_access", "/api/v0/users");
-            UUID rolesAccess = objectStatement(statements, "system_roles_full_access", "/api/v0/roles");
-            UUID groupsAccess = objectStatement(statements, "system_groups_full_access", "/api/v0/groups");
-            UUID statementsAccess = objectStatement(statements, "system_statements_full_access", "/api/v0/statements");
-            UUID roleId = access.reconcile(
+            UUID usersAccess = objectStatement(authorization, "system_users_full_access", "/api/v0/users");
+            UUID rolesAccess = objectStatement(authorization, "system_roles_full_access", "/api/v0/roles");
+            UUID groupsAccess = objectStatement(authorization, "system_groups_full_access", "/api/v0/groups");
+            UUID statementsAccess = objectStatement(authorization, "system_statements_full_access", "/api/v0/statements");
+            UUID roleId = authorization.reconcileRole(
                 "System Operator",
                 "Highest-privilege integration-test role.",
                 List.of(fullAccess, usersAccess, rolesAccess, groupsAccess, statementsAccess)
@@ -75,12 +71,12 @@ public class PostgresTestConfiguration {
         };
     }
 
-    private static UUID objectStatement(StatementService statements, String name, String path) {
-        return statements.reconcile(
+    private static UUID objectStatement(AuthorizationProvisioningService authorization, String name, String path) {
+        return authorization.reconcileStatement(
             name,
             "Allows the system administrator to view every object.",
-            Effect.ALLOW,
-            Scope.OBJECT,
+            "allow",
+            "object",
             "GET",
             path,
             "return true;"

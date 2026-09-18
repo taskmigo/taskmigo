@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
+import io.taskmigo.authorization.provisioning.AuthorizationProvisioningService;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.role.RoleService;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.StatementService;
 import io.taskmigo.identity.oauth.InternalClientMetadata;
+import io.taskmigo.identity.provisioning.IdentityProvisioningService;
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.UserService;
@@ -59,6 +61,8 @@ class BootstrapIntegrationTest {
     private final UserService users;
     private final RoleService access;
     private final StatementService statements;
+    private final AuthorizationProvisioningService authorizationProvisioning;
+    private final IdentityProvisioningService identityProvisioning;
 
     BootstrapIntegrationTest(
         Flyway flyway,
@@ -69,7 +73,9 @@ class BootstrapIntegrationTest {
         PasswordEncoder passwordEncoder,
         UserService users,
         RoleService access,
-        StatementService statements
+        StatementService statements,
+        AuthorizationProvisioningService authorizationProvisioning,
+        IdentityProvisioningService identityProvisioning
     ) {
         this.flyway = flyway;
         this.clients = clients;
@@ -80,6 +86,8 @@ class BootstrapIntegrationTest {
         this.users = users;
         this.access = access;
         this.statements = statements;
+        this.authorizationProvisioning = authorizationProvisioning;
+        this.identityProvisioning = identityProvisioning;
     }
 
     @Test
@@ -183,9 +191,9 @@ class BootstrapIntegrationTest {
     @DisplayName("upserts users from bootstrap data")
     void shouldUpsertBootstrapUserWhenUserIsMissingOrPresent() {
         String username = "bootstrap-user";
-        UUID roleId = this.access.requireRoleByName("System Operator");
-        UUID statementId = this.statements.requireByName("system_operator_request_all");
-        UUID createdId = this.users.reconcileBootstrapUser(
+        UUID roleId = this.authorizationProvisioning.requireRole("System Operator");
+        UUID statementId = this.authorizationProvisioning.requireStatement("system_operator_request_all");
+        UUID createdId = this.identityProvisioning.reconcileUser(
             username,
             Set.of("BOOTSTRAP@EXAMPLE.COM"),
             "Bootstrap",
@@ -197,7 +205,7 @@ class BootstrapIntegrationTest {
             this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()
         );
 
-        UUID reconciledId = this.users.reconcileBootstrapUser(
+        UUID reconciledId = this.identityProvisioning.reconcileUser(
             username,
             Set.of("updated@example.com"),
             "Updated",

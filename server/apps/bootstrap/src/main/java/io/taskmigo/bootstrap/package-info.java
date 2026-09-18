@@ -2,9 +2,11 @@
 @ApplicationModule(
     allowedDependencies = {
         "authorization :: object",
+        "authorization :: provisioning",
         "authorization :: role",
         "authorization :: spi",
         "authorization :: statement",
+        "identity :: provisioning",
         "identity :: user",
         "identity :: group",
         "identity :: oauth",
