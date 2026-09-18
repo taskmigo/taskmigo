@@ -14,7 +14,6 @@ import org.jspecify.annotations.Nullable;
 
 /// Defines persistence capabilities required by Role application services without exposing JPA types.
 public interface RoleStore {
-
     record RoleState(UUID id, String name, @Nullable String description, Set<UUID> statementIds, Set<UUID> childIds) {}
 
     List<RoleState> loadAllForUpdate();

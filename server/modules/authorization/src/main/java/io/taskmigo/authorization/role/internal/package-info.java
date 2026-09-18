@@ -3,4 +3,3 @@
 package io.taskmigo.authorization.role.internal;
 
 import org.jspecify.annotations.NullMarked;
-

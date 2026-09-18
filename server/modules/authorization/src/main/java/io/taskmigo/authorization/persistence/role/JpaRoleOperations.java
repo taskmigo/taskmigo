@@ -328,4 +328,3 @@ public class JpaRoleOperations implements RoleStore {
         );
     }
 }
-
