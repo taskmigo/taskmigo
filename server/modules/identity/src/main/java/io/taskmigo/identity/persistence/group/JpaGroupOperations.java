@@ -9,6 +9,8 @@ import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.group.GroupException;
 import io.taskmigo.identity.group.GroupInfo;
 import io.taskmigo.identity.group.GroupService;
+import io.taskmigo.identity.group.hierarchy.GroupHierarchy;
+import io.taskmigo.identity.group.hierarchy.GroupHierarchyException;
 import io.taskmigo.identity.persistence.query.ObjectAuthorizationPredicateBinder;
 import io.taskmigo.identity.persistence.query.QueryPredicateBinder;
 import io.taskmigo.identity.user.UserService;
@@ -20,6 +22,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -92,8 +95,8 @@ public class JpaGroupOperations implements GroupService {
         List<GroupEntity> allGroups = new ArrayList<>(this.groups.findAllForUpdate());
         List<GroupEntity> children = requireChildGroups(requestedChildIds, allGroups);
         try {
-            GroupHierarchy.from(allGroups).replacingChildren(id, requestedChildIds);
-        } catch (IllegalArgumentException exception) {
+            hierarchy(allGroups).replacingChildren(id, requestedChildIds);
+        } catch (GroupHierarchyException exception) {
             throw new GroupException(GroupException.Type.BAD_REQUEST, hierarchyFailureMessage(exception));
         }
 
@@ -153,8 +156,8 @@ public class JpaGroupOperations implements GroupService {
         List<GroupEntity> children = requireChildGroups(requestedIds, allGroups);
 
         try {
-            GroupHierarchy.from(allGroups).replacingChildren(parent.id(), requestedIds);
-        } catch (IllegalArgumentException exception) {
+            hierarchy(allGroups).replacingChildren(parent.id(), requestedIds);
+        } catch (GroupHierarchyException exception) {
             throw new GroupException(GroupException.Type.BAD_REQUEST, hierarchyFailureMessage(exception));
         }
         parent.replaceChildGroups(children);
@@ -204,8 +207,20 @@ public class JpaGroupOperations implements GroupService {
     }
 
     private void refreshClosure(Collection<GroupEntity> allGroups) {
-        GroupHierarchy hierarchy = GroupHierarchy.from(allGroups);
+        GroupHierarchy hierarchy = hierarchy(allGroups);
         this.closureWriter.replace(allGroups, groupId -> hierarchy.reachableFrom(Set.of(groupId)));
+    }
+
+    private static GroupHierarchy hierarchy(Collection<GroupEntity> groups) {
+        return GroupHierarchy.from(
+            groups
+                .stream()
+                .collect(
+                    Collectors.toMap(GroupEntity::id, group ->
+                        group.childGroups().stream().map(GroupEntity::id).collect(Collectors.toSet())
+                    )
+                )
+        );
     }
 
     private static GroupInfo info(GroupEntity group) {
@@ -234,7 +249,7 @@ public class JpaGroupOperations implements GroupService {
         return value.trim();
     }
 
-    private static String hierarchyFailureMessage(IllegalArgumentException exception) {
+    private static String hierarchyFailureMessage(GroupHierarchyException exception) {
         String message = exception.getMessage();
         return message == null ? "Group hierarchy is invalid" : message;
     }
