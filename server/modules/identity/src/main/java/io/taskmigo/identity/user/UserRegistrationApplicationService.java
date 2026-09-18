@@ -38,8 +38,8 @@ class UserRegistrationApplicationService implements UserRegistrationService {
         this.roles.requireRoles(requestedRoleIds);
         this.groups.requireGroups(requestedGroupIds);
 
-        UUID id = this.users.create(username, emails, firstName, lastName, requestedRoleIds);
-        requestedGroupIds.forEach(groupId -> this.groups.addMember(groupId, id));
-        return id;
+        UUID userId = this.users.create(username, emails, firstName, lastName, requestedRoleIds);
+        requestedGroupIds.forEach(groupId -> this.groups.addMember(groupId, userId));
+        return userId;
     }
 }
