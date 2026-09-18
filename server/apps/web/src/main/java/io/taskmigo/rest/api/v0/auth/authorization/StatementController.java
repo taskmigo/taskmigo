@@ -116,8 +116,8 @@ class StatementController {
     record Request(
         @NotBlank @Nullable String name,
         @Nullable String description,
-        @NotBlank @Nullable String effect,
-        @NotBlank @Nullable String scope,
+        @NotBlank String effect,
+        @NotBlank String scope,
         @NotNull Target target,
         @NotBlank String policy
     ) {}
