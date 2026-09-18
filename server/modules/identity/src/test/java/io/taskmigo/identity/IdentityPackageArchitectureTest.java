@@ -4,6 +4,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,14 +14,14 @@ class IdentityPackageArchitectureTest {
     /**
      * Verifies that persistence internals do not depend on application adapters.
      *
-     * Given: all classes in the consolidated Identity capability.
+     * Given: all production classes in the consolidated Identity capability.
      * Expect: persistence entities, repositories, and binders remain below the application boundary.
      */
     @Test
     @DisplayName("keeps identity persistence below application adapters")
     void shouldKeepPersistenceBelowApplicationsWhenIdentityPackagesAreInspected() {
         // Arrange
-        JavaClasses classes = new ClassFileImporter().importPackages("io.taskmigo.identity");
+        JavaClasses classes = productionClasses();
         ArchRule persistenceDoesNotDependOnApplications = noClasses()
             .that()
             .resideInAnyPackage("io.taskmigo.identity.persistence..")
@@ -40,14 +41,14 @@ class IdentityPackageArchitectureTest {
     /**
      * Verifies that Identity integrates with Access Control only through published contracts.
      *
-     * Given: all classes in the Identity bounded context.
+     * Given: all production classes in the Identity bounded context.
      * Expect: no Identity class reaches into Access Control persistence internals.
      */
     @Test
     @DisplayName("keeps Access Control persistence private from Identity")
     void shouldKeepAccessControlPersistencePrivateWhenIdentityPackagesAreInspected() {
         // Arrange
-        JavaClasses classes = new ClassFileImporter().importPackages("io.taskmigo.identity");
+        JavaClasses classes = productionClasses();
         ArchRule identityDoesNotDependOnAccessControlPersistence = noClasses()
             .that()
             .resideInAnyPackage("io.taskmigo.identity..")
@@ -60,16 +61,16 @@ class IdentityPackageArchitectureTest {
     }
 
     /**
-     * Verifies that Identity's public use-case and domain packages do not reach into JPA adapters.
+     * Verifies that Identity domain and application packages do not reach into JPA adapters.
      *
-     * Given: User and Group application contracts.
-     * Expect: their dependencies exclude Identity persistence and Spring Data packages.
+     * Given: production User, Group, and Identity authorization packages.
+     * Expect: their dependencies exclude Identity persistence, Spring Data, and JPA packages.
      */
     @Test
     @DisplayName("keeps Identity use cases independent from JPA adapters")
     void shouldKeepUseCasesIndependentWhenIdentityPackagesAreInspected() {
         // Arrange
-        JavaClasses classes = new ClassFileImporter().importPackages("io.taskmigo.identity");
+        JavaClasses classes = productionClasses();
         ArchRule useCasesDoNotDependOnJpaAdapters = noClasses()
             .that()
             .resideInAnyPackage(
@@ -79,7 +80,11 @@ class IdentityPackageArchitectureTest {
             )
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage("io.taskmigo.identity.persistence..", "org.springframework.data..");
+            .resideInAnyPackage(
+                "io.taskmigo.identity.persistence..",
+                "org.springframework.data..",
+                "jakarta.persistence.."
+            );
 
         // Act + Assert
         useCasesDoNotDependOnJpaAdapters.check(classes);
@@ -88,14 +93,14 @@ class IdentityPackageArchitectureTest {
     /**
      * Verifies that published Identity contracts remain independent from HTTP serialization concerns.
      *
-     * Given: User and Group contract packages.
+     * Given: production User and Group contract packages.
      * Expect: those classes do not depend on Jackson, Spring Web, or Servlet APIs.
      */
     @Test
     @DisplayName("keeps Identity contracts transport neutral")
     void shouldKeepContractsTransportNeutralWhenIdentityPackagesAreInspected() {
         // Arrange
-        JavaClasses classes = new ClassFileImporter().importPackages("io.taskmigo.identity");
+        JavaClasses classes = productionClasses();
         ArchRule contractsDoNotDependOnTransport = noClasses()
             .that()
             .resideInAnyPackage("io.taskmigo.identity.user..", "io.taskmigo.identity.group..")
@@ -110,14 +115,14 @@ class IdentityPackageArchitectureTest {
     /**
      * Verifies that Group hierarchy rules remain independent from persistence implementation details.
      *
-     * Given: classes in the Group hierarchy domain package.
+     * Given: production classes in the Group hierarchy domain package.
      * Expect: hierarchy rules do not depend on Identity persistence or JPA types.
      */
     @Test
     @DisplayName("keeps Group hierarchy independent from persistence")
     void shouldKeepGroupHierarchyIndependentWhenIdentityPackagesAreInspected() {
         // Arrange
-        JavaClasses classes = new ClassFileImporter().importPackages("io.taskmigo.identity");
+        JavaClasses classes = productionClasses();
         ArchRule hierarchyDoesNotDependOnPersistence = noClasses()
             .that()
             .resideInAnyPackage("io.taskmigo.identity.group.hierarchy..")
@@ -131,5 +136,11 @@ class IdentityPackageArchitectureTest {
 
         // Act + Assert
         hierarchyDoesNotDependOnPersistence.check(classes);
+    }
+
+    private static JavaClasses productionClasses() {
+        return new ClassFileImporter()
+            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+            .importPackages("io.taskmigo.identity");
     }
 }

@@ -14,6 +14,7 @@ import io.taskmigo.authorization.persistence.query.QueryPredicateBinder;
 import io.taskmigo.authorization.persistence.statement.JpaStatementOperations;
 import io.taskmigo.authorization.persistence.statement.StatementEntity;
 import io.taskmigo.authorization.persistence.statement.StatementRepository;
+import io.taskmigo.authorization.statement.internal.DefaultStatementService;
 import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.LanguageCompiler;
 import java.util.UUID;
@@ -31,7 +32,7 @@ class StatementServiceTest {
     private static final String VALID_POLICY = "return true;";
 
     private StatementRepository statements;
-    private JpaStatementOperations service;
+    private DefaultStatementService service;
 
     @BeforeEach
     void setUp() {
@@ -44,7 +45,10 @@ class StatementServiceTest {
         ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> objectBinder = mock(
             ObjectAuthorizationPredicateBinder.class
         );
-        this.service = new JpaStatementOperations(this.statements, policyValidator, queryBinder, objectBinder);
+        this.service = new DefaultStatementService(
+            new JpaStatementOperations(this.statements, queryBinder, objectBinder),
+            policyValidator
+        );
     }
 
     @Test
