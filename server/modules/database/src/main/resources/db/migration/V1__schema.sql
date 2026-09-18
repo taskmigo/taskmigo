@@ -139,6 +139,13 @@ CREATE TABLE oauth2_registered_client (
     PRIMARY KEY (id)
 );
 
+CREATE TABLE oauth2_registered_client_metadata (
+    registered_client_id varchar(100) NOT NULL REFERENCES oauth2_registered_client(id) ON DELETE CASCADE,
+    client_type varchar(20) NOT NULL DEFAULT 'internal',
+    PRIMARY KEY (registered_client_id),
+    CONSTRAINT ck_oauth2_registered_client_metadata_type CHECK (client_type IN ('internal', 'user'))
+);
+
 CREATE TABLE oauth2_authorization (
     id varchar(100) NOT NULL,
     registered_client_id varchar(100) NOT NULL,

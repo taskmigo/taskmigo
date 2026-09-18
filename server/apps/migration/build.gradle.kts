@@ -4,7 +4,7 @@ plugins {
 }
 
 tasks.bootJar {
-    archiveFileName = "bootstrap.jar"
+    archiveFileName = "migration.jar"
 }
 
 description = "Taskmigo database migration and installation bootstrap application"
@@ -19,9 +19,10 @@ dependencies {
     implementation(project(":modules:database"))
     implementation(project(":modules:access-control"))
     implementation(project(":modules:identity"))
+    implementation(project(":modules:security"))
     runtimeOnly(libs.jspecify)
     implementation(libs.spring.boot.core.starter)
-    implementation(libs.spring.boot.starter.jdbc)
+    implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.boot.starter.flyway)
     implementation(libs.flyway.postgresql)
     implementation(libs.spring.boot.starter.validation)

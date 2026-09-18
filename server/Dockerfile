@@ -13,14 +13,15 @@ COPY modules/query/build.gradle.kts modules/query/build.gradle.kts
 COPY modules/authorization/build.gradle.kts modules/authorization/build.gradle.kts
 COPY modules/database/build.gradle.kts modules/database/build.gradle.kts
 COPY modules/identity/build.gradle.kts modules/identity/build.gradle.kts
+COPY modules/security/build.gradle.kts modules/security/build.gradle.kts
 COPY benchmarks/authorization/build.gradle.kts benchmarks/authorization/build.gradle.kts
-COPY apps/bootstrap/build.gradle.kts apps/bootstrap/build.gradle.kts
+COPY apps/migration/build.gradle.kts apps/migration/build.gradle.kts
 COPY apps/web/build.gradle.kts apps/web/build.gradle.kts
 COPY apps/worker/build.gradle.kts apps/worker/build.gradle.kts
 
 RUN --mount=type=cache,id=taskmigo-gradle,target=/root/.gradle,sharing=locked \
     ./gradlew --no-daemon --parallel \
-        :apps:bootstrap:dependencies \
+        :apps:migration:dependencies \
         :apps:web:dependencies \
         :apps:worker:dependencies
 
@@ -30,17 +31,18 @@ COPY modules/query/src modules/query/src
 COPY modules/authorization/src modules/authorization/src
 COPY modules/database/src modules/database/src
 COPY modules/identity/src modules/identity/src
+COPY modules/security/src modules/security/src
 COPY benchmarks/authorization/src benchmarks/authorization/src
-COPY apps/bootstrap/src apps/bootstrap/src
+COPY apps/migration/src apps/migration/src
 COPY apps/web/src apps/web/src
 COPY apps/worker/src apps/worker/src
 
 RUN --mount=type=cache,id=taskmigo-gradle,target=/root/.gradle,sharing=locked \
     ./gradlew --no-daemon --parallel \
-        :apps:bootstrap:bootJar \
+        :apps:migration:bootJar \
         :apps:web:bootJar \
         :apps:worker:bootJar \
-    && for taskmigo_app in bootstrap web worker; do \
+    && for taskmigo_app in migration web worker; do \
         java -Djarmode=tools -jar "apps/${taskmigo_app}/build/libs/${taskmigo_app}.jar" \
             extract --layers --launcher --destination "extracted/${taskmigo_app}"; \
     done
@@ -75,12 +77,12 @@ ENV JAVA_HOME=/opt/java \
     PATH=/opt/java/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     JAVA_TOOL_OPTIONS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
 
-FROM runtime AS bootstrap
+FROM runtime AS migration
 
-COPY --from=build --chown=taskmigo:taskmigo /workspace/extracted/bootstrap/dependencies/ ./
-COPY --from=build --chown=taskmigo:taskmigo /workspace/extracted/bootstrap/spring-boot-loader/ ./
-COPY --from=build --chown=taskmigo:taskmigo /workspace/extracted/bootstrap/snapshot-dependencies/ ./
-COPY --from=build --chown=taskmigo:taskmigo /workspace/extracted/bootstrap/application/ ./
+COPY --from=build --chown=taskmigo:taskmigo /workspace/extracted/migration/dependencies/ ./
+COPY --from=build --chown=taskmigo:taskmigo /workspace/extracted/migration/spring-boot-loader/ ./
+COPY --from=build --chown=taskmigo:taskmigo /workspace/extracted/migration/snapshot-dependencies/ ./
+COPY --from=build --chown=taskmigo:taskmigo /workspace/extracted/migration/application/ ./
 
 USER 10001:10001
 

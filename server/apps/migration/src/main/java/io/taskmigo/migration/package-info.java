@@ -1,18 +1,15 @@
-/// Installation bootstrap tasks executed after schema migration and before runtime applications start.
+/// Composes installation-time migration and reconciliation through published module contracts.
 @ApplicationModule(
     allowedDependencies = {
-        "authorization :: object",
         "authorization :: provisioning",
-        "authorization :: role",
-        "authorization :: spi",
         "authorization :: statement",
         "identity :: provisioning",
         "identity :: user",
-        "identity :: group",
+        "security :: oauth",
     }
 )
 @NullMarked
-package io.taskmigo.bootstrap;
+package io.taskmigo.migration;
 
 import org.jspecify.annotations.NullMarked;
 import org.springframework.modulith.ApplicationModule;
