@@ -1,7 +1,6 @@
 ---
 - username: system
-  # yamllint disable-line rule:quoted-strings
-  password: "${TM_SYSTEM_PASSWORD:{noop}local-password}"
+  password: "${TM_SYSTEM_PASSWORD}"
   emails: []
   firstName: System
   lastName: User
@@ -11,7 +10,6 @@
     - global
 
 - username: admin
-  password: "{noop}local-password"
   emails: []
   firstName: Admin
   lastName: User
