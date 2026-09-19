@@ -37,8 +37,6 @@ import org.springframework.test.context.TestConstructor;
 @SpringBootTest(
     properties = {
         "TASKMIGO_SYSTEM_PASSWORD_HASH={noop}integration-password",
-        "TASKMIGO_MACHINE_CLIENT_ID=integration-client",
-        "TASKMIGO_MACHINE_CLIENT_SECRET_HASH={noop}integration-secret",
         "TASKMIGO_AUTH_CLIENT_SECRET_HASH={noop}browser-integration-secret",
         "TASKMIGO_CLIENT_URL=http://localhost:3000",
     }
@@ -85,7 +83,7 @@ class MigrationIntegrationTest {
     /**
      * Verifies: migration applies the canonical schema and managed clients.
      * Given: a fresh Testcontainers database and flat YAML resources.
-     * Expect: version 1, the encoded system password, and both internal clients exist.
+     * Expect: version 1, the encoded system password, and the browser client exists.
      */
     @Test
     @DisplayName("installs the schema, system user, and managed OAuth clients")
@@ -98,11 +96,6 @@ class MigrationIntegrationTest {
         assertThat(
             this.passwordEncoder.matches("integration-password", Objects.requireNonNull(system.passwordHash()))
         ).isTrue();
-
-        RegisteredClient internal = this.storedClient("integration-client");
-        assertThat(InternalClientMetadata.isManaged(internal)).isTrue();
-        assertThat(internal.getAuthorizationGrantTypes()).containsExactly(AuthorizationGrantType.CLIENT_CREDENTIALS);
-        assertThat(internal.getScopes()).isEmpty();
 
         RegisteredClient browser = this.storedClient("taskmigo-client");
         assertThat(InternalClientMetadata.isManaged(browser)).isTrue();
@@ -129,11 +122,14 @@ class MigrationIntegrationTest {
     @Test
     @DisplayName("binds flat security YAML to native Spring OAuth client properties")
     void shouldBindNativeClientPropertiesWhenSecurityYamlIsLoaded() {
-        Client machine = Objects.requireNonNull(this.resources.load().clients().get("cli"));
+        Client browser = Objects.requireNonNull(this.resources.load().clients().get("browser"));
 
-        assertThat(machine.getRegistration().getClientId()).isEqualTo("integration-client");
-        assertThat(machine.getRegistration().getClientSecret()).isEqualTo("{noop}integration-secret");
-        assertThat(machine.getRegistration().getScopes()).isEmpty();
+        assertThat(browser.getRegistration().getClientId()).isEqualTo("taskmigo-client");
+        assertThat(browser.getRegistration().getClientSecret()).isEqualTo("{noop}browser-integration-secret");
+        assertThat(browser.getRegistration().getScopes()).containsExactlyInAnyOrder(
+            OidcScopes.OPENID,
+            OidcScopes.PROFILE
+        );
     }
 
     /**
@@ -144,7 +140,6 @@ class MigrationIntegrationTest {
     @Test
     @DisplayName("preserves managed client and user state during reconciliation")
     void shouldPreserveStateWhenReconciliationRunsAgain() {
-        String internalId = this.storedClient("integration-client").getId();
         String browserId = this.storedClient("taskmigo-client").getId();
         String passwordHash = Objects.requireNonNull(
             this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()
@@ -152,7 +147,6 @@ class MigrationIntegrationTest {
 
         this.internalClients.reconcile(this.resources.load().clients());
 
-        assertThat(this.storedClient("integration-client").getId()).isEqualTo(internalId);
         assertThat(this.storedClient("taskmigo-client").getId()).isEqualTo(browserId);
         assertThat(this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()).isEqualTo(
             passwordHash
@@ -291,7 +285,12 @@ class MigrationIntegrationTest {
                 .clientSecret(this.passwordEncoder.encode("secret"))
                 .clientName("Unmanaged")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .redirectUri("http://localhost:3000/api/auth/callback")
+                .postLogoutRedirectUri("http://localhost:3000/")
+                .scope(OidcScopes.OPENID)
+                .scope(OidcScopes.PROFILE)
                 .build()
         );
 
@@ -310,8 +309,12 @@ class MigrationIntegrationTest {
         registration.setClientId(clientId);
         registration.setClientSecret(clientSecret);
         registration.setClientAuthenticationMethods(new LinkedHashSet<>(Set.of("client_secret_basic")));
-        registration.setAuthorizationGrantTypes(new LinkedHashSet<>(Set.of("client_credentials")));
-        registration.setScopes(new LinkedHashSet<>());
+        registration.setAuthorizationGrantTypes(new LinkedHashSet<>(Set.of("authorization_code", "refresh_token")));
+        registration.setRedirectUris(new LinkedHashSet<>(Set.of("http://localhost:3000/api/auth/callback")));
+        registration.setPostLogoutRedirectUris(new LinkedHashSet<>(Set.of("http://localhost:3000/")));
+        registration.setScopes(new LinkedHashSet<>(Set.of("openid", "profile")));
+        client.setRequireProofKey(true);
+        client.setRequireAuthorizationConsent(false);
         return client;
     }
 }

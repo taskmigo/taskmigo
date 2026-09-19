@@ -44,13 +44,6 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.database.existingSecret | quote }}
                   key: {{ .Values.migration.systemUserPasswordHashKey | quote }}
-            - name: TASKMIGO_MACHINE_CLIENT_ID
-              value: {{ .Values.migration.testClient.clientId | quote }}
-            - name: TASKMIGO_MACHINE_CLIENT_SECRET_HASH
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.database.existingSecret | quote }}
-                  key: {{ .Values.migration.testClient.clientSecretHashKey | quote }}
             - name: TASKMIGO_AUTH_CLIENT_SECRET_HASH
               valueFrom:
                 secretKeyRef:

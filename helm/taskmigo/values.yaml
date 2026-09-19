@@ -40,10 +40,6 @@ migration:
   browserAuthentication:
     enabled: true
     clientSecretHashKey: auth-client-secret-hash
-  testClient:
-    enabled: false
-    clientId: taskmigo-helm-test
-    clientSecretHashKey: machine-client-secret-hash
   resources: {}
   extraEnv: []
 
@@ -147,7 +143,3 @@ tests:
     repository: curlimages/curl
     tag: 8.21.0
     pullPolicy: IfNotPresent
-  oauthClient:
-    enabled: false
-    clientId: taskmigo-helm-test
-    clientSecretHashKey: machine-client-secret-hash

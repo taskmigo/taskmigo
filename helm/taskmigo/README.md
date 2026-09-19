@@ -16,15 +16,13 @@ the deployed stack.
 
 The default Secret name is `taskmigo-secrets` and the chart expects these keys:
 
-| Key                          | Used by                                                    |
-| ---------------------------- | ---------------------------------------------------------- |
-| `database-password`          | Migration, web, worker                                     |
-| `system-user-password-hash`  | Pre-encoded migration system-user credential               |
-| `auth-client-secret-hash`    | Pre-encoded browser OAuth client secret and client runtime |
-| `auth-client-secret`         | Raw browser OAuth client secret for the browser runtime    |
-| `machine-client-secret-hash` | Pre-encoded internal machine OAuth client secret           |
-| `machine-client-secret`      | Raw internal machine OAuth client secret for tests         |
-| `auth-session-secret`        | Client session encryption; must be at least 32 characters  |
+| Key                         | Used by                                                    |
+| --------------------------- | ---------------------------------------------------------- |
+| `database-password`         | Migration, web, worker                                     |
+| `system-user-password-hash` | Pre-encoded migration system-user credential               |
+| `auth-client-secret-hash`   | Pre-encoded browser OAuth client secret and client runtime |
+| `auth-client-secret`        | Raw browser OAuth client secret for the browser runtime    |
+| `auth-session-secret`       | Client session encryption; must be at least 32 characters  |
 
 ## Install
 
@@ -37,8 +35,6 @@ kubectl -n taskmigo create secret generic taskmigo-secrets \
   --from-literal=system-user-password-hash='{noop}replace-me' \
   --from-literal=auth-client-secret-hash='{noop}replace-me' \
   --from-literal=auth-client-secret='replace-me' \
-  --from-literal=machine-client-secret-hash='{noop}replace-me' \
-  --from-literal=machine-client-secret='replace-me' \
   --from-literal=auth-session-secret='replace-with-at-least-32-characters'
 ```
 
@@ -128,6 +124,6 @@ For a cross-namespace shared Gateway, its listeners must allow routes from the T
 
 ## Test
 
-The chart includes an optional Helm test pod. With `tests.enabled=true`, it validates OIDC discovery, the unauthenticated API contract, and the browser client. With both `tests.oauthClient.enabled=true` and `migration.testClient.enabled=true`, migration also provisions a test-only machine client and the Helm test obtains a real access token before calling the authenticated API.
+The chart includes an optional Helm test pod. With `tests.enabled=true`, it validates OIDC discovery, the unauthenticated API contract, and the single browser client.
 
 The repository GitHub Actions integration workflow exercises this mode against a disposable Minikube cluster and PostgreSQL instance.

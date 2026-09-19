@@ -29,8 +29,6 @@ tasks:
         {{.HELM}} lint helm/taskmigo
         {{.HELM}} template taskmigo helm/taskmigo \
           --set tests.enabled=true \
-          --set tests.oauthClient.enabled=true \
-          --set migration.testClient.enabled=true \
           >/dev/null
         {{.HELM}} template taskmigo helm/taskmigo \
           --set gateway.enabled=true \
@@ -135,26 +133,20 @@ tasks:
             auth_client_secret="${AUTH_CLIENT_SECRET:-$(openssl rand -hex 32)}"
             auth_client_secret_hash="${AUTH_CLIENT_SECRET_HASH:-{noop}$auth_client_secret}"
             auth_session_secret="${AUTH_SESSION_SECRET:-$(openssl rand -hex 32)}"
-            machine_client_secret="${MACHINE_CLIENT_SECRET:-$(openssl rand -hex 32)}"
-            machine_client_secret_hash="${MACHINE_CLIENT_SECRET_HASH:-{noop}$machine_client_secret}"
           else
             database_password="${DATABASE_PASSWORD:-taskmigo}"
             system_password_hash="${SYSTEM_USER_PASSWORD_HASH:-{noop}taskmigo}"
             auth_client_secret="${AUTH_CLIENT_SECRET:-taskmigo-local-browser-secret}"
             auth_client_secret_hash="${AUTH_CLIENT_SECRET_HASH:-{noop}$auth_client_secret}"
             auth_session_secret="${AUTH_SESSION_SECRET:-taskmigo-local-session-secret-0123456789abcdef}"
-            machine_client_secret="${MACHINE_CLIENT_SECRET:-taskmigo-local-test-client-secret}"
-            machine_client_secret_hash="${MACHINE_CLIENT_SECRET_HASH:-{noop}$machine_client_secret}"
           fi
 
           {{.KUBECTL}} -n "{{.NAMESPACE}}" create secret generic taskmigo-secrets \
             --from-literal=database-password="$database_password" \
             --from-literal=system-user-password-hash="$system_password_hash" \
-            --from-literal=machine-client-secret="$machine_client_secret" \
             --from-literal=auth-client-secret-hash="$auth_client_secret_hash" \
             --from-literal=auth-client-secret="$auth_client_secret" \
-            --from-literal=auth-session-secret="$auth_session_secret" \
-            --from-literal=machine-client-secret-hash="$machine_client_secret_hash"
+            --from-literal=auth-session-secret="$auth_session_secret"
         fi
 
         {{.KUBECTL}} -n "{{.NAMESPACE}}" apply -f deploy/minikube/postgresql.yaml
@@ -221,7 +213,6 @@ tasks:
           --set migration.image.repository=taskmigo-migration \
           --set migration.image.tag={{.IMAGE_TAG}} \
           --set migration.image.pullPolicy=Never \
-          --set migration.testClient.enabled=true \
           --set web.image.repository=taskmigo-web \
           --set web.image.tag={{.IMAGE_TAG}} \
           --set web.image.pullPolicy=Never \
@@ -244,8 +235,7 @@ tasks:
           --set-string 'gateway.addresses[0].value={{.MINIKUBE_IP}}' \
           --set-string gateway.clientHost={{.PUBLIC_HOST}} \
           --set-string gateway.webHost={{.PUBLIC_HOST}} \
-          --set tests.enabled=true \
-          --set tests.oauthClient.enabled=true
+          --set tests.enabled=true
 
   kubernetes:workloads:ready:
     desc: Wait until Taskmigo workloads are ready

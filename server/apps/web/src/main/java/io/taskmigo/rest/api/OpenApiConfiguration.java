@@ -15,7 +15,6 @@ import org.springframework.context.annotation.Configuration;
     name = "taskmigoOAuth",
     type = SecuritySchemeType.OAUTH2,
     flows = @OAuthFlows(
-        clientCredentials = @OAuthFlow(tokenUrl = "/oauth2/token"),
         authorizationCode = @OAuthFlow(
             authorizationUrl = "/oauth2/authorize",
             tokenUrl = "/oauth2/token",

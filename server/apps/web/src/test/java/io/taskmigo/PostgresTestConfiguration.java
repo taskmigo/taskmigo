@@ -65,16 +65,21 @@ public class PostgresTestConfiguration {
                 List.of(roleId),
                 List.of()
             );
-            if (clients.findByClientId("integration-client") == null) {
+            if (clients.findByClientId("taskmigo-client") == null) {
                 clients.save(
-                    RegisteredClient.withId("integration-client")
-                        .clientId("integration-client")
+                    RegisteredClient.withId("taskmigo-client")
+                        .clientId("taskmigo-client")
                         .clientSecret("{noop}integration-secret")
-                        .clientName("Integration client")
+                        .clientName("Taskmigo browser test client")
                         .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                         .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                         .clientSettings(
-                            ClientSettings.builder().requireProofKey(false).requireAuthorizationConsent(false).build()
+                            ClientSettings.builder()
+                                .requireProofKey(false)
+                                .requireAuthorizationConsent(false)
+                                .setting("taskmigo.oauth-client.ownership", "internal")
+                                .setting("taskmigo.internal-client.managed", "v1")
+                                .build()
                         )
                         .build()
                 );
