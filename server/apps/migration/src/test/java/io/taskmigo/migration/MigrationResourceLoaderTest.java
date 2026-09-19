@@ -21,8 +21,8 @@ class MigrationResourceLoaderTest {
     void shouldLoadRawCredentialsWhenEnvironmentPropertiesArePresent() {
         // Arrange
         var environment = new MockEnvironment()
-            .withProperty("TM_SYSTEM_PASSWORD", "raw-system-password")
-            .withProperty("TM_BROWSER_CLIENT_SECRET", "raw-browser-secret")
+            .withProperty("TM_SYSTEM_PASSWORD", "raw:#\"system-password")
+            .withProperty("TM_BROWSER_CLIENT_SECRET", "raw:#\"browser-secret")
             .withProperty("TM_BROWSER_HOST_NAME", "http://localhost");
         var loader = new MigrationResourceLoader(environment);
 
@@ -34,8 +34,8 @@ class MigrationResourceLoaderTest {
         assertThat(resources.users())
             .filteredOn(user -> user.username().equals("system"))
             .extracting(MigrationResourceLoader.User::password)
-            .containsExactly("raw-system-password");
-        assertThat(browser.getRegistration().getClientSecret()).isEqualTo("raw-browser-secret");
+            .containsExactly("raw:#\"system-password");
+        assertThat(browser.getRegistration().getClientSecret()).isEqualTo("raw:#\"browser-secret");
         assertThat(browser.getRegistration().getRedirectUris()).containsExactly("http://localhost/api/auth/callback");
         assertThat(browser.getRegistration().getPostLogoutRedirectUris()).containsExactly("http://localhost/");
     }
