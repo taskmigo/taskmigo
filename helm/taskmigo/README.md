@@ -16,14 +16,12 @@ the deployed stack.
 
 The default Secret name is `taskmigo-secrets` and the chart expects these keys:
 
-| Key                         | Used by                                                    |
-| --------------------------- | ---------------------------------------------------------- |
-| `database-password`         | Migration, web, worker                                     |
-| `system-user-password`      | Local and CI browser E2E login                             |
-| `system-user-password-hash` | Pre-encoded migration system-user credential               |
-| `auth-client-secret-hash`   | Pre-encoded browser OAuth client secret and client runtime |
-| `auth-client-secret`        | Raw browser OAuth client secret for the browser runtime    |
-| `auth-session-secret`       | Client session encryption; must be at least 32 characters  |
+| Key                    | Used by                                                                  |
+| ---------------------- | ------------------------------------------------------------------------ |
+| `database-password`    | Migration, web, worker                                                   |
+| `system-user-password` | Initial system-user credential for migration and local/CI browser login |
+| `auth-client-secret`   | Browser OAuth client migration and browser runtime                      |
+| `auth-session-secret`  | Client session encryption; must be at least 32 characters                |
 
 ## Install
 
@@ -34,8 +32,6 @@ kubectl create namespace taskmigo
 kubectl -n taskmigo create secret generic taskmigo-secrets \
   --from-literal=database-password='replace-me' \
   --from-literal=system-user-password='replace-me' \
-  --from-literal=system-user-password-hash='{noop}replace-me' \
-  --from-literal=auth-client-secret-hash='{noop}replace-me' \
   --from-literal=auth-client-secret='replace-me' \
   --from-literal=auth-session-secret='replace-with-at-least-32-characters'
 ```
@@ -58,8 +54,9 @@ The lifecycle is:
 
 1. Helm runs the migration Job before install or upgrade.
 2. Migration runs Flyway migrations and reconciles installation state such as the system user and managed OAuth clients.
-3. Only after the hook succeeds does Helm create or update web, worker, and client workloads.
-4. Web and worker do not include Flyway and only consume the migrated schema.
+3. Raw credentials from the Kubernetes Secret are hashed by the migration application before persistence. A User password is an initial credential: once that User has a password hash, later migration runs preserve it.
+4. Only after the hook succeeds does Helm create or update web, worker, and client workloads.
+5. Web and worker do not include Flyway and only consume the migrated schema.
 
 A failed migration hook fails the Helm release before runtime workloads are changed.
 
