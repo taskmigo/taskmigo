@@ -156,14 +156,16 @@ class MigrationIntegrationTest {
     void shouldPreserveStateWhenReconciliationRunsAgain() {
         String browserId = this.storedClient("browser").getId();
         String passwordHash = Objects.requireNonNull(
-            this.users.findForAuthentication(username).orElseThrow().passwordHash()
+            this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()
         );
         String clientSecretHash = Objects.requireNonNull(this.storedClient("browser").getClientSecret());
 
         this.migration.migrate();
 
         assertThat(this.storedClient("browser").getId()).isEqualTo(browserId);
-        assertThat(this.users.findForAuthentication(username).orElseThrow().passwordHash()).isEqualTo(passwordHash);
+        assertThat(this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()).isEqualTo(
+            passwordHash
+        );
         assertThat(this.storedClient("browser").getClientSecret()).isEqualTo(clientSecretHash);
     }
 
@@ -243,7 +245,7 @@ class MigrationIntegrationTest {
             )
             .id();
         String passwordHash = Objects.requireNonNull(
-            this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()
+            this.users.findForAuthentication(username).orElseThrow().passwordHash()
         );
 
         UUID reconciledId = this.identityProvisioning
@@ -254,9 +256,7 @@ class MigrationIntegrationTest {
         assertThat(this.users.require(createdId))
             .extracting(UserInfo::firstName, UserInfo::emails)
             .containsExactly("Updated", Set.of("updated@example.com"));
-        assertThat(this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()).isEqualTo(
-            passwordHash
-        );
+        assertThat(this.users.findForAuthentication(username).orElseThrow().passwordHash()).isEqualTo(passwordHash);
     }
 
     /**
@@ -297,7 +297,7 @@ class MigrationIntegrationTest {
         // Act
         this.migration.reconcile(resources(Map.of("logging", initialClient)));
         this.migration.reconcile(resources(Map.of("logging", changedClient)));
-        this.internalClients.reconcile(Map.of("logging", changedClient));
+        this.migration.reconcile(resources(Map.of("logging", changedClient)));
 
         // Assert
         var events = output
