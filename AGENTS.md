@@ -30,6 +30,15 @@ Instructions for AI agents and automated contributors working in this repository
 - Group related file changes into a logical chunk instead of creating one commit per file.
 - Prefer one commit per completed chunk. Squash temporary or mechanical commits before updating the working branch.
 
+## Loop control and readability
+
+- Choose loop control based on readability, maintainability, and developer experience rather than applying a blanket rule against `continue`.
+- Use `continue` as a guard clause when skipping an inapplicable iteration early reduces nesting and keeps the primary processing path linear.
+- Prefer early, obvious `continue` statements close to the condition they guard so the skipped case is understandable without tracing distant state.
+- Do not scatter many `continue` statements throughout a long loop, hide them inside deeply nested control flow, or use labeled `continue` when a simpler structure can make the target clear.
+- When several `continue` paths make one iteration difficult to reason about, extract the iteration body into a helper or restructure the loop instead of adding more jumps.
+- Treat `UnnecessaryContinue` findings as a signal to remove redundant statements, but do not replace a useful guard-style `continue` with extra nesting solely to satisfy a style preference.
+
 ## Database schema lifecycle
 
 - Keep exactly one Flyway SQL schema file for each application major version. The migration version follows the application major version; while the application remains on major version `1`, all schema changes belong in `V1__schema.sql`.
