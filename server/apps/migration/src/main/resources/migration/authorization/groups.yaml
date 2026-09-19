@@ -1,6 +1,0 @@
----
-- code: global
-  displayName: Global
-  description: Default group assigned to all new users automatically.
-  roles:
-    - user
