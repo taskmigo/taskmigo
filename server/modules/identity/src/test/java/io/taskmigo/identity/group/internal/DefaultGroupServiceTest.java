@@ -143,6 +143,35 @@ class DefaultGroupServiceTest {
         verify(groups, never()).delete(any());
     }
 
+
+    /**
+     * Verifies that replacing one User's Group memberships mutates only the changed Groups.
+     *
+     * Given: the User currently belongs to group A and the requested membership contains group B only.
+     * Expect: group B receives an add operation and group A receives a remove operation without scanning every Group.
+     */
+    @Test
+    @DisplayName("updates only changed Group memberships for a User")
+    void shouldUpdateOnlyChangedMembershipsWhenGroupsForUserAreReplaced() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        UUID currentGroupId = UUID.randomUUID();
+        UUID requestedGroupId = UUID.randomUUID();
+        GroupStore groups = mock(GroupStore.class);
+        when(groups.containsAll(Set.of(requestedGroupId))).thenReturn(true);
+        when(groups.groupsForUser(userId)).thenReturn(List.of(currentGroupId));
+        UserService users = mock(UserService.class);
+        var service = new DefaultGroupService(groups, users, mock(SubjectGrantService.class));
+
+        // Act
+        service.setGroupsForUser(userId, Set.of(requestedGroupId));
+
+        // Assert
+        verify(groups).addMember(requestedGroupId, userId);
+        verify(groups).removeMember(currentGroupId, userId);
+        verify(groups, never()).loadAllForUpdate();
+    }
+
     private static DefaultGroupService service(GroupStore groups) {
         return service(groups, mock(SubjectGrantService.class));
     }
