@@ -141,7 +141,15 @@ public class DefaultGroupService implements GroupService {
         this.users.require(userId);
         Set<UUID> requested = Set.copyOf(groupIds);
         this.requireGroups(requested);
-        this.groups.replaceMemberships(userId, requested);
+        Set<UUID> current = Set.copyOf(this.groups.groupsForUser(userId));
+        requested
+            .stream()
+            .filter(groupId -> !current.contains(groupId))
+            .forEach(groupId -> this.groups.addMember(groupId, userId));
+        current
+            .stream()
+            .filter(groupId -> !requested.contains(groupId))
+            .forEach(groupId -> this.groups.removeMember(groupId, userId));
     }
 
     @Override
