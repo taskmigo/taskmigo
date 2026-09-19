@@ -14,15 +14,14 @@ final class MigrationChangeLogger {
 
     void log(List<MigrationChange> changes) {
         for (MigrationChange change : changes) {
-            if (change.action() == ReconciliationAction.UNCHANGED) {
-                continue;
+            if (change.action() != ReconciliationAction.UNCHANGED) {
+                LOGGER.atInfo()
+                    .addKeyValue("event.type", "change")
+                    .addKeyValue("event.action", change.action().value())
+                    .addKeyValue("taskmigo.migration.resource.type", change.resourceType())
+                    .addKeyValue("taskmigo.migration.resource.key", change.resourceKey())
+                    .log("Migration resource changed");
             }
-            LOGGER.atInfo()
-                .addKeyValue("event.type", "change")
-                .addKeyValue("event.action", change.action().value())
-                .addKeyValue("taskmigo.migration.resource.type", change.resourceType())
-                .addKeyValue("taskmigo.migration.resource.key", change.resourceKey())
-                .log("Migration resource changed");
         }
     }
 }
