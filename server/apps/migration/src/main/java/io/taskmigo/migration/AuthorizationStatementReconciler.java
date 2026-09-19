@@ -16,63 +16,40 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.boot.ApplicationRunner;
-import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
 
 /// Reconciles flat authorization and identity resources in dependency order.
 @Component
-@Order(1)
-final class AuthorizationStatementReconciler implements ApplicationRunner {
+final class AuthorizationStatementReconciler {
 
     private final AuthorizationProvisioningService authorization;
     private final IdentityProvisioningService identity;
     private final GroupService groups;
-    private final MigrationResourceLoader resources;
-    private final MigrationChangeLogger changeLogger;
     private final PasswordEncoder passwordEncoder;
-    private final TransactionTemplate transactions;
 
     AuthorizationStatementReconciler(
         AuthorizationProvisioningService authorization,
         IdentityProvisioningService identity,
         GroupService groups,
-        MigrationResourceLoader resources,
-        MigrationChangeLogger changeLogger,
-        PasswordEncoder passwordEncoder,
-        PlatformTransactionManager transactionManager
+        PasswordEncoder passwordEncoder
     ) {
         this.authorization = authorization;
         this.identity = identity;
         this.groups = groups;
-        this.resources = resources;
-        this.changeLogger = changeLogger;
         this.passwordEncoder = passwordEncoder;
-        this.transactions = new TransactionTemplate(transactionManager);
     }
 
-    @Override
-    public void run(ApplicationArguments arguments) {
-        List<MigrationChange> changes = new ArrayList<>();
-        this.transactions.executeWithoutResult(status -> {
-            MigrationResourceLoader.MigrationResources data = this.resources.load();
-            this.validate(data);
+    void reconcile(MigrationResourceLoader.MigrationResources data, List<MigrationChange> changes) {
+        changes.addAll(this.deleteAbsent(data));
 
-            changes.addAll(this.deleteAbsent(data));
-
-            Map<String, UUID> statementIds = this.reconcileStatements(data.statements(), changes);
-            Map<String, UUID> roleIds = this.reconcileRoles(data.roles(), statementIds, changes);
-            Map<String, UUID> groupIds = this.reconcileGroups(data.groups(), roleIds, changes);
-            this.reconcileUsers(data.users(), roleIds, groupIds, changes);
-        });
-        this.changeLogger.log(changes);
+        Map<String, UUID> statementIds = this.reconcileStatements(data.statements(), changes);
+        Map<String, UUID> roleIds = this.reconcileRoles(data.roles(), statementIds, changes);
+        Map<String, UUID> groupIds = this.reconcileGroups(data.groups(), roleIds, changes);
+        this.reconcileUsers(data.users(), roleIds, groupIds, changes);
     }
 
-    private void validate(MigrationResourceLoader.MigrationResources data) {
+    void validate(MigrationResourceLoader.MigrationResources data) {
         Map<String, MigrationResourceLoader.Statement> statements = unique(
             data.statements(),
             MigrationResourceLoader.Statement::code,
