@@ -55,8 +55,8 @@ final class MigrationRunner implements ApplicationRunner {
             List<MigrationChange> changes = new ArrayList<>();
             try {
                 this.transactions.executeWithoutResult(status -> {
-                    changes.addAll(this.resourcesReconciler.reconcile(data));
-                    changes.addAll(this.clients.reconcile(data.clients()));
+                    this.resourcesReconciler.reconcile(data, changes);
+                    this.clients.reconcile(data.clients(), changes);
                 });
                 this.changeLogger.log(changes);
                 return;
