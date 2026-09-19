@@ -389,13 +389,7 @@ class MigrationIntegrationTest {
     }
 
     private static MigrationResourceLoader.MigrationResources resources(Map<String, Client> clients) {
-        return new MigrationResourceLoader.MigrationResources(
-            List.of(),
-            List.of(),
-            List.of(),
-            List.of(),
-            clients
-        );
+        return new MigrationResourceLoader.MigrationResources(List.of(), List.of(), List.of(), List.of(), clients);
     }
 
     private RegisteredClient storedClient(String clientId) {
