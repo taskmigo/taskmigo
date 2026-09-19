@@ -20,14 +20,10 @@ public final class AuthorizationName {
     }
 
     public static String requiredRole(@Nullable String value, String field) {
-        if (value == null) {
+        if (value == null || !ROLE_FORMAT.matcher(value).matches()) {
             throw new AuthorizationException(field + " must match [a-zA-Z0-9_ -]{6,255}");
         }
-        String normalized = value.trim();
-        if (!ROLE_FORMAT.matcher(normalized).matches()) {
-            throw new AuthorizationException(field + " must match [a-zA-Z0-9_ -]{6,255}");
-        }
-        return normalized;
+        return value;
     }
 
     public static String requiredDisplayName(@Nullable String value, String field) {
