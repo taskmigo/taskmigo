@@ -19,10 +19,7 @@ final class InternalClientReconciler {
     private final JdbcRegisteredClientRepository clients;
     private final InternalRegisteredClientFactory clientFactory;
 
-    InternalClientReconciler(
-        JdbcRegisteredClientRepository clients,
-        InternalRegisteredClientFactory clientFactory
-    ) {
+    InternalClientReconciler(JdbcRegisteredClientRepository clients, InternalRegisteredClientFactory clientFactory) {
         this.clients = clients;
         this.clientFactory = clientFactory;
     }
