@@ -1,4 +1,4 @@
-package io.taskmigo.bootstrap;
+package io.taskmigo.migration;
 
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningService;
@@ -26,7 +26,7 @@ import tools.jackson.dataformat.yaml.YAMLMapper;
 @Order(2)
 class AuthorizationStatementReconciler implements ApplicationRunner {
 
-    private static final String RESOURCE_PREFIX = "bootstrap/authorization/";
+    private static final String RESOURCE_PREFIX = "migration/authorization/";
 
     private final AuthorizationProvisioningService authorization;
     private final IdentityProvisioningService identity;

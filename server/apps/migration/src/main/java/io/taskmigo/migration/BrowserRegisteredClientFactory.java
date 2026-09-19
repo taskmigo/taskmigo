@@ -1,4 +1,4 @@
-package io.taskmigo.bootstrap;
+package io.taskmigo.migration;
 
 import java.time.Duration;
 import java.util.Set;

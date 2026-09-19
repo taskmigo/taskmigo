@@ -1,4 +1,4 @@
-package io.taskmigo.bootstrap;
+package io.taskmigo.migration;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties;
@@ -15,7 +15,7 @@ import org.springframework.security.oauth2.server.authorization.client.JdbcRegis
     BrowserAuthenticationProperties.class,
     OAuth2AuthorizationServerProperties.class,
 })
-class BootstrapConfiguration {
+class MigrationConfiguration {
 
     @Bean
     PasswordEncoder passwordEncoder() {

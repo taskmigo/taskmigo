@@ -1,4 +1,4 @@
-package io.taskmigo.bootstrap;
+package io.taskmigo.migration;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.boot.context.properties.ConfigurationProperties;

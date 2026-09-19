@@ -1,4 +1,4 @@
-package io.taskmigo.bootstrap;
+package io.taskmigo.migration;
 
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
 import org.springframework.boot.ApplicationArguments;

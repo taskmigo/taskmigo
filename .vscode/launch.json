@@ -3,10 +3,10 @@
   "configurations": [
     {
       "type": "java",
-      "name": "Taskmigo Bootstrap",
+      "name": "Taskmigo Migration",
       "request": "launch",
-      "mainClass": "io.taskmigo.TaskmigoBootstrapApplication",
-      "projectName": "bootstrap",
+      "mainClass": "io.taskmigo.TaskmigoMigrationApplication",
+      "projectName": "migration",
       "cwd": "${workspaceFolder}/server",
       "env": {
         "TASKMIGO_DATABASE_URL": "jdbc:postgresql://localhost:5432/taskmigo",

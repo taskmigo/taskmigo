@@ -1,4 +1,4 @@
-package io.taskmigo.bootstrap;
+package io.taskmigo.migration;
 
 import jakarta.validation.constraints.NotNull;
 import java.net.URI;

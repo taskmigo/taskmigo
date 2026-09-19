@@ -1,4 +1,4 @@
-package io.taskmigo.bootstrap;
+package io.taskmigo.migration;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.role.RoleInfo;
@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
-/// Supplies bootstrap-time target metadata needed to validate managed Object Statements.
+/// Supplies migration-time target metadata needed to validate managed Object Statements.
 @Configuration(proxyBeanMethods = false)
 class AuthorizationObjectSchemaConfiguration {
 

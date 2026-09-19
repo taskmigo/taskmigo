@@ -28,10 +28,10 @@ database:
   existingSecret: taskmigo-secrets
   passwordKey: database-password
 
-bootstrap:
+migration:
   enabled: true
   image:
-    repository: ghcr.io/taskmigo/taskmigo-bootstrap
+    repository: ghcr.io/taskmigo/taskmigo-migration
     tag: ""
     pullPolicy: IfNotPresent
   backoffLimit: 3

@@ -4,10 +4,10 @@ plugins {
 }
 
 tasks.bootJar {
-    archiveFileName = "bootstrap.jar"
+    archiveFileName = "migration.jar"
 }
 
-description = "Taskmigo database migration and installation bootstrap application"
+description = "Taskmigo database migration application"
 
 dependencies {
     compileOnly(platform(libs.spring.modulith.bom))

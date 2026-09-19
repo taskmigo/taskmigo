@@ -122,7 +122,7 @@ jobs:
             echo "| Image | Size (MiB) | Limit (MiB) | Size (bytes) |"
             echo "| --- | ---: | ---: | ---: |"
             for image in \
-              taskmigo-bootstrap:integration \
+              taskmigo-migration:integration \
               taskmigo-web:integration \
               taskmigo-worker:integration \
               taskmigo-client:integration; do

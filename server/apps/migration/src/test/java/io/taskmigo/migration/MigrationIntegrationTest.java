@@ -1,4 +1,4 @@
-package io.taskmigo.bootstrap;
+package io.taskmigo.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -49,7 +49,7 @@ import org.springframework.test.context.TestConstructor;
 )
 @Import(PostgresTestConfiguration.class)
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
-class BootstrapIntegrationTest {
+class MigrationIntegrationTest {
 
     private final Flyway flyway;
     private final JdbcRegisteredClientRepository clients;
@@ -63,7 +63,7 @@ class BootstrapIntegrationTest {
     private final AuthorizationProvisioningService authorizationProvisioning;
     private final IdentityProvisioningService identityProvisioning;
 
-    BootstrapIntegrationTest(
+    MigrationIntegrationTest(
         Flyway flyway,
         JdbcRegisteredClientRepository clients,
         InternalClientReconciler internalClients,
@@ -91,7 +91,7 @@ class BootstrapIntegrationTest {
 
     @Test
     @DisplayName("installs the schema, system user, and managed OAuth clients")
-    void shouldInstallRequiredStateWhenBootstrapRuns() {
+    void shouldInstallRequiredStateWhenMigrationRuns() {
         var migrations = this.flyway.info().applied();
         assertThat(migrations).hasSize(1);
         assertThat(migrations[0].getVersion().getVersion()).isEqualTo("1");
@@ -148,7 +148,7 @@ class BootstrapIntegrationTest {
 
     @Test
     @DisplayName("reconciles built-in statements through normal role assignments")
-    void shouldAssignBuiltInStatementsWhenBootstrapRuns() {
+    void shouldAssignBuiltInStatementsWhenMigrationRuns() {
         var system = this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow();
 
         var statements = this.statements.list(1, 100).items();
@@ -161,7 +161,7 @@ class BootstrapIntegrationTest {
 
     @Test
     @DisplayName("persists Embedded Language policies for every built-in statement")
-    void shouldPersistEmbeddedLanguagePoliciesWhenBootstrapRuns() {
+    void shouldPersistEmbeddedLanguagePoliciesWhenMigrationRuns() {
         Map<String, Scope> builtInScopes = Map.of(
             "system_operator_request_all",
             Scope.REQUEST,
@@ -187,8 +187,8 @@ class BootstrapIntegrationTest {
     }
 
     @Test
-    @DisplayName("upserts users from bootstrap data")
-    void shouldUpsertBootstrapUserWhenUserIsMissingOrPresent() {
+    @DisplayName("upserts users from migration data")
+    void shouldUpsertManagedUserWhenUserIsMissingOrPresent() {
         String username = "bootstrap-user";
         UUID roleId = this.authorizationProvisioning.requireRole("System Operator");
         UUID statementId = this.authorizationProvisioning.requireStatement("system_operator_request_all");
