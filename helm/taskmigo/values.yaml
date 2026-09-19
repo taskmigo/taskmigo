@@ -36,10 +36,10 @@ migration:
     pullPolicy: IfNotPresent
   backoffLimit: 3
   activeDeadlineSeconds: 600
-  systemUserPasswordHashKey: system-user-password-hash
+  systemUserPasswordKey: system-user-password
   browserAuthentication:
     enabled: true
-    clientSecretHashKey: auth-client-secret-hash
+    clientSecretKey: auth-client-secret
   resources: {}
   extraEnv: []
 
