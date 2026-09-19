@@ -18,20 +18,20 @@ final class MigrationRunner implements ApplicationRunner {
     private static final int MAX_RECONCILIATION_ATTEMPTS = 3;
 
     private final MigrationResourceLoader resources;
-    private final AuthorizationStatementReconciler authorization;
+    private final ManagedResourceReconciler resourcesReconciler;
     private final InternalClientReconciler clients;
     private final MigrationChangeLogger changeLogger;
     private final TransactionTemplate transactions;
 
     MigrationRunner(
         MigrationResourceLoader resources,
-        AuthorizationStatementReconciler authorization,
+        ManagedResourceReconciler resourcesReconciler,
         InternalClientReconciler clients,
         MigrationChangeLogger changeLogger,
         PlatformTransactionManager transactionManager
     ) {
         this.resources = resources;
-        this.authorization = authorization;
+        this.resourcesReconciler = resourcesReconciler;
         this.clients = clients;
         this.changeLogger = changeLogger;
         this.transactions = new TransactionTemplate(transactionManager);
@@ -41,15 +41,15 @@ final class MigrationRunner implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments arguments) {
         MigrationResourceLoader.MigrationResources data = this.resources.load();
-        this.authorization.validate(data);
+        this.resourcesReconciler.validate(data);
         this.clients.validate(data.clients());
 
         for (int attempt = 1; ; attempt++) {
             List<MigrationChange> changes = new ArrayList<>();
             try {
                 this.transactions.executeWithoutResult(status -> {
-                    this.authorization.reconcile(data, changes);
-                    this.clients.reconcile(data.clients(), changes);
+                    changes.addAll(this.resourcesReconciler.reconcile(data));
+                    changes.addAll(this.clients.reconcile(data.clients()));
                 });
                 this.changeLogger.log(changes);
                 return;
