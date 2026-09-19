@@ -37,7 +37,7 @@ public interface GroupStore {
 
     void addMember(UUID groupId, UUID userId);
 
-    void replaceMemberships(UUID userId, Set<UUID> groupIds);
+    void removeMember(UUID groupId, UUID userId);
 
     void delete(UUID groupId);
 
