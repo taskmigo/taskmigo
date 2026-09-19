@@ -38,7 +38,7 @@ final class MigrationResourceLoader {
 
     MigrationResources load() {
         try {
-            List<User> users = this.readList("users.yaml", new TypeReference<>() {})
+            List<User> users = this.readList("users.yaml", new TypeReference<List<User>>() {})
                 .stream()
                 .map(this::resolveUser)
                 .toList();
