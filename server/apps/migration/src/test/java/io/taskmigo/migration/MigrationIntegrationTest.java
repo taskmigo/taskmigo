@@ -15,6 +15,7 @@ import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.UserService;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -41,9 +42,10 @@ import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest(
     properties = {
-        "TM_SYSTEM_PASSWORD={noop}integration-password",
-        "TM_BROWSER_CLIENT_SECRET={noop}browser-integration-secret",
+        "TM_SYSTEM_PASSWORD=integration-password",
+        "TM_BROWSER_CLIENT_SECRET=browser-integration-secret",
         "TM_BROWSER_HOST_NAME=http://localhost:3000",
+        "TM_BROWSER_AUTHENTICATION_ENABLED=true",
     }
 )
 @Import(PostgresTestConfiguration.class)
@@ -53,7 +55,7 @@ class MigrationIntegrationTest {
 
     private final Flyway flyway;
     private final JdbcRegisteredClientRepository clients;
-    private final InternalClientReconciler internalClients;
+    private final MigrationRunner migration;
     private final MigrationResourceLoader resources;
     private final PasswordEncoder passwordEncoder;
     private final UserService users;
@@ -65,7 +67,7 @@ class MigrationIntegrationTest {
     MigrationIntegrationTest(
         Flyway flyway,
         JdbcRegisteredClientRepository clients,
-        InternalClientReconciler internalClients,
+        MigrationRunner migration,
         MigrationResourceLoader resources,
         PasswordEncoder passwordEncoder,
         UserService users,
@@ -76,7 +78,7 @@ class MigrationIntegrationTest {
     ) {
         this.flyway = flyway;
         this.clients = clients;
-        this.internalClients = internalClients;
+        this.migration = migration;
         this.resources = resources;
         this.passwordEncoder = passwordEncoder;
         this.users = users;
@@ -117,7 +119,13 @@ class MigrationIntegrationTest {
         assertThat(browser.getScopes()).containsExactlyInAnyOrder(OidcScopes.OPENID, OidcScopes.PROFILE);
         assertThat(browser.getClientSettings().isRequireProofKey()).isTrue();
         assertThat(browser.getClientSettings().isRequireAuthorizationConsent()).isFalse();
-        assertThat(browser.getTokenSettings().isReuseRefreshTokens()).isTrue();
+        assertThat(browser.getTokenSettings().isReuseRefreshTokens()).isFalse();
+        assertThat(
+            this.passwordEncoder.matches(
+                "browser-integration-secret",
+                Objects.requireNonNull(browser.getClientSecret())
+            )
+        ).isTrue();
     }
 
     /**
@@ -131,7 +139,7 @@ class MigrationIntegrationTest {
         Client browser = Objects.requireNonNull(this.resources.load().clients().get("browser"));
 
         assertThat(browser.getRegistration().getClientId()).isEqualTo("browser");
-        assertThat(browser.getRegistration().getClientSecret()).isEqualTo("{noop}browser-integration-secret");
+        assertThat(browser.getRegistration().getClientSecret()).isEqualTo("browser-integration-secret");
         assertThat(browser.getRegistration().getScopes()).containsExactlyInAnyOrder(
             OidcScopes.OPENID,
             OidcScopes.PROFILE
@@ -139,24 +147,24 @@ class MigrationIntegrationTest {
     }
 
     /**
-     * Verifies: re-running the internal client reconciliation is idempotent.
-     * Given: already-provisioned managed clients and their pre-encoded secret.
-     * Expect: database identifiers and the system password hash remain unchanged.
+     * Verifies: re-running the complete migration is idempotent for initialized credentials.
+     * Given: already-provisioned managed resources with persisted User and OAuth credential hashes.
+     * Expect: database identifiers and both persisted credential hashes remain unchanged.
      */
     @Test
     @DisplayName("preserves managed client and user state during reconciliation")
     void shouldPreserveStateWhenReconciliationRunsAgain() {
         String browserId = this.storedClient("browser").getId();
         String passwordHash = Objects.requireNonNull(
-            this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()
+            this.users.findForAuthentication(username).orElseThrow().passwordHash()
         );
+        String clientSecretHash = Objects.requireNonNull(this.storedClient("browser").getClientSecret());
 
-        this.internalClients.reconcile(this.resources.load().clients());
+        this.migration.migrate();
 
         assertThat(this.storedClient("browser").getId()).isEqualTo(browserId);
-        assertThat(this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()).isEqualTo(
-            passwordHash
-        );
+        assertThat(this.users.findForAuthentication(username).orElseThrow().passwordHash()).isEqualTo(passwordHash);
+        assertThat(this.storedClient("browser").getClientSecret()).isEqualTo(clientSecretHash);
     }
 
     /**
@@ -214,9 +222,9 @@ class MigrationIntegrationTest {
     }
 
     /**
-     * Verifies: identity reconciliation replaces profile and relationship state without re-encoding a supplied hash.
-     * Given: a user with a pre-encoded password, a role, and no direct statement field.
-     * Expect: the same user id is updated and the original system password remains unchanged.
+     * Verifies: Identity provisioning treats its password input as an initial encoded credential.
+     * Given: a User created with an initial hash and then reconciled with profile changes only.
+     * Expect: the same User id and initial password hash are preserved while profile state is updated.
      */
     @Test
     @DisplayName("upserts users from migration data")
@@ -226,7 +234,7 @@ class MigrationIntegrationTest {
         UUID createdId = this.identityProvisioning
             .reconcileUser(
                 username,
-                "{noop}migration-password",
+                this.passwordEncoder.encode("migration-password"),
                 Set.of("MIGRATION@EXAMPLE.COM"),
                 "Migration",
                 "User",
@@ -260,11 +268,11 @@ class MigrationIntegrationTest {
     @DisplayName("creates one registration during concurrent internal client reconciliation")
     void shouldCreateOneRegistrationWhenInternalClientReconciliationIsConcurrent() throws Exception {
         String clientId = "concurrent-" + UUID.randomUUID();
-        var configuredClients = Map.of("concurrent", client(clientId, "{noop}concurrent-secret"));
+        var configuredClients = Map.of("concurrent", client(clientId, "concurrent-secret"));
 
         try (var executor = Executors.newFixedThreadPool(2)) {
-            var first = executor.submit(() -> this.internalClients.reconcile(configuredClients));
-            var second = executor.submit(() -> this.internalClients.reconcile(configuredClients));
+            var first = executor.submit(() -> this.migration.reconcile(resources(configuredClients)));
+            var second = executor.submit(() -> this.migration.reconcile(resources(configuredClients)));
             first.get();
             second.get();
         }
@@ -282,13 +290,13 @@ class MigrationIntegrationTest {
     void shouldWriteJsonChangeEventsWhenInternalClientDataChanges(CapturedOutput output) throws Exception {
         // Arrange
         String clientId = "logging-" + UUID.randomUUID();
-        Client initialClient = client(clientId, "{noop}logging-secret");
-        Client changedClient = client(clientId, "{noop}logging-secret");
+        Client initialClient = client(clientId, "logging-secret");
+        Client changedClient = client(clientId, "logging-secret");
         changedClient.getRegistration().setClientName("Changed logging client");
 
         // Act
-        this.internalClients.reconcile(Map.of("logging", initialClient));
-        this.internalClients.reconcile(Map.of("logging", changedClient));
+        this.migration.reconcile(resources(Map.of("logging", initialClient)));
+        this.migration.reconcile(resources(Map.of("logging", changedClient)));
         this.internalClients.reconcile(Map.of("logging", changedClient));
 
         // Assert
@@ -336,13 +344,13 @@ class MigrationIntegrationTest {
         );
         var configuredClients = Map.of(
             "a-managed",
-            client(managedClientId, "{noop}managed-secret"),
+            client(managedClientId, "managed-secret"),
             "b-unmanaged",
-            client(unmanagedClientId, "{noop}unmanaged-secret")
+            client(unmanagedClientId, "unmanaged-secret")
         );
 
         // Act
-        assertThatThrownBy(() -> this.internalClients.reconcile(configuredClients)).hasMessageContaining(
+        assertThatThrownBy(() -> this.migration.reconcile(resources(configuredClients))).hasMessageContaining(
             "Refusing to adopt unmanaged OAuth client"
         );
 
@@ -376,8 +384,18 @@ class MigrationIntegrationTest {
         );
 
         assertThatThrownBy(() ->
-            this.internalClients.reconcile(Map.of("unmanaged", client(clientId, "{noop}secret")))
+            this.migration.reconcile(resources(Map.of("unmanaged", client(clientId, "secret"))))
         ).hasMessageContaining("Refusing to adopt unmanaged OAuth client");
+    }
+
+    private static MigrationResourceLoader.MigrationResources resources(Map<String, Client> clients) {
+        return new MigrationResourceLoader.MigrationResources(
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            clients
+        );
     }
 
     private RegisteredClient storedClient(String clientId) {
