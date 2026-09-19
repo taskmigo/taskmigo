@@ -19,6 +19,7 @@ The default Secret name is `taskmigo-secrets` and the chart expects these keys:
 | Key                         | Used by                                                    |
 | --------------------------- | ---------------------------------------------------------- |
 | `database-password`         | Migration, web, worker                                     |
+| `system-user-password`      | Local and CI browser E2E login                             |
 | `system-user-password-hash` | Pre-encoded migration system-user credential               |
 | `auth-client-secret-hash`   | Pre-encoded browser OAuth client secret and client runtime |
 | `auth-client-secret`        | Raw browser OAuth client secret for the browser runtime    |
@@ -32,6 +33,7 @@ Create the Secret outside Helm so upgrades never rotate credentials implicitly:
 kubectl create namespace taskmigo
 kubectl -n taskmigo create secret generic taskmigo-secrets \
   --from-literal=database-password='replace-me' \
+  --from-literal=system-user-password='replace-me' \
   --from-literal=system-user-password-hash='{noop}replace-me' \
   --from-literal=auth-client-secret-hash='{noop}replace-me' \
   --from-literal=auth-client-secret='replace-me' \

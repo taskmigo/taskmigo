@@ -157,7 +157,7 @@ jobs:
           public_host=taskmigo.internal.com
           printf '%s %s\n' "$minikube_ip" "$public_host" | sudo tee -a /etc/hosts >/dev/null
           e2e_password="$(minikube -p "$PROFILE" kubectl -- -n "$NAMESPACE" get secret taskmigo-secrets \
-            -o go-template='{{index .data "system-user-password-hash" | base64decode}}')"
+            -o go-template='{{index .data "system-user-password" | base64decode}}')"
           export E2E_BASE_URL="http://${public_host}"
           export E2E_AUTH_ORIGIN="http://${public_host}"
           export E2E_USERNAME=system
