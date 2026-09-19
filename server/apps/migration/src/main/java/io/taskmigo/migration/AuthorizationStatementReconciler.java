@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -33,6 +34,7 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
     private final GroupService groups;
     private final MigrationResourceLoader resources;
     private final MigrationChangeLogger changeLogger;
+    private final PasswordEncoder passwordEncoder;
     private final TransactionTemplate transactions;
 
     AuthorizationStatementReconciler(
@@ -41,6 +43,7 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
         GroupService groups,
         MigrationResourceLoader resources,
         MigrationChangeLogger changeLogger,
+        PasswordEncoder passwordEncoder,
         PlatformTransactionManager transactionManager
     ) {
         this.authorization = authorization;
@@ -48,6 +51,7 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
         this.groups = groups;
         this.resources = resources;
         this.changeLogger = changeLogger;
+        this.passwordEncoder = passwordEncoder;
         this.transactions = new TransactionTemplate(transactionManager);
     }
 
@@ -231,9 +235,10 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
             }
             Set<UUID> roles = user.roles().stream().map(roleIds::get).collect(Collectors.toSet());
             Set<UUID> groups = user.groups().stream().map(groupIds::get).collect(Collectors.toSet());
+            String initialPasswordHash = this.initialPasswordHash(user.password());
             ReconciliationResult<UUID> reconciliation = this.identity.reconcileUser(
                 user.username(),
-                user.password(),
+                initialPasswordHash,
                 user.emails(),
                 user.firstName(),
                 user.lastName(),
@@ -242,6 +247,12 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
             );
             changes.add(change("user", user.username(), reconciliation.action()));
         }
+    }
+
+    private @org.jspecify.annotations.Nullable String initialPasswordHash(
+        @org.jspecify.annotations.Nullable String rawPassword
+    ) {
+        return rawPassword == null || rawPassword.isBlank() ? null : this.passwordEncoder.encode(rawPassword);
     }
 
     private static MigrationChange change(String resourceType, String resourceKey, ReconciliationAction action) {
