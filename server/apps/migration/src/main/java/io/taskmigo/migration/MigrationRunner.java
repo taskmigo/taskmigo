@@ -40,7 +40,14 @@ final class MigrationRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments arguments) {
-        MigrationResourceLoader.MigrationResources data = this.resources.load();
+        this.migrate();
+    }
+
+    void migrate() {
+        this.reconcile(this.resources.load());
+    }
+
+    void reconcile(MigrationResourceLoader.MigrationResources data) {
         this.resourcesReconciler.validate(data);
         this.clients.validate(data.clients());
 
