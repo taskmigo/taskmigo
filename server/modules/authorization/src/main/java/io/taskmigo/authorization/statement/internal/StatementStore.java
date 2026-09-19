@@ -15,6 +15,8 @@ public interface StatementStore {
 
     UUID create(StatementDefinition definition);
 
+    Optional<StatementInfo> findByCode(String code);
+
     Optional<UUID> findIdByCode(String code);
 
     void update(UUID id, StatementDefinition definition);

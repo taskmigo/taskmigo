@@ -1,6 +1,7 @@
 /// Installation migration tasks executed after schema migration and before runtime applications start.
 @ApplicationModule(
     allowedDependencies = {
+        "foundation",
         "authorization :: object",
         "authorization :: provisioning",
         "authorization :: role",

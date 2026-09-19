@@ -7,3 +7,11 @@ spring:
   flyway:
     enabled: true
     validate-migration-naming: true
+
+logging:
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        name: taskmigo-migration

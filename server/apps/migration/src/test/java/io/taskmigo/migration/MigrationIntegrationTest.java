@@ -23,8 +23,11 @@ import java.util.concurrent.Executors;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties.Client;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -33,6 +36,8 @@ import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.test.context.TestConstructor;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest(
     properties = {
@@ -42,6 +47,7 @@ import org.springframework.test.context.TestConstructor;
     }
 )
 @Import(PostgresTestConfiguration.class)
+@ExtendWith(OutputCaptureExtension.class)
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 class MigrationIntegrationTest {
 
@@ -217,28 +223,24 @@ class MigrationIntegrationTest {
     void shouldUpsertManagedUserWhenUserIsMissingOrPresent() {
         String username = "migration-user";
         UUID roleId = this.authorizationProvisioning.requireRole("system-operator");
-        UUID createdId = this.identityProvisioning.reconcileUser(
-            username,
-            "{noop}migration-password",
-            Set.of("MIGRATION@EXAMPLE.COM"),
-            "Migration",
-            "User",
-            Set.of(roleId),
-            Set.of()
-        );
+        UUID createdId = this.identityProvisioning
+            .reconcileUser(
+                username,
+                "{noop}migration-password",
+                Set.of("MIGRATION@EXAMPLE.COM"),
+                "Migration",
+                "User",
+                Set.of(roleId),
+                Set.of()
+            )
+            .id();
         String passwordHash = Objects.requireNonNull(
             this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()
         );
 
-        UUID reconciledId = this.identityProvisioning.reconcileUser(
-            username,
-            null,
-            Set.of("updated@example.com"),
-            "Updated",
-            "User",
-            Set.of(roleId),
-            Set.of()
-        );
+        UUID reconciledId = this.identityProvisioning
+            .reconcileUser(username, null, Set.of("updated@example.com"), "Updated", "User", Set.of(roleId), Set.of())
+            .id();
 
         assertThat(reconciledId).isEqualTo(createdId);
         assertThat(this.users.require(createdId))
@@ -268,6 +270,85 @@ class MigrationIntegrationTest {
         }
 
         assertThat(this.storedClient(clientId).getId()).isEqualTo("concurrent");
+    }
+
+    /**
+     * Verifies: a managed OAuth client emits events only when its configured data changes.
+     * Given: a new internal client, followed by a changed configuration and then the same configuration again.
+     * Expect: the events are `added` and `updated` only, and no secret is present in either event.
+     */
+    @Test
+    @DisplayName("writes ECS JSON events only for added and changed clients")
+    void shouldWriteJsonChangeEventsWhenInternalClientDataChanges(CapturedOutput output) throws Exception {
+        // Arrange
+        String clientId = "logging-" + UUID.randomUUID();
+        Client initialClient = client(clientId, "{noop}logging-secret");
+        Client changedClient = client(clientId, "{noop}logging-secret");
+        changedClient.getRegistration().setClientName("Changed logging client");
+
+        // Act
+        this.internalClients.reconcile(Map.of("logging", initialClient));
+        this.internalClients.reconcile(Map.of("logging", changedClient));
+        this.internalClients.reconcile(Map.of("logging", changedClient));
+
+        // Assert
+        var events = output
+            .getAll()
+            .lines()
+            .filter(line -> line.contains("\"key\":\"" + clientId + "\""))
+            .map(MigrationIntegrationTest::parseJson)
+            .toList();
+        assertThat(events).hasSize(2);
+        assertThat(events)
+            .extracting(node -> node.path("event").path("type").asString())
+            .containsOnly("change");
+        assertThat(events)
+            .extracting(node -> node.path("event").path("action").asString())
+            .containsExactly("added", "updated");
+        assertThat(events)
+            .extracting(node -> node.path("taskmigo").path("migration").path("resource").path("type").asString())
+            .containsOnly("oauth-client");
+        assertThat(events)
+            .extracting(node -> node.path("taskmigo").path("migration").path("resource").path("key").asString())
+            .containsOnly(clientId);
+        assertThat(output.getAll()).doesNotContain("logging-secret");
+    }
+
+    /**
+     * Verifies: a failed transaction does not publish changes that were rolled back.
+     * Given: a transaction that saves one client before refusing to adopt an unmanaged client.
+     * Expect: the first client is absent from persistence and no change event is emitted for it.
+     */
+    @Test
+    @DisplayName("does not log client changes when reconciliation rolls back")
+    void shouldNotWriteChangeEventWhenInternalClientReconciliationRollsBack(CapturedOutput output) {
+        // Arrange
+        String managedClientId = "rollback-" + UUID.randomUUID();
+        String unmanagedClientId = "rollback-unmanaged-" + UUID.randomUUID();
+        this.clients.save(
+            RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId(unmanagedClientId)
+                .clientSecret(this.passwordEncoder.encode("rollback-secret"))
+                .clientName("Unmanaged")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                .build()
+        );
+        var configuredClients = Map.of(
+            "a-managed",
+            client(managedClientId, "{noop}managed-secret"),
+            "b-unmanaged",
+            client(unmanagedClientId, "{noop}unmanaged-secret")
+        );
+
+        // Act
+        assertThatThrownBy(() -> this.internalClients.reconcile(configuredClients)).hasMessageContaining(
+            "Refusing to adopt unmanaged OAuth client"
+        );
+
+        // Assert
+        assertThat(this.clients.findByClientId(managedClientId)).isNull();
+        assertThat(output.getAll()).doesNotContain(managedClientId);
     }
 
     /**
@@ -301,6 +382,10 @@ class MigrationIntegrationTest {
 
     private RegisteredClient storedClient(String clientId) {
         return Objects.requireNonNull(this.clients.findByClientId(clientId));
+    }
+
+    private static JsonNode parseJson(String line) {
+        return JsonMapper.builder().build().readTree(line);
     }
 
     private static Client client(String clientId, String clientSecret) {

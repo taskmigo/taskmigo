@@ -5,6 +5,8 @@ import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.subject.SubjectGrantService;
 import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.foundation.ReconciliationAction;
+import io.taskmigo.foundation.ReconciliationResult;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.group.GroupException;
 import io.taskmigo.identity.group.GroupInfo;
@@ -19,6 +21,7 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -104,7 +107,7 @@ public class DefaultGroupService implements GroupService {
 
     @Override
     @Transactional
-    public UUID reconcile(
+    public ReconciliationResult<UUID> reconcile(
         @Nullable String code,
         @Nullable String displayName,
         @Nullable String description,
@@ -112,13 +115,24 @@ public class DefaultGroupService implements GroupService {
     ) {
         String requiredCode = required(code, "code");
         String requiredDisplayName = required(displayName, "displayName");
+        Set<UUID> requestedRoleIds = Set.copyOf(roleIds);
         GroupState existing = this.groups.findByCode(requiredCode).orElse(null);
         if (existing == null) {
-            return this.create(requiredCode, requiredDisplayName, description, Set.of(), roleIds);
+            return new ReconciliationResult<>(
+                this.create(requiredCode, requiredDisplayName, description, Set.of(), requestedRoleIds),
+                ReconciliationAction.ADDED
+            );
+        }
+        if (
+            existing.displayName().equals(requiredDisplayName) &&
+            Objects.equals(existing.description(), description) &&
+            this.grants.roleIds(IdentitySubjects.group(existing.id())).equals(requestedRoleIds)
+        ) {
+            return new ReconciliationResult<>(existing.id(), ReconciliationAction.UNCHANGED);
         }
         this.groups.updateDisplayNameAndDescription(existing.id(), requiredDisplayName, description);
-        this.setRoles(existing.id(), roleIds);
-        return existing.id();
+        this.setRoles(existing.id(), requestedRoleIds);
+        return new ReconciliationResult<>(existing.id(), ReconciliationAction.UPDATED);
     }
 
     @Override
@@ -132,13 +146,14 @@ public class DefaultGroupService implements GroupService {
 
     @Override
     @Transactional
-    public void deleteByCode(String code) {
+    public boolean deleteByCode(String code) {
         GroupState group = this.groups.findByCode(required(code, "code")).orElse(null);
         if (group == null) {
-            return;
+            return false;
         }
         this.grants.setRoles(IdentitySubjects.group(group.id()), Set.of());
         this.groups.delete(group.id());
+        return true;
     }
 
     @Override

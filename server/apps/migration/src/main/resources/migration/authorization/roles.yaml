@@ -1,11 +1,15 @@
 ---
+- code: user
+  displayName: Basic User
+  description: The default role for all users. This role allows users to access the system and perform basic operations.
+  statements: []
+
 - code: system-operator
   displayName: System Operator
   description: Full operational access.
   statements:
     - system_operator_request_all
     - system_operator_object_all
-  absent: false
 
 - code: administrator
   displayName: Administrator
@@ -14,4 +18,3 @@
     - administrator_request_all
     - administrator_object_all
     - administrator_hide_system_user
-  absent: false

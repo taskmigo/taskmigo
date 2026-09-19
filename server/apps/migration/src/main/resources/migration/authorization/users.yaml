@@ -1,21 +1,21 @@
 ---
 - username: system
   # yamllint disable-line rule:quoted-strings
-  password: "${TASKMIGO_SYSTEM_PASSWORD_HASH}"
+  password: "${TASKMIGO_SYSTEM_PASSWORD_HASH:{noop}local-password}"
   emails: []
   firstName: System
   lastName: User
   roles:
     - system-operator
-  groups: []
-  absent: false
+  groups:
+    - global
 
 - username: admin
-  password: null
+  password: "{noop}local-password"
   emails: []
   firstName: Admin
   lastName: User
   roles:
     - administrator
-  groups: []
-  absent: false
+  groups:
+    - global

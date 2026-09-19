@@ -33,15 +33,17 @@ public class PostgresTestConfiguration {
         JdbcRegisteredClientRepository clients
     ) {
         return arguments -> {
-            UUID fullAccess = authorization.reconcileStatement(
-                "system_operator_request_all",
-                "Allows the system administrator to access the versioned API.",
-                Effect.ALLOW,
-                Scope.REQUEST,
-                "*",
-                "/api/v.*/.*",
-                "return true;"
-            );
+            UUID fullAccess = authorization
+                .reconcileStatement(
+                    "system_operator_request_all",
+                    "Allows the system administrator to access the versioned API.",
+                    Effect.ALLOW,
+                    Scope.REQUEST,
+                    "*",
+                    "/api/v.*/.*",
+                    "return true;"
+                )
+                .id();
             UUID usersAccess = objectStatement(authorization, "system_users_full_access", "/api/v0/users");
             UUID rolesAccess = objectStatement(authorization, "system_roles_full_access", "/api/v0/roles");
             UUID groupsAccess = objectStatement(authorization, "system_groups_full_access", "/api/v0/groups");
@@ -50,12 +52,14 @@ public class PostgresTestConfiguration {
                 "system_statements_full_access",
                 "/api/v0/statements"
             );
-            UUID roleId = authorization.reconcileRole(
-                "system-operator",
-                "System Operator",
-                "Highest-privilege integration-test role.",
-                List.of(fullAccess, usersAccess, rolesAccess, groupsAccess, statementsAccess)
-            );
+            UUID roleId = authorization
+                .reconcileRole(
+                    "system-operator",
+                    "System Operator",
+                    "Highest-privilege integration-test role.",
+                    List.of(fullAccess, usersAccess, rolesAccess, groupsAccess, statementsAccess)
+                )
+                .id();
             identity.reconcileUser(
                 "system",
                 "{noop}integration-password",
@@ -88,14 +92,16 @@ public class PostgresTestConfiguration {
     }
 
     private static UUID objectStatement(AuthorizationProvisioningService authorization, String code, String path) {
-        return authorization.reconcileStatement(
-            code,
-            "Allows the system administrator to view every object.",
-            Effect.ALLOW,
-            Scope.OBJECT,
-            "GET",
-            path,
-            "return true;"
-        );
+        return authorization
+            .reconcileStatement(
+                code,
+                "Allows the system administrator to view every object.",
+                Effect.ALLOW,
+                Scope.OBJECT,
+                "GET",
+                path,
+                "return true;"
+            )
+            .id();
     }
 }

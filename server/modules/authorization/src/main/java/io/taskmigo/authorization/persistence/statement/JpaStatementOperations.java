@@ -47,6 +47,11 @@ public class JpaStatementOperations implements StatementStore {
     }
 
     @Override
+    public Optional<StatementInfo> findByCode(String code) {
+        return this.statements.findByCode(code).map(StatementEntity::info);
+    }
+
+    @Override
     public Optional<UUID> findIdByCode(String code) {
         return this.statements.findByCode(code).map(StatementEntity::id);
     }

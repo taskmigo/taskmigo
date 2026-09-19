@@ -4,8 +4,11 @@ import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningService;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
+import io.taskmigo.foundation.ReconciliationAction;
+import io.taskmigo.foundation.ReconciliationResult;
 import io.taskmigo.identity.group.GroupService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +32,7 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
     private final IdentityProvisioningService identity;
     private final GroupService groups;
     private final MigrationResourceLoader resources;
+    private final MigrationChangeLogger changeLogger;
     private final TransactionTemplate transactions;
 
     AuthorizationStatementReconciler(
@@ -36,28 +40,32 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
         IdentityProvisioningService identity,
         GroupService groups,
         MigrationResourceLoader resources,
+        MigrationChangeLogger changeLogger,
         PlatformTransactionManager transactionManager
     ) {
         this.authorization = authorization;
         this.identity = identity;
         this.groups = groups;
         this.resources = resources;
+        this.changeLogger = changeLogger;
         this.transactions = new TransactionTemplate(transactionManager);
     }
 
     @Override
     public void run(ApplicationArguments arguments) {
+        List<MigrationChange> changes = new ArrayList<>();
         this.transactions.executeWithoutResult(status -> {
             MigrationResourceLoader.MigrationResources data = this.resources.load();
             this.validate(data);
 
-            this.deleteAbsent(data);
+            changes.addAll(this.deleteAbsent(data));
 
-            Map<String, UUID> statementIds = this.reconcileStatements(data.statements());
-            Map<String, UUID> roleIds = this.reconcileRoles(data.roles(), statementIds);
-            Map<String, UUID> groupIds = this.reconcileGroups(data.groups(), roleIds);
-            this.reconcileUsers(data.users(), roleIds, groupIds);
+            Map<String, UUID> statementIds = this.reconcileStatements(data.statements(), changes);
+            Map<String, UUID> roleIds = this.reconcileRoles(data.roles(), statementIds, changes);
+            Map<String, UUID> groupIds = this.reconcileGroups(data.groups(), roleIds, changes);
+            this.reconcileUsers(data.users(), roleIds, groupIds, changes);
         });
+        this.changeLogger.log(changes);
     }
 
     private void validate(MigrationResourceLoader.MigrationResources data) {
@@ -101,41 +109,61 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
         }
     }
 
-    private void deleteAbsent(MigrationResourceLoader.MigrationResources data) {
+    private List<MigrationChange> deleteAbsent(MigrationResourceLoader.MigrationResources data) {
+        List<MigrationChange> changes = new ArrayList<>();
         data.users()
             .stream()
             .filter(MigrationResourceLoader.User::absent)
-            .forEach(user -> this.identity.deleteUser(user.username()));
+            .forEach(user -> {
+                if (this.identity.deleteUser(user.username())) {
+                    changes.add(change("user", user.username(), ReconciliationAction.REMOVED));
+                }
+            });
         data.groups()
             .stream()
             .filter(MigrationResourceLoader.Group::absent)
-            .forEach(group -> this.groups.deleteByCode(group.code()));
+            .forEach(group -> {
+                if (this.groups.deleteByCode(group.code())) {
+                    changes.add(change("group", group.code(), ReconciliationAction.REMOVED));
+                }
+            });
         data.roles()
             .stream()
             .filter(MigrationResourceLoader.Role::absent)
-            .forEach(role -> this.authorization.deleteRole(role.code()));
+            .forEach(role -> {
+                if (this.authorization.deleteRole(role.code())) {
+                    changes.add(change("role", role.code(), ReconciliationAction.REMOVED));
+                }
+            });
         data.statements()
             .stream()
             .filter(MigrationResourceLoader.Statement::absent)
-            .forEach(statement -> this.authorization.deleteStatement(statement.code()));
+            .forEach(statement -> {
+                if (this.authorization.deleteStatement(statement.code())) {
+                    changes.add(change("statement", statement.code(), ReconciliationAction.REMOVED));
+                }
+            });
+        return changes;
     }
 
-    private Map<String, UUID> reconcileStatements(List<MigrationResourceLoader.Statement> definitions) {
+    private Map<String, UUID> reconcileStatements(
+        List<MigrationResourceLoader.Statement> definitions,
+        List<MigrationChange> changes
+    ) {
         Map<String, UUID> result = new LinkedHashMap<>();
         for (MigrationResourceLoader.Statement definition : definitions) {
             if (!definition.absent()) {
-                result.put(
+                ReconciliationResult<UUID> reconciliation = this.authorization.reconcileStatement(
                     definition.code(),
-                    this.authorization.reconcileStatement(
-                        definition.code(),
-                        definition.description(),
-                        Effect.from(definition.effect()),
-                        Scope.from(definition.scope()),
-                        definition.target().api().method(),
-                        definition.target().api().path(),
-                        definition.policy()
-                    )
+                    definition.description(),
+                    Effect.from(definition.effect()),
+                    Scope.from(definition.scope()),
+                    definition.target().api().method(),
+                    definition.target().api().path(),
+                    definition.policy()
                 );
+                result.put(definition.code(), reconciliation.id());
+                changes.add(change("statement", definition.code(), reconciliation.action()));
             }
         }
         return result;
@@ -143,21 +171,21 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
 
     private Map<String, UUID> reconcileRoles(
         List<MigrationResourceLoader.Role> definitions,
-        Map<String, UUID> statementIds
+        Map<String, UUID> statementIds,
+        List<MigrationChange> changes
     ) {
         Map<String, UUID> result = new LinkedHashMap<>();
         for (MigrationResourceLoader.Role definition : definitions) {
             if (!definition.absent()) {
                 Set<UUID> ids = definition.statements().stream().map(statementIds::get).collect(Collectors.toSet());
-                result.put(
+                ReconciliationResult<UUID> reconciliation = this.authorization.reconcileRole(
                     definition.code(),
-                    this.authorization.reconcileRole(
-                        definition.code(),
-                        definition.displayName(),
-                        definition.description(),
-                        ids
-                    )
+                    definition.displayName(),
+                    definition.description(),
+                    ids
                 );
+                result.put(definition.code(), reconciliation.id());
+                changes.add(change("role", definition.code(), reconciliation.action()));
             }
         }
         return result;
@@ -165,16 +193,21 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
 
     private Map<String, UUID> reconcileGroups(
         List<MigrationResourceLoader.Group> definitions,
-        Map<String, UUID> roleIds
+        Map<String, UUID> roleIds,
+        List<MigrationChange> changes
     ) {
         Map<String, UUID> result = new LinkedHashMap<>();
         for (MigrationResourceLoader.Group definition : definitions) {
             if (!definition.absent()) {
                 Set<UUID> ids = definition.roles().stream().map(roleIds::get).collect(Collectors.toSet());
-                result.put(
+                ReconciliationResult<UUID> reconciliation = this.groups.reconcile(
                     definition.code(),
-                    this.groups.reconcile(definition.code(), definition.displayName(), definition.description(), ids)
+                    definition.displayName(),
+                    definition.description(),
+                    ids
                 );
+                result.put(definition.code(), reconciliation.id());
+                changes.add(change("group", definition.code(), reconciliation.action()));
             }
         }
         return result;
@@ -183,13 +216,14 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
     private void reconcileUsers(
         List<MigrationResourceLoader.User> definitions,
         Map<String, UUID> roleIds,
-        Map<String, UUID> groupIds
+        Map<String, UUID> groupIds,
+        List<MigrationChange> changes
     ) {
         for (MigrationResourceLoader.User user : definitions) {
             if (!user.absent()) {
                 Set<UUID> roles = user.roles().stream().map(roleIds::get).collect(Collectors.toSet());
                 Set<UUID> groups = user.groups().stream().map(groupIds::get).collect(Collectors.toSet());
-                this.identity.reconcileUser(
+                ReconciliationResult<UUID> reconciliation = this.identity.reconcileUser(
                     user.username(),
                     user.password(),
                     user.emails(),
@@ -198,8 +232,13 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
                     roles,
                     groups
                 );
+                changes.add(change("user", user.username(), reconciliation.action()));
             }
         }
+    }
+
+    private static MigrationChange change(String resourceType, String resourceKey, ReconciliationAction action) {
+        return new MigrationChange(resourceType, resourceKey, action);
     }
 
     private static <T> Map<String, T> unique(List<T> values, Function<T, String> key, String type) {

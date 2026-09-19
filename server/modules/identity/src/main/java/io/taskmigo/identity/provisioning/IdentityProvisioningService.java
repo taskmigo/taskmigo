@@ -1,12 +1,13 @@
 package io.taskmigo.identity.provisioning;
 
+import io.taskmigo.foundation.ReconciliationResult;
 import java.util.Collection;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /// Defines installation/provisioning operations for managed Identity state.
 public interface IdentityProvisioningService {
-    UUID reconcileUser(
+    ReconciliationResult<UUID> reconcileUser(
         @Nullable String username,
         @Nullable String passwordHash,
         @Nullable Collection<String> emails,
@@ -16,5 +17,5 @@ public interface IdentityProvisioningService {
         Collection<UUID> groupIds
     );
 
-    void deleteUser(String username);
+    boolean deleteUser(String username);
 }
