@@ -89,7 +89,7 @@ client:
     port: 3000
   auth:
     issuer: ""
-    clientId: taskmigo-client
+    clientId: browser
     clientSecretKey: auth-client-secret
     sessionSecretKey: auth-session-secret
     allowInsecureRequests: true

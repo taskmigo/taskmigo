@@ -47,7 +47,7 @@ spec:
               containerPort: 3000
               protocol: TCP
           env:
-            - name: TASKMIGO_CLIENT_URL
+            - name: TM_BROWSER_HOST_NAME
               value: {{ include "taskmigo.clientUrl" . | quote }}
             - name: TASKMIGO_AUTH_ISSUER
               value: {{ include "taskmigo.clientIssuer" . | quote }}

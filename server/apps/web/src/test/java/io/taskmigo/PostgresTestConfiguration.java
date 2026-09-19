@@ -69,10 +69,10 @@ public class PostgresTestConfiguration {
                 List.of(roleId),
                 List.of()
             );
-            if (clients.findByClientId("taskmigo-client") == null) {
+            if (clients.findByClientId("browser") == null) {
                 clients.save(
-                    RegisteredClient.withId("taskmigo-client")
-                        .clientId("taskmigo-client")
+                    RegisteredClient.withId("browser")
+                        .clientId("browser")
                         .clientSecret("{noop}integration-secret")
                         .clientName("Taskmigo browser test client")
                         .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)

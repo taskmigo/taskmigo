@@ -4,7 +4,7 @@ import { ZodError } from "zod";
 import { getConfig, parseConfig } from "./server";
 
 const validEnvironment = {
-  TASKMIGO_CLIENT_URL: "https://app.example",
+  TM_BROWSER_HOST_NAME: "https://app.example",
   TASKMIGO_AUTH_ISSUER: "https://auth.example",
   TASKMIGO_AUTH_CLIENT_ID: "browser-client",
   TASKMIGO_AUTH_CLIENT_SECRET: "client-secret",
@@ -83,7 +83,7 @@ describe("server configuration", () => {
   });
 
   test.each([
-    ["TASKMIGO_CLIENT_URL", "not-a-url"],
+    ["TM_BROWSER_HOST_NAME", "not-a-url"],
     ["TASKMIGO_AUTH_ISSUER", "not-a-url"],
     ["TASKMIGO_AUTH_ALLOW_INSECURE_REQUESTS", "maybe"],
     ["TASKMIGO_AUTH_COOKIE_HTTP_ONLY", "maybe"],

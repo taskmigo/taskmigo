@@ -41,9 +41,9 @@ import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest(
     properties = {
-        "TASKMIGO_SYSTEM_PASSWORD_HASH={noop}integration-password",
-        "TASKMIGO_AUTH_CLIENT_SECRET_HASH={noop}browser-integration-secret",
-        "TASKMIGO_CLIENT_URL=http://localhost:3000",
+        "TM_SYSTEM_PASSWORD={noop}integration-password",
+        "TM_BROWSER_CLIENT_SECRET={noop}browser-integration-secret",
+        "TM_BROWSER_HOST_NAME=http://localhost:3000",
     }
 )
 @Import(PostgresTestConfiguration.class)
@@ -103,7 +103,7 @@ class MigrationIntegrationTest {
             this.passwordEncoder.matches("integration-password", Objects.requireNonNull(system.passwordHash()))
         ).isTrue();
 
-        RegisteredClient browser = this.storedClient("taskmigo-client");
+        RegisteredClient browser = this.storedClient("browser");
         assertThat(InternalClientMetadata.isManaged(browser)).isTrue();
         assertThat(browser.getClientAuthenticationMethods()).containsExactly(
             ClientAuthenticationMethod.CLIENT_SECRET_BASIC
@@ -117,7 +117,7 @@ class MigrationIntegrationTest {
         assertThat(browser.getScopes()).containsExactlyInAnyOrder(OidcScopes.OPENID, OidcScopes.PROFILE);
         assertThat(browser.getClientSettings().isRequireProofKey()).isTrue();
         assertThat(browser.getClientSettings().isRequireAuthorizationConsent()).isFalse();
-        assertThat(browser.getTokenSettings().isReuseRefreshTokens()).isFalse();
+        assertThat(browser.getTokenSettings().isReuseRefreshTokens()).isTrue();
     }
 
     /**
@@ -130,7 +130,7 @@ class MigrationIntegrationTest {
     void shouldBindNativeClientPropertiesWhenSecurityYamlIsLoaded() {
         Client browser = Objects.requireNonNull(this.resources.load().clients().get("browser"));
 
-        assertThat(browser.getRegistration().getClientId()).isEqualTo("taskmigo-client");
+        assertThat(browser.getRegistration().getClientId()).isEqualTo("browser");
         assertThat(browser.getRegistration().getClientSecret()).isEqualTo("{noop}browser-integration-secret");
         assertThat(browser.getRegistration().getScopes()).containsExactlyInAnyOrder(
             OidcScopes.OPENID,
@@ -146,14 +146,14 @@ class MigrationIntegrationTest {
     @Test
     @DisplayName("preserves managed client and user state during reconciliation")
     void shouldPreserveStateWhenReconciliationRunsAgain() {
-        String browserId = this.storedClient("taskmigo-client").getId();
+        String browserId = this.storedClient("browser").getId();
         String passwordHash = Objects.requireNonNull(
             this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()
         );
 
         this.internalClients.reconcile(this.resources.load().clients());
 
-        assertThat(this.storedClient("taskmigo-client").getId()).isEqualTo(browserId);
+        assertThat(this.storedClient("browser").getId()).isEqualTo(browserId);
         assertThat(this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()).isEqualTo(
             passwordHash
         );

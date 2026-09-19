@@ -2,9 +2,9 @@
 clients:
   browser:
     registration:
-      client-id: taskmigo-client
+      client-id: browser
       # yamllint disable-line rule:quoted-strings
-      client-secret: "${TASKMIGO_AUTH_CLIENT_SECRET_HASH:{noop}local-secret}"
+      client-secret: "${TM_BROWSER_CLIENT_SECRET:{noop}local-secret}"
       client-name: Taskmigo browser client
       client-authentication-methods:
         - client_secret_basic
@@ -13,10 +13,10 @@ clients:
         - refresh_token
       redirect-uris:
         # yamllint disable-line rule:quoted-strings
-        - "${TASKMIGO_CLIENT_URL:http://localhost}/api/auth/callback"
+        - "${TM_BROWSER_HOST_NAME:http://localhost}/api/auth/callback"
       post-logout-redirect-uris:
         # yamllint disable-line rule:quoted-strings
-        - "${TASKMIGO_CLIENT_URL:http://localhost}/"
+        - "${TM_BROWSER_HOST_NAME:http://localhost}/"
       scopes:
         - openid
         - profile
@@ -25,4 +25,4 @@ clients:
     token:
       access-token-time-to-live: PT5M
       refresh-token-time-to-live: PT8H
-      reuse-refresh-tokens: false
+      reuse-refresh-tokens: true

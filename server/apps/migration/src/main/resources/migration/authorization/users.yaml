@@ -1,7 +1,7 @@
 ---
 - username: system
   # yamllint disable-line rule:quoted-strings
-  password: "${TASKMIGO_SYSTEM_PASSWORD_HASH:{noop}local-password}"
+  password: "${TM_SYSTEM_PASSWORD:{noop}local-password}"
   emails: []
   firstName: System
   lastName: User

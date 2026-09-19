@@ -39,7 +39,7 @@ public abstract class ApiIntegrationTestSupport {
 
         TaskmigoApiClient created = new TaskmigoApiClient(
             URI.create("http://localhost:" + this.port),
-            new TaskmigoApiClient.ClientCredentials("taskmigo-client", "integration-secret")
+            new TaskmigoApiClient.ClientCredentials("browser", "integration-secret")
         );
         this.api = created;
         return created;

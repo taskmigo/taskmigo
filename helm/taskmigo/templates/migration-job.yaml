@@ -39,17 +39,17 @@ spec:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           env:
             {{- include "taskmigo.databaseEnv" . | nindent 12 }}
-            - name: TASKMIGO_SYSTEM_PASSWORD_HASH
+            - name: TM_SYSTEM_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.database.existingSecret | quote }}
                   key: {{ .Values.migration.systemUserPasswordHashKey | quote }}
-            - name: TASKMIGO_AUTH_CLIENT_SECRET_HASH
+            - name: TM_BROWSER_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.database.existingSecret | quote }}
                   key: {{ .Values.migration.browserAuthentication.clientSecretHashKey | quote }}
-            - name: TASKMIGO_CLIENT_URL
+            - name: TM_BROWSER_HOST_NAME
               value: {{ include "taskmigo.clientUrl" . | quote }}
             {{- with .Values.migration.extraEnv }}
             {{- toYaml . | nindent 12 }}
