@@ -24,8 +24,11 @@ public class GroupEntity {
     @Id
     UUID id;
 
-    @Column(nullable = false, length = 200)
-    String name;
+    @Column(nullable = false, unique = true, length = 200)
+    String code;
+
+    @Column(name = "display_name", nullable = false, length = 200)
+    String displayName;
 
     @Column(length = 1000)
     @Nullable
@@ -50,9 +53,10 @@ public class GroupEntity {
 
     protected GroupEntity() {}
 
-    public GroupEntity(UUID id, String name, @Nullable String description) {
+    public GroupEntity(UUID id, String code, String displayName, @Nullable String description) {
         this.id = id;
-        this.name = name;
+        this.code = code;
+        this.displayName = displayName;
         this.description = description;
     }
 
@@ -60,8 +64,12 @@ public class GroupEntity {
         return this.id;
     }
 
-    public String name() {
-        return this.name;
+    public String code() {
+        return this.code;
+    }
+
+    public String displayName() {
+        return this.displayName;
     }
 
     public @Nullable String description() {
@@ -87,5 +95,15 @@ public class GroupEntity {
 
     public void addMember(UUID userId) {
         this.memberIds.add(userId);
+    }
+
+    public void replaceMembers(Set<UUID> memberIds) {
+        this.memberIds.clear();
+        this.memberIds.addAll(memberIds);
+    }
+
+    public void updateDisplayNameAndDescription(String displayName, @Nullable String description) {
+        this.displayName = displayName;
+        this.description = description;
     }
 }

@@ -9,7 +9,7 @@ import org.jspecify.annotations.Nullable;
 /// Defines installation/provisioning operations for managed authorization state.
 public interface AuthorizationProvisioningService {
     UUID reconcileStatement(
-        @Nullable String name,
+        @Nullable String code,
         @Nullable String description,
         @Nullable Effect effect,
         @Nullable Scope scope,
@@ -18,9 +18,18 @@ public interface AuthorizationProvisioningService {
         @Nullable String policy
     );
 
-    UUID reconcileRole(@Nullable String name, @Nullable String description, Collection<UUID> statementIds);
+    UUID reconcileRole(
+        @Nullable String code,
+        @Nullable String displayName,
+        @Nullable String description,
+        Collection<UUID> statementIds
+    );
 
-    UUID requireStatement(String name);
+    UUID requireStatement(String code);
 
-    UUID requireRole(String name);
+    UUID requireRole(String code);
+
+    void deleteStatement(String code);
+
+    void deleteRole(String code);
 }

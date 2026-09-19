@@ -55,6 +55,7 @@ Instructions for AI agents and automated contributors working in this repository
 ## Verification
 
 - A task is not complete until all required local verification and CI checks for the pull request have passed.
+- Run tests and verification commands sequentially. Do not run independent test commands in parallel, enable Gradle or JUnit parallel execution, or start concurrent verification processes.
 - Run or observe all verification required by the applicable repository instructions, then monitor the required CI checks after pushing changes.
 - Treat the current GitHub Actions job log as the primary source of truth for workflow/bootstrap failures. Read the failing step before attempting local reproduction.
 - Prefer structured machine-readable reports over rendered log summaries when a workflow provides them.

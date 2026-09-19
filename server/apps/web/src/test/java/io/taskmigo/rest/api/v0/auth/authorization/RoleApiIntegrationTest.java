@@ -31,8 +31,10 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     @DisplayName("creates a role with unique child roles")
     void shouldCreateRoleWithUniqueChildRolesWhenChildRolesAreProvided() {
-        UUID child = this.access.createRole(uniqueRoleName("ChildRole"), null, Set.of());
-        UUID grandchild = this.access.createRole(uniqueRoleName("Grandchild"), null, Set.of());
+        String childCode = uniqueRoleName("ChildRole");
+        UUID child = this.access.createRole(childCode, childCode, null, Set.of());
+        String grandchildCode = uniqueRoleName("Grandchild");
+        UUID grandchild = this.access.createRole(grandchildCode, grandchildCode, null, Set.of());
         this.access.setChildRoles(child, Set.of(grandchild));
 
         UUID created = this.api()
@@ -81,8 +83,10 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     @DisplayName("lists roles with offset pagination")
     void shouldListRolesWithOffsetPaginationWhenNoFiltersAreProvided() {
-        this.access.createRole(uniqueRoleName("OffsetRoleOne"), null, Set.of());
-        this.access.createRole(uniqueRoleName("OffsetRoleTwo"), null, Set.of());
+        String firstCode = uniqueRoleName("OffsetRoleOne");
+        String secondCode = uniqueRoleName("OffsetRoleTwo");
+        this.access.createRole(firstCode, firstCode, null, Set.of());
+        this.access.createRole(secondCode, secondCode, null, Set.of());
 
         String response = this.api().get("/api/v0/roles?page=2&pageSize=1");
 

@@ -36,15 +36,11 @@ import org.springframework.test.context.TestConstructor;
 
 @SpringBootTest(
     properties = {
-        "spring.security.oauth2.authorizationserver.client.cli.registration.client-id=integration-client",
-        "spring.security.oauth2.authorizationserver.client.cli.registration.client-secret=integration-secret",
-        "spring.security.oauth2.authorizationserver.client.cli.registration.client-authentication-methods=client_secret_basic",
-        "spring.security.oauth2.authorizationserver.client.cli.registration.authorization-grant-types=client_credentials",
-        "spring.security.oauth2.authorizationserver.client.cli.registration.scopes=taskmigo.api",
-        "taskmigo.security.bootstrap-user.password=integration-password",
-        "taskmigo.security.browser-authentication.enabled=true",
-        "taskmigo.security.browser-authentication.client-secret=browser-integration-secret",
-        "taskmigo.security.browser-authentication.client-url=http://localhost:3000",
+        "TASKMIGO_SYSTEM_PASSWORD_HASH={noop}integration-password",
+        "TASKMIGO_MACHINE_CLIENT_ID=integration-client",
+        "TASKMIGO_MACHINE_CLIENT_SECRET_HASH={noop}integration-secret",
+        "TASKMIGO_AUTH_CLIENT_SECRET_HASH={noop}browser-integration-secret",
+        "TASKMIGO_CLIENT_URL=http://localhost:3000",
     }
 )
 @Import(PostgresTestConfiguration.class)
@@ -54,11 +50,10 @@ class MigrationIntegrationTest {
     private final Flyway flyway;
     private final JdbcRegisteredClientRepository clients;
     private final InternalClientReconciler internalClients;
-    private final BrowserClientReconciler browserClient;
-    private final SystemUserReconciler systemUser;
+    private final MigrationResourceLoader resources;
     private final PasswordEncoder passwordEncoder;
     private final UserService users;
-    private final RoleService access;
+    private final RoleService roles;
     private final StatementService statements;
     private final AuthorizationProvisioningService authorizationProvisioning;
     private final IdentityProvisioningService identityProvisioning;
@@ -67,11 +62,10 @@ class MigrationIntegrationTest {
         Flyway flyway,
         JdbcRegisteredClientRepository clients,
         InternalClientReconciler internalClients,
-        BrowserClientReconciler browserClient,
-        SystemUserReconciler systemUser,
+        MigrationResourceLoader resources,
         PasswordEncoder passwordEncoder,
         UserService users,
-        RoleService access,
+        RoleService roles,
         StatementService statements,
         AuthorizationProvisioningService authorizationProvisioning,
         IdentityProvisioningService identityProvisioning
@@ -79,16 +73,20 @@ class MigrationIntegrationTest {
         this.flyway = flyway;
         this.clients = clients;
         this.internalClients = internalClients;
-        this.browserClient = browserClient;
-        this.systemUser = systemUser;
+        this.resources = resources;
         this.passwordEncoder = passwordEncoder;
         this.users = users;
-        this.access = access;
+        this.roles = roles;
         this.statements = statements;
         this.authorizationProvisioning = authorizationProvisioning;
         this.identityProvisioning = identityProvisioning;
     }
 
+    /**
+     * Verifies: migration applies the canonical schema and managed clients.
+     * Given: a fresh Testcontainers database and flat YAML resources.
+     * Expect: version 1, the encoded system password, and both internal clients exist.
+     */
     @Test
     @DisplayName("installs the schema, system user, and managed OAuth clients")
     void shouldInstallRequiredStateWhenMigrationRuns() {
@@ -104,9 +102,10 @@ class MigrationIntegrationTest {
         RegisteredClient internal = this.storedClient("integration-client");
         assertThat(InternalClientMetadata.isManaged(internal)).isTrue();
         assertThat(internal.getAuthorizationGrantTypes()).containsExactly(AuthorizationGrantType.CLIENT_CREDENTIALS);
+        assertThat(internal.getScopes()).isEmpty();
 
-        RegisteredClient browser = this.storedClient(BrowserClientMetadata.CLIENT_ID);
-        assertThat(BrowserClientMetadata.isManaged(browser)).isTrue();
+        RegisteredClient browser = this.storedClient("taskmigo-client");
+        assertThat(InternalClientMetadata.isManaged(browser)).isTrue();
         assertThat(browser.getClientAuthenticationMethods()).containsExactly(
             ClientAuthenticationMethod.CLIENT_SECRET_BASIC
         );
@@ -116,49 +115,77 @@ class MigrationIntegrationTest {
         );
         assertThat(browser.getRedirectUris()).containsExactly("http://localhost:3000/api/auth/callback");
         assertThat(browser.getPostLogoutRedirectUris()).containsExactly("http://localhost:3000/");
-        assertThat(browser.getScopes()).containsExactlyInAnyOrder(
-            OidcScopes.OPENID,
-            OidcScopes.PROFILE,
-            InternalClientMetadata.API_SCOPE
-        );
+        assertThat(browser.getScopes()).containsExactlyInAnyOrder(OidcScopes.OPENID, OidcScopes.PROFILE);
         assertThat(browser.getClientSettings().isRequireProofKey()).isTrue();
         assertThat(browser.getClientSettings().isRequireAuthorizationConsent()).isFalse();
         assertThat(browser.getTokenSettings().isReuseRefreshTokens()).isFalse();
     }
 
+    /**
+     * Verifies: the flat resource loader binds OAuth clients to Spring's native property class.
+     * Given: security.yaml with a registration map and placeholder values.
+     * Expect: the resolved native Client contains no implicit API scope.
+     */
+    @Test
+    @DisplayName("binds flat security YAML to native Spring OAuth client properties")
+    void shouldBindNativeClientPropertiesWhenSecurityYamlIsLoaded() {
+        Client machine = Objects.requireNonNull(this.resources.load().clients().get("cli"));
+
+        assertThat(machine.getRegistration().getClientId()).isEqualTo("integration-client");
+        assertThat(machine.getRegistration().getClientSecret()).isEqualTo("{noop}integration-secret");
+        assertThat(machine.getRegistration().getScopes()).isEmpty();
+    }
+
+    /**
+     * Verifies: re-running the internal client reconciliation is idempotent.
+     * Given: already-provisioned managed clients and their pre-encoded secret.
+     * Expect: database identifiers and the system password hash remain unchanged.
+     */
     @Test
     @DisplayName("preserves managed client and user state during reconciliation")
     void shouldPreserveStateWhenReconciliationRunsAgain() {
         String internalId = this.storedClient("integration-client").getId();
-        String browserId = this.storedClient(BrowserClientMetadata.CLIENT_ID).getId();
+        String browserId = this.storedClient("taskmigo-client").getId();
         String passwordHash = Objects.requireNonNull(
             this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()
         );
 
-        this.internalClients.reconcile(Map.of("cli", client("integration-client", "integration-secret")));
-        this.browserClient.reconcile();
-        this.systemUser.reconcile();
+        this.internalClients.reconcile(this.resources.load().clients());
 
         assertThat(this.storedClient("integration-client").getId()).isEqualTo(internalId);
-        assertThat(this.storedClient(BrowserClientMetadata.CLIENT_ID).getId()).isEqualTo(browserId);
+        assertThat(this.storedClient("taskmigo-client").getId()).isEqualTo(browserId);
         assertThat(this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()).isEqualTo(
             passwordHash
         );
     }
 
+    /**
+     * Verifies: configured statements and roles are reconciled using their canonical codes.
+     * Given: the built-in flat authorization resources.
+     * Expect: statement code and role code/display name are persisted and assigned to system.
+     */
     @Test
     @DisplayName("reconciles built-in statements through normal role assignments")
     void shouldAssignBuiltInStatementsWhenMigrationRuns() {
         var system = this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow();
 
-        var statements = this.statements.list(1, 100).items();
-        var roles = this.access.effectiveRoles(this.users.roleIds(system.id()));
+        var persistedStatements = this.statements.list(1, 100).items();
+        var persistedRoles = this.roles.effectiveRoles(this.users.roleIds(system.id()));
 
-        assertThat(statements).extracting(StatementInfo::name).contains("system_operator_request_all");
-        assertThat(roles).extracting(RoleInfo::name).contains("System Operator");
+        assertThat(persistedStatements).extracting(StatementInfo::code).contains("system_operator_request_all");
+        assertThat(persistedRoles).extracting(RoleInfo::code).contains("system-operator");
+        assertThat(persistedRoles)
+            .filteredOn(role -> role.code().equals("system-operator"))
+            .extracting(RoleInfo::displayName)
+            .contains("System Operator");
         assertThat(this.users.roleIds(system.id())).hasSize(1);
     }
 
+    /**
+     * Verifies: embedded policies and scopes survive YAML provisioning.
+     * Given: every built-in statement in statements.yaml.
+     * Expect: each statement has its declared scope and a non-empty executable policy.
+     */
     @Test
     @DisplayName("persists Embedded Language policies for every built-in statement")
     void shouldPersistEmbeddedLanguagePoliciesWhenMigrationRuns() {
@@ -178,27 +205,32 @@ class MigrationIntegrationTest {
         var persistedStatements = this.statements.list(1, 100).items();
 
         assertThat(persistedStatements)
-            .filteredOn(statement -> builtInScopes.containsKey(statement.name()))
+            .filteredOn(statement -> builtInScopes.containsKey(statement.code()))
             .hasSize(builtInScopes.size())
             .allSatisfy(statement -> {
-                assertThat(statement.scope()).isEqualTo(builtInScopes.get(statement.name()));
+                assertThat(statement.scope()).isEqualTo(builtInScopes.get(statement.code()));
                 assertThat(statement.policy()).isNotBlank().startsWith("return");
             });
     }
 
+    /**
+     * Verifies: identity reconciliation replaces profile and relationship state without re-encoding a supplied hash.
+     * Given: a user with a pre-encoded password, a role, and no direct statement field.
+     * Expect: the same user id is updated and the original system password remains unchanged.
+     */
     @Test
     @DisplayName("upserts users from migration data")
     void shouldUpsertManagedUserWhenUserIsMissingOrPresent() {
-        String username = "bootstrap-user";
-        UUID roleId = this.authorizationProvisioning.requireRole("System Operator");
-        UUID statementId = this.authorizationProvisioning.requireStatement("system_operator_request_all");
+        String username = "migration-user";
+        UUID roleId = this.authorizationProvisioning.requireRole("system-operator");
         UUID createdId = this.identityProvisioning.reconcileUser(
             username,
-            Set.of("BOOTSTRAP@EXAMPLE.COM"),
-            "Bootstrap",
+            "{noop}migration-password",
+            Set.of("MIGRATION@EXAMPLE.COM"),
+            "Migration",
             "User",
             Set.of(roleId),
-            Set.of(statementId)
+            Set.of()
         );
         String passwordHash = Objects.requireNonNull(
             this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()
@@ -206,11 +238,12 @@ class MigrationIntegrationTest {
 
         UUID reconciledId = this.identityProvisioning.reconcileUser(
             username,
+            null,
             Set.of("updated@example.com"),
             "Updated",
             "User",
             Set.of(roleId),
-            Set.of(statementId)
+            Set.of()
         );
 
         assertThat(reconciledId).isEqualTo(createdId);
@@ -222,11 +255,16 @@ class MigrationIntegrationTest {
         );
     }
 
+    /**
+     * Verifies: serializable reconciliation converges concurrent attempts to one registered client.
+     * Given: two submitted reconciliation tasks for the same registration.
+     * Expect: one managed client remains and no duplicate client id is created.
+     */
     @Test
     @DisplayName("creates one registration during concurrent internal client reconciliation")
     void shouldCreateOneRegistrationWhenInternalClientReconciliationIsConcurrent() throws Exception {
         String clientId = "concurrent-" + UUID.randomUUID();
-        var configuredClients = Map.of("concurrent", client(clientId, "concurrent-secret"));
+        var configuredClients = Map.of("concurrent", client(clientId, "{noop}concurrent-secret"));
 
         try (var executor = Executors.newFixedThreadPool(2)) {
             var first = executor.submit(() -> this.internalClients.reconcile(configuredClients));
@@ -238,6 +276,11 @@ class MigrationIntegrationTest {
         assertThat(this.storedClient(clientId).getId()).isEqualTo("concurrent");
     }
 
+    /**
+     * Verifies: migration refuses to adopt a client without the internal ownership marker.
+     * Given: an existing user-owned registration with the same client id.
+     * Expect: reconciliation fails closed and leaves that registration unmanaged.
+     */
     @Test
     @DisplayName("refuses to adopt an unmanaged internal OAuth client")
     void shouldRejectClientWhenInternalClientIsUnmanaged() {
@@ -249,12 +292,11 @@ class MigrationIntegrationTest {
                 .clientName("Unmanaged")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .scope(InternalClientMetadata.API_SCOPE)
                 .build()
         );
 
         assertThatThrownBy(() ->
-            this.internalClients.reconcile(Map.of("unmanaged", client(clientId, "secret")))
+            this.internalClients.reconcile(Map.of("unmanaged", client(clientId, "{noop}secret")))
         ).hasMessageContaining("Refusing to adopt unmanaged OAuth client");
     }
 
@@ -269,7 +311,7 @@ class MigrationIntegrationTest {
         registration.setClientSecret(clientSecret);
         registration.setClientAuthenticationMethods(new LinkedHashSet<>(Set.of("client_secret_basic")));
         registration.setAuthorizationGrantTypes(new LinkedHashSet<>(Set.of("client_credentials")));
-        registration.setScopes(new LinkedHashSet<>(Set.of(InternalClientMetadata.API_SCOPE)));
+        registration.setScopes(new LinkedHashSet<>());
         return client;
     }
 }

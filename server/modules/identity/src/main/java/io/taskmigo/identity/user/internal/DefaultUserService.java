@@ -44,7 +44,7 @@ public class DefaultUserService implements UserService {
     ) {
         String requiredUsername = required(username, "username");
         if (SystemUser.USERNAME.equals(requiredUsername)) {
-            throw new UserException(UserException.Type.BAD_REQUEST, "Username is reserved for the bootstrap user");
+            throw new UserException(UserException.Type.BAD_REQUEST, "Username is reserved for the system user");
         }
 
         UUID id = UUID.randomUUID();

@@ -4,14 +4,12 @@ import io.taskmigo.authorization.provisioning.AuthorizationProvisioningService;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
-import io.taskmigo.identity.user.UserService;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
@@ -32,12 +30,9 @@ public class PostgresTestConfiguration {
     ApplicationRunner persistedRuntimeStateFixture(
         IdentityProvisioningService identity,
         AuthorizationProvisioningService authorization,
-        UserService users,
-        PasswordEncoder passwordEncoder,
         JdbcRegisteredClientRepository clients
     ) {
         return arguments -> {
-            identity.reconcileSystemUser(passwordEncoder.encode("integration-password"));
             UUID fullAccess = authorization.reconcileStatement(
                 "system_operator_request_all",
                 "Allows the system administrator to access the versioned API.",
@@ -56,20 +51,28 @@ public class PostgresTestConfiguration {
                 "/api/v0/statements"
             );
             UUID roleId = authorization.reconcileRole(
+                "system-operator",
                 "System Operator",
                 "Highest-privilege integration-test role.",
                 List.of(fullAccess, usersAccess, rolesAccess, groupsAccess, statementsAccess)
             );
-            users.setRoles(users.findForAuthentication("system").orElseThrow().id(), List.of(roleId));
+            identity.reconcileUser(
+                "system",
+                "{noop}integration-password",
+                List.of(),
+                "System",
+                "User",
+                List.of(roleId),
+                List.of()
+            );
             if (clients.findByClientId("integration-client") == null) {
                 clients.save(
                     RegisteredClient.withId("integration-client")
                         .clientId("integration-client")
-                        .clientSecret(passwordEncoder.encode("integration-secret"))
+                        .clientSecret("{noop}integration-secret")
                         .clientName("Integration client")
                         .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                         .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                        .scope("taskmigo.api")
                         .clientSettings(
                             ClientSettings.builder().requireProofKey(false).requireAuthorizationConsent(false).build()
                         )
@@ -79,9 +82,9 @@ public class PostgresTestConfiguration {
         };
     }
 
-    private static UUID objectStatement(AuthorizationProvisioningService authorization, String name, String path) {
+    private static UUID objectStatement(AuthorizationProvisioningService authorization, String code, String path) {
         return authorization.reconcileStatement(
-            name,
+            code,
             "Allows the system administrator to view every object.",
             Effect.ALLOW,
             Scope.OBJECT,

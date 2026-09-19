@@ -7,4 +7,10 @@ import org.jspecify.annotations.Nullable;
 
 /// Exposes a role and its direct role-hierarchy children to application consumers.
 @NullMarked
-public record RoleInfo(UUID id, String name, @Nullable String description, List<RoleInfo> children) {}
+public record RoleInfo(
+    UUID id,
+    String code,
+    String displayName,
+    @Nullable String description,
+    List<RoleInfo> children
+) {}

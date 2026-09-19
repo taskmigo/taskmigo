@@ -1,5 +1,4 @@
 {{- if .Values.migration.enabled }}
-{{- $browserAuthenticationEnabled := and .Values.migration.browserAuthentication.enabled .Values.client.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -40,37 +39,25 @@ spec:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           env:
             {{- include "taskmigo.databaseEnv" . | nindent 12 }}
-            - name: TASKMIGO_BOOTSTRAP_USER_PASSWORD
+            - name: TASKMIGO_SYSTEM_PASSWORD_HASH
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.database.existingSecret | quote }}
-                  key: {{ .Values.migration.bootstrapUserPasswordKey | quote }}
-            - name: TASKMIGO_AUTH_BROWSER_ENABLED
-              value: {{ $browserAuthenticationEnabled | quote }}
+                  key: {{ .Values.migration.systemUserPasswordHashKey | quote }}
+            - name: TASKMIGO_MACHINE_CLIENT_ID
+              value: {{ .Values.migration.testClient.clientId | quote }}
+            - name: TASKMIGO_MACHINE_CLIENT_SECRET_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | quote }}
+                  key: {{ .Values.migration.testClient.clientSecretHashKey | quote }}
+            - name: TASKMIGO_AUTH_CLIENT_SECRET_HASH
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret | quote }}
+                  key: {{ .Values.migration.browserAuthentication.clientSecretHashKey | quote }}
             - name: TASKMIGO_CLIENT_URL
               value: {{ include "taskmigo.clientUrl" . | quote }}
-            {{- if $browserAuthenticationEnabled }}
-            - name: TASKMIGO_AUTH_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.database.existingSecret | quote }}
-                  key: {{ .Values.migration.browserAuthentication.clientSecretKey | quote }}
-            {{- end }}
-            {{- if .Values.migration.testClient.enabled }}
-            - name: SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_HELMTEST_REGISTRATION_CLIENT_ID
-              value: {{ .Values.migration.testClient.clientId | quote }}
-            - name: SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_HELMTEST_REGISTRATION_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.database.existingSecret | quote }}
-                  key: {{ .Values.migration.testClient.clientSecretKey | quote }}
-            - name: SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_HELMTEST_REGISTRATION_CLIENT_AUTHENTICATION_METHODS
-              value: client_secret_basic
-            - name: SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_HELMTEST_REGISTRATION_AUTHORIZATION_GRANT_TYPES
-              value: client_credentials
-            - name: SPRING_SECURITY_OAUTH2_AUTHORIZATIONSERVER_CLIENT_HELMTEST_REGISTRATION_SCOPES
-              value: taskmigo.api
-            {{- end }}
             {{- with .Values.migration.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

@@ -71,7 +71,7 @@ class EffectiveStatementResolverTest {
             .resolve(USER_ID)
             .stream()
             .map(EffectiveStatement::statement)
-            .map(StatementInfo::name)
+            .map(StatementInfo::code)
             .toList();
 
         assertThat(names).containsExactly("direct", "role", "child");

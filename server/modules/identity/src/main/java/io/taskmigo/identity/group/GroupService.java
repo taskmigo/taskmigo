@@ -17,14 +17,23 @@ public interface GroupService {
         QueryPredicate<GroupInfo> filter,
         ObjectAuthorizationPredicate<GroupInfo> authorization
     );
-    UUID create(@Nullable String name, @Nullable String description);
+    UUID create(@Nullable String code, @Nullable String displayName, @Nullable String description);
     UUID create(
-        @Nullable String name,
+        @Nullable String code,
+        @Nullable String displayName,
         @Nullable String description,
         @Nullable Collection<UUID> childGroupIds,
         @Nullable Collection<UUID> roleIds
     );
     void addMember(UUID groupId, UUID userId);
+    UUID reconcile(
+        @Nullable String code,
+        @Nullable String displayName,
+        @Nullable String description,
+        Collection<UUID> roleIds
+    );
+    void setGroupsForUser(UUID userId, Collection<UUID> groupIds);
+    void deleteByCode(String code);
     void requireGroups(Collection<UUID> ids);
     List<UUID> groupsForUser(UUID userId);
     List<RoleInfo> effectiveRolesForUser(UUID userId);

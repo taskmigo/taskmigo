@@ -1,8 +1,8 @@
 package io.taskmigo.identity.user;
 
-/// Defines the reserved bootstrap username and default profile used to create Taskmigo's platform administrator.
+/// Defines the reserved system username and default profile used to create Taskmigo's platform administrator.
 ///
-/// The bootstrap account is persisted with the same schema as every other user. Its elevated authorization is an
+/// The system account is persisted with the same schema as every other user. Its elevated authorization is an
 /// authorization concern and are intentionally not represented by user-table flags or constraints.
 public final class SystemUser {
 

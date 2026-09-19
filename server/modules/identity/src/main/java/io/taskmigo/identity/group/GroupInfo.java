@@ -5,4 +5,10 @@ import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /// Exposes a group and its direct group-hierarchy children to application consumers.
-public record GroupInfo(UUID id, String name, @Nullable String description, List<GroupInfo> children) {}
+public record GroupInfo(
+    UUID id,
+    String code,
+    String displayName,
+    @Nullable String description,
+    List<GroupInfo> children
+) {}

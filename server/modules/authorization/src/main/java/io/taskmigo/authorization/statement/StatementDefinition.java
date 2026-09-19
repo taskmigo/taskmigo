@@ -4,7 +4,7 @@ import org.jspecify.annotations.Nullable;
 
 /// Represents a validated authorization Statement definition before persistence assigns its identifier.
 public record StatementDefinition(
-    String name,
+    String code,
     @Nullable String description,
     Effect effect,
     Scope scope,

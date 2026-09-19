@@ -31,9 +31,11 @@ class GroupApiIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     @DisplayName("creates a group with unique child groups and roles")
     void shouldCreateGroupWithUniqueRelationshipsWhenChildrenAndRolesAreProvided() {
-        UUID employee = this.access.createRole(uniqueRoleName("EmployeeRole"), null, Set.of());
-        UUID developer = this.access.createRole(uniqueRoleName("DeveloperRole"), null, Set.of(employee));
-        UUID backend = this.groups.create("Backend", null, Set.of(), Set.of(developer));
+        String employeeCode = uniqueRoleName("EmployeeRole");
+        UUID employee = this.access.createRole(employeeCode, employeeCode, null, Set.of());
+        String developerCode = uniqueRoleName("DeveloperRole");
+        UUID developer = this.access.createRole(developerCode, developerCode, null, Set.of(employee));
+        UUID backend = this.groups.create("Backend", "Backend", null, Set.of(), Set.of(developer));
 
         UUID created = this.api()
             .groups()
@@ -68,7 +70,7 @@ class GroupApiIntegrationTest extends ApiIntegrationTestSupport {
     void shouldCreateGroupWhenRelationshipsAreOmitted() {
         UUID created = this.api()
             .groups()
-            .create(new CreateGroupRequest("Leaf", null, null, null));
+            .create(new CreateGroupRequest(uniqueGroupCode("Leaf"), null, null, null));
 
         assertThat(this.groups.effectiveRoles(created)).isEmpty();
     }
@@ -76,14 +78,17 @@ class GroupApiIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     @DisplayName("lists groups with their children using offset pagination")
     void shouldListGroupsWithChildrenWhenOffsetPaginationIsRequested() {
-        UUID leaf = this.groups.create("Leaf", "A descendant", Set.of(), Set.of());
-        UUID root = this.groups.create("Root", "A parent", Set.of(leaf), Set.of());
+        String leafCode = uniqueGroupCode("Leaf");
+        String rootCode = uniqueGroupCode("Root");
+        UUID leaf = this.groups.create(leafCode, "A descendant", "A descendant", Set.of(), Set.of());
+        UUID root = this.groups.create(rootCode, "Root", "A parent", Set.of(leaf), Set.of());
 
         String response = this.api().get("/api/v0/groups?page=1&pageSize=100");
 
         assertThat(response)
             .contains("\"id\":\"" + root + "\"")
-            .contains("\"name\":\"Root\"")
+            .contains("\"code\":\"" + rootCode + "\"")
+            .contains("\"displayName\":\"Root\"")
             .contains("\"description\":\"A parent\"")
             .contains("\"children\":[{\"id\":\"" + leaf + "\"")
             .contains("\"type\":\"offset\"")
@@ -117,6 +122,10 @@ class GroupApiIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     private static String uniqueRoleName(String prefix) {
+        return prefix + UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private static String uniqueGroupCode(String prefix) {
         return prefix + UUID.randomUUID().toString().replace("-", "");
     }
 }

@@ -65,7 +65,13 @@ class GroupController {
     @PostMapping("/groups")
     @Operation(summary = "Create a group")
     ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(@Valid @RequestBody Request request) {
-        UUID id = this.groups.create(request.name(), request.description(), request.groupIds(), request.roleIds());
+        UUID id = this.groups.create(
+            request.code(),
+            request.displayName(),
+            request.description(),
+            request.groupIds(),
+            request.roleIds()
+        );
         return this.responses.created(
             URI.create("/api/v0/groups/" + id),
             Map.of("id", id),
@@ -77,14 +83,16 @@ class GroupController {
     @Schema(name = "GroupInfo")
     record Response(
         UUID id,
-        String name,
+        String code,
+        String displayName,
         @JsonInclude(JsonInclude.Include.NON_NULL) @Nullable String description,
         List<Response> children
     ) {
         static Response from(GroupInfo group) {
             return new Response(
                 group.id(),
-                group.name(),
+                group.code(),
+                group.displayName(),
                 group.description(),
                 group.children().stream().map(Response::from).toList()
             );
@@ -93,7 +101,8 @@ class GroupController {
 
     @Schema(name = "CreateGroupRequest")
     record Request(
-        @NotBlank @Nullable String name,
+        @NotBlank @Nullable String code,
+        @NotBlank @Nullable String displayName,
         @Nullable String description,
         @Nullable Set<UUID> groupIds,
         @Nullable Set<UUID> roleIds

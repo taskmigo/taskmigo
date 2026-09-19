@@ -11,11 +11,13 @@ import io.taskmigo.identity.persistence.query.QueryPredicateBinder;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -52,6 +54,11 @@ public class JpaGroupOperations implements GroupStore {
     }
 
     @Override
+    public Optional<GroupState> findByCode(String code) {
+        return this.groups.findByCode(code).map(JpaGroupOperations::state);
+    }
+
+    @Override
     public boolean containsAll(Collection<UUID> ids) {
         return this.groups.findAllById(ids).size() == ids.size();
     }
@@ -59,7 +66,7 @@ public class JpaGroupOperations implements GroupStore {
     @Override
     public void create(GroupState group) {
         List<GroupEntity> children = this.groups.findDistinctByIdIn(group.childIds());
-        GroupEntity entity = new GroupEntity(group.id(), group.name(), group.description());
+        GroupEntity entity = new GroupEntity(group.id(), group.code(), group.displayName(), group.description());
         entity.addChildGroups(children);
         for (UUID memberId : group.memberIds()) {
             entity.addMember(memberId);
@@ -68,9 +75,39 @@ public class JpaGroupOperations implements GroupStore {
     }
 
     @Override
+    public void updateDisplayNameAndDescription(UUID groupId, String displayName, @Nullable String description) {
+        GroupEntity group = this.groups.findById(groupId).orElseThrow();
+        group.updateDisplayNameAndDescription(displayName, description);
+        this.groups.flush();
+    }
+
+    @Override
     public void addMember(UUID groupId, UUID userId) {
         GroupEntity group = this.groups.findById(groupId).orElseThrow();
         group.addMember(userId);
+        this.groups.flush();
+    }
+
+    @Override
+    public void replaceMemberships(UUID userId, Set<UUID> groupIds) {
+        List<GroupEntity> allGroups = this.groups.findAllForUpdate();
+        for (GroupEntity group : allGroups) {
+            Set<UUID> memberIds = group.memberIds();
+            if (groupIds.contains(group.id())) {
+                memberIds = new LinkedHashSet<>(memberIds);
+                memberIds.add(userId);
+            } else {
+                memberIds = new LinkedHashSet<>(memberIds);
+                memberIds.remove(userId);
+            }
+            group.replaceMembers(memberIds);
+        }
+        this.groups.flush();
+    }
+
+    @Override
+    public void delete(UUID groupId) {
+        this.groups.deleteById(groupId);
         this.groups.flush();
     }
 
@@ -122,7 +159,7 @@ public class JpaGroupOperations implements GroupStore {
 
     private static GroupInfo info(GroupEntity group, Set<UUID> ancestors) {
         if (ancestors.contains(group.id())) {
-            return new GroupInfo(group.id(), group.name(), group.description(), List.of());
+            return new GroupInfo(group.id(), group.code(), group.displayName(), group.description(), List.of());
         }
         Set<UUID> nextAncestors = new HashSet<>(ancestors);
         nextAncestors.add(group.id());
@@ -132,13 +169,14 @@ public class JpaGroupOperations implements GroupStore {
             .sorted((left, right) -> left.id().compareTo(right.id()))
             .map(child -> info(child, nextAncestors))
             .toList();
-        return new GroupInfo(group.id(), group.name(), group.description(), children);
+        return new GroupInfo(group.id(), group.code(), group.displayName(), group.description(), children);
     }
 
     private static GroupState state(GroupEntity group) {
         return new GroupState(
             group.id(),
-            group.name(),
+            group.code(),
+            group.displayName(),
             group.description(),
             group.memberIds(),
             group.childGroups().stream().map(GroupEntity::id).collect(Collectors.toSet())

@@ -32,7 +32,7 @@ public class DefaultStatementService implements StatementService {
     @Override
     @Transactional
     public UUID create(
-        @Nullable String name,
+        @Nullable String code,
         @Nullable String description,
         @Nullable Effect effect,
         @Nullable Scope scope,
@@ -40,9 +40,9 @@ public class DefaultStatementService implements StatementService {
         @Nullable String path,
         @Nullable String policy
     ) {
-        StatementDefinition definition = this.validate(name, description, effect, scope, method, path, policy);
-        if (this.statements.existsByName(definition.name())) {
-            throw new AuthorizationException("Statement name already exists");
+        StatementDefinition definition = this.validate(code, description, effect, scope, method, path, policy);
+        if (this.statements.existsByCode(definition.code())) {
+            throw new AuthorizationException("Statement code already exists");
         }
         return this.statements.create(definition);
     }
@@ -76,7 +76,7 @@ public class DefaultStatementService implements StatementService {
     }
 
     private StatementDefinition validate(
-        @Nullable String name,
+        @Nullable String code,
         @Nullable String description,
         @Nullable Effect effect,
         @Nullable Scope scope,
@@ -84,6 +84,6 @@ public class DefaultStatementService implements StatementService {
         @Nullable String path,
         @Nullable String policy
     ) {
-        return this.policyValidator.validate(name, description, effect, scope, method, path, policy);
+        return this.policyValidator.validate(code, description, effect, scope, method, path, policy);
     }
 }

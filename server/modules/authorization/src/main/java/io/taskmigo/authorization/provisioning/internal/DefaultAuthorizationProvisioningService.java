@@ -47,7 +47,7 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
     @Override
     @Transactional
     public UUID reconcileStatement(
-        @Nullable String name,
+        @Nullable String code,
         @Nullable String description,
         @Nullable Effect effect,
         @Nullable Scope scope,
@@ -56,7 +56,7 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
         @Nullable String policy
     ) {
         StatementDefinition definition = this.policyValidator.validate(
-            name,
+            code,
             description,
             effect,
             scope,
@@ -65,7 +65,7 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
             policy
         );
 
-        Optional<UUID> existingId = this.statements.findIdByName(definition.name());
+        Optional<UUID> existingId = this.statements.findIdByCode(definition.code());
         if (existingId.isEmpty()) {
             return this.statements.create(definition);
         }
@@ -76,42 +76,67 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
 
     @Override
     @Transactional
-    public UUID reconcileRole(@Nullable String name, @Nullable String description, Collection<UUID> statementIds) {
+    public UUID reconcileRole(
+        @Nullable String code,
+        @Nullable String displayName,
+        @Nullable String description,
+        Collection<UUID> statementIds
+    ) {
         Set<UUID> requestedIds = Set.copyOf(statementIds);
         this.statementService.requireStatements(requestedIds);
 
-        String validName = AuthorizationName.requiredRole(name, "name");
-        RoleState existing = this.roles.findByName(validName).orElse(null);
+        String validCode = AuthorizationName.requiredRole(code, "code");
+        String validDisplayName = AuthorizationName.requiredRole(displayName, "displayName");
+        RoleState existing = this.roles.findByCode(validCode).orElse(null);
         if (existing == null) {
-            UUID id = this.roleService.createRole(validName, description, Set.of());
+            UUID id = this.roleService.createRole(validCode, validDisplayName, description, Set.of());
             this.roles.replaceStatements(id, requestedIds);
             return id;
         }
 
-        this.roles.updateDescriptionAndStatements(existing.id(), description, requestedIds);
+        this.roles.updateDisplayNameDescriptionAndStatements(
+            existing.id(),
+            validDisplayName,
+            description,
+            requestedIds
+        );
         return existing.id();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public UUID requireStatement(String name) {
-        String validName = AuthorizationName.required(name, "statement reference");
+    public UUID requireStatement(String code) {
+        String validCode = AuthorizationName.required(code, "statement reference");
         return this.statements
-            .findIdByName(validName)
+            .findIdByCode(validCode)
             .orElseThrow(() ->
-                new AuthorizationProvisioningException("Managed authorization Statement does not exist: " + validName)
+                new AuthorizationProvisioningException("Managed authorization Statement does not exist: " + validCode)
             );
     }
 
     @Override
     @Transactional(readOnly = true)
-    public UUID requireRole(String name) {
-        String validName = AuthorizationName.requiredRole(name, "role reference");
+    public UUID requireRole(String code) {
+        String validCode = AuthorizationName.requiredRole(code, "role reference");
         return this.roles
-            .findByName(validName)
+            .findByCode(validCode)
             .map(RoleState::id)
             .orElseThrow(() ->
-                new AuthorizationProvisioningException("Managed authorization Role does not exist: " + validName)
+                new AuthorizationProvisioningException("Managed authorization Role does not exist: " + validCode)
             );
+    }
+
+    @Override
+    @Transactional
+    public void deleteStatement(String code) {
+        String validCode = AuthorizationName.required(code, "statement code");
+        this.statements.findIdByCode(validCode).ifPresent(this.statements::delete);
+    }
+
+    @Override
+    @Transactional
+    public void deleteRole(String code) {
+        String validCode = AuthorizationName.requiredRole(code, "role code");
+        this.roles.findByCode(validCode).ifPresent(role -> this.roles.delete(role.id()));
     }
 }

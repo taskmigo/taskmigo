@@ -35,8 +35,8 @@ public class JpaStatementOperations implements StatementStore {
     }
 
     @Override
-    public boolean existsByName(String name) {
-        return this.statements.existsByName(name);
+    public boolean existsByCode(String code) {
+        return this.statements.existsByCode(code);
     }
 
     @Override
@@ -47,8 +47,8 @@ public class JpaStatementOperations implements StatementStore {
     }
 
     @Override
-    public Optional<UUID> findIdByName(String name) {
-        return this.statements.findByName(name).map(StatementEntity::id);
+    public Optional<UUID> findIdByCode(String code) {
+        return this.statements.findByCode(code).map(StatementEntity::id);
     }
 
     @Override
@@ -57,6 +57,12 @@ public class JpaStatementOperations implements StatementStore {
             .findById(id)
             .orElseThrow(() -> new IllegalStateException("Statement does not exist: " + id));
         statement.update(definition);
+        this.statements.flush();
+    }
+
+    @Override
+    public void delete(UUID id) {
+        this.statements.deleteById(id);
         this.statements.flush();
     }
 

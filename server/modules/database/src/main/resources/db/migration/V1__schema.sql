@@ -20,7 +20,8 @@ CREATE TABLE user_emails (
 
 CREATE TABLE groups (
     id UUID PRIMARY KEY,
-    name VARCHAR(200) NOT NULL,
+    code VARCHAR(200) NOT NULL UNIQUE,
+    display_name VARCHAR(200) NOT NULL,
     description VARCHAR(1000)
 );
 
@@ -33,7 +34,8 @@ CREATE INDEX ix_group_members_user_id ON group_members(user_id);
 
 CREATE TABLE roles (
     id UUID PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
+    code VARCHAR(255) NOT NULL UNIQUE,
+    display_name VARCHAR(255) NOT NULL,
     description VARCHAR(1000)
 );
 
@@ -67,7 +69,7 @@ CREATE INDEX ix_group_hierarchy_closure_descendant_group_id ON group_hierarchy_c
 
 CREATE TABLE statements (
     id UUID PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
+    code VARCHAR(255) NOT NULL,
     description VARCHAR(1000),
     effect VARCHAR(16) NOT NULL,
     scope VARCHAR(16) NOT NULL,
@@ -76,7 +78,7 @@ CREATE TABLE statements (
     policy TEXT NOT NULL,
     created_at timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at timestamptz DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    CONSTRAINT uk_statements_name UNIQUE (name),
+    CONSTRAINT uk_statements_code UNIQUE (code),
     CONSTRAINT ck_statements_effect CHECK (effect IN ('ALLOW', 'DENY')),
     CONSTRAINT ck_statements_scope CHECK (scope IN ('OBJECT', 'REQUEST')),
     CONSTRAINT ck_statements_policy_nonblank CHECK (btrim(policy) <> '')

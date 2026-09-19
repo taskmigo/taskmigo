@@ -65,6 +65,12 @@ public class JpaUserOperations implements UserStore {
     }
 
     @Override
+    public void delete(UUID id) {
+        this.users.deleteById(id);
+        this.users.flush();
+    }
+
+    @Override
     public void updateProfile(UUID id, Set<String> emails, String firstName, String lastName) {
         UserEntity user = this.users.findById(id).orElseThrow();
         user.replaceEmails(emails);

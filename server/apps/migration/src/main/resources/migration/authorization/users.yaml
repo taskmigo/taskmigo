@@ -1,17 +1,19 @@
----
-users:
-  - username: system
-    email: []
-    firstName: System
-    lastName: User
-    roles:
-      - System Operator
-    statements: []
+- username: system
+  password: "${TASKMIGO_SYSTEM_PASSWORD_HASH}"
+  emails: []
+  firstName: System
+  lastName: User
+  roles:
+    - system-operator
+  groups: []
+  absent: false
 
-  - username: admin
-    email: []
-    firstName: Admin
-    lastName: User
-    roles:
-      - Administrator
-    statements: []
+- username: admin
+  password: null
+  emails: []
+  firstName: Admin
+  lastName: User
+  roles:
+    - administrator
+  groups: []
+  absent: false

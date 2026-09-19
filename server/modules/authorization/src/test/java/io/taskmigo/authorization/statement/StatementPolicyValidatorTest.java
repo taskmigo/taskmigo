@@ -48,7 +48,7 @@ class StatementPolicyValidatorTest {
         );
 
         // Assert
-        assertThat(definition.name()).isEqualTo("users_read");
+        assertThat(definition.code()).isEqualTo("users_read");
         assertThat(definition.method()).isEqualTo("GET");
         assertThat(definition.path()).isEqualTo("/api/v0/users");
         assertThat(definition.policy()).isEqualTo(VALID_REQUEST_POLICY);

@@ -54,7 +54,7 @@ class StatementServiceTest {
     @Test
     @DisplayName("normalizes a valid statement before saving it")
     void shouldNormalizeStatementWhenInputIsValid() {
-        when(this.statements.existsByName("users_read")).thenReturn(false);
+        when(this.statements.existsByCode("users_read")).thenReturn(false);
         ArgumentCaptor<StatementEntity> saved = ArgumentCaptor.forClass(StatementEntity.class);
 
         UUID id = this.service.create(
@@ -70,7 +70,7 @@ class StatementServiceTest {
         assertThat(id).isNotNull();
         verify(this.statements).save(saved.capture());
         assertThat(saved.getValue().info().target().api().method()).isEqualTo("GET");
-        assertThat(saved.getValue().info().name()).isEqualTo("users_read");
+        assertThat(saved.getValue().info().code()).isEqualTo("users_read");
         assertThat(saved.getValue().info().scope()).isEqualTo(Scope.REQUEST);
         assertThat(saved.getValue().info().policy()).isEqualTo("return request.path == \"/api/v0/users\";");
     }
@@ -137,7 +137,7 @@ class StatementServiceTest {
     @Test
     @DisplayName("matches every HTTP method when the target method is a wildcard")
     void shouldMatchEveryMethodWhenTargetMethodIsWildcard() {
-        when(this.statements.existsByName("users_all")).thenReturn(false);
+        when(this.statements.existsByCode("users_all")).thenReturn(false);
         UUID id = this.service.create(
             "users_all",
             null,

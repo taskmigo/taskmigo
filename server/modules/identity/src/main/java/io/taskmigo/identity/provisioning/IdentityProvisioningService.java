@@ -8,12 +8,13 @@ import org.jspecify.annotations.Nullable;
 public interface IdentityProvisioningService {
     UUID reconcileUser(
         @Nullable String username,
+        @Nullable String passwordHash,
         @Nullable Collection<String> emails,
         @Nullable String firstName,
         @Nullable String lastName,
         Collection<UUID> roleIds,
-        Collection<UUID> statementIds
+        Collection<UUID> groupIds
     );
 
-    void reconcileSystemUser(@Nullable String initialPasswordHash);
+    void deleteUser(String username);
 }

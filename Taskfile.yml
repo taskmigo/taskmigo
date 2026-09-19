@@ -131,24 +131,30 @@ tasks:
               exit 1
             }
             database_password="${DATABASE_PASSWORD:-$(openssl rand -hex 16)}"
-            bootstrap_password="${BOOTSTRAP_USER_PASSWORD:-$(openssl rand -hex 16)}"
+            system_password_hash="${SYSTEM_USER_PASSWORD_HASH:-{noop}$(openssl rand -hex 16)}"
             auth_client_secret="${AUTH_CLIENT_SECRET:-$(openssl rand -hex 32)}"
+            auth_client_secret_hash="${AUTH_CLIENT_SECRET_HASH:-{noop}$auth_client_secret}"
             auth_session_secret="${AUTH_SESSION_SECRET:-$(openssl rand -hex 32)}"
-            test_client_secret="${INTEGRATION_TEST_CLIENT_SECRET:-$(openssl rand -hex 32)}"
+            machine_client_secret="${MACHINE_CLIENT_SECRET:-$(openssl rand -hex 32)}"
+            machine_client_secret_hash="${MACHINE_CLIENT_SECRET_HASH:-{noop}$machine_client_secret}"
           else
             database_password="${DATABASE_PASSWORD:-taskmigo}"
-            bootstrap_password="${BOOTSTRAP_USER_PASSWORD:-taskmigo}"
+            system_password_hash="${SYSTEM_USER_PASSWORD_HASH:-{noop}taskmigo}"
             auth_client_secret="${AUTH_CLIENT_SECRET:-taskmigo-local-browser-secret}"
+            auth_client_secret_hash="${AUTH_CLIENT_SECRET_HASH:-{noop}$auth_client_secret}"
             auth_session_secret="${AUTH_SESSION_SECRET:-taskmigo-local-session-secret-0123456789abcdef}"
-            test_client_secret="${INTEGRATION_TEST_CLIENT_SECRET:-taskmigo-local-test-client-secret}"
+            machine_client_secret="${MACHINE_CLIENT_SECRET:-taskmigo-local-test-client-secret}"
+            machine_client_secret_hash="${MACHINE_CLIENT_SECRET_HASH:-{noop}$machine_client_secret}"
           fi
 
           {{.KUBECTL}} -n "{{.NAMESPACE}}" create secret generic taskmigo-secrets \
             --from-literal=database-password="$database_password" \
-            --from-literal=bootstrap-user-password="$bootstrap_password" \
+            --from-literal=system-user-password-hash="$system_password_hash" \
+            --from-literal=machine-client-secret="$machine_client_secret" \
+            --from-literal=auth-client-secret-hash="$auth_client_secret_hash" \
             --from-literal=auth-client-secret="$auth_client_secret" \
             --from-literal=auth-session-secret="$auth_session_secret" \
-            --from-literal=integration-test-client-secret="$test_client_secret"
+            --from-literal=machine-client-secret-hash="$machine_client_secret_hash"
         fi
 
         {{.KUBECTL}} -n "{{.NAMESPACE}}" apply -f deploy/minikube/postgresql.yaml
@@ -307,7 +313,7 @@ tasks:
           printf 'Taskmigo is ready.\n\nURL:      http://{{.PUBLIC_HOST}}\nAPI:      http://{{.PUBLIC_HOST}}/api\nOIDC:     http://{{.PUBLIC_HOST}}/.well-known/openid-configuration\nAPI docs: http://{{.PUBLIC_HOST}}/api/docs\nHost entry: {{.MINIKUBE_IP}} {{.PUBLIC_HOST}}\nCredentials: stored in secret/taskmigo-secrets\n'
         else
           password="$({{.KUBECTL}} -n "{{.NAMESPACE}}" get secret taskmigo-secrets \
-            -o go-template='{{`{{index .data "bootstrap-user-password" | base64decode}}`}}')"
+            -o go-template='{{`{{index .data "system-user-password-hash" | base64decode}}`}}')"
           printf 'Taskmigo is ready.\n\nURL:      http://{{.PUBLIC_HOST}}\nAPI:      http://{{.PUBLIC_HOST}}/api\nOIDC:     http://{{.PUBLIC_HOST}}/.well-known/openid-configuration\nAPI docs: http://{{.PUBLIC_HOST}}/api/docs\nHost entry: {{.MINIKUBE_IP}} {{.PUBLIC_HOST}}\nUsername: system\nPassword: %s\n' "$password"
         fi
 

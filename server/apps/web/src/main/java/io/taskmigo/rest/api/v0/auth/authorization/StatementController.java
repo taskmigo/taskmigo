@@ -47,7 +47,7 @@ class StatementController {
     @Operation(summary = "Create an authorization statement")
     ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(@Valid @RequestBody Request request) {
         UUID id = this.statements.create(
-            request.name(),
+            request.code(),
             request.description(),
             Effect.from(request.effect()),
             Scope.from(request.scope()),
@@ -87,7 +87,7 @@ class StatementController {
     @Schema(name = "StatementInfo")
     record Response(
         UUID id,
-        String name,
+        String code,
         @Nullable String description,
         Effect effect,
         Scope scope,
@@ -98,7 +98,7 @@ class StatementController {
             ApiInfo apiTarget = statement.target().api();
             return new Response(
                 statement.id(),
-                statement.name(),
+                statement.code(),
                 statement.description(),
                 statement.effect(),
                 statement.scope(),
@@ -114,7 +114,7 @@ class StatementController {
 
     @Schema(name = "CreateStatementRequest")
     record Request(
-        @NotBlank @Nullable String name,
+        @NotBlank @Nullable String code,
         @Nullable String description,
         @NotBlank String effect,
         @NotBlank String scope,

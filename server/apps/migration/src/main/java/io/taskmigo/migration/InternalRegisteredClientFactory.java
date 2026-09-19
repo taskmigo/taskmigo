@@ -1,98 +1,93 @@
 package io.taskmigo.migration;
 
 import java.util.Objects;
-import java.util.Set;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties.Client;
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties.Registration;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.settings.OAuth2TokenFormat;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.stereotype.Component;
 
-/// Builds the persistent OAuth registration for Taskmigo-managed machine-to-machine clients.
+/// Builds a migration-managed registered client from Spring Authorization Server properties.
 @Component
 final class InternalRegisteredClientFactory {
 
-    private final PasswordEncoder passwordEncoder;
-
-    InternalRegisteredClientFactory(PasswordEncoder passwordEncoder) {
-        this.passwordEncoder = passwordEncoder;
-    }
-
     RegisteredClient create(String registrationId, Client client, @Nullable RegisteredClient existing) {
         Registration registration = client.getRegistration();
-        String clientId = Objects.requireNonNull(registration.getClientId());
-        String secret = this.validate(clientId, registration);
+        String clientId = Objects.requireNonNull(registration.getClientId(), "Client id is required");
+        String secret = Objects.requireNonNull(registration.getClientSecret(), "Client secret is required");
+        if (registration.getClientAuthenticationMethods().isEmpty()) {
+            throw new IllegalStateException("Client authentication methods are required: " + clientId);
+        }
+        if (registration.getAuthorizationGrantTypes().isEmpty()) {
+            throw new IllegalStateException("Authorization grant types are required: " + clientId);
+        }
+
         RegisteredClient.Builder builder =
             existing == null
                 ? RegisteredClient.withId(registrationId).clientId(clientId)
-                : RegisteredClient.from(existing);
+                : RegisteredClient.from(existing).clientId(clientId);
 
         return builder
-            .clientSecret(this.encodedSecret(secret, existing))
-            .clientName(registration.getClientName() == null ? "Internal " + clientId : registration.getClientName())
+            .clientSecret(secret)
+            .clientName(registration.getClientName() == null ? clientId : registration.getClientName())
             .clientAuthenticationMethods(methods -> {
                 methods.clear();
-                methods.add(ClientAuthenticationMethod.CLIENT_SECRET_BASIC);
+                methods.addAll(
+                    registration
+                        .getClientAuthenticationMethods()
+                        .stream()
+                        .map(ClientAuthenticationMethod::new)
+                        .collect(Collectors.toSet())
+                );
             })
             .authorizationGrantTypes(grants -> {
                 grants.clear();
-                grants.add(AuthorizationGrantType.CLIENT_CREDENTIALS);
+                grants.addAll(
+                    registration
+                        .getAuthorizationGrantTypes()
+                        .stream()
+                        .map(AuthorizationGrantType::new)
+                        .collect(Collectors.toSet())
+                );
             })
-            .redirectUris(Set::clear)
-            .postLogoutRedirectUris(Set::clear)
+            .redirectUris(uris -> {
+                uris.clear();
+                uris.addAll(registration.getRedirectUris());
+            })
+            .postLogoutRedirectUris(uris -> {
+                uris.clear();
+                uris.addAll(registration.getPostLogoutRedirectUris());
+            })
             .scopes(scopes -> {
                 scopes.clear();
-                scopes.add(InternalClientMetadata.API_SCOPE);
+                scopes.addAll(registration.getScopes());
             })
-            .clientSettings(
-                InternalClientMetadata.settings(client.isRequireProofKey(), client.isRequireAuthorizationConsent())
-            )
-            .tokenSettings(
-                TokenSettings.builder()
-                    .accessTokenTimeToLive(client.getToken().getAccessTokenTimeToLive())
-                    .accessTokenFormat(new OAuth2TokenFormat(client.getToken().getAccessTokenFormat()))
-                    .build()
-            )
+            .clientSettings(InternalClientMetadata.settings(client))
+            .tokenSettings(tokenSettings(client))
             .build();
     }
 
-    private String validate(String clientId, Registration registration) {
-        if (
-            !Set.of(ClientAuthenticationMethod.CLIENT_SECRET_BASIC.getValue()).equals(
-                registration.getClientAuthenticationMethods()
+    private static TokenSettings tokenSettings(Client client) {
+        var token = client.getToken();
+        return TokenSettings.builder()
+            .authorizationCodeTimeToLive(token.getAuthorizationCodeTimeToLive())
+            .accessTokenTimeToLive(token.getAccessTokenTimeToLive())
+            .accessTokenFormat(new OAuth2TokenFormat(token.getAccessTokenFormat()))
+            .deviceCodeTimeToLive(token.getDeviceCodeTimeToLive())
+            .reuseRefreshTokens(token.isReuseRefreshTokens())
+            .refreshTokenTimeToLive(token.getRefreshTokenTimeToLive())
+            .idTokenSignatureAlgorithm(
+                Objects.requireNonNull(
+                    SignatureAlgorithm.from(Objects.requireNonNull(token.getIdTokenSignatureAlgorithm())),
+                    "Unsupported ID token signature algorithm"
+                )
             )
-        ) {
-            throw new IllegalStateException("Internal client must use only client_secret_basic: " + clientId);
-        }
-        if (
-            !Set.of(AuthorizationGrantType.CLIENT_CREDENTIALS.getValue()).equals(
-                registration.getAuthorizationGrantTypes()
-            )
-        ) {
-            throw new IllegalStateException("Internal client must use only client_credentials: " + clientId);
-        }
-        if (!Set.of(InternalClientMetadata.API_SCOPE).equals(registration.getScopes())) {
-            throw new IllegalStateException("Internal client must use only taskmigo.api scope: " + clientId);
-        }
-        return Objects.requireNonNull(
-            registration.getClientSecret(),
-            "Internal client secret is required: " + clientId
-        );
-    }
-
-    private String encodedSecret(String secret, @Nullable RegisteredClient existing) {
-        String existingSecret = existing == null ? null : existing.getClientSecret();
-        if (
-            existingSecret != null &&
-            (secret.equals(existingSecret) || this.passwordEncoder.matches(secret, existingSecret))
-        ) {
-            return existingSecret;
-        }
-        return secret.startsWith("{") ? secret : this.passwordEncoder.encode(secret);
+            .build();
     }
 }

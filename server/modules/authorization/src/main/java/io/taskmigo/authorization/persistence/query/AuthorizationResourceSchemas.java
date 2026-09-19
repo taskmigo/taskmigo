@@ -33,7 +33,12 @@ public class AuthorizationResourceSchemas {
     QuerySchema<RoleInfo> roleQuerySchema() {
         return schema(
             RoleInfo.class,
-            List.of(field("id", UUID_TYPE), field("name", STRING_TYPE), nullable("description"))
+            List.of(
+                field("id", UUID_TYPE),
+                field("code", STRING_TYPE),
+                field("displayName", STRING_TYPE),
+                nullable("description")
+            )
         );
     }
 
@@ -42,7 +47,12 @@ public class AuthorizationResourceSchemas {
     ObjectAuthorizationSchema<RoleInfo> roleObjectAuthorizationSchema() {
         return objectSchema(
             RoleInfo.class,
-            List.of(objectField("id", UUID_TYPE), objectField("name", STRING_TYPE), objectNullable("description"))
+            List.of(
+                objectField("id", UUID_TYPE),
+                objectField("code", STRING_TYPE),
+                objectField("displayName", STRING_TYPE),
+                objectNullable("description")
+            )
         );
     }
 
@@ -53,7 +63,7 @@ public class AuthorizationResourceSchemas {
             StatementInfo.class,
             List.of(
                 field("id", UUID_TYPE),
-                field("name", STRING_TYPE),
+                field("code", STRING_TYPE),
                 nullable("description"),
                 field("target.api.method", STRING_TYPE),
                 field("target.api.path", STRING_TYPE)
@@ -68,7 +78,7 @@ public class AuthorizationResourceSchemas {
             StatementInfo.class,
             List.of(
                 objectField("id", UUID_TYPE),
-                objectField("name", STRING_TYPE),
+                objectField("code", STRING_TYPE),
                 objectNullable("description"),
                 objectField("target.api.method", STRING_TYPE),
                 objectField("target.api.path", STRING_TYPE)
@@ -82,7 +92,7 @@ public class AuthorizationResourceSchemas {
         return new JpaQueryPredicateBinder<>(
             RoleInfo.class,
             RoleEntity.class,
-            simplePaths("id", "name", "description"),
+            simplePaths("id", "code", "displayName", "description"),
             simpleTypes()
         );
     }
@@ -93,7 +103,7 @@ public class AuthorizationResourceSchemas {
         return new JpaObjectAuthorizationPredicateBinder<>(
             RoleInfo.class,
             RoleEntity.class,
-            simplePaths("id", "name", "description"),
+            simplePaths("id", "code", "displayName", "description"),
             simpleTypes()
         );
     }
@@ -141,14 +151,16 @@ public class AuthorizationResourceSchemas {
     }
 
     private static Map<String, Class<?>> simpleTypes() {
-        return Map.of("id", UUID.class, "name", String.class, "description", String.class);
+        return Map.of("id", UUID.class, "code", String.class, "displayName", String.class, "description", String.class);
     }
 
     private static Map<String, Class<?>> statementTypes() {
         return Map.of(
             "id",
             UUID.class,
-            "name",
+            "code",
+            String.class,
+            "displayName",
             String.class,
             "description",
             String.class,
@@ -163,8 +175,8 @@ public class AuthorizationResourceSchemas {
         return Map.of(
             "id",
             "id",
-            "name",
-            "name",
+            "code",
+            "code",
             "description",
             "description",
             "target.api.method",

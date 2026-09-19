@@ -85,7 +85,12 @@ class RoleController {
     ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> createRole(
         @Valid @RequestBody Request request
     ) {
-        UUID id = this.access.createRole(request.name(), request.description(), request.roleIds());
+        UUID id = this.access.createRole(
+            request.code(),
+            request.displayName(),
+            request.description(),
+            request.roleIds()
+        );
         return this.responses.created(
             URI.create("/api/v0/roles/" + id),
             Map.of("id", id),
@@ -97,14 +102,16 @@ class RoleController {
     @Schema(name = "RoleInfo")
     record Response(
         UUID id,
-        String name,
+        String code,
+        String displayName,
         @JsonInclude(JsonInclude.Include.NON_NULL) @Nullable String description,
         @JsonInclude(JsonInclude.Include.NON_EMPTY) List<Response> children
     ) {
         static Response from(RoleInfo role) {
             return new Response(
                 role.id(),
-                role.name(),
+                role.code(),
+                role.displayName(),
                 role.description(),
                 role.children().stream().map(Response::from).toList()
             );
@@ -112,7 +119,12 @@ class RoleController {
     }
 
     @Schema(name = "CreateRoleRequest")
-    record Request(@NotBlank @Nullable String name, @Nullable String description, @Nullable Set<UUID> roleIds) {}
+    record Request(
+        @NotBlank @Nullable String code,
+        @NotBlank @Nullable String displayName,
+        @Nullable String description,
+        @Nullable Set<UUID> roleIds
+    ) {}
 
     @Schema(name = "ReplaceRoleStatementsRequest")
     record StatementAssignmentRequest(@Nullable Set<UUID> statementIds) {}

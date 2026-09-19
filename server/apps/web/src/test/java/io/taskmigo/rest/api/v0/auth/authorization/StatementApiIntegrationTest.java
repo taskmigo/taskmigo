@@ -39,7 +39,7 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
 
         // Assert
         assertThat(response)
-            .contains("\"name\":\"users_read\"")
+            .contains("\"code\":\"users_read\"")
             .contains("\"method\":\"GET\"")
             .contains("\"scope\":\"REQUEST\"")
             .contains("return request.path == \\\"/api/v0/users\\\";");
@@ -150,7 +150,7 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
     private String findStatement(String name) {
         for (int page = 1; page <= 100; page++) {
             String response = this.api().get("/api/v0/statements?page=" + page + "&pageSize=100");
-            if (response.contains("\"name\":\"" + name + "\"")) {
+            if (response.contains("\"code\":\"" + name + "\"")) {
                 return response;
             }
         }

@@ -53,14 +53,15 @@ public class DefaultGroupService implements GroupService {
 
     @Override
     @Transactional
-    public UUID create(@Nullable String name, @Nullable String description) {
-        return this.create(name, description, Set.of(), Set.of());
+    public UUID create(@Nullable String code, @Nullable String displayName, @Nullable String description) {
+        return this.create(code, displayName, description, Set.of(), Set.of());
     }
 
     @Override
     @Transactional
     public UUID create(
-        @Nullable String name,
+        @Nullable String code,
+        @Nullable String displayName,
         @Nullable String description,
         @Nullable Collection<UUID> childGroupIds,
         @Nullable Collection<UUID> roleIds
@@ -78,7 +79,14 @@ public class DefaultGroupService implements GroupService {
             throw new GroupException(GroupException.Type.BAD_REQUEST, hierarchyFailureMessage(exception));
         }
 
-        GroupState group = new GroupState(id, required(name, "name"), description, Set.of(), requestedChildIds);
+        GroupState group = new GroupState(
+            id,
+            required(code, "code"),
+            required(displayName, "displayName"),
+            description,
+            Set.of(),
+            requestedChildIds
+        );
         this.groups.create(group);
         allGroups.add(group);
         this.groups.replaceClosure(allGroups, hierarchy);
@@ -92,6 +100,45 @@ public class DefaultGroupService implements GroupService {
         this.requireGroup(groupId);
         this.users.require(userId);
         this.groups.addMember(groupId, userId);
+    }
+
+    @Override
+    @Transactional
+    public UUID reconcile(
+        @Nullable String code,
+        @Nullable String displayName,
+        @Nullable String description,
+        Collection<UUID> roleIds
+    ) {
+        String requiredCode = required(code, "code");
+        String requiredDisplayName = required(displayName, "displayName");
+        GroupState existing = this.groups.findByCode(requiredCode).orElse(null);
+        if (existing == null) {
+            return this.create(requiredCode, requiredDisplayName, description, Set.of(), roleIds);
+        }
+        this.groups.updateDisplayNameAndDescription(existing.id(), requiredDisplayName, description);
+        this.setRoles(existing.id(), roleIds);
+        return existing.id();
+    }
+
+    @Override
+    @Transactional
+    public void setGroupsForUser(UUID userId, Collection<UUID> groupIds) {
+        this.users.require(userId);
+        Set<UUID> requested = Set.copyOf(groupIds);
+        this.requireGroups(requested);
+        this.groups.replaceMemberships(userId, requested);
+    }
+
+    @Override
+    @Transactional
+    public void deleteByCode(String code) {
+        GroupState group = this.groups.findByCode(required(code, "code")).orElse(null);
+        if (group == null) {
+            return;
+        }
+        this.grants.setRoles(IdentitySubjects.group(group.id()), Set.of());
+        this.groups.delete(group.id());
     }
 
     @Override
@@ -142,7 +189,14 @@ public class DefaultGroupService implements GroupService {
         this.groups.replaceChildren(parent.id(), requestedIds);
         allGroups.replaceAll(group ->
             group.id().equals(parent.id())
-                ? new GroupState(group.id(), group.name(), group.description(), group.memberIds(), requestedIds)
+                ? new GroupState(
+                      group.id(),
+                      group.code(),
+                      group.displayName(),
+                      group.description(),
+                      group.memberIds(),
+                      requestedIds
+                  )
                 : group
         );
         this.groups.replaceClosure(allGroups, hierarchy);

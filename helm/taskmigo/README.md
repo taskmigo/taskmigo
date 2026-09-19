@@ -16,14 +16,15 @@ the deployed stack.
 
 The default Secret name is `taskmigo-secrets` and the chart expects these keys:
 
-| Key                       | Used by                                                   |
-| ------------------------- | --------------------------------------------------------- |
-| `database-password`       | Migration, web, worker                                    |
-| `bootstrap-user-password` | Migration system-user reconciliation                      |
-| `auth-client-secret`      | Browser OAuth client reconciliation and client runtime    |
-| `auth-session-secret`     | Client session encryption; must be at least 32 characters |
-
-When the Helm integration test OAuth client is enabled, the Secret must additionally contain `integration-test-client-secret`.
+| Key                          | Used by                                                    |
+| ---------------------------- | ---------------------------------------------------------- |
+| `database-password`          | Migration, web, worker                                     |
+| `system-user-password-hash`  | Pre-encoded migration system-user credential               |
+| `auth-client-secret-hash`    | Pre-encoded browser OAuth client secret and client runtime |
+| `auth-client-secret`         | Raw browser OAuth client secret for the browser runtime    |
+| `machine-client-secret-hash` | Pre-encoded internal machine OAuth client secret           |
+| `machine-client-secret`      | Raw internal machine OAuth client secret for tests         |
+| `auth-session-secret`        | Client session encryption; must be at least 32 characters  |
 
 ## Install
 
@@ -33,8 +34,11 @@ Create the Secret outside Helm so upgrades never rotate credentials implicitly:
 kubectl create namespace taskmigo
 kubectl -n taskmigo create secret generic taskmigo-secrets \
   --from-literal=database-password='replace-me' \
-  --from-literal=bootstrap-user-password='replace-me' \
+  --from-literal=system-user-password-hash='{noop}replace-me' \
+  --from-literal=auth-client-secret-hash='{noop}replace-me' \
   --from-literal=auth-client-secret='replace-me' \
+  --from-literal=machine-client-secret-hash='{noop}replace-me' \
+  --from-literal=machine-client-secret='replace-me' \
   --from-literal=auth-session-secret='replace-with-at-least-32-characters'
 ```
 

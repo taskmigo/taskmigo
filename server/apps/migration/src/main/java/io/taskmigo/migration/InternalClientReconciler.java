@@ -6,8 +6,8 @@ import java.util.Objects;
 import java.util.Set;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties;
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties.Client;
+import org.springframework.core.annotation.Order;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
@@ -19,22 +19,23 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /// Reconciles configured internal OAuth clients into the persistent client registry.
 @Component
+@Order(2)
 final class InternalClientReconciler implements ApplicationRunner {
 
     private static final int MAX_RECONCILIATION_ATTEMPTS = 3;
 
-    private final OAuth2AuthorizationServerProperties properties;
+    private final MigrationResourceLoader resources;
     private final JdbcRegisteredClientRepository clients;
     private final InternalRegisteredClientFactory clientFactory;
     private final TransactionTemplate transactions;
 
     InternalClientReconciler(
-        OAuth2AuthorizationServerProperties properties,
+        MigrationResourceLoader resources,
         JdbcRegisteredClientRepository clients,
         InternalRegisteredClientFactory clientFactory,
         PlatformTransactionManager transactionManager
     ) {
-        this.properties = properties;
+        this.resources = resources;
         this.clients = clients;
         this.clientFactory = clientFactory;
         this.transactions = new TransactionTemplate(transactionManager);
@@ -43,7 +44,7 @@ final class InternalClientReconciler implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments arguments) {
-        this.reconcile(this.properties.getClient());
+        this.reconcile(this.resources.load().clients());
     }
 
     void reconcile(Map<String, Client> configuredClients) {

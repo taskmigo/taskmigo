@@ -4,74 +4,132 @@ import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningService;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
+import io.taskmigo.identity.group.GroupService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
-import java.io.InputStream;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.jspecify.annotations.Nullable;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.core.annotation.Order;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-import tools.jackson.dataformat.yaml.YAMLMapper;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
-/// Loads and reconciles the three-file built-in authorization dataset in dependency order.
+/// Reconciles flat authorization and identity resources in dependency order.
 @Component
-@Order(2)
-class AuthorizationStatementReconciler implements ApplicationRunner {
-
-    private static final String RESOURCE_PREFIX = "migration/authorization/";
+@Order(1)
+final class AuthorizationStatementReconciler implements ApplicationRunner {
 
     private final AuthorizationProvisioningService authorization;
     private final IdentityProvisioningService identity;
-    private final YAMLMapper yaml = YAMLMapper.builder().build();
+    private final GroupService groups;
+    private final MigrationResourceLoader resources;
+    private final TransactionTemplate transactions;
 
     AuthorizationStatementReconciler(
         AuthorizationProvisioningService authorization,
-        IdentityProvisioningService identity
+        IdentityProvisioningService identity,
+        GroupService groups,
+        MigrationResourceLoader resources,
+        PlatformTransactionManager transactionManager
     ) {
         this.authorization = authorization;
         this.identity = identity;
+        this.groups = groups;
+        this.resources = resources;
+        this.transactions = new TransactionTemplate(transactionManager);
     }
 
     @Override
-    @Transactional
-    public void run(ApplicationArguments arguments) throws Exception {
-        StatementsFile statementsFile = this.read("statements.yaml", StatementsFile.class);
-        RolesFile rolesFile = this.read("roles.yaml", RolesFile.class);
-        UsersFile usersFile = this.read("users.yaml", UsersFile.class);
-        Map<String, UUID> statementIds = this.reconcileStatements(values(statementsFile.statements()));
-        Map<String, UUID> roleIds = this.reconcileRoles(values(rolesFile.roles()), statementIds);
-        for (User user : values(usersFile.users())) {
-            this.reconcileUser(user, roleIds, statementIds);
-        }
+    public void run(ApplicationArguments arguments) {
+        this.transactions.executeWithoutResult(status -> {
+            MigrationResourceLoader.MigrationResources data = this.resources.load();
+            this.validate(data);
+
+            this.deleteAbsent(data);
+
+            Map<String, UUID> statementIds = this.reconcileStatements(data.statements());
+            Map<String, UUID> roleIds = this.reconcileRoles(data.roles(), statementIds);
+            Map<String, UUID> groupIds = this.reconcileGroups(data.groups(), roleIds);
+            this.reconcileUsers(data.users(), roleIds, groupIds);
+        });
     }
 
-    private <T> T read(String filename, Class<T> type) throws Exception {
-        ClassPathResource resource = new ClassPathResource(RESOURCE_PREFIX + filename);
-        try (InputStream input = resource.getInputStream()) {
-            return this.yaml.readValue(input, type);
-        }
-    }
+    private void validate(MigrationResourceLoader.MigrationResources data) {
+        Map<String, MigrationResourceLoader.Statement> statements = unique(
+            data.statements(),
+            MigrationResourceLoader.Statement::code,
+            "Statement"
+        );
+        Map<String, MigrationResourceLoader.Role> roles = unique(
+            data.roles(),
+            MigrationResourceLoader.Role::code,
+            "Role"
+        );
+        Map<String, MigrationResourceLoader.Group> groups = unique(
+            data.groups(),
+            MigrationResourceLoader.Group::code,
+            "Group"
+        );
+        unique(data.users(), MigrationResourceLoader.User::username, "User");
 
-    private Map<String, UUID> reconcileStatements(List<Statement> definitions) {
-        Map<String, UUID> result = new LinkedHashMap<>();
-        for (Statement definition : definitions) {
-            if (result.containsKey(definition.name())) {
-                throw new AuthorizationProvisioningException(
-                    "Duplicate managed authorization Statement: " + definition.name()
+        for (MigrationResourceLoader.Role role : data.roles()) {
+            if (!role.absent()) {
+                requireActiveReferences(
+                    role.statements(),
+                    statements,
+                    MigrationResourceLoader.Statement::absent,
+                    "statement"
                 );
             }
+        }
+        for (MigrationResourceLoader.Group group : data.groups()) {
+            if (!group.absent()) {
+                requireActiveReferences(group.roles(), roles, MigrationResourceLoader.Role::absent, "role");
+            }
+        }
+        for (MigrationResourceLoader.User user : data.users()) {
+            if (!user.absent()) {
+                requireActiveReferences(user.roles(), roles, MigrationResourceLoader.Role::absent, "role");
+                requireActiveReferences(user.groups(), groups, MigrationResourceLoader.Group::absent, "group");
+            }
+        }
+    }
+
+    private void deleteAbsent(MigrationResourceLoader.MigrationResources data) {
+        data.users()
+            .stream()
+            .filter(MigrationResourceLoader.User::absent)
+            .forEach(user -> this.identity.deleteUser(user.username()));
+        data.groups()
+            .stream()
+            .filter(MigrationResourceLoader.Group::absent)
+            .forEach(group -> this.groups.deleteByCode(group.code()));
+        data.roles()
+            .stream()
+            .filter(MigrationResourceLoader.Role::absent)
+            .forEach(role -> this.authorization.deleteRole(role.code()));
+        data.statements()
+            .stream()
+            .filter(MigrationResourceLoader.Statement::absent)
+            .forEach(statement -> this.authorization.deleteStatement(statement.code()));
+    }
+
+    private Map<String, UUID> reconcileStatements(List<MigrationResourceLoader.Statement> definitions) {
+        Map<String, UUID> result = new LinkedHashMap<>();
+        for (MigrationResourceLoader.Statement definition : definitions) {
+            if (definition.absent()) {
+                continue;
+            }
             result.put(
-                definition.name(),
+                definition.code(),
                 this.authorization.reconcileStatement(
-                    definition.name(),
+                    definition.code(),
                     definition.description(),
                     Effect.from(definition.effect()),
                     Scope.from(definition.scope()),
@@ -84,100 +142,94 @@ class AuthorizationStatementReconciler implements ApplicationRunner {
         return result;
     }
 
-    private Map<String, UUID> reconcileRoles(List<Role> definitions, Map<String, UUID> statementIds) {
+    private Map<String, UUID> reconcileRoles(
+        List<MigrationResourceLoader.Role> definitions,
+        Map<String, UUID> statementIds
+    ) {
         Map<String, UUID> result = new LinkedHashMap<>();
-        for (Role definition : definitions) {
-            if (result.containsKey(definition.name())) {
-                throw new AuthorizationProvisioningException(
-                    "Duplicate managed authorization Role: " + definition.name()
-                );
+        for (MigrationResourceLoader.Role definition : definitions) {
+            if (definition.absent()) {
+                continue;
             }
-            List<UUID> ids = values(definition.statements())
-                .stream()
-                .map(name -> this.resolveStatement(statementIds, name))
-                .toList();
+            Set<UUID> ids = definition.statements().stream().map(statementIds::get).collect(Collectors.toSet());
             result.put(
-                definition.name(),
-                this.authorization.reconcileRole(definition.name(), definition.description(), ids)
+                definition.code(),
+                this.authorization.reconcileRole(
+                    definition.code(),
+                    definition.displayName(),
+                    definition.description(),
+                    ids
+                )
             );
         }
         return result;
     }
 
-    private void reconcileUser(User user, Map<String, UUID> roleIds, Map<String, UUID> statementIds) {
-        Set<UUID> roles = values(user.roles())
-            .stream()
-            .map(roleName -> this.resolveRole(roleIds, roleName))
-            .collect(Collectors.toSet());
-        Set<UUID> statements = values(user.statements())
-            .stream()
-            .map(statementName -> this.resolveStatement(statementIds, statementName))
-            .collect(Collectors.toSet());
-        this.identity.reconcileUser(
-            user.username(),
-            user.email(),
-            user.firstName(),
-            user.lastName(),
-            roles,
-            statements
-        );
+    private Map<String, UUID> reconcileGroups(
+        List<MigrationResourceLoader.Group> definitions,
+        Map<String, UUID> roleIds
+    ) {
+        Map<String, UUID> result = new LinkedHashMap<>();
+        for (MigrationResourceLoader.Group definition : definitions) {
+            if (definition.absent()) {
+                continue;
+            }
+            Set<UUID> ids = definition.roles().stream().map(roleIds::get).collect(Collectors.toSet());
+            result.put(
+                definition.code(),
+                this.groups.reconcile(definition.code(), definition.displayName(), definition.description(), ids)
+            );
+        }
+        return result;
     }
 
-    private UUID resolveStatement(Map<String, UUID> values, String name) {
-        return values.computeIfAbsent(name, this.authorization::requireStatement);
-    }
-
-    private UUID resolveRole(Map<String, UUID> values, String name) {
-        return values.computeIfAbsent(name, this.authorization::requireRole);
-    }
-
-    private static <T> List<T> values(@Nullable List<T> values) {
-        return values == null ? List.of() : List.copyOf(values);
-    }
-
-    private record StatementsFile(@Nullable List<Statement> statements) {
-        private StatementsFile {
-            statements = values(statements);
+    private void reconcileUsers(
+        List<MigrationResourceLoader.User> definitions,
+        Map<String, UUID> roleIds,
+        Map<String, UUID> groupIds
+    ) {
+        for (MigrationResourceLoader.User user : definitions) {
+            if (user.absent()) {
+                continue;
+            }
+            Set<UUID> roles = user.roles().stream().map(roleIds::get).collect(Collectors.toSet());
+            Set<UUID> groups = user.groups().stream().map(groupIds::get).collect(Collectors.toSet());
+            this.identity.reconcileUser(
+                user.username(),
+                user.password(),
+                user.emails(),
+                user.firstName(),
+                user.lastName(),
+                roles,
+                groups
+            );
         }
     }
 
-    private record RolesFile(@Nullable List<Role> roles) {
-        private RolesFile {
-            roles = values(roles);
+    private static <T> Map<String, T> unique(List<T> values, Function<T, String> key, String type) {
+        Map<String, T> result = new LinkedHashMap<>();
+        for (T value : values) {
+            String code = key.apply(value);
+            if (result.putIfAbsent(code, value) != null) {
+                throw new AuthorizationProvisioningException("Duplicate managed " + type + ": " + code);
+            }
         }
+        return result;
     }
 
-    private record UsersFile(@Nullable List<User> users) {
-        private UsersFile {
-            users = values(users);
+    private static <T> void requireActiveReferences(
+        List<String> references,
+        Map<String, T> definitions,
+        Function<T, Boolean> absent,
+        String type
+    ) {
+        for (String reference : references) {
+            T definition = definitions.get(reference);
+            if (definition == null || absent.apply(definition)) {
+                throw new AuthorizationProvisioningException(
+                    "Managed " + type + " reference does not resolve to an active resource: " + reference
+                );
+            }
         }
     }
-
-    private record Statement(
-        String name,
-        String description,
-        String effect,
-        String scope,
-        Target target,
-        String policy
-    ) {}
-
-    private record Target(Api api) {}
-
-    private record Api(String method, String path) {}
-
-    private record Role(String name, String description, @Nullable List<String> statements) {
-        private Role {
-            statements = values(statements);
-        }
-    }
-
-    private record User(
-        String username,
-        List<String> email,
-        String firstName,
-        String lastName,
-        List<String> roles,
-        List<String> statements
-    ) {}
 }

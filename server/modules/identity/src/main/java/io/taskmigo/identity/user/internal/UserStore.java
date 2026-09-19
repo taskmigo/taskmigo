@@ -27,6 +27,8 @@ public interface UserStore {
 
     void create(UserState user);
 
+    void delete(UUID id);
+
     void updateProfile(UUID id, Set<String> emails, String firstName, String lastName);
 
     void updatePasswordHash(UUID id, String passwordHash);

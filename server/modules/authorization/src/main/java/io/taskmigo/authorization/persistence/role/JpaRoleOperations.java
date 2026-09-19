@@ -54,8 +54,8 @@ public class JpaRoleOperations implements RoleStore {
     }
 
     @Override
-    public Optional<RoleState> findByName(String name) {
-        return this.roles.findByName(name).map(JpaRoleOperations::state);
+    public Optional<RoleState> findByCode(String code) {
+        return this.roles.findByCode(code).map(JpaRoleOperations::state);
     }
 
     @Override
@@ -66,7 +66,7 @@ public class JpaRoleOperations implements RoleStore {
     @Override
     public void create(RoleState role) {
         List<RoleEntity> children = this.roles.findAllByIdIn(role.childIds());
-        RoleEntity entity = new RoleEntity(role.id(), role.name(), role.description());
+        RoleEntity entity = new RoleEntity(role.id(), role.code(), role.displayName(), role.description());
         entity.addChildRoles(children);
         entity.replaceStatementIds(role.statementIds());
         this.roles.saveAndFlush(entity);
@@ -87,10 +87,21 @@ public class JpaRoleOperations implements RoleStore {
     }
 
     @Override
-    public void updateDescriptionAndStatements(UUID roleId, @Nullable String description, Set<UUID> statementIds) {
+    public void updateDisplayNameDescriptionAndStatements(
+        UUID roleId,
+        String displayName,
+        @Nullable String description,
+        Set<UUID> statementIds
+    ) {
         RoleEntity role = this.roles.findById(roleId).orElseThrow();
-        role.updateDescription(description);
+        role.updateDisplayNameAndDescription(displayName, description);
         role.replaceStatementIds(statementIds);
+        this.roles.flush();
+    }
+
+    @Override
+    public void delete(UUID roleId) {
+        this.roles.deleteById(roleId);
         this.roles.flush();
     }
 
@@ -141,7 +152,7 @@ public class JpaRoleOperations implements RoleStore {
 
     private static RoleInfo info(RoleEntity role, Set<UUID> ancestors) {
         if (ancestors.contains(role.id())) {
-            return new RoleInfo(role.id(), role.name(), role.description(), List.of());
+            return new RoleInfo(role.id(), role.code(), role.displayName(), role.description(), List.of());
         }
         Set<UUID> nextAncestors = new HashSet<>(ancestors);
         nextAncestors.add(role.id());
@@ -151,13 +162,14 @@ public class JpaRoleOperations implements RoleStore {
             .sorted((left, right) -> left.id().compareTo(right.id()))
             .map(child -> info(child, nextAncestors))
             .toList();
-        return new RoleInfo(role.id(), role.name(), role.description(), children);
+        return new RoleInfo(role.id(), role.code(), role.displayName(), role.description(), children);
     }
 
     private static RoleState state(RoleEntity role) {
         return new RoleState(
             role.id(),
-            role.name(),
+            role.code(),
+            role.displayName(),
             role.description(),
             role.statementIds(),
             role.childRoles().stream().map(RoleEntity::id).collect(Collectors.toSet())

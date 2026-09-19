@@ -26,10 +26,10 @@ class DefaultAuthorizationProvisioningServiceTest {
     @DisplayName("reports a typed provisioning failure when a managed Role reference is missing")
     void shouldReportProvisioningFailureWhenManagedRoleIsMissing() {
         RoleStore roles = mock(RoleStore.class);
-        when(roles.findByName("Missing Role")).thenReturn(Optional.empty());
+        when(roles.findByCode("missing-role")).thenReturn(Optional.empty());
         var service = service(roles, mock(StatementStore.class), mock(StatementPolicyValidator.class));
 
-        assertThatThrownBy(() -> service.requireRole("Missing Role"))
+        assertThatThrownBy(() -> service.requireRole("missing-role"))
             .isInstanceOf(AuthorizationProvisioningException.class)
             .hasMessageContaining("Managed authorization Role does not exist");
     }
@@ -53,7 +53,7 @@ class DefaultAuthorizationProvisioningServiceTest {
         when(
             validator.validate("projects.read", null, Effect.ALLOW, Scope.REQUEST, "GET", "/projects", "true")
         ).thenReturn(definition);
-        when(statements.findIdByName("projects.read")).thenReturn(Optional.of(id));
+        when(statements.findIdByCode("projects.read")).thenReturn(Optional.of(id));
         var service = service(roles, statements, validator);
 
         UUID result = service.reconcileStatement(
