@@ -3,7 +3,8 @@ clients:
   browser:
     registration:
       client-id: taskmigo-client
-      client-secret: "${TASKMIGO_AUTH_CLIENT_SECRET_HASH}"  # yamllint disable-line rule:quoted-strings
+      # yamllint disable-line rule:quoted-strings
+      client-secret: "${TASKMIGO_AUTH_CLIENT_SECRET_HASH}"
       client-name: Taskmigo browser client
       client-authentication-methods:
         - client_secret_basic
@@ -11,9 +12,11 @@ clients:
         - authorization_code
         - refresh_token
       redirect-uris:
-        - "${TASKMIGO_CLIENT_URL}/api/auth/callback"  # yamllint disable-line rule:quoted-strings
+        # yamllint disable-line rule:quoted-strings
+        - "${TASKMIGO_CLIENT_URL}/api/auth/callback"
       post-logout-redirect-uris:
-        - "${TASKMIGO_CLIENT_URL}/"  # yamllint disable-line rule:quoted-strings
+        # yamllint disable-line rule:quoted-strings
+        - "${TASKMIGO_CLIENT_URL}/"
       scopes:
         - openid
         - profile
