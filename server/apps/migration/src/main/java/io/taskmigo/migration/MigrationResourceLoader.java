@@ -56,6 +56,9 @@ final class MigrationResourceLoader {
     }
 
     private Map<String, Client> readClients() throws IOException {
+        if (!this.environment.getProperty("TM_BROWSER_AUTHENTICATION_ENABLED", Boolean.class, true)) {
+            return Map.of();
+        }
         byte[] resolved = this.resolve("security.yaml");
         Map<String, Object> root = this.yaml.readValue(resolved, new TypeReference<>() {});
         if (!root.keySet().equals(Set.of("clients"))) {
