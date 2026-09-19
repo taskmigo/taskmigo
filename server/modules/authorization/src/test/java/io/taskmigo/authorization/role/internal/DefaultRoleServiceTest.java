@@ -27,7 +27,7 @@ class DefaultRoleServiceTest {
      * Verifies that the application service delegates persistence through a framework-neutral RoleStore.
      *
      * Given: a Role creation request with no child roles and an empty persisted graph.
-     * Expect: RoleStore receives one RoleState with the normalized name and no JPA type is exposed.
+     * Expect: RoleStore receives one RoleState with the normalized code and no JPA type is exposed.
      */
     @Test
     @DisplayName("creates a role through the application-owned store")
@@ -37,12 +37,12 @@ class DefaultRoleServiceTest {
         ArgumentCaptor<RoleStore.RoleState> state = ArgumentCaptor.forClass(RoleStore.RoleState.class);
 
         // Act
-        UUID id = service.createRole("  administrator  ", null, Set.of());
+        UUID id = service.createRole("  administrator  ", "Administrator", null, Set.of());
 
         // Assert
         Mockito.verify(roles).create(state.capture());
         assertThat(id).isEqualTo(state.getValue().id());
-        assertThat(state.getValue().name()).isEqualTo("  administrator  ");
+        assertThat(state.getValue().code()).isEqualTo("  administrator  ");
         assertThat(state.getValue().childIds()).isEmpty();
     }
 }

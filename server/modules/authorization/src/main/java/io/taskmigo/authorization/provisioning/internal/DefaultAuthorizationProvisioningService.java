@@ -9,10 +9,14 @@ import io.taskmigo.authorization.role.internal.RoleStore.RoleState;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementDefinition;
+import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.StatementPolicyValidator;
 import io.taskmigo.authorization.statement.StatementService;
 import io.taskmigo.authorization.statement.internal.StatementStore;
+import io.taskmigo.foundation.ReconciliationAction;
+import io.taskmigo.foundation.ReconciliationResult;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -46,8 +50,8 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
 
     @Override
     @Transactional
-    public UUID reconcileStatement(
-        @Nullable String name,
+    public ReconciliationResult<UUID> reconcileStatement(
+        @Nullable String code,
         @Nullable String description,
         @Nullable Effect effect,
         @Nullable Scope scope,
@@ -56,7 +60,7 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
         @Nullable String policy
     ) {
         StatementDefinition definition = this.policyValidator.validate(
-            name,
+            code,
             description,
             effect,
             scope,
@@ -65,53 +69,110 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
             policy
         );
 
-        Optional<UUID> existingId = this.statements.findIdByName(definition.name());
-        if (existingId.isEmpty()) {
-            return this.statements.create(definition);
+        Optional<StatementInfo> existing = this.statements.findByCode(definition.code());
+        if (existing.isEmpty()) {
+            return new ReconciliationResult<>(this.statements.create(definition), ReconciliationAction.ADDED);
         }
-        UUID id = existingId.orElseThrow();
+        StatementInfo current = existing.orElseThrow();
+        if (sameStatement(current, definition)) {
+            return new ReconciliationResult<>(current.id(), ReconciliationAction.UNCHANGED);
+        }
+        UUID id = current.id();
         this.statements.update(id, definition);
-        return id;
+        return new ReconciliationResult<>(id, ReconciliationAction.UPDATED);
     }
 
     @Override
     @Transactional
-    public UUID reconcileRole(@Nullable String name, @Nullable String description, Collection<UUID> statementIds) {
+    public ReconciliationResult<UUID> reconcileRole(
+        @Nullable String code,
+        @Nullable String displayName,
+        @Nullable String description,
+        Collection<UUID> statementIds
+    ) {
         Set<UUID> requestedIds = Set.copyOf(statementIds);
         this.statementService.requireStatements(requestedIds);
 
-        String validName = AuthorizationName.requiredRole(name, "name");
-        RoleState existing = this.roles.findByName(validName).orElse(null);
+        String validCode = AuthorizationName.requiredRole(code, "code");
+        String validDisplayName = AuthorizationName.requiredDisplayName(displayName, "displayName");
+        RoleState existing = this.roles.findByCode(validCode).orElse(null);
         if (existing == null) {
-            UUID id = this.roleService.createRole(validName, description, Set.of());
+            UUID id = this.roleService.createRole(validCode, validDisplayName, description, Set.of());
             this.roles.replaceStatements(id, requestedIds);
-            return id;
+            return new ReconciliationResult<>(id, ReconciliationAction.ADDED);
         }
 
-        this.roles.updateDescriptionAndStatements(existing.id(), description, requestedIds);
-        return existing.id();
+        if (
+            existing.displayName().equals(validDisplayName) &&
+            Objects.equals(existing.description(), description) &&
+            existing.statementIds().equals(requestedIds)
+        ) {
+            return new ReconciliationResult<>(existing.id(), ReconciliationAction.UNCHANGED);
+        }
+        this.roles.updateDisplayNameDescriptionAndStatements(
+            existing.id(),
+            validDisplayName,
+            description,
+            requestedIds
+        );
+        return new ReconciliationResult<>(existing.id(), ReconciliationAction.UPDATED);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public UUID requireStatement(String name) {
-        String validName = AuthorizationName.required(name, "statement reference");
+    public UUID requireStatement(String code) {
+        String validCode = AuthorizationName.required(code, "statement reference");
         return this.statements
-            .findIdByName(validName)
+            .findIdByCode(validCode)
             .orElseThrow(() ->
-                new AuthorizationProvisioningException("Managed authorization Statement does not exist: " + validName)
+                new AuthorizationProvisioningException("Managed authorization Statement does not exist: " + validCode)
             );
     }
 
     @Override
     @Transactional(readOnly = true)
-    public UUID requireRole(String name) {
-        String validName = AuthorizationName.requiredRole(name, "role reference");
+    public UUID requireRole(String code) {
+        String validCode = AuthorizationName.requiredRole(code, "role reference");
         return this.roles
-            .findByName(validName)
+            .findByCode(validCode)
             .map(RoleState::id)
             .orElseThrow(() ->
-                new AuthorizationProvisioningException("Managed authorization Role does not exist: " + validName)
+                new AuthorizationProvisioningException("Managed authorization Role does not exist: " + validCode)
             );
+    }
+
+    @Override
+    @Transactional
+    public boolean deleteStatement(String code) {
+        String validCode = AuthorizationName.required(code, "statement code");
+        Optional<UUID> existingId = this.statements.findIdByCode(validCode);
+        if (existingId.isEmpty()) {
+            return false;
+        }
+        this.statements.delete(existingId.orElseThrow());
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public boolean deleteRole(String code) {
+        String validCode = AuthorizationName.requiredRole(code, "role code");
+        Optional<RoleState> existing = this.roles.findByCode(validCode);
+        if (existing.isEmpty()) {
+            return false;
+        }
+        this.roles.delete(existing.orElseThrow().id());
+        return true;
+    }
+
+    private static boolean sameStatement(StatementInfo current, StatementDefinition requested) {
+        return (
+            Objects.equals(current.description(), requested.description()) &&
+            current.effect() == requested.effect() &&
+            current.scope() == requested.scope() &&
+            current.target().api().method().equals(requested.method()) &&
+            current.target().api().path().equals(requested.path()) &&
+            current.policy().equals(requested.policy())
+        );
     }
 }

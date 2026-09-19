@@ -61,7 +61,12 @@ public class IdentityResourceSchemas {
     QuerySchema<GroupInfo> groupQuerySchema() {
         return schema(
             GroupInfo.class,
-            List.of(field("id", UUID_TYPE), field("name", STRING_TYPE), nullable("description"))
+            List.of(
+                field("id", UUID_TYPE),
+                field("code", STRING_TYPE),
+                field("displayName", STRING_TYPE),
+                nullable("description")
+            )
         );
     }
 
@@ -70,7 +75,12 @@ public class IdentityResourceSchemas {
     ObjectAuthorizationSchema<GroupInfo> groupObjectAuthorizationSchema() {
         return objectSchema(
             GroupInfo.class,
-            List.of(objectField("id", UUID_TYPE), objectField("name", STRING_TYPE), objectNullable("description"))
+            List.of(
+                objectField("id", UUID_TYPE),
+                objectField("code", STRING_TYPE),
+                objectField("displayName", STRING_TYPE),
+                objectNullable("description")
+            )
         );
     }
 
@@ -92,7 +102,7 @@ public class IdentityResourceSchemas {
         return new JpaQueryPredicateBinder<>(
             GroupInfo.class,
             GroupEntity.class,
-            simplePaths("id", "name", "description"),
+            simplePaths("id", "code", "displayName", "description"),
             simpleTypes()
         );
     }
@@ -103,7 +113,7 @@ public class IdentityResourceSchemas {
         return new JpaObjectAuthorizationPredicateBinder<>(
             GroupInfo.class,
             GroupEntity.class,
-            simplePaths("id", "name", "description"),
+            simplePaths("id", "code", "displayName", "description"),
             simpleTypes()
         );
     }
@@ -137,7 +147,7 @@ public class IdentityResourceSchemas {
     }
 
     private static Map<String, Class<?>> simpleTypes() {
-        return Map.of("id", UUID.class, "name", String.class, "description", String.class);
+        return Map.of("id", UUID.class, "code", String.class, "displayName", String.class, "description", String.class);
     }
 
     private static <Q> QuerySchema<Q> schema(Class<Q> type, Collection<QueryField> fields) {

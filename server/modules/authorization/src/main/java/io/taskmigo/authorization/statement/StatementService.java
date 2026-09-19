@@ -10,7 +10,7 @@ import org.jspecify.annotations.Nullable;
 /// Defines the application contract for Statement use cases.
 public interface StatementService {
     UUID create(
-        @Nullable String name,
+        @Nullable String code,
         @Nullable String description,
         @Nullable Effect effect,
         @Nullable Scope scope,

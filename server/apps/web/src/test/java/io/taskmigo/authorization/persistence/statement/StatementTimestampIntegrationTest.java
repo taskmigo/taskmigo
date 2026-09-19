@@ -43,9 +43,9 @@ class StatementTimestampIntegrationTest extends ApiIntegrationTestSupport {
     @DisplayName("advances statement updated_at and exposes it as the authorization revision")
     void shouldAdvanceUpdatedAtWhenStatementIsUpdated() {
         String suffix = UUID.randomUUID().toString();
-        String statementName = "timestamp-" + suffix;
+        String statementCode = "timestamp-" + suffix;
         UUID statementId = this.statements.create(
-            statementName,
+            statementCode,
             "before",
             Effect.ALLOW,
             Scope.REQUEST,
@@ -67,7 +67,7 @@ class StatementTimestampIntegrationTest extends ApiIntegrationTestSupport {
         EffectiveStatement initialResolved = this.resolver.resolve(userId).getFirst();
 
         this.provisioning.reconcileStatement(
-            statementName,
+            statementCode,
             "after",
             Effect.ALLOW,
             Scope.REQUEST,

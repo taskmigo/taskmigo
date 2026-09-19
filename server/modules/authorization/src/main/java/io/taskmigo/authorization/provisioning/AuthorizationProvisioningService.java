@@ -2,14 +2,15 @@ package io.taskmigo.authorization.provisioning;
 
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
+import io.taskmigo.foundation.ReconciliationResult;
 import java.util.Collection;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /// Defines installation/provisioning operations for managed authorization state.
 public interface AuthorizationProvisioningService {
-    UUID reconcileStatement(
-        @Nullable String name,
+    ReconciliationResult<UUID> reconcileStatement(
+        @Nullable String code,
         @Nullable String description,
         @Nullable Effect effect,
         @Nullable Scope scope,
@@ -18,9 +19,18 @@ public interface AuthorizationProvisioningService {
         @Nullable String policy
     );
 
-    UUID reconcileRole(@Nullable String name, @Nullable String description, Collection<UUID> statementIds);
+    ReconciliationResult<UUID> reconcileRole(
+        @Nullable String code,
+        @Nullable String displayName,
+        @Nullable String description,
+        Collection<UUID> statementIds
+    );
 
-    UUID requireStatement(String name);
+    UUID requireStatement(String code);
 
-    UUID requireRole(String name);
+    UUID requireRole(String code);
+
+    boolean deleteStatement(String code);
+
+    boolean deleteRole(String code);
 }

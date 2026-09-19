@@ -1,0 +1,20 @@
+---
+- username: system
+  # yamllint disable-line rule:quoted-strings
+  password: "${TM_SYSTEM_PASSWORD}"
+  emails: []
+  firstName: System
+  lastName: User
+  roles:
+    - system-operator
+  groups:
+    - global
+
+- username: admin
+  emails: []
+  firstName: Admin
+  lastName: User
+  roles:
+    - administrator
+  groups:
+    - global

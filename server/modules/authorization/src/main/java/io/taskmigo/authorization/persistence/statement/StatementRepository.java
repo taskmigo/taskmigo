@@ -12,9 +12,9 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface StatementRepository
     extends JpaRepository<StatementEntity, UUID>, JpaSpecificationExecutor<StatementEntity>
 {
-    boolean existsByName(String name);
+    boolean existsByCode(String code);
 
-    Optional<StatementEntity> findByName(String name);
+    Optional<StatementEntity> findByCode(String code);
 
     Page<StatementEntity> findAllBy(Pageable pageable);
 

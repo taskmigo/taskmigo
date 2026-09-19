@@ -11,13 +11,17 @@ import java.util.UUID;
 
 /// Defines persistence operations needed by Statement application use cases.
 public interface StatementStore {
-    boolean existsByName(String name);
+    boolean existsByCode(String code);
 
     UUID create(StatementDefinition definition);
 
-    Optional<UUID> findIdByName(String name);
+    Optional<StatementInfo> findByCode(String code);
+
+    Optional<UUID> findIdByCode(String code);
 
     void update(UUID id, StatementDefinition definition);
+
+    void delete(UUID id);
 
     OffsetPage<StatementInfo> list(int page, int perPage);
 

@@ -26,7 +26,10 @@ public class RoleEntity {
     UUID id;
 
     @Column(nullable = false, unique = true)
-    String name;
+    String code;
+
+    @Column(name = "display_name", nullable = false)
+    String displayName;
 
     @Column(length = 1000)
     @Nullable
@@ -51,9 +54,10 @@ public class RoleEntity {
 
     protected RoleEntity() {}
 
-    public RoleEntity(UUID id, String name, @Nullable String description) {
+    public RoleEntity(UUID id, String code, String displayName, @Nullable String description) {
         this.id = id;
-        this.name = name;
+        this.code = code;
+        this.displayName = displayName;
         this.description = description;
     }
 
@@ -61,8 +65,12 @@ public class RoleEntity {
         return this.id;
     }
 
-    public String name() {
-        return this.name;
+    public String code() {
+        return this.code;
+    }
+
+    public String displayName() {
+        return this.displayName;
     }
 
     public @Nullable String description() {
@@ -91,7 +99,8 @@ public class RoleEntity {
         this.statementIds.addAll(statementIds);
     }
 
-    public void updateDescription(@Nullable String description) {
+    public void updateDisplayNameAndDescription(String displayName, @Nullable String description) {
+        this.displayName = displayName;
         this.description = description;
     }
 }

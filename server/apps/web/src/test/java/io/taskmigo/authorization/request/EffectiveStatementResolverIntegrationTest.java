@@ -51,7 +51,8 @@ class EffectiveStatementResolverIntegrationTest extends ApiIntegrationTestSuppor
     @DisplayName("keeps effective statement resolution bounded as unrelated roles grow")
     void shouldKeepQueryCountBoundedWhenUnrelatedRolesAreAdded() {
         List<UUID> statementIds = this.createStatements(500);
-        UUID roleId = this.roles.createRole("performance-role-" + UUID.randomUUID(), null, Set.of());
+        String roleCode = "performance-role-" + UUID.randomUUID();
+        UUID roleId = this.roles.createRole(roleCode, roleCode, null, Set.of());
         this.roleAssignments.setStatements(roleId, statementIds);
         UUID userId = this.users.create(
             "performance-user-" + UUID.randomUUID(),
@@ -86,8 +87,9 @@ class EffectiveStatementResolverIntegrationTest extends ApiIntegrationTestSuppor
     }
 
     private void createUnrelatedRoles(int count) {
-        IntStream.range(0, count).forEach(index ->
-            this.roles.createRole("unrelated-role-" + index + "-" + UUID.randomUUID(), null, Set.of())
-        );
+        IntStream.range(0, count).forEach(index -> {
+            String roleCode = "unrelated-role-" + index + "-" + UUID.randomUUID();
+            this.roles.createRole(roleCode, roleCode, null, Set.of());
+        });
     }
 }

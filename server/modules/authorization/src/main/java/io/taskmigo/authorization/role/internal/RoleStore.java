@@ -14,13 +14,20 @@ import org.jspecify.annotations.Nullable;
 
 /// Defines persistence capabilities required by Role application services without exposing JPA types.
 public interface RoleStore {
-    record RoleState(UUID id, String name, @Nullable String description, Set<UUID> statementIds, Set<UUID> childIds) {}
+    record RoleState(
+        UUID id,
+        String code,
+        String displayName,
+        @Nullable String description,
+        Set<UUID> statementIds,
+        Set<UUID> childIds
+    ) {}
 
     List<RoleState> loadAllForUpdate();
 
     Optional<RoleState> find(UUID id);
 
-    Optional<RoleState> findByName(String name);
+    Optional<RoleState> findByCode(String code);
 
     boolean containsAll(Collection<UUID> ids);
 
@@ -30,7 +37,14 @@ public interface RoleStore {
 
     void replaceStatements(UUID roleId, Set<UUID> statementIds);
 
-    void updateDescriptionAndStatements(UUID roleId, @Nullable String description, Set<UUID> statementIds);
+    void updateDisplayNameDescriptionAndStatements(
+        UUID roleId,
+        String displayName,
+        @Nullable String description,
+        Set<UUID> statementIds
+    );
+
+    void delete(UUID roleId);
 
     void replaceClosure(Collection<RoleState> roles, RoleHierarchy hierarchy);
 

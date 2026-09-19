@@ -1,0 +1,17 @@
+---
+spring:
+  config:
+    import: classpath:application-database.yaml
+  main:
+    web-application-type: none
+  flyway:
+    enabled: true
+    validate-migration-naming: true
+
+logging:
+  structured:
+    format:
+      console: ecs
+    ecs:
+      service:
+        name: taskmigo-migration

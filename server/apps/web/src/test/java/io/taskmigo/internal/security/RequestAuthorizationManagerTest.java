@@ -20,7 +20,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.security.authorization.AuthorizationDecision;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
@@ -55,11 +54,7 @@ class RequestAuthorizationManagerTest {
             .claim("user_id", userId.toString())
             .claim("principal_username", "alice")
             .build();
-        JwtAuthenticationToken authentication = new JwtAuthenticationToken(
-            jwt,
-            List.of(new SimpleGrantedAuthority("SCOPE_taskmigo.api")),
-            "alice"
-        );
+        JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt, List.of(), "alice");
         RequestAuthorizationManager manager = new RequestAuthorizationManager(authorization);
 
         // Act
@@ -101,10 +96,7 @@ class RequestAuthorizationManagerTest {
             .claim("principal_type", "user")
             .claim("user_id", userId.toString())
             .build();
-        JwtAuthenticationToken authentication = new JwtAuthenticationToken(
-            jwt,
-            List.of(new SimpleGrantedAuthority("SCOPE_taskmigo.api"))
-        );
+        JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt, List.of());
         RequestAuthorizationManager manager = new RequestAuthorizationManager(authorization);
 
         // Act
@@ -136,10 +128,7 @@ class RequestAuthorizationManagerTest {
             .claim("principal_type", "user")
             .claim("user_id", userId.toString())
             .build();
-        JwtAuthenticationToken authentication = new JwtAuthenticationToken(
-            jwt,
-            List.of(new SimpleGrantedAuthority("SCOPE_taskmigo.api"))
-        );
+        JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt, List.of());
         RequestAuthorizationManager manager = new RequestAuthorizationManager(authorization);
 
         // Act

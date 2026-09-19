@@ -34,7 +34,8 @@ class DefaultRoleService implements RoleService {
     @Override
     @Transactional
     public UUID createRole(
-        @Nullable String name,
+        @Nullable String code,
+        @Nullable String displayName,
         @Nullable String description,
         @Nullable Collection<UUID> childRoleIds
     ) {
@@ -52,7 +53,8 @@ class DefaultRoleService implements RoleService {
 
         RoleState role = new RoleState(
             id,
-            AuthorizationName.requiredRole(name, "name"),
+            AuthorizationName.requiredRole(code, "code"),
+            AuthorizationName.requiredDisplayName(displayName, "displayName"),
             description,
             Set.of(),
             requestedChildIds
@@ -101,7 +103,14 @@ class DefaultRoleService implements RoleService {
         this.roles.replaceChildren(parent.id(), requestedIds);
         allRoles.replaceAll(role ->
             role.id().equals(parent.id())
-                ? new RoleState(role.id(), role.name(), role.description(), role.statementIds(), requestedIds)
+                ? new RoleState(
+                      role.id(),
+                      role.code(),
+                      role.displayName(),
+                      role.description(),
+                      role.statementIds(),
+                      requestedIds
+                  )
                 : role
         );
         this.roles.replaceClosure(allRoles, hierarchy);

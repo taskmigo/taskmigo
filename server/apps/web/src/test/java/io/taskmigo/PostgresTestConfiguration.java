@@ -4,14 +4,12 @@ import io.taskmigo.authorization.provisioning.AuthorizationProvisioningService;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
-import io.taskmigo.identity.user.UserService;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
@@ -32,21 +30,20 @@ public class PostgresTestConfiguration {
     ApplicationRunner persistedRuntimeStateFixture(
         IdentityProvisioningService identity,
         AuthorizationProvisioningService authorization,
-        UserService users,
-        PasswordEncoder passwordEncoder,
         JdbcRegisteredClientRepository clients
     ) {
         return arguments -> {
-            identity.reconcileSystemUser(passwordEncoder.encode("integration-password"));
-            UUID fullAccess = authorization.reconcileStatement(
-                "system_operator_request_all",
-                "Allows the system administrator to access the versioned API.",
-                Effect.ALLOW,
-                Scope.REQUEST,
-                "*",
-                "/api/v.*/.*",
-                "return true;"
-            );
+            UUID fullAccess = authorization
+                .reconcileStatement(
+                    "system_operator_request_all",
+                    "Allows the system administrator to access the versioned API.",
+                    Effect.ALLOW,
+                    Scope.REQUEST,
+                    "*",
+                    "/api/v.*/.*",
+                    "return true;"
+                )
+                .id();
             UUID usersAccess = objectStatement(authorization, "system_users_full_access", "/api/v0/users");
             UUID rolesAccess = objectStatement(authorization, "system_roles_full_access", "/api/v0/roles");
             UUID groupsAccess = objectStatement(authorization, "system_groups_full_access", "/api/v0/groups");
@@ -55,23 +52,38 @@ public class PostgresTestConfiguration {
                 "system_statements_full_access",
                 "/api/v0/statements"
             );
-            UUID roleId = authorization.reconcileRole(
-                "System Operator",
-                "Highest-privilege integration-test role.",
-                List.of(fullAccess, usersAccess, rolesAccess, groupsAccess, statementsAccess)
+            UUID roleId = authorization
+                .reconcileRole(
+                    "system-operator",
+                    "System Operator",
+                    "Highest-privilege integration-test role.",
+                    List.of(fullAccess, usersAccess, rolesAccess, groupsAccess, statementsAccess)
+                )
+                .id();
+            identity.reconcileUser(
+                "system",
+                "{noop}integration-password",
+                List.of(),
+                "System",
+                "User",
+                List.of(roleId),
+                List.of()
             );
-            users.setRoles(users.findForAuthentication("system").orElseThrow().id(), List.of(roleId));
-            if (clients.findByClientId("integration-client") == null) {
+            if (clients.findByClientId("browser") == null) {
                 clients.save(
-                    RegisteredClient.withId("integration-client")
-                        .clientId("integration-client")
-                        .clientSecret(passwordEncoder.encode("integration-secret"))
-                        .clientName("Integration client")
+                    RegisteredClient.withId("browser")
+                        .clientId("browser")
+                        .clientSecret("{noop}integration-secret")
+                        .clientName("Taskmigo browser test client")
                         .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                         .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                        .scope("taskmigo.api")
                         .clientSettings(
-                            ClientSettings.builder().requireProofKey(false).requireAuthorizationConsent(false).build()
+                            ClientSettings.builder()
+                                .requireProofKey(false)
+                                .requireAuthorizationConsent(false)
+                                .setting("taskmigo.oauth-client.ownership", "internal")
+                                .setting("taskmigo.internal-client.managed", "v1")
+                                .build()
                         )
                         .build()
                 );
@@ -79,15 +91,17 @@ public class PostgresTestConfiguration {
         };
     }
 
-    private static UUID objectStatement(AuthorizationProvisioningService authorization, String name, String path) {
-        return authorization.reconcileStatement(
-            name,
-            "Allows the system administrator to view every object.",
-            Effect.ALLOW,
-            Scope.OBJECT,
-            "GET",
-            path,
-            "return true;"
-        );
+    private static UUID objectStatement(AuthorizationProvisioningService authorization, String code, String path) {
+        return authorization
+            .reconcileStatement(
+                code,
+                "Allows the system administrator to view every object.",
+                Effect.ALLOW,
+                Scope.OBJECT,
+                "GET",
+                path,
+                "return true;"
+            )
+            .id();
     }
 }

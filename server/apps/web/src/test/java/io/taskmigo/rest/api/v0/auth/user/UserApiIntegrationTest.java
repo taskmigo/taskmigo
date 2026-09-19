@@ -73,7 +73,7 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
             .create(new CreateRoleRequest(uniqueRoleName("DeveloperRole"), null, Set.of(employee)));
         UUID engineering = this.api()
             .groups()
-            .create(new CreateGroupRequest("Engineering", null, Set.of(), Set.of(developer)));
+            .create(new CreateGroupRequest(uniqueGroupName("Engineering"), null, Set.of(), Set.of(developer)));
 
         UUID noAssignments = this.create("none", Set.of(), Set.of());
         UUID withRoles = this.create("roles", List.of(developer, developer), Set.of());
@@ -142,10 +142,10 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
             .create(new CreateRoleRequest(uniqueRoleName("EmployeeRole"), null, Set.of()));
         UUID backend = this.api()
             .groups()
-            .create(new CreateGroupRequest("Backend", null, Set.of(), List.of(backendDeveloper)));
+            .create(new CreateGroupRequest(uniqueGroupName("Backend"), null, Set.of(), List.of(backendDeveloper)));
         UUID engineering = this.api()
             .groups()
-            .create(new CreateGroupRequest("Engineering", null, List.of(backend), List.of(employee)));
+            .create(new CreateGroupRequest(uniqueGroupName("Engineering"), null, List.of(backend), List.of(employee)));
 
         UUID user = this.create("hierarchy-user", List.of(roleA, roleA), List.of(engineering, engineering));
         UUID childRoleUser = this.create("child-role-user", List.of(roleB), Set.of());
@@ -201,10 +201,10 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
 
         UUID nestedGroup = this.api()
             .groups()
-            .create(new CreateGroupRequest("Nested", null, Set.of(), Set.of()));
+            .create(new CreateGroupRequest(uniqueGroupName("Nested"), null, Set.of(), Set.of()));
         UUID parentGroup = this.api()
             .groups()
-            .create(new CreateGroupRequest("Parent group", null, List.of(nestedGroup), Set.of()));
+            .create(new CreateGroupRequest(uniqueGroupName("Parent group"), null, List.of(nestedGroup), Set.of()));
         this.groups.setRoles(nestedGroup, Set.of(childRole, groupRole));
         UUID user = this.create("mixed-statements", List.of(parentRole), List.of(parentGroup));
         this.users.setStatements(user, List.of(directStatement, sharedStatement));
@@ -213,7 +213,7 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
             .resolve(user)
             .stream()
             .map(EffectiveStatement::statement)
-            .map(StatementInfo::name)
+            .map(StatementInfo::code)
             .toList();
 
         assertThat(names).containsExactlyInAnyOrder(
@@ -292,6 +292,10 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     private static String uniqueRoleName(String prefix) {
+        return prefix + UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private static String uniqueGroupName(String prefix) {
         return prefix + UUID.randomUUID().toString().replace("-", "");
     }
 }

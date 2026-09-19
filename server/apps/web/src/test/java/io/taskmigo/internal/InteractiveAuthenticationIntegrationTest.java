@@ -19,8 +19,8 @@ import org.springframework.web.client.RestClient;
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = {
-        "taskmigo.security.signing-key-file=build/test-data/browser-auth-signing-key.pem",
-        "taskmigo.security.signing-key-auto-create=true",
+        "taskmigo.oauth.signing-key-file=build/test-data/browser-auth-signing-key.pem",
+        "taskmigo.oauth.signing-key-auto-create=true",
     }
 )
 @Import(PostgresTestConfiguration.class)

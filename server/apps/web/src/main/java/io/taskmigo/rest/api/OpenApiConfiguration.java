@@ -15,17 +15,12 @@ import org.springframework.context.annotation.Configuration;
     name = "taskmigoOAuth",
     type = SecuritySchemeType.OAUTH2,
     flows = @OAuthFlows(
-        clientCredentials = @OAuthFlow(
-            tokenUrl = "/oauth2/token",
-            scopes = @OAuthScope(name = "taskmigo.api", description = "Access the Taskmigo API")
-        ),
         authorizationCode = @OAuthFlow(
             authorizationUrl = "/oauth2/authorize",
             tokenUrl = "/oauth2/token",
             scopes = {
                 @OAuthScope(name = "openid", description = "OpenID Connect scope"),
                 @OAuthScope(name = "profile", description = "Access the user's profile information"),
-                @OAuthScope(name = "taskmigo.api", description = "Access the Taskmigo API"),
             }
         )
     )

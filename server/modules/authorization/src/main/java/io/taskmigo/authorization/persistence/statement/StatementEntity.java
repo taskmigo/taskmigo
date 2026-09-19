@@ -26,7 +26,7 @@ public class StatementEntity {
     UUID id;
 
     @Column(nullable = false, unique = true)
-    String name;
+    String code;
 
     @Column(length = 1000)
     @Nullable
@@ -61,7 +61,7 @@ public class StatementEntity {
 
     public StatementEntity(UUID id, StatementDefinition definition) {
         this.id = id;
-        this.name = definition.name();
+        this.code = definition.code();
         this.description = definition.description();
         this.effect = definition.effect();
         this.scope = definition.scope();
@@ -82,7 +82,7 @@ public class StatementEntity {
     public StatementInfo info() {
         return new StatementInfo(
             this.id,
-            this.name,
+            this.code,
             this.description,
             this.effect,
             this.scope,

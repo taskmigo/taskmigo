@@ -6,7 +6,7 @@ import org.jspecify.annotations.Nullable;
 /// Exposes a persisted authorization Statement to authorization evaluators and application consumers.
 public record StatementInfo(
     UUID id,
-    String name,
+    String code,
     @Nullable String description,
     Effect effect,
     Scope scope,

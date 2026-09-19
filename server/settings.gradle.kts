@@ -15,7 +15,7 @@ include(
     ":modules:database",
     ":modules:identity",
     ":benchmarks:authorization",
-    ":apps:bootstrap",
+    ":apps:migration",
     ":apps:web",
     ":apps:worker",
 )

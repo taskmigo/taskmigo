@@ -29,10 +29,10 @@ class DefaultStatementServiceTest {
     @InjectMocks
     private DefaultStatementService service;
 
-    /// Given a duplicate validated name, expects creation to stop before persistence changes.
+    /// Given a duplicate validated code, expects creation to stop before persistence changes.
     @Test
-    @DisplayName("create rejects duplicate names")
-    void createRejectsDuplicateNames() {
+    @DisplayName("create rejects duplicate codes")
+    void createRejectsDuplicateCodes() {
         // Arrange
         StatementDefinition definition = definition("projects.read");
         when(
@@ -46,15 +46,15 @@ class DefaultStatementServiceTest {
                 "true"
             )
         ).thenReturn(definition);
-        when(this.statements.existsByName("projects.read")).thenReturn(true);
+        when(this.statements.existsByCode("projects.read")).thenReturn(true);
 
         // Act / Assert
         assertThatThrownBy(() ->
             this.service.create("projects.read", null, Effect.ALLOW, Scope.REQUEST, "GET", "/projects", "true")
         )
             .isInstanceOf(AuthorizationException.class)
-            .hasMessage("Statement name already exists");
-        verify(this.statements).existsByName("projects.read");
+            .hasMessage("Statement code already exists");
+        verify(this.statements).existsByCode("projects.read");
     }
 
     private static StatementDefinition definition(String name) {

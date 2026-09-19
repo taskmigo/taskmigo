@@ -3,6 +3,7 @@ package io.taskmigo.identity.group;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.foundation.ReconciliationResult;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
 import java.util.List;
@@ -17,14 +18,23 @@ public interface GroupService {
         QueryPredicate<GroupInfo> filter,
         ObjectAuthorizationPredicate<GroupInfo> authorization
     );
-    UUID create(@Nullable String name, @Nullable String description);
+    UUID create(@Nullable String code, @Nullable String displayName, @Nullable String description);
     UUID create(
-        @Nullable String name,
+        @Nullable String code,
+        @Nullable String displayName,
         @Nullable String description,
         @Nullable Collection<UUID> childGroupIds,
         @Nullable Collection<UUID> roleIds
     );
     void addMember(UUID groupId, UUID userId);
+    ReconciliationResult<UUID> reconcile(
+        @Nullable String code,
+        @Nullable String displayName,
+        @Nullable String description,
+        Collection<UUID> roleIds
+    );
+    void setGroupsForUser(UUID userId, Collection<UUID> groupIds);
+    boolean deleteByCode(String code);
     void requireGroups(Collection<UUID> ids);
     List<UUID> groupsForUser(UUID userId);
     List<RoleInfo> effectiveRolesForUser(UUID userId);

@@ -39,7 +39,7 @@ public final class StatementPolicyValidator {
 
     /// Validates and normalizes a Statement definition for persistence.
     public StatementDefinition validate(
-        @Nullable String name,
+        @Nullable String code,
         @Nullable String description,
         @Nullable Effect effect,
         @Nullable Scope scope,
@@ -47,7 +47,7 @@ public final class StatementPolicyValidator {
         @Nullable String path,
         @Nullable String policy
     ) {
-        String validName = AuthorizationName.required(name, "name");
+        String validCode = AuthorizationName.required(code, "code");
         Effect validEffect = required(effect, "effect");
         Scope validScope = required(scope, "scope");
         String validMethod = required(method, "target.api.method");
@@ -81,7 +81,7 @@ public final class StatementPolicyValidator {
             throw new AuthorizationException("Invalid Statement policy: " + exception.getMessage());
         }
         return new StatementDefinition(
-            validName,
+            validCode,
             description,
             validEffect,
             validScope,

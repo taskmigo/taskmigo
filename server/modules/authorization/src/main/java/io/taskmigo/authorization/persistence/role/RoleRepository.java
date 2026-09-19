@@ -15,7 +15,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface RoleRepository extends JpaRepository<RoleEntity, UUID>, JpaSpecificationExecutor<RoleEntity> {
-    Optional<RoleEntity> findByName(String name);
+    Optional<RoleEntity> findByCode(String code);
 
     List<RoleEntity> findAllByIdIn(Collection<UUID> ids);
 

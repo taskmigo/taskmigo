@@ -25,7 +25,7 @@ class StatementActivationResultTypeTest {
     @DisplayName("activates a valid request statement without requiring a boolean result type")
     void shouldActivateRequestStatementWithNonBooleanProgramResult() {
         StatementRepository repository = mock(StatementRepository.class);
-        when(repository.existsByName("non_boolean_request")).thenReturn(false);
+        when(repository.existsByCode("non_boolean_request")).thenReturn(false);
         DefaultStatementService service = new DefaultStatementService(
             new JpaStatementOperations(repository, new QueryBinderStub(), new ObjectBinderStub()),
             new StatementPolicyValidator(mock(ObjectAuthorization.class), new LanguageCompiler())

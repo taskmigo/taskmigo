@@ -10,7 +10,12 @@ import org.jspecify.annotations.Nullable;
 
 /// Defines the application contract for Role use cases.
 public interface RoleService {
-    UUID createRole(@Nullable String name, @Nullable String description, @Nullable Collection<UUID> childRoleIds);
+    UUID createRole(
+        @Nullable String code,
+        @Nullable String displayName,
+        @Nullable String description,
+        @Nullable Collection<UUID> childRoleIds
+    );
     void requireRoles(Collection<UUID> ids);
     OffsetPage<RoleInfo> listRoles(
         int page,
