@@ -1,6 +1,6 @@
 ---
 - username: system
-  password: "${TM_SYSTEM_PASSWORD}"
+  password: ${TM_SYSTEM_PASSWORD}
   emails: []
   firstName: System
   lastName: User
