@@ -87,25 +87,28 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
         unique(data.users(), MigrationResourceLoader.User::username, "User");
 
         for (MigrationResourceLoader.Role role : data.roles()) {
-            if (!role.absent()) {
-                requireActiveReferences(
-                    role.statements(),
-                    statements,
-                    MigrationResourceLoader.Statement::absent,
-                    "statement"
-                );
+            if (role.absent()) {
+                continue;
             }
+            requireActiveReferences(
+                role.statements(),
+                statements,
+                MigrationResourceLoader.Statement::absent,
+                "statement"
+            );
         }
         for (MigrationResourceLoader.Group group : data.groups()) {
-            if (!group.absent()) {
-                requireActiveReferences(group.roles(), roles, MigrationResourceLoader.Role::absent, "role");
+            if (group.absent()) {
+                continue;
             }
+            requireActiveReferences(group.roles(), roles, MigrationResourceLoader.Role::absent, "role");
         }
         for (MigrationResourceLoader.User user : data.users()) {
-            if (!user.absent()) {
-                requireActiveReferences(user.roles(), roles, MigrationResourceLoader.Role::absent, "role");
-                requireActiveReferences(user.groups(), groups, MigrationResourceLoader.Group::absent, "group");
+            if (user.absent()) {
+                continue;
             }
+            requireActiveReferences(user.roles(), roles, MigrationResourceLoader.Role::absent, "role");
+            requireActiveReferences(user.groups(), groups, MigrationResourceLoader.Group::absent, "group");
         }
     }
 
@@ -152,19 +155,20 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
     ) {
         Map<String, UUID> result = new LinkedHashMap<>();
         for (MigrationResourceLoader.Statement definition : definitions) {
-            if (!definition.absent()) {
-                ReconciliationResult<UUID> reconciliation = this.authorization.reconcileStatement(
-                    definition.code(),
-                    definition.description(),
-                    Effect.from(definition.effect()),
-                    Scope.from(definition.scope()),
-                    definition.target().api().method(),
-                    definition.target().api().path(),
-                    definition.policy()
-                );
-                result.put(definition.code(), reconciliation.id());
-                changes.add(change("statement", definition.code(), reconciliation.action()));
+            if (definition.absent()) {
+                continue;
             }
+            ReconciliationResult<UUID> reconciliation = this.authorization.reconcileStatement(
+                definition.code(),
+                definition.description(),
+                Effect.from(definition.effect()),
+                Scope.from(definition.scope()),
+                definition.target().api().method(),
+                definition.target().api().path(),
+                definition.policy()
+            );
+            result.put(definition.code(), reconciliation.id());
+            changes.add(change("statement", definition.code(), reconciliation.action()));
         }
         return result;
     }
@@ -176,17 +180,18 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
     ) {
         Map<String, UUID> result = new LinkedHashMap<>();
         for (MigrationResourceLoader.Role definition : definitions) {
-            if (!definition.absent()) {
-                Set<UUID> ids = definition.statements().stream().map(statementIds::get).collect(Collectors.toSet());
-                ReconciliationResult<UUID> reconciliation = this.authorization.reconcileRole(
-                    definition.code(),
-                    definition.displayName(),
-                    definition.description(),
-                    ids
-                );
-                result.put(definition.code(), reconciliation.id());
-                changes.add(change("role", definition.code(), reconciliation.action()));
+            if (definition.absent()) {
+                continue;
             }
+            Set<UUID> ids = definition.statements().stream().map(statementIds::get).collect(Collectors.toSet());
+            ReconciliationResult<UUID> reconciliation = this.authorization.reconcileRole(
+                definition.code(),
+                definition.displayName(),
+                definition.description(),
+                ids
+            );
+            result.put(definition.code(), reconciliation.id());
+            changes.add(change("role", definition.code(), reconciliation.action()));
         }
         return result;
     }
@@ -198,17 +203,18 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
     ) {
         Map<String, UUID> result = new LinkedHashMap<>();
         for (MigrationResourceLoader.Group definition : definitions) {
-            if (!definition.absent()) {
-                Set<UUID> ids = definition.roles().stream().map(roleIds::get).collect(Collectors.toSet());
-                ReconciliationResult<UUID> reconciliation = this.groups.reconcile(
-                    definition.code(),
-                    definition.displayName(),
-                    definition.description(),
-                    ids
-                );
-                result.put(definition.code(), reconciliation.id());
-                changes.add(change("group", definition.code(), reconciliation.action()));
+            if (definition.absent()) {
+                continue;
             }
+            Set<UUID> ids = definition.roles().stream().map(roleIds::get).collect(Collectors.toSet());
+            ReconciliationResult<UUID> reconciliation = this.groups.reconcile(
+                definition.code(),
+                definition.displayName(),
+                definition.description(),
+                ids
+            );
+            result.put(definition.code(), reconciliation.id());
+            changes.add(change("group", definition.code(), reconciliation.action()));
         }
         return result;
     }
@@ -220,20 +226,21 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
         List<MigrationChange> changes
     ) {
         for (MigrationResourceLoader.User user : definitions) {
-            if (!user.absent()) {
-                Set<UUID> roles = user.roles().stream().map(roleIds::get).collect(Collectors.toSet());
-                Set<UUID> groups = user.groups().stream().map(groupIds::get).collect(Collectors.toSet());
-                ReconciliationResult<UUID> reconciliation = this.identity.reconcileUser(
-                    user.username(),
-                    user.password(),
-                    user.emails(),
-                    user.firstName(),
-                    user.lastName(),
-                    roles,
-                    groups
-                );
-                changes.add(change("user", user.username(), reconciliation.action()));
+            if (user.absent()) {
+                continue;
             }
+            Set<UUID> roles = user.roles().stream().map(roleIds::get).collect(Collectors.toSet());
+            Set<UUID> groups = user.groups().stream().map(groupIds::get).collect(Collectors.toSet());
+            ReconciliationResult<UUID> reconciliation = this.identity.reconcileUser(
+                user.username(),
+                user.password(),
+                user.emails(),
+                user.firstName(),
+                user.lastName(),
+                roles,
+                groups
+            );
+            changes.add(change("user", user.username(), reconciliation.action()));
         }
     }
 
