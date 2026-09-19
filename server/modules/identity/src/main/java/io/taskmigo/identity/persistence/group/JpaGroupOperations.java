@@ -11,7 +11,6 @@ import io.taskmigo.identity.persistence.query.QueryPredicateBinder;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -89,19 +88,11 @@ public class JpaGroupOperations implements GroupStore {
     }
 
     @Override
-    public void replaceMemberships(UUID userId, Set<UUID> groupIds) {
-        List<GroupEntity> allGroups = this.groups.findAllForUpdate();
-        for (GroupEntity group : allGroups) {
-            Set<UUID> memberIds = group.memberIds();
-            if (groupIds.contains(group.id())) {
-                memberIds = new LinkedHashSet<>(memberIds);
-                memberIds.add(userId);
-            } else {
-                memberIds = new LinkedHashSet<>(memberIds);
-                memberIds.remove(userId);
-            }
-            group.replaceMembers(memberIds);
-        }
+    public void removeMember(UUID groupId, UUID userId) {
+        GroupEntity group = this.groups.findById(groupId).orElseThrow();
+        Set<UUID> memberIds = new HashSet<>(group.memberIds());
+        memberIds.remove(userId);
+        group.replaceMembers(memberIds);
         this.groups.flush();
     }
 
