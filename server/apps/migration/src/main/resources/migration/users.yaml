@@ -1,6 +1,7 @@
 ---
 - username: system
-  # yamllint disable-line rule:quoted-strings\n  password: "${TM_SYSTEM_PASSWORD}"
+  # yamllint disable-line rule:quoted-strings
+  password: "${TM_SYSTEM_PASSWORD}"
   emails: []
   firstName: System
   lastName: User
