@@ -37,6 +37,31 @@ class RequestAuthorizationServiceTest {
     );
 
     /**
+     * Verifies the default-deny Request Authorization contract.
+     *
+     * Given: a principal with no effective Statements for the request.
+     * Expect: the request authorization decision is denied.
+     */
+    @Test
+    @DisplayName("denies a request when no statement grants access")
+    void shouldDenyRequestWhenNoStatementGrantsAccess() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        when(this.statements.resolve(userId)).thenReturn(List.of());
+
+        // Act
+        RequestAuthorizationDecision result = this.service.authorize(
+            userId,
+            "GET",
+            "/api/v0/users",
+            Map.of("request", Map.of("method", "GET"))
+        );
+
+        // Assert
+        assertThat(result.allowed()).isFalse();
+    }
+
+    /**
      * Verifies that a matching request allow Statement grants access.
      *
      * Given: an unconditional GET request Statement matching `/api/v0/users`.
