@@ -13,6 +13,7 @@ import io.taskmigo.identity.user.internal.UserStore;
 import io.taskmigo.identity.user.internal.UserStore.UserState;
 import java.util.Collection;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -91,7 +92,7 @@ class DefaultIdentityProvisioningService implements IdentityProvisioningService 
             this.users.updateProfile(id, requestedEmails, requiredFirstName, requiredLastName);
         }
         if (passwordInitialized) {
-            this.users.updatePasswordHash(id, initialPasswordHash);
+            this.users.updatePasswordHash(id, Objects.requireNonNull(initialPasswordHash));
         }
         if (rolesChanged) {
             this.grants.setRoles(IdentitySubjects.user(id), requestedRoleIds);
