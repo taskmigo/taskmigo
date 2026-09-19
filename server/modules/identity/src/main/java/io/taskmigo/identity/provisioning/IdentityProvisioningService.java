@@ -9,7 +9,7 @@ import org.jspecify.annotations.Nullable;
 public interface IdentityProvisioningService {
     ReconciliationResult<UUID> reconcileUser(
         @Nullable String username,
-        @Nullable String passwordHash,
+        @Nullable String initialPasswordHash,
         @Nullable Collection<String> emails,
         @Nullable String firstName,
         @Nullable String lastName,
