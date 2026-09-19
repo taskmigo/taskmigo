@@ -55,7 +55,6 @@ include:
   - name: CStyleArrayDeclaration
   - name: TodoComment
   - name: BreakStatement
-  - name: ContinueStatement
   - name: ConfusingElse
   - name: AssertStatement
   - name: SystemOutErr
