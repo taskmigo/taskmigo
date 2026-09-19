@@ -101,6 +101,7 @@ jobs:
           npm install --no-audit --no-fund --package-lock=false
           npm run typecheck
           npx playwright install --with-deps chromium
+          sudo apt-get install --yes --no-install-recommends apache2-utils
 
       - name: Set up Task
         uses: go-task/setup-task@v2.2.0
