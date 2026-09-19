@@ -143,7 +143,6 @@ class DefaultGroupServiceTest {
         verify(groups, never()).delete(any());
     }
 
-
     /**
      * Verifies that replacing one User's Group memberships mutates only the changed Groups.
      *
