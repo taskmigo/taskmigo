@@ -28,21 +28,21 @@ database:
   existingSecret: taskmigo-secrets
   passwordKey: database-password
 
-bootstrap:
+migration:
   enabled: true
   image:
-    repository: ghcr.io/taskmigo/taskmigo-bootstrap
+    repository: ghcr.io/taskmigo/taskmigo-migration
     tag: ""
     pullPolicy: IfNotPresent
   backoffLimit: 3
   activeDeadlineSeconds: 600
-  bootstrapUserPasswordKey: bootstrap-user-password
-  browserAuthentication:
+  userPasswordKey: user-password
+  browserClient:
     enabled: true
     clientSecretKey: auth-client-secret
   testClient:
     enabled: false
-    clientId: taskmigo-helm-test
+    clientId: helm-test
     clientSecretKey: integration-test-client-secret
   resources: {}
   extraEnv: []
@@ -149,5 +149,5 @@ tests:
     pullPolicy: IfNotPresent
   oauthClient:
     enabled: false
-    clientId: taskmigo-helm-test
+    clientId: helm-test
     clientSecretKey: integration-test-client-secret

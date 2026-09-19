@@ -14,8 +14,9 @@ include(
     ":modules:access-control",
     ":modules:database",
     ":modules:identity",
+    ":modules:security",
     ":benchmarks:authorization",
-    ":apps:bootstrap",
+    ":apps:migration",
     ":apps:web",
     ":apps:worker",
 )
