@@ -4,7 +4,7 @@ clients:
     registration:
       client-id: browser
       # yamllint disable-line rule:quoted-strings
-      client-secret: "${TM_BROWSER_CLIENT_SECRET:{noop}local-secret}"
+      client-secret: "${TM_BROWSER_CLIENT_SECRET}"
       client-name: Taskmigo browser client
       client-authentication-methods:
         - client_secret_basic
@@ -25,4 +25,4 @@ clients:
     token:
       access-token-time-to-live: PT5M
       refresh-token-time-to-live: PT8H
-      reuse-refresh-tokens: true
+      reuse-refresh-tokens: false
