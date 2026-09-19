@@ -61,7 +61,7 @@ Classifications:
 | Object authorization | Object target applicability validation during Statement creation is part of the disputed validation-timing contract. | **UNRESOLVED** | StatementPolicyValidator vs current spec POLICY-003; M-001 |
 | Provisioning | Managed Statements/Roles/Users reconcile idempotently by stable business identity and update existing managed state in place. | **CONFIRMED BUSINESS** | provisioning services; MigrationIntegrationTest |
 | Provisioning | The system User is provisioning-owned, requires an initial credential on first creation, and later reconciliation preserves an existing password hash. | **CONFIRMED BUSINESS** | DefaultIdentityProvisioningService; migration tests |
-| Provisioning | Built-in authorization and identity data is reconciled in dependency order so references are valid: Statements, Roles, Groups, then Users/grants. | **CONFIRMED BUSINESS** | AuthorizationStatementReconciler |
+| Provisioning | Built-in authorization and identity data is reconciled in dependency order so references are valid: Statements, Roles, Groups, then Users/grants. | **CONFIRMED BUSINESS** | ManagedResourceReconciler; MigrationIntegrationTest |
 | Provisioning | Provisioning has separate bounded-context contracts from normal runtime User/Role/Statement services. | **CONFIRMED BUSINESS** | merged PR #112 |
 | Provisioning | Direct use of UserStore/RoleStore/StatementStore and duplicated normalization are intermediate architecture. | **IMPLEMENTATION DETAIL** | baseline provisioning code; issue #117 Phase 8 |
 | Migration | Executable/module naming and OAuth persistence ownership are not business semantics. | **IMPLEMENTATION DETAIL** | active PR #99 |
