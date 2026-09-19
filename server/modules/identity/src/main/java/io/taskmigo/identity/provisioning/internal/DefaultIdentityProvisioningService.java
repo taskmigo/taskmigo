@@ -13,7 +13,6 @@ import io.taskmigo.identity.user.internal.UserStore;
 import io.taskmigo.identity.user.internal.UserStore.UserState;
 import java.util.Collection;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -39,7 +38,7 @@ class DefaultIdentityProvisioningService implements IdentityProvisioningService 
     @Transactional
     public ReconciliationResult<UUID> reconcileUser(
         @Nullable String username,
-        @Nullable String passwordHash,
+        @Nullable String initialPasswordHash,
         @Nullable Collection<String> emails,
         @Nullable String firstName,
         @Nullable String lastName,
@@ -65,7 +64,7 @@ class DefaultIdentityProvisioningService implements IdentityProvisioningService 
                     requiredFirstName,
                     requiredLastName,
                     true,
-                    requiredPassword(requiredUsername, passwordHash)
+                    requiredInitialPassword(requiredUsername, initialPasswordHash)
                 )
             );
             this.grants.setRoles(IdentitySubjects.user(id), requestedRoleIds);
@@ -79,20 +78,20 @@ class DefaultIdentityProvisioningService implements IdentityProvisioningService 
             !existing.emails().equals(requestedEmails) ||
             !existing.firstName().equals(requiredFirstName) ||
             !existing.lastName().equals(requiredLastName);
-        boolean passwordChanged =
-            passwordHash != null && !passwordHash.isBlank() && !Objects.equals(existing.passwordHash(), passwordHash);
+        boolean passwordInitialized =
+            existing.passwordHash() == null && initialPasswordHash != null && !initialPasswordHash.isBlank();
         boolean rolesChanged = !this.grants.roleIds(IdentitySubjects.user(id)).equals(requestedRoleIds);
         boolean statementsChanged = !this.grants.statementIds(IdentitySubjects.user(id)).isEmpty();
         boolean groupsChanged = !Set.copyOf(this.groups.groupsForUser(id)).equals(requestedGroupIds);
 
-        if (!profileChanged && !passwordChanged && !rolesChanged && !statementsChanged && !groupsChanged) {
+        if (!profileChanged && !passwordInitialized && !rolesChanged && !statementsChanged && !groupsChanged) {
             return new ReconciliationResult<>(id, ReconciliationAction.UNCHANGED);
         }
         if (profileChanged) {
             this.users.updateProfile(id, requestedEmails, requiredFirstName, requiredLastName);
         }
-        if (passwordChanged) {
-            this.users.updatePasswordHash(id, Objects.requireNonNull(passwordHash));
+        if (passwordInitialized) {
+            this.users.updatePasswordHash(id, initialPasswordHash);
         }
         if (rolesChanged) {
             this.grants.setRoles(IdentitySubjects.user(id), requestedRoleIds);
@@ -140,10 +139,10 @@ class DefaultIdentityProvisioningService implements IdentityProvisioningService 
         return value.trim();
     }
 
-    private static @Nullable String requiredPassword(String username, @Nullable String passwordHash) {
-        if (SystemUser.USERNAME.equals(username) && (passwordHash == null || passwordHash.isBlank())) {
-            throw new IdentityProvisioningException("A password hash is required for the system user");
+    private static @Nullable String requiredInitialPassword(String username, @Nullable String initialPasswordHash) {
+        if (SystemUser.USERNAME.equals(username) && (initialPasswordHash == null || initialPasswordHash.isBlank())) {
+            throw new IdentityProvisioningException("An initial password hash is required for the system user");
         }
-        return passwordHash;
+        return initialPasswordHash;
     }
 }
