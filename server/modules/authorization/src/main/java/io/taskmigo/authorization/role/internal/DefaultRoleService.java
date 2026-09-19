@@ -54,7 +54,7 @@ class DefaultRoleService implements RoleService {
         RoleState role = new RoleState(
             id,
             AuthorizationName.requiredRole(code, "code"),
-            AuthorizationName.requiredRole(displayName, "displayName"),
+            AuthorizationName.requiredDisplayName(displayName, "displayName"),
             description,
             Set.of(),
             requestedChildIds
