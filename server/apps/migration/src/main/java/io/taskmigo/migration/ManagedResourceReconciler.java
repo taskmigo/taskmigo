@@ -8,7 +8,6 @@ import io.taskmigo.foundation.ReconciliationAction;
 import io.taskmigo.foundation.ReconciliationResult;
 import io.taskmigo.identity.group.GroupService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -85,19 +84,16 @@ final class ManagedResourceReconciler {
         }
     }
 
-    List<MigrationChange> reconcile(MigrationResourceLoader.MigrationResources data) {
-        List<MigrationChange> changes = new ArrayList<>();
-        changes.addAll(this.deleteAbsent(data));
+    void reconcile(MigrationResourceLoader.MigrationResources data, List<MigrationChange> changes) {
+        this.deleteAbsent(data, changes);
 
         Map<String, UUID> statementIds = this.reconcileStatements(data.statements(), changes);
         Map<String, UUID> roleIds = this.reconcileRoles(data.roles(), statementIds, changes);
         Map<String, UUID> groupIds = this.reconcileGroups(data.groups(), roleIds, changes);
         this.reconcileUsers(data.users(), roleIds, groupIds, changes);
-        return List.copyOf(changes);
     }
 
-    private List<MigrationChange> deleteAbsent(MigrationResourceLoader.MigrationResources data) {
-        List<MigrationChange> changes = new ArrayList<>();
+    private void deleteAbsent(MigrationResourceLoader.MigrationResources data, List<MigrationChange> changes) {
         data.users()
             .stream()
             .filter(MigrationResourceLoader.User::absent)
@@ -130,7 +126,6 @@ final class ManagedResourceReconciler {
                     changes.add(change("statement", statement.code(), ReconciliationAction.REMOVED));
                 }
             });
-        return changes;
     }
 
     private Map<String, UUID> reconcileStatements(
