@@ -21,15 +21,17 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 class DefaultIdentityProvisioningServiceTest {
 
     /**
-     * Verifies that reconciling a missing managed User creates it and reports the creation action.
+     * Verifies that reconciling a missing managed User persists the supplied initial password hash.
+     *
      * Given: a valid User with an initial encoded password and no persisted User with that username.
-     * Expect: the created identifier is returned with the `ADDED` action.
+     * Expect: one User is created with the supplied hash and the result reports ADDED.
      */
     @Test
     @DisplayName("reports an added action when a managed User is missing")
@@ -38,11 +40,12 @@ class DefaultIdentityProvisioningServiceTest {
         UserStore users = mock(UserStore.class);
         when(users.findByUsername("alice")).thenReturn(Optional.empty());
         var service = service(users);
+        ArgumentCaptor<UserState> state = ArgumentCaptor.forClass(UserState.class);
 
         // Act
         ReconciliationResult<UUID> result = service.reconcileUser(
             "alice",
-            "{noop}password",
+            "{bcrypt}initial-hash",
             List.of(),
             "Alice",
             "User",
@@ -52,22 +55,24 @@ class DefaultIdentityProvisioningServiceTest {
 
         // Assert
         assertThat(result.action()).isEqualTo(ReconciliationAction.ADDED);
-        verify(users).create(ArgumentMatchers.any(UserState.class));
+        verify(users).create(state.capture());
+        assertThat(state.getValue().passwordHash()).isEqualTo("{bcrypt}initial-hash");
     }
 
     /**
-     * Verifies that reconciling an existing managed User reports an update and retains its identifier.
-     * Given: an existing User with a changed profile and no replacement password.
-     * Expect: profile and grants are reconciled and the result has the `UPDATED` action.
+     * Verifies that reconciling an existing managed User updates non-credential desired state.
+     *
+     * Given: an existing User with a changed profile and an initialized password hash.
+     * Expect: the profile changes while the existing credential is left untouched.
      */
     @Test
-    @DisplayName("reports an updated action when a managed User exists")
-    void shouldReportUpdatedActionWhenManagedUserExists() {
+    @DisplayName("reports an updated action when an existing managed User profile changes")
+    void shouldReportUpdatedActionWhenManagedUserProfileChanges() {
         // Arrange
         UUID id = UUID.randomUUID();
         UserStore users = mock(UserStore.class);
         when(users.findByUsername("alice")).thenReturn(
-            Optional.of(new UserState(id, "alice", Set.of(), "Old", "User", true, "{noop}old"))
+            Optional.of(new UserState(id, "alice", Set.of(), "Old", "User", true, "{bcrypt}existing-hash"))
         );
         var service = service(users);
 
@@ -85,22 +90,24 @@ class DefaultIdentityProvisioningServiceTest {
         // Assert
         assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.UPDATED));
         verify(users).updateProfile(id, Set.of("alice@example.com"), "Alice", "User");
+        verify(users, Mockito.never()).updatePasswordHash(Mockito.any(), Mockito.any());
     }
 
     /**
-     * Verifies that reconciling an identical managed User reports no change and skips persistence.
-     * Given: a persisted User whose profile, password hash, Role grants, Statement grants, and Groups match.
-     * Expect: the existing identifier is returned with `UNCHANGED`, with no User or grant update.
+     * Verifies that an initial password is not a continuously reconciled User field.
+     *
+     * Given: an existing User that already has a password hash and a different initial hash in migration input.
+     * Expect: reconciliation reports UNCHANGED and does not replace the persisted password hash.
      */
     @Test
-    @DisplayName("reports unchanged when a managed User data is identical")
-    void shouldReportUnchangedWhenManagedUserDataIsIdentical() {
+    @DisplayName("preserves an existing password when migration supplies another initial password")
+    void shouldPreserveExistingPasswordWhenInitialPasswordIsSuppliedAgain() {
         // Arrange
         UUID id = UUID.randomUUID();
         UserStore users = mock(UserStore.class);
         when(users.findByUsername("alice")).thenReturn(
             Optional.of(
-                new UserState(id, "alice", Set.of("alice@example.com"), "Alice", "User", true, "{noop}password")
+                new UserState(id, "alice", Set.of("alice@example.com"), "Alice", "User", true, "{bcrypt}existing-hash")
             )
         );
         SubjectGrantService grants = mock(SubjectGrantService.class);
@@ -113,7 +120,7 @@ class DefaultIdentityProvisioningServiceTest {
         // Act
         ReconciliationResult<UUID> result = service.reconcileUser(
             "alice",
-            "{noop}password",
+            "{bcrypt}different-initial-hash",
             List.of("alice@example.com"),
             "Alice",
             "User",
@@ -123,16 +130,50 @@ class DefaultIdentityProvisioningServiceTest {
 
         // Assert
         assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.UNCHANGED));
-        verify(users, Mockito.never()).updateProfile(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
         verify(users, Mockito.never()).updatePasswordHash(Mockito.any(), Mockito.any());
+        verify(users, Mockito.never()).updateProfile(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any());
         verify(grants, Mockito.never()).setRoles(Mockito.any(), Mockito.any());
         verify(groups, Mockito.never()).setGroupsForUser(Mockito.any(), Mockito.any());
     }
 
     /**
+     * Verifies that migration can initialize a credential for a managed User that has none.
+     *
+     * Given: an existing User with no password hash and a non-blank initial password hash.
+     * Expect: the password hash is initialized once and reconciliation reports UPDATED.
+     */
+    @Test
+    @DisplayName("initializes a missing password when an initial password is available")
+    void shouldInitializePasswordWhenManagedUserHasNoCredential() {
+        // Arrange
+        UUID id = UUID.randomUUID();
+        UserStore users = mock(UserStore.class);
+        when(users.findByUsername("alice")).thenReturn(
+            Optional.of(new UserState(id, "alice", Set.of(), "Alice", "User", true, null))
+        );
+        var service = service(users);
+
+        // Act
+        ReconciliationResult<UUID> result = service.reconcileUser(
+            "alice",
+            "{bcrypt}initial-hash",
+            List.of(),
+            "Alice",
+            "User",
+            Set.of(),
+            Set.of()
+        );
+
+        // Assert
+        assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.UPDATED));
+        verify(users).updatePasswordHash(id, "{bcrypt}initial-hash");
+    }
+
+    /**
      * Verifies that deleting an existing managed User reports a removal.
+     *
      * Given: a non-system User found by username.
-     * Expect: grants and group memberships are cleared, the User is deleted, and the operation returns `true`.
+     * Expect: grants and group memberships are cleared, the User is deleted, and the operation returns true.
      */
     @Test
     @DisplayName("reports removal when an existing managed User is deleted")
@@ -155,8 +196,9 @@ class DefaultIdentityProvisioningServiceTest {
 
     /**
      * Verifies that deleting a missing managed User does not report a removal.
+     *
      * Given: a username that is absent from persistence.
-     * Expect: deletion returns `false` and no User delete operation is attempted.
+     * Expect: deletion returns false and no User delete operation is attempted.
      */
     @Test
     @DisplayName("does not report removal when a managed User is missing")
@@ -175,24 +217,23 @@ class DefaultIdentityProvisioningServiceTest {
     }
 
     /**
-     * Verifies: a new system user cannot be provisioned without a pre-encoded password.
-     * Given: no existing system user and a null password hash.
-     * Expect: the provisioning boundary raises a typed identity failure.
+     * Verifies that a new system User cannot be provisioned without an initial credential.
+     *
+     * Given: no existing system User and a null initial password hash.
+     * Expect: the provisioning boundary raises a typed Identity failure.
      */
     @Test
     @DisplayName("reports a typed provisioning failure when a new system User has no initial password")
     void shouldReportProvisioningFailureWhenSystemUserPasswordIsMissing() {
+        // Arrange
         UserStore users = mock(UserStore.class);
         when(users.findByUsername(SystemUser.USERNAME)).thenReturn(Optional.empty());
-        var service = new DefaultIdentityProvisioningService(
-            users,
-            mock(SubjectGrantService.class),
-            mock(GroupService.class)
-        );
+        var service = service(users);
 
+        // Act + Assert
         assertThatThrownBy(() -> service.reconcileUser("system", null, null, "System", "User", Set.of(), Set.of()))
             .isInstanceOf(IdentityProvisioningException.class)
-            .hasMessageContaining("password hash is required");
+            .hasMessageContaining("initial password hash is required");
     }
 
     private static DefaultIdentityProvisioningService service(UserStore users) {
