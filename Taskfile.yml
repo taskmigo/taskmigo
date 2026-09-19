@@ -128,27 +128,54 @@ tasks:
               echo "openssl is required to generate CI credentials." >&2
               exit 1
             }
+            command -v htpasswd >/dev/null || {
+              echo "htpasswd is required to bcrypt CI credentials." >&2
+              exit 1
+            }
+
+            bcrypt_hash() {
+              hash="$(printf '%s\n' "$1" | htpasswd -niBC 10 taskmigo | cut -d: -f2-)"
+              printf '{bcrypt}%s' "$hash"
+            }
+
             database_password="${DATABASE_PASSWORD:-$(openssl rand -hex 16)}"
             system_password="${SYSTEM_USER_PASSWORD:-$(openssl rand -hex 16)}"
             auth_client_secret="${AUTH_CLIENT_SECRET:-$(openssl rand -hex 32)}"
-            auth_client_secret_hash="${AUTH_CLIENT_SECRET_HASH:-{noop}$auth_client_secret}"
             auth_session_secret="${AUTH_SESSION_SECRET:-$(openssl rand -hex 32)}"
+
+            if [ -n "${SYSTEM_USER_PASSWORD_HASH:-}" ]; then
+              test -n "${SYSTEM_USER_PASSWORD:-}" || {
+                echo "SYSTEM_USER_PASSWORD is required when SYSTEM_USER_PASSWORD_HASH is set." >&2
+                exit 1
+              }
+              system_password_hash="$SYSTEM_USER_PASSWORD_HASH"
+            else
+              system_password_hash="$(bcrypt_hash "$system_password")"
+            fi
+
+            if [ -n "${AUTH_CLIENT_SECRET_HASH:-}" ]; then
+              test -n "${AUTH_CLIENT_SECRET:-}" || {
+                echo "AUTH_CLIENT_SECRET is required when AUTH_CLIENT_SECRET_HASH is set." >&2
+                exit 1
+              }
+              auth_client_secret_hash="$AUTH_CLIENT_SECRET_HASH"
+            else
+              auth_client_secret_hash="$(bcrypt_hash "$auth_client_secret")"
+            fi
           else
             database_password="${DATABASE_PASSWORD:-taskmigo}"
             system_password="${SYSTEM_USER_PASSWORD:-taskmigo}"
             auth_client_secret="${AUTH_CLIENT_SECRET:-taskmigo-local-browser-secret}"
-            auth_client_secret_hash="${AUTH_CLIENT_SECRET_HASH:-{noop}$auth_client_secret}"
             auth_session_secret="${AUTH_SESSION_SECRET:-taskmigo-local-session-secret-0123456789abcdef}"
-          fi
+            system_password_hash="${SYSTEM_USER_PASSWORD_HASH:-}"
+            auth_client_secret_hash="${AUTH_CLIENT_SECRET_HASH:-}"
 
-          if [ -n "${SYSTEM_USER_PASSWORD_HASH:-}" ]; then
-            test -n "${SYSTEM_USER_PASSWORD:-}" || {
-              echo "SYSTEM_USER_PASSWORD is required when SYSTEM_USER_PASSWORD_HASH is set." >&2
-              exit 1
-            }
-            system_password_hash="$SYSTEM_USER_PASSWORD_HASH"
-          else
-            system_password_hash="{noop}$system_password"
+            if [ -z "$system_password_hash" ]; then
+              system_password_hash="{noop}$system_password"
+            fi
+            if [ -z "$auth_client_secret_hash" ]; then
+              auth_client_secret_hash="{noop}$auth_client_secret"
+            fi
           fi
 
           {{.KUBECTL}} -n "{{.NAMESPACE}}" create secret generic taskmigo-secrets \
