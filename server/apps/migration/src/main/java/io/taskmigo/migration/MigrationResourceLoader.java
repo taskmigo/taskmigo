@@ -27,7 +27,7 @@ import tools.jackson.dataformat.yaml.YAMLMapper;
 @Component
 final class MigrationResourceLoader {
 
-    private static final String RESOURCE_PREFIX = "migration/authorization/";
+    private static final String RESOURCE_PREFIX = "migration/";
 
     private final Environment environment;
     private final YAMLMapper yaml = YAMLMapper.builder().build();
