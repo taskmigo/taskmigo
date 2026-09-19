@@ -16,12 +16,12 @@ the deployed stack.
 
 The default Secret name is `taskmigo-secrets` and the chart expects these keys:
 
-| Key                    | Used by                                                                  |
-| ---------------------- | ------------------------------------------------------------------------ |
-| `database-password`    | Migration, web, worker                                                   |
+| Key                    | Used by                                                                 |
+| ---------------------- | ----------------------------------------------------------------------- |
+| `database-password`    | Migration, web, worker                                                  |
 | `system-user-password` | Initial system-user credential for migration and local/CI browser login |
 | `auth-client-secret`   | Browser OAuth client migration and browser runtime                      |
-| `auth-session-secret`  | Client session encryption; must be at least 32 characters                |
+| `auth-session-secret`  | Client session encryption; must be at least 32 characters               |
 
 ## Install
 
