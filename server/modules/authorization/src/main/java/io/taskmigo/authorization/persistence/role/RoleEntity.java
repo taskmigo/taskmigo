@@ -28,7 +28,7 @@ public class RoleEntity {
     @Column(nullable = false, unique = true)
     String code;
 
-    @Column(name = "display_name", nullable = false, length = 255)
+    @Column(name = "display_name", nullable = false)
     String displayName;
 
     @Column(length = 1000)

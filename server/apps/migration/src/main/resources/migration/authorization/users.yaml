@@ -1,5 +1,7 @@
+---
+# yamllint disable rule:quoted-strings
 - username: system
-  password: "${TASKMIGO_SYSTEM_PASSWORD_HASH}"
+  password: !!str "${TASKMIGO_SYSTEM_PASSWORD_HASH}"
   emails: []
   firstName: System
   lastName: User
@@ -7,6 +9,7 @@
     - system-operator
   groups: []
   absent: false
+# yamllint enable rule:quoted-strings
 
 - username: admin
   password: null

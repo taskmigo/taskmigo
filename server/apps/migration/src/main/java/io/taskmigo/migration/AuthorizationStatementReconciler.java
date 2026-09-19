@@ -123,21 +123,20 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
     private Map<String, UUID> reconcileStatements(List<MigrationResourceLoader.Statement> definitions) {
         Map<String, UUID> result = new LinkedHashMap<>();
         for (MigrationResourceLoader.Statement definition : definitions) {
-            if (definition.absent()) {
-                continue;
-            }
-            result.put(
-                definition.code(),
-                this.authorization.reconcileStatement(
+            if (!definition.absent()) {
+                result.put(
                     definition.code(),
-                    definition.description(),
-                    Effect.from(definition.effect()),
-                    Scope.from(definition.scope()),
-                    definition.target().api().method(),
-                    definition.target().api().path(),
-                    definition.policy()
-                )
-            );
+                    this.authorization.reconcileStatement(
+                        definition.code(),
+                        definition.description(),
+                        Effect.from(definition.effect()),
+                        Scope.from(definition.scope()),
+                        definition.target().api().method(),
+                        definition.target().api().path(),
+                        definition.policy()
+                    )
+                );
+            }
         }
         return result;
     }
@@ -148,19 +147,18 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
     ) {
         Map<String, UUID> result = new LinkedHashMap<>();
         for (MigrationResourceLoader.Role definition : definitions) {
-            if (definition.absent()) {
-                continue;
-            }
-            Set<UUID> ids = definition.statements().stream().map(statementIds::get).collect(Collectors.toSet());
-            result.put(
-                definition.code(),
-                this.authorization.reconcileRole(
+            if (!definition.absent()) {
+                Set<UUID> ids = definition.statements().stream().map(statementIds::get).collect(Collectors.toSet());
+                result.put(
                     definition.code(),
-                    definition.displayName(),
-                    definition.description(),
-                    ids
-                )
-            );
+                    this.authorization.reconcileRole(
+                        definition.code(),
+                        definition.displayName(),
+                        definition.description(),
+                        ids
+                    )
+                );
+            }
         }
         return result;
     }
@@ -171,14 +169,13 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
     ) {
         Map<String, UUID> result = new LinkedHashMap<>();
         for (MigrationResourceLoader.Group definition : definitions) {
-            if (definition.absent()) {
-                continue;
+            if (!definition.absent()) {
+                Set<UUID> ids = definition.roles().stream().map(roleIds::get).collect(Collectors.toSet());
+                result.put(
+                    definition.code(),
+                    this.groups.reconcile(definition.code(), definition.displayName(), definition.description(), ids)
+                );
             }
-            Set<UUID> ids = definition.roles().stream().map(roleIds::get).collect(Collectors.toSet());
-            result.put(
-                definition.code(),
-                this.groups.reconcile(definition.code(), definition.displayName(), definition.description(), ids)
-            );
         }
         return result;
     }
@@ -189,20 +186,19 @@ final class AuthorizationStatementReconciler implements ApplicationRunner {
         Map<String, UUID> groupIds
     ) {
         for (MigrationResourceLoader.User user : definitions) {
-            if (user.absent()) {
-                continue;
+            if (!user.absent()) {
+                Set<UUID> roles = user.roles().stream().map(roleIds::get).collect(Collectors.toSet());
+                Set<UUID> groups = user.groups().stream().map(groupIds::get).collect(Collectors.toSet());
+                this.identity.reconcileUser(
+                    user.username(),
+                    user.password(),
+                    user.emails(),
+                    user.firstName(),
+                    user.lastName(),
+                    roles,
+                    groups
+                );
             }
-            Set<UUID> roles = user.roles().stream().map(roleIds::get).collect(Collectors.toSet());
-            Set<UUID> groups = user.groups().stream().map(groupIds::get).collect(Collectors.toSet());
-            this.identity.reconcileUser(
-                user.username(),
-                user.password(),
-                user.emails(),
-                user.firstName(),
-                user.lastName(),
-                roles,
-                groups
-            );
         }
     }
 

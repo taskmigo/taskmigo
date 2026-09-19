@@ -40,10 +40,10 @@ final class MigrationResourceLoader {
     MigrationResources load() {
         try {
             return new MigrationResources(
-                this.readList("users.yaml", new TypeReference<List<User>>() {}),
-                this.readList("roles.yaml", new TypeReference<List<Role>>() {}),
-                this.readList("statements.yaml", new TypeReference<List<Statement>>() {}),
-                this.readList("groups.yaml", new TypeReference<List<Group>>() {}),
+                this.readList("users.yaml", new TypeReference<>() {}),
+                this.readList("roles.yaml", new TypeReference<>() {}),
+                this.readList("statements.yaml", new TypeReference<>() {}),
+                this.readList("groups.yaml", new TypeReference<>() {}),
                 this.readClients()
             );
         } catch (IOException exception) {

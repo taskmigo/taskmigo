@@ -1,3 +1,4 @@
+---
 - code: system_operator_request_all
   description: Allows System Operator to call every versioned API.
   effect: allow
