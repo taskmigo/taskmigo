@@ -1,5 +1,5 @@
 ---
-- code: user
+- code: basic-user
   displayName: Basic User
   description: The default role for all users. This role allows users to access the system and perform basic operations.
   statements: []
