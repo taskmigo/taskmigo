@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties.Client;
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties.Registration;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
@@ -16,6 +17,12 @@ import org.springframework.stereotype.Component;
 /// Builds a migration-managed registered client from Spring Authorization Server properties.
 @Component
 final class InternalRegisteredClientFactory {
+
+    private final PasswordEncoder passwordEncoder;
+
+    InternalRegisteredClientFactory(PasswordEncoder passwordEncoder) {
+        this.passwordEncoder = passwordEncoder;
+    }
 
     RegisteredClient create(String registrationId, Client client, @Nullable RegisteredClient existing) {
         Registration registration = client.getRegistration();
@@ -34,7 +41,7 @@ final class InternalRegisteredClientFactory {
                 : RegisteredClient.from(existing).clientId(clientId);
 
         return builder
-            .clientSecret(secret)
+            .clientSecret(this.encodedSecret(secret, existing))
             .clientName(registration.getClientName() == null ? clientId : registration.getClientName())
             .clientAuthenticationMethods(methods -> {
                 methods.clear();
@@ -71,6 +78,14 @@ final class InternalRegisteredClientFactory {
             .clientSettings(InternalClientMetadata.settings(client))
             .tokenSettings(tokenSettings(client))
             .build();
+    }
+
+    private String encodedSecret(String rawSecret, @Nullable RegisteredClient existing) {
+        String existingSecret = existing == null ? null : existing.getClientSecret();
+        if (existingSecret != null && this.passwordEncoder.matches(rawSecret, existingSecret)) {
+            return existingSecret;
+        }
+        return this.passwordEncoder.encode(rawSecret);
     }
 
     private static TokenSettings tokenSettings(Client client) {
