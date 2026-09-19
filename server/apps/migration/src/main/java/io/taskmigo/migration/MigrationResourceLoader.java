@@ -1,7 +1,6 @@
 package io.taskmigo.migration;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,8 +38,12 @@ final class MigrationResourceLoader {
 
     MigrationResources load() {
         try {
+            List<User> users = this.readList("users.yaml", new TypeReference<>() {})
+                .stream()
+                .map(this::resolveUser)
+                .toList();
             return new MigrationResources(
-                this.readList("users.yaml", new TypeReference<>() {}),
+                users,
                 this.readList("roles.yaml", new TypeReference<>() {}),
                 this.readList("statements.yaml", new TypeReference<>() {}),
                 this.readList("groups.yaml", new TypeReference<>() {}),
@@ -52,20 +55,35 @@ final class MigrationResourceLoader {
     }
 
     private <T> List<T> readList(String filename, TypeReference<List<T>> type) throws IOException {
-        return List.copyOf(this.yaml.readValue(this.resolve(filename), type));
+        return List.copyOf(this.yaml.readValue(this.read(filename), type));
+    }
+
+    private User resolveUser(User user) {
+        String password =
+            user.password() == null ? null : this.environment.resolveRequiredPlaceholders(user.password());
+        return new User(
+            user.username(),
+            password,
+            user.emails(),
+            user.firstName(),
+            user.lastName(),
+            user.roles(),
+            user.groups(),
+            user.absent()
+        );
     }
 
     private Map<String, Client> readClients() throws IOException {
         if (!this.environment.getProperty("TM_BROWSER_AUTHENTICATION_ENABLED", Boolean.class, true)) {
             return Map.of();
         }
-        byte[] resolved = this.resolve("security.yaml");
-        Map<String, Object> root = this.yaml.readValue(resolved, new TypeReference<>() {});
+        byte[] source = this.read("security.yaml");
+        Map<String, Object> root = this.yaml.readValue(source, new TypeReference<>() {});
         if (!root.keySet().equals(Set.of("clients"))) {
             throw new IllegalStateException("security.yaml must contain only the clients root property");
         }
 
-        Resource resource = new ByteArrayResource(resolved, "security.yaml");
+        Resource resource = new ByteArrayResource(source, "security.yaml");
         List<PropertySource<?>> sources = this.propertySourceLoader.load("migration-security", resource);
         Binder binder = new Binder(
             ConfigurationPropertySources.from(sources),
@@ -82,13 +100,11 @@ final class MigrationResourceLoader {
         );
     }
 
-    private byte[] resolve(String filename) throws IOException {
+    private byte[] read(String filename) throws IOException {
         ClassPathResource resource = new ClassPathResource(RESOURCE_PREFIX + filename);
-        String source;
         try (var input = resource.getInputStream()) {
-            source = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+            return input.readAllBytes();
         }
-        return this.environment.resolveRequiredPlaceholders(source).getBytes(StandardCharsets.UTF_8);
     }
 
     record MigrationResources(
