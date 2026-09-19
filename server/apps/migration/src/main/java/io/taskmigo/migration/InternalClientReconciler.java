@@ -1,78 +1,37 @@
 package io.taskmigo.migration;
 
 import io.taskmigo.foundation.ReconciliationAction;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import org.springframework.boot.ApplicationArguments;
-import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties.Client;
-import org.springframework.core.annotation.Order;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.dao.TransientDataAccessException;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.support.TransactionTemplate;
 
 /// Reconciles configured internal OAuth clients into the persistent client registry.
 @Component
-@Order(2)
-final class InternalClientReconciler implements ApplicationRunner {
+final class InternalClientReconciler {
 
-    private static final int MAX_RECONCILIATION_ATTEMPTS = 3;
-
-    private final MigrationResourceLoader resources;
     private final JdbcRegisteredClientRepository clients;
     private final InternalRegisteredClientFactory clientFactory;
-    private final MigrationChangeLogger changeLogger;
-    private final TransactionTemplate transactions;
 
     InternalClientReconciler(
-        MigrationResourceLoader resources,
         JdbcRegisteredClientRepository clients,
-        InternalRegisteredClientFactory clientFactory,
-        MigrationChangeLogger changeLogger,
-        PlatformTransactionManager transactionManager
+        InternalRegisteredClientFactory clientFactory
     ) {
-        this.resources = resources;
         this.clients = clients;
         this.clientFactory = clientFactory;
-        this.changeLogger = changeLogger;
-        this.transactions = new TransactionTemplate(transactionManager);
-        this.transactions.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
     }
 
-    @Override
-    public void run(ApplicationArguments arguments) {
-        this.reconcile(this.resources.load().clients());
-    }
-
-    void reconcile(Map<String, Client> configuredClients) {
-        this.validate(configuredClients);
-        for (int attempt = 1; ; attempt++) {
-            List<MigrationChange> changes = new ArrayList<>();
-            try {
-                this.transactions.executeWithoutResult(status ->
-                    configuredClients
-                        .entrySet()
-                        .stream()
-                        .sorted(Map.Entry.comparingByKey())
-                        .forEach(configuredClient -> this.reconcile(configuredClient, changes))
-                );
-                this.changeLogger.log(changes);
-                return;
-            } catch (TransientDataAccessException | DataIntegrityViolationException exception) {
-                if (attempt == MAX_RECONCILIATION_ATTEMPTS) {
-                    throw exception;
-                }
-            }
-        }
+    void reconcile(Map<String, Client> configuredClients, List<MigrationChange> changes) {
+        configuredClients
+            .entrySet()
+            .stream()
+            .sorted(Map.Entry.comparingByKey())
+            .forEach(configuredClient -> this.reconcile(configuredClient, changes));
     }
 
     private void reconcile(Map.Entry<String, Client> configuredClient, List<MigrationChange> changes) {
@@ -99,7 +58,7 @@ final class InternalClientReconciler implements ApplicationRunner {
         }
     }
 
-    private void validate(Map<String, Client> configuredClients) {
+    void validate(Map<String, Client> configuredClients) {
         Set<String> clientIds = new HashSet<>();
         configuredClients.values().forEach(client -> {
             String clientId = this.clientId(client);
