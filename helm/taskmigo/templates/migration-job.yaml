@@ -1,4 +1,5 @@
 {{- if .Values.migration.enabled }}
+{{- $browserAuthenticationEnabled := and .Values.migration.browserAuthentication.enabled .Values.client.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -43,14 +44,18 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.database.existingSecret | quote }}
-                  key: {{ .Values.migration.systemUserPasswordHashKey | quote }}
+                  key: {{ .Values.migration.systemUserPasswordKey | quote }}
+            - name: TM_BROWSER_AUTHENTICATION_ENABLED
+              value: {{ $browserAuthenticationEnabled | quote }}
+            {{- if $browserAuthenticationEnabled }}
             - name: TM_BROWSER_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.database.existingSecret | quote }}
-                  key: {{ .Values.migration.browserAuthentication.clientSecretHashKey | quote }}
+                  key: {{ .Values.migration.browserAuthentication.clientSecretKey | quote }}
             - name: TM_BROWSER_HOST_NAME
               value: {{ include "taskmigo.clientUrl" . | quote }}
+            {{- end }}
             {{- with .Values.migration.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
