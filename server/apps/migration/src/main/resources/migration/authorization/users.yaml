@@ -1,6 +1,6 @@
 ---
 - username: system
-  password: "${TASKMIGO_SYSTEM_PASSWORD_HASH}"
+  password: !!str ${TASKMIGO_SYSTEM_PASSWORD_HASH}
   emails: []
   firstName: System
   lastName: User
