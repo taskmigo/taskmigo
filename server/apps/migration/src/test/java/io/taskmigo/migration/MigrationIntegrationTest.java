@@ -10,6 +10,7 @@ import io.taskmigo.authorization.role.RoleService;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.StatementService;
+import io.taskmigo.identity.group.GroupService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserInfo;
@@ -63,6 +64,7 @@ class MigrationIntegrationTest {
     private final StatementService statements;
     private final AuthorizationProvisioningService authorizationProvisioning;
     private final IdentityProvisioningService identityProvisioning;
+    private final GroupService groups;
 
     MigrationIntegrationTest(
         Flyway flyway,
@@ -74,7 +76,8 @@ class MigrationIntegrationTest {
         RoleService roles,
         StatementService statements,
         AuthorizationProvisioningService authorizationProvisioning,
-        IdentityProvisioningService identityProvisioning
+        IdentityProvisioningService identityProvisioning,
+        GroupService groups
     ) {
         this.flyway = flyway;
         this.clients = clients;
@@ -86,6 +89,7 @@ class MigrationIntegrationTest {
         this.statements = statements;
         this.authorizationProvisioning = authorizationProvisioning;
         this.identityProvisioning = identityProvisioning;
+        this.groups = groups;
     }
 
     /**
@@ -257,6 +261,117 @@ class MigrationIntegrationTest {
             .extracting(UserInfo::firstName, UserInfo::emails)
             .containsExactly("Updated", Set.of("updated@example.com"));
         assertThat(this.users.findForAuthentication(username).orElseThrow().passwordHash()).isEqualTo(passwordHash);
+    }
+
+    /**
+     * Verifies that declarative absence removes dependency-linked managed resources safely.
+     *
+     * Given: one managed Statement referenced by a Role, Group, and User, followed by the same definitions marked absent.
+     * Expect: reconciliation removes User, Group, Role, and Statement without violating dependency constraints.
+     */
+    @Test
+    @DisplayName("removes dependency-linked resources when managed definitions are absent")
+    void shouldRemoveManagedResourcesWhenDefinitionsAreAbsent() {
+        // Arrange
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        String statementCode = "phase1_stmt_" + suffix;
+        String roleCode = "phase1-role-" + suffix;
+        String groupCode = "phase1-group-" + suffix;
+        String username = "phase1-user-" + suffix;
+        var statement = new MigrationResourceLoader.Statement(
+            statementCode,
+            null,
+            "allow",
+            "request",
+            new MigrationResourceLoader.Target(new MigrationResourceLoader.Api("GET", "/api/v0/users")),
+            "return true;",
+            false
+        );
+        var role = new MigrationResourceLoader.Role(roleCode, "Phase 1 Role", null, List.of(statementCode), false);
+        var group = new MigrationResourceLoader.Group(groupCode, "Phase 1 Group", null, List.of(roleCode), false);
+        var user = new MigrationResourceLoader.User(
+            username,
+            null,
+            List.of(),
+            "Phase",
+            "One",
+            List.of(roleCode),
+            List.of(groupCode),
+            false
+        );
+        this.migration.reconcile(
+            new MigrationResourceLoader.MigrationResources(
+                List.of(user),
+                List.of(role),
+                List.of(statement),
+                List.of(group),
+                Map.of()
+            )
+        );
+        var absentStatement = new MigrationResourceLoader.Statement(
+            statementCode,
+            null,
+            "allow",
+            "request",
+            new MigrationResourceLoader.Target(new MigrationResourceLoader.Api("GET", "/api/v0/users")),
+            "return true;",
+            true
+        );
+        var absentRole = new MigrationResourceLoader.Role(roleCode, "Phase 1 Role", null, List.of(), true);
+        var absentGroup = new MigrationResourceLoader.Group(groupCode, "Phase 1 Group", null, List.of(), true);
+        var absentUser = new MigrationResourceLoader.User(
+            username,
+            null,
+            List.of(),
+            "Phase",
+            "One",
+            List.of(),
+            List.of(),
+            true
+        );
+
+        // Act
+        this.migration.reconcile(
+            new MigrationResourceLoader.MigrationResources(
+                List.of(absentUser),
+                List.of(absentRole),
+                List.of(absentStatement),
+                List.of(absentGroup),
+                Map.of()
+            )
+        );
+
+        // Assert
+        assertThat(this.users.findForAuthentication(username)).isEmpty();
+        assertThat(this.groups.deleteByCode(groupCode)).isFalse();
+        assertThatThrownBy(() -> this.authorizationProvisioning.requireRole(roleCode)).hasMessageContaining(
+            "Managed authorization Role does not exist"
+        );
+        assertThat(this.statements.list(1, 100).items()).extracting(StatementInfo::code).doesNotContain(statementCode);
+    }
+
+    /**
+     * Verifies that managed OAuth client credentials rotate when desired secret input changes.
+     *
+     * Given: an existing managed client reconciled first with one raw secret and then with a different raw secret.
+     * Expect: the persisted hash changes, matches the new secret, and no longer matches the previous secret.
+     */
+    @Test
+    @DisplayName("rotates a managed OAuth client secret when configured secret changes")
+    void shouldRotateManagedClientSecretWhenConfiguredSecretChanges() {
+        // Arrange
+        String clientId = "rotation-" + UUID.randomUUID();
+        this.migration.reconcile(resources(Map.of("rotation", client(clientId, "initial-secret"))));
+        String initialHash = Objects.requireNonNull(this.storedClient(clientId).getClientSecret());
+
+        // Act
+        this.migration.reconcile(resources(Map.of("rotation", client(clientId, "rotated-secret"))));
+        String rotatedHash = Objects.requireNonNull(this.storedClient(clientId).getClientSecret());
+
+        // Assert
+        assertThat(rotatedHash).isNotEqualTo(initialHash);
+        assertThat(this.passwordEncoder.matches("rotated-secret", rotatedHash)).isTrue();
+        assertThat(this.passwordEncoder.matches("initial-secret", rotatedHash)).isFalse();
     }
 
     /**

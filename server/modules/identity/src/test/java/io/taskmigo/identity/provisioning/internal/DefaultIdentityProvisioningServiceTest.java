@@ -217,6 +217,30 @@ class DefaultIdentityProvisioningServiceTest {
     }
 
     /**
+     * Verifies that managed reconciliation cannot delete the system User.
+     *
+     * Given: the persisted managed User has the reserved system username.
+     * Expect: deletion raises a typed provisioning failure and leaves the User store untouched.
+     */
+    @Test
+    @DisplayName("rejects removal of the managed system User")
+    void shouldRejectRemovalWhenManagedUserIsSystem() {
+        // Arrange
+        UUID id = UUID.randomUUID();
+        UserStore users = mock(UserStore.class);
+        when(users.findByUsername(SystemUser.USERNAME)).thenReturn(
+            Optional.of(new UserState(id, SystemUser.USERNAME, Set.of(), "System", "User", true, "{bcrypt}hash"))
+        );
+        var service = service(users);
+
+        // Act + Assert
+        assertThatThrownBy(() -> service.deleteUser(SystemUser.USERNAME))
+            .isInstanceOf(IdentityProvisioningException.class)
+            .hasMessageContaining("system user cannot be deleted");
+        verify(users, Mockito.never()).delete(Mockito.any());
+    }
+
+    /**
      * Verifies that a new system User cannot be provisioned without an initial credential.
      *
      * Given: no existing system User and a null initial password hash.

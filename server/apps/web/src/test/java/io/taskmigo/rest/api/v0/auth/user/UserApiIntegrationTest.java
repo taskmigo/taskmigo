@@ -62,6 +62,65 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
             .contains("\"totalPages\":");
     }
 
+    /**
+     * Verifies that runtime User creation normalizes accepted profile values through the public API.
+     *
+     * Given: username and name values padded with whitespace plus one email supplied with different casing.
+     * Expect: the created User contains trimmed profile values, one lowercase email, and the normalized display name.
+     */
+    @Test
+    @DisplayName("normalizes user profile and email values")
+    void shouldNormalizeUserProfileWhenCreatingThroughApi() {
+        // Arrange
+        String username = "normalized-" + UUID.randomUUID().toString().replace("-", "");
+        CreateUserRequest request = new CreateUserRequest(
+            "  " + username + "  ",
+            Set.of(username.toUpperCase() + "@EXAMPLE.COM", username + "@example.com"),
+            "  Test  ",
+            "  User  ",
+            Set.of(),
+            Set.of()
+        );
+
+        // Act
+        UUID id = this.api().users().create(request);
+        var created = this.users.require(id);
+
+        // Assert
+        assertThat(created.username()).isEqualTo(username);
+        assertThat(created.firstName()).isEqualTo("Test");
+        assertThat(created.lastName()).isEqualTo("User");
+        assertThat(created.emails()).containsExactly(username + "@example.com");
+        assertThat(created.displayName()).isEqualTo("Test User");
+    }
+
+    /**
+     * Verifies that the reserved system username cannot be used by ordinary runtime User creation.
+     *
+     * Given: a public create-User request whose username is exactly `system`.
+     * Expect: the API returns HTTP 400 and does not persist another User.
+     */
+    @Test
+    @DisplayName("rejects the reserved system username")
+    void shouldRejectReservedSystemUsernameWhenCreatingThroughApi() {
+        // Arrange
+        Integer before = this.jdbc.queryForObject("select count(*) from users", Integer.class);
+        CreateUserRequest request = new CreateUserRequest(
+            "system",
+            Set.of("reserved-system@example.com"),
+            "Reserved",
+            "User",
+            Set.of(),
+            Set.of()
+        );
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.api().users().create(request)).isInstanceOf(
+            HttpClientErrorException.BadRequest.class
+        );
+        assertThat(this.jdbc.queryForObject("select count(*) from users", Integer.class)).isEqualTo(before);
+    }
+
     @Test
     @DisplayName("creates users with optional role and group assignments")
     void shouldCreateUsersWhenOptionalAssignmentsAreProvided() {
