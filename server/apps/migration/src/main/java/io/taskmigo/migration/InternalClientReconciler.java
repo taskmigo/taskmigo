@@ -1,7 +1,6 @@
 package io.taskmigo.migration;
 
 import io.taskmigo.foundation.ReconciliationAction;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -24,14 +23,12 @@ final class InternalClientReconciler {
         this.clientFactory = clientFactory;
     }
 
-    List<MigrationChange> reconcile(Map<String, Client> configuredClients) {
-        List<MigrationChange> changes = new ArrayList<>();
+    void reconcile(Map<String, Client> configuredClients, List<MigrationChange> changes) {
         configuredClients
             .entrySet()
             .stream()
             .sorted(Map.Entry.comparingByKey())
             .forEach(configuredClient -> this.reconcile(configuredClient, changes));
-        return List.copyOf(changes);
     }
 
     private void reconcile(Map.Entry<String, Client> configuredClient, List<MigrationChange> changes) {
