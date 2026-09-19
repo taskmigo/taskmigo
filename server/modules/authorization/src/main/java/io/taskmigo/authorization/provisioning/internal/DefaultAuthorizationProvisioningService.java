@@ -94,7 +94,7 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
         this.statementService.requireStatements(requestedIds);
 
         String validCode = AuthorizationName.requiredRole(code, "code");
-        String validDisplayName = AuthorizationName.requiredRole(displayName, "displayName");
+        String validDisplayName = AuthorizationName.requiredDisplayName(displayName, "displayName");
         RoleState existing = this.roles.findByCode(validCode).orElse(null);
         if (existing == null) {
             UUID id = this.roleService.createRole(validCode, validDisplayName, description, Set.of());
