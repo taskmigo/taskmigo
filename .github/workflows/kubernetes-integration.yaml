@@ -18,6 +18,7 @@ on:
       - "!e2e/**/*.md"
       - .github/docker-bake.integration.hcl
       - .github/workflows/kubernetes-integration.yaml
+      - "!server/config/checkstyle/*.xml"
   push:
     branches: [next]
     paths:
