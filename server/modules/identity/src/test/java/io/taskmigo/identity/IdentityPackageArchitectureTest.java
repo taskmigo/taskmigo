@@ -150,10 +150,7 @@ class IdentityPackageArchitectureTest {
             .resideInAnyPackage("io.taskmigo.identity.user")
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage(
-                "io.taskmigo.identity.user.application..",
-                "io.taskmigo.identity.user.adapter.."
-            );
+            .resideInAnyPackage("io.taskmigo.identity.user.application..", "io.taskmigo.identity.user.adapter..");
 
         // Act + Assert
         userApiDoesNotDependOnImplementation.check(classes);

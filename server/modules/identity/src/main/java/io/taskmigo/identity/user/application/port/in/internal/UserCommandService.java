@@ -9,7 +9,6 @@ import org.jspecify.annotations.Nullable;
 
 /// Defines Identity-internal User command use cases executed inside a caller-owned application transaction.
 public interface UserCommandService {
-
     UUID createRuntime(
         @Nullable String username,
         @Nullable Set<String> emails,
