@@ -11,7 +11,7 @@ import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.StatementService;
 import io.taskmigo.authorization.subject.SubjectRoleQueryService;
-import io.taskmigo.identity.group.GroupService;
+import io.taskmigo.identity.group.application.port.in.api.GroupService;
 import io.taskmigo.identity.provisioning.GroupProvisioningService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
 import io.taskmigo.identity.user.SystemUser;

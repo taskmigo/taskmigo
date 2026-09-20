@@ -7,7 +7,7 @@ import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.role.RoleService;
 import io.taskmigo.authorization.subject.SubjectRoleQueryService;
 import io.taskmigo.identity.authorization.IdentitySubjects;
-import io.taskmigo.identity.group.GroupService;
+import io.taskmigo.identity.group.application.port.in.api.GroupService;
 import io.taskmigo.rest.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.CreateGroupRequest;
 import java.util.List;

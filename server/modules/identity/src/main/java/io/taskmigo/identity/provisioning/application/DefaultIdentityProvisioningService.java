@@ -3,7 +3,7 @@ package io.taskmigo.identity.provisioning.application;
 import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.SubjectGrantQueryService;
 import io.taskmigo.identity.authorization.IdentitySubjects;
-import io.taskmigo.identity.membership.MembershipService;
+import io.taskmigo.identity.membership.application.port.in.api.MembershipService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningException;
 import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
