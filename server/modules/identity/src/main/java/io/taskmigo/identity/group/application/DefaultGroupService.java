@@ -74,14 +74,14 @@ public class DefaultGroupService implements GroupService {
         try {
             id = this.commands.createRuntime(code, displayName, description);
         } catch (GroupRuleViolation exception) {
-            throw badRequest(exception);
+            throw invalidInput(exception);
         }
 
         GroupHierarchy requested;
         try {
             requested = current.replacingChildren(id, requestedChildIds);
         } catch (GroupHierarchyException exception) {
-            throw new GroupException(GroupException.Type.BAD_REQUEST, hierarchyFailureMessage(exception));
+            throw new GroupException(GroupException.Type.INVALID_INPUT, hierarchyFailureMessage(exception));
         }
 
         this.hierarchies.replaceChildren(id, requestedChildIds, requested);
@@ -93,7 +93,7 @@ public class DefaultGroupService implements GroupService {
     @Transactional(readOnly = true)
     public void requireGroups(Collection<UUID> ids) {
         if (!this.groups.containsAll(Set.copyOf(ids))) {
-            throw new GroupException(GroupException.Type.BAD_REQUEST, "One or more Groups do not exist");
+            throw new GroupException(GroupException.Type.INVALID_INPUT, "One or more Groups do not exist");
         }
     }
 
@@ -109,7 +109,7 @@ public class DefaultGroupService implements GroupService {
         try {
             requested = current.replacingChildren(parentGroupId, requestedIds);
         } catch (GroupHierarchyException exception) {
-            throw new GroupException(GroupException.Type.BAD_REQUEST, hierarchyFailureMessage(exception));
+            throw new GroupException(GroupException.Type.INVALID_INPUT, hierarchyFailureMessage(exception));
         }
 
         this.hierarchies.replaceChildren(parentGroupId, requestedIds, requested);
@@ -136,12 +136,12 @@ public class DefaultGroupService implements GroupService {
 
     private static void requireChildren(Set<UUID> childIds, GroupHierarchy hierarchy) {
         if (!hierarchy.containsAll(childIds)) {
-            throw new GroupException(GroupException.Type.BAD_REQUEST, "One or more child Groups do not exist");
+            throw new GroupException(GroupException.Type.INVALID_INPUT, "One or more child Groups do not exist");
         }
     }
 
-    private static GroupException badRequest(GroupRuleViolation exception) {
-        return new GroupException(GroupException.Type.BAD_REQUEST, exception.detail());
+    private static GroupException invalidInput(GroupRuleViolation exception) {
+        return new GroupException(GroupException.Type.INVALID_INPUT, exception.detail());
     }
 
     private static String hierarchyFailureMessage(GroupHierarchyException exception) {

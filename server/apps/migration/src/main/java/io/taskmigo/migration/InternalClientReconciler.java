@@ -1,6 +1,5 @@
 package io.taskmigo.migration;
 
-import io.taskmigo.foundation.ReconciliationAction;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -43,13 +42,13 @@ final class InternalClientReconciler {
             configuredClient.getValue(),
             existing
         );
-        ReconciliationAction action =
+        MigrationChange.Action action =
             existing == null
-                ? ReconciliationAction.ADDED
+                ? MigrationChange.Action.ADDED
                 : sameManagedData(existing, requested)
-                  ? ReconciliationAction.UNCHANGED
-                  : ReconciliationAction.UPDATED;
-        if (action != ReconciliationAction.UNCHANGED) {
+                  ? MigrationChange.Action.UNCHANGED
+                  : MigrationChange.Action.UPDATED;
+        if (action != MigrationChange.Action.UNCHANGED) {
             this.clients.save(requested);
             changes.add(new MigrationChange("oauth-client", clientId, action));
         }

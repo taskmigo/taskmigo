@@ -72,7 +72,7 @@ public class DefaultRoleCommandService implements RoleCommandService {
     public void replaceStatements(UUID roleId, Collection<UUID> statementIds) {
         Role role = this.roles
             .find(roleId)
-            .orElseThrow(() -> new RoleException(RoleException.Type.BAD_REQUEST, "Role does not exist"));
+            .orElseThrow(() -> new RoleException(RoleException.Type.INVALID_INPUT, "Role does not exist"));
         if (role.replaceStatements(statementIds)) {
             this.roles.save(role);
         }

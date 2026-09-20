@@ -58,7 +58,7 @@ public class DefaultMembershipService implements MembershipService {
 
     private void requireGroups(Collection<UUID> ids) {
         if (!this.groups.containsAll(ids)) {
-            throw new GroupException(GroupException.Type.BAD_REQUEST, "One or more Groups do not exist");
+            throw new GroupException(GroupException.Type.INVALID_INPUT, "One or more Groups do not exist");
         }
     }
 }

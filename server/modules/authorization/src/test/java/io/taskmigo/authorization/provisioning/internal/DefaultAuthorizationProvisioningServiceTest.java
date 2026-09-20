@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
+import io.taskmigo.authorization.provisioning.AuthorizationProvisioningResult;
 import io.taskmigo.authorization.role.application.RoleCommandService;
 import io.taskmigo.authorization.role.application.RoleHierarchyRepository;
 import io.taskmigo.authorization.role.application.RoleMutationResult;
@@ -19,8 +20,6 @@ import io.taskmigo.authorization.statement.StatementService;
 import io.taskmigo.authorization.statement.application.StatementCommandService;
 import io.taskmigo.authorization.statement.application.StatementMutationResult;
 import io.taskmigo.authorization.statement.domain.Statement;
-import io.taskmigo.foundation.ReconciliationAction;
-import io.taskmigo.foundation.ReconciliationResult;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -57,7 +56,7 @@ class DefaultAuthorizationProvisioningServiceTest {
         var service = service(mock(RoleCommandService.class), commands, mock(StatementService.class));
 
         // Act
-        ReconciliationResult<UUID> result = service.reconcileStatement(
+        AuthorizationProvisioningResult<UUID> result = service.reconcileStatement(
             "projects_read",
             null,
             Effect.ALLOW,
@@ -68,7 +67,9 @@ class DefaultAuthorizationProvisioningServiceTest {
         );
 
         // Assert
-        assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.ADDED));
+        assertThat(result).isEqualTo(
+            new AuthorizationProvisioningResult<>(id, AuthorizationProvisioningResult.Change.CREATED)
+        );
     }
 
     /**
@@ -97,7 +98,7 @@ class DefaultAuthorizationProvisioningServiceTest {
         var service = service(mock(RoleCommandService.class), commands, mock(StatementService.class));
 
         // Act
-        ReconciliationResult<UUID> result = service.reconcileStatement(
+        AuthorizationProvisioningResult<UUID> result = service.reconcileStatement(
             "projects_read",
             "changed",
             Effect.DENY,
@@ -108,7 +109,9 @@ class DefaultAuthorizationProvisioningServiceTest {
         );
 
         // Assert
-        assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.UPDATED));
+        assertThat(result).isEqualTo(
+            new AuthorizationProvisioningResult<>(id, AuthorizationProvisioningResult.Change.UPDATED)
+        );
     }
 
     /**
@@ -137,7 +140,7 @@ class DefaultAuthorizationProvisioningServiceTest {
         var service = service(mock(RoleCommandService.class), commands, mock(StatementService.class));
 
         // Act
-        ReconciliationResult<UUID> result = service.reconcileStatement(
+        AuthorizationProvisioningResult<UUID> result = service.reconcileStatement(
             "projects_read",
             null,
             Effect.ALLOW,
@@ -148,7 +151,9 @@ class DefaultAuthorizationProvisioningServiceTest {
         );
 
         // Assert
-        assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.UNCHANGED));
+        assertThat(result).isEqualTo(
+            new AuthorizationProvisioningResult<>(id, AuthorizationProvisioningResult.Change.UNCHANGED)
+        );
     }
 
     /**
@@ -244,10 +249,17 @@ class DefaultAuthorizationProvisioningServiceTest {
         );
 
         // Act
-        ReconciliationResult<UUID> result = service.reconcileRole("reader", "Reader", null, Set.of(statementId));
+        AuthorizationProvisioningResult<UUID> result = service.reconcileRole(
+            "reader",
+            "Reader",
+            null,
+            Set.of(statementId)
+        );
 
         // Assert
-        assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.ADDED));
+        assertThat(result).isEqualTo(
+            new AuthorizationProvisioningResult<>(id, AuthorizationProvisioningResult.Change.CREATED)
+        );
         verify(statements).requireStatements(Set.of(statementId));
         verify(hierarchies).synchronize(hierarchy);
     }
@@ -270,10 +282,12 @@ class DefaultAuthorizationProvisioningServiceTest {
         var service = service(roles, mock(StatementCommandService.class), mock(StatementService.class));
 
         // Act
-        ReconciliationResult<UUID> result = service.reconcileRole("reader", "Reader", null, Set.of());
+        AuthorizationProvisioningResult<UUID> result = service.reconcileRole("reader", "Reader", null, Set.of());
 
         // Assert
-        assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.UNCHANGED));
+        assertThat(result).isEqualTo(
+            new AuthorizationProvisioningResult<>(id, AuthorizationProvisioningResult.Change.UNCHANGED)
+        );
         verify(roles, never()).delete(ArgumentMatchers.any());
     }
 

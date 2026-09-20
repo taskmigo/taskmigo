@@ -1,6 +1,5 @@
 package io.taskmigo.migration;
 
-import io.taskmigo.foundation.ReconciliationAction;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,7 +13,7 @@ final class MigrationChangeLogger {
 
     void log(List<MigrationChange> changes) {
         for (MigrationChange change : changes) {
-            if (change.action() == ReconciliationAction.UNCHANGED) {
+            if (change.action() == MigrationChange.Action.UNCHANGED) {
                 continue;
             }
             LOGGER.atInfo()

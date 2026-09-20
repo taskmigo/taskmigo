@@ -8,14 +8,13 @@ import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.SubjectGrantQueryService;
-import io.taskmigo.foundation.ReconciliationAction;
-import io.taskmigo.foundation.ReconciliationResult;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.group.application.GroupCommandService;
 import io.taskmigo.identity.group.application.GroupHierarchyRepository;
 import io.taskmigo.identity.group.application.GroupMutationResult;
 import io.taskmigo.identity.group.domain.Group;
 import io.taskmigo.identity.group.domain.hierarchy.GroupHierarchy;
+import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -51,10 +50,15 @@ class DefaultGroupProvisioningServiceTest {
         var service = new DefaultGroupProvisioningService(groups, hierarchies, grantAssignments, grantQueries);
 
         // Act
-        ReconciliationResult<UUID> result = service.reconcileGroup("engineering", "Engineering", null, Set.of(roleId));
+        IdentityProvisioningResult<UUID> result = service.reconcileGroup(
+            "engineering",
+            "Engineering",
+            null,
+            Set.of(roleId)
+        );
 
         // Assert
-        assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.ADDED));
+        assertThat(result).isEqualTo(new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.CREATED));
         verify(hierarchies).synchronize(hierarchy);
         verify(grantAssignments).setRoles(IdentitySubjects.group(id), Set.of(roleId));
     }
@@ -85,10 +89,10 @@ class DefaultGroupProvisioningServiceTest {
         );
 
         // Act
-        ReconciliationResult<UUID> result = service.reconcileGroup("engineering", "Engineering", null, Set.of());
+        IdentityProvisioningResult<UUID> result = service.reconcileGroup("engineering", "Engineering", null, Set.of());
 
         // Assert
-        assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.UNCHANGED));
+        assertThat(result).isEqualTo(new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.UNCHANGED));
         verify(grantAssignments, never()).setRoles(IdentitySubjects.group(id), Set.of());
     }
 

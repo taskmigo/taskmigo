@@ -1,12 +1,12 @@
 package io.taskmigo.migration;
 
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
+import io.taskmigo.authorization.provisioning.AuthorizationProvisioningResult;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningService;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
-import io.taskmigo.foundation.ReconciliationAction;
-import io.taskmigo.foundation.ReconciliationResult;
 import io.taskmigo.identity.provisioning.GroupProvisioningService;
+import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -99,7 +99,7 @@ final class ManagedResourceReconciler {
             .filter(MigrationResourceLoader.User::absent)
             .forEach(user -> {
                 if (this.identity.deleteUser(user.username())) {
-                    changes.add(change("user", user.username(), ReconciliationAction.REMOVED));
+                    changes.add(change("user", user.username(), MigrationChange.Action.REMOVED));
                 }
             });
         data.groups()
@@ -107,7 +107,7 @@ final class ManagedResourceReconciler {
             .filter(MigrationResourceLoader.Group::absent)
             .forEach(group -> {
                 if (this.groups.deleteGroup(group.code())) {
-                    changes.add(change("group", group.code(), ReconciliationAction.REMOVED));
+                    changes.add(change("group", group.code(), MigrationChange.Action.REMOVED));
                 }
             });
         data.roles()
@@ -115,7 +115,7 @@ final class ManagedResourceReconciler {
             .filter(MigrationResourceLoader.Role::absent)
             .forEach(role -> {
                 if (this.authorization.deleteRole(role.code())) {
-                    changes.add(change("role", role.code(), ReconciliationAction.REMOVED));
+                    changes.add(change("role", role.code(), MigrationChange.Action.REMOVED));
                 }
             });
         data.statements()
@@ -123,7 +123,7 @@ final class ManagedResourceReconciler {
             .filter(MigrationResourceLoader.Statement::absent)
             .forEach(statement -> {
                 if (this.authorization.deleteStatement(statement.code())) {
-                    changes.add(change("statement", statement.code(), ReconciliationAction.REMOVED));
+                    changes.add(change("statement", statement.code(), MigrationChange.Action.REMOVED));
                 }
             });
     }
@@ -137,7 +137,7 @@ final class ManagedResourceReconciler {
             if (definition.absent()) {
                 continue;
             }
-            ReconciliationResult<UUID> reconciliation = this.authorization.reconcileStatement(
+            AuthorizationProvisioningResult<UUID> reconciliation = this.authorization.reconcileStatement(
                 definition.code(),
                 definition.description(),
                 Effect.from(definition.effect()),
@@ -147,7 +147,7 @@ final class ManagedResourceReconciler {
                 definition.policy()
             );
             result.put(definition.code(), reconciliation.id());
-            changes.add(change("statement", definition.code(), reconciliation.action()));
+            changes.add(change("statement", definition.code(), migrationAction(reconciliation.change())));
         }
         return result;
     }
@@ -163,14 +163,14 @@ final class ManagedResourceReconciler {
                 continue;
             }
             Set<UUID> ids = definition.statements().stream().map(statementIds::get).collect(Collectors.toSet());
-            ReconciliationResult<UUID> reconciliation = this.authorization.reconcileRole(
+            AuthorizationProvisioningResult<UUID> reconciliation = this.authorization.reconcileRole(
                 definition.code(),
                 definition.displayName(),
                 definition.description(),
                 ids
             );
             result.put(definition.code(), reconciliation.id());
-            changes.add(change("role", definition.code(), reconciliation.action()));
+            changes.add(change("role", definition.code(), migrationAction(reconciliation.change())));
         }
         return result;
     }
@@ -186,14 +186,14 @@ final class ManagedResourceReconciler {
                 continue;
             }
             Set<UUID> ids = definition.roles().stream().map(roleIds::get).collect(Collectors.toSet());
-            ReconciliationResult<UUID> reconciliation = this.groups.reconcileGroup(
+            IdentityProvisioningResult<UUID> reconciliation = this.groups.reconcileGroup(
                 definition.code(),
                 definition.displayName(),
                 definition.description(),
                 ids
             );
             result.put(definition.code(), reconciliation.id());
-            changes.add(change("group", definition.code(), reconciliation.action()));
+            changes.add(change("group", definition.code(), migrationAction(reconciliation.change())));
         }
         return result;
     }
@@ -210,7 +210,7 @@ final class ManagedResourceReconciler {
             }
             Set<UUID> roles = user.roles().stream().map(roleIds::get).collect(Collectors.toSet());
             Set<UUID> groups = user.groups().stream().map(groupIds::get).collect(Collectors.toSet());
-            ReconciliationResult<UUID> reconciliation = this.identity.reconcileUser(
+            IdentityProvisioningResult<UUID> reconciliation = this.identity.reconcileUser(
                 user.username(),
                 this.initialPasswordHash(user.password()),
                 user.emails(),
@@ -219,7 +219,7 @@ final class ManagedResourceReconciler {
                 roles,
                 groups
             );
-            changes.add(change("user", user.username(), reconciliation.action()));
+            changes.add(change("user", user.username(), migrationAction(reconciliation.change())));
         }
     }
 
@@ -227,8 +227,24 @@ final class ManagedResourceReconciler {
         return rawPassword == null || rawPassword.isBlank() ? null : this.passwordEncoder.encode(rawPassword);
     }
 
-    private static MigrationChange change(String resourceType, String resourceKey, ReconciliationAction action) {
+    private static MigrationChange change(String resourceType, String resourceKey, MigrationChange.Action action) {
         return new MigrationChange(resourceType, resourceKey, action);
+    }
+
+    private static MigrationChange.Action migrationAction(AuthorizationProvisioningResult.Change change) {
+        return switch (change) {
+            case CREATED -> MigrationChange.Action.ADDED;
+            case UPDATED -> MigrationChange.Action.UPDATED;
+            case UNCHANGED -> MigrationChange.Action.UNCHANGED;
+        };
+    }
+
+    private static MigrationChange.Action migrationAction(IdentityProvisioningResult.Change change) {
+        return switch (change) {
+            case CREATED -> MigrationChange.Action.ADDED;
+            case UPDATED -> MigrationChange.Action.UPDATED;
+            case UNCHANGED -> MigrationChange.Action.UNCHANGED;
+        };
     }
 
     private static <T> Map<String, T> unique(List<T> values, Function<T, String> key, String type) {

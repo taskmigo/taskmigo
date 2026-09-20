@@ -2,6 +2,7 @@ package io.taskmigo.authorization.provisioning.internal;
 
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
+import io.taskmigo.authorization.provisioning.AuthorizationProvisioningResult;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningService;
 import io.taskmigo.authorization.role.application.RoleCommandService;
 import io.taskmigo.authorization.role.application.RoleHierarchyRepository;
@@ -15,8 +16,6 @@ import io.taskmigo.authorization.statement.application.StatementCommandService;
 import io.taskmigo.authorization.statement.application.StatementMutationResult;
 import io.taskmigo.authorization.statement.domain.Statement;
 import io.taskmigo.authorization.statement.domain.StatementRuleViolation;
-import io.taskmigo.foundation.ReconciliationAction;
-import io.taskmigo.foundation.ReconciliationResult;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
@@ -47,7 +46,7 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
 
     @Override
     @Transactional
-    public ReconciliationResult<UUID> reconcileStatement(
+    public AuthorizationProvisioningResult<UUID> reconcileStatement(
         @Nullable String code,
         @Nullable String description,
         @Nullable Effect effect,
@@ -60,15 +59,18 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
         try {
             mutation = this.statementCommands.reconcileManaged(code, description, effect, scope, method, path, policy);
         } catch (StatementRuleViolation exception) {
-            throw badRequest(exception);
+            throw invalidInput(exception);
         }
 
-        return new ReconciliationResult<>(mutation.id(), reconciliationAction(mutation.created(), mutation.changed()));
+        return new AuthorizationProvisioningResult<>(
+            mutation.id(),
+            provisioningChange(mutation.created(), mutation.changed())
+        );
     }
 
     @Override
     @Transactional
-    public ReconciliationResult<UUID> reconcileRole(
+    public AuthorizationProvisioningResult<UUID> reconcileRole(
         @Nullable String code,
         @Nullable String displayName,
         @Nullable String description,
@@ -81,12 +83,15 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
         try {
             mutation = this.roleCommands.reconcileManaged(code, displayName, description, requestedIds);
         } catch (RoleRuleViolation exception) {
-            throw badRequest(exception);
+            throw invalidInput(exception);
         }
         if (mutation.created()) {
             this.roleHierarchies.synchronize(this.roleHierarchies.loadForMutation());
         }
-        return new ReconciliationResult<>(mutation.id(), reconciliationAction(mutation.created(), mutation.changed()));
+        return new AuthorizationProvisioningResult<>(
+            mutation.id(),
+            provisioningChange(mutation.created(), mutation.changed())
+        );
     }
 
     @Override
@@ -100,7 +105,7 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
                     new AuthorizationProvisioningException("Managed authorization Statement does not exist: " + code)
                 );
         } catch (StatementRuleViolation exception) {
-            throw badRequest(exception);
+            throw invalidInput(exception);
         }
     }
 
@@ -115,7 +120,7 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
                     new AuthorizationProvisioningException("Managed authorization Role does not exist: " + code)
                 );
         } catch (RoleRuleViolation exception) {
-            throw badRequest(exception);
+            throw invalidInput(exception);
         }
     }
 
@@ -126,7 +131,7 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
         try {
             existing = this.statementCommands.findByCode(code).orElse(null);
         } catch (StatementRuleViolation exception) {
-            throw badRequest(exception);
+            throw invalidInput(exception);
         }
         if (existing == null) {
             return false;
@@ -142,7 +147,7 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
         try {
             existing = this.roleCommands.findByCode(code).orElse(null);
         } catch (RoleRuleViolation exception) {
-            throw badRequest(exception);
+            throw invalidInput(exception);
         }
         if (existing == null) {
             return false;
@@ -151,19 +156,19 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
         return true;
     }
 
-    private static ReconciliationAction reconciliationAction(boolean created, boolean changed) {
+    private static AuthorizationProvisioningResult.Change provisioningChange(boolean created, boolean changed) {
         return created
-            ? ReconciliationAction.ADDED
+            ? AuthorizationProvisioningResult.Change.CREATED
             : changed
-              ? ReconciliationAction.UPDATED
-              : ReconciliationAction.UNCHANGED;
+              ? AuthorizationProvisioningResult.Change.UPDATED
+              : AuthorizationProvisioningResult.Change.UNCHANGED;
     }
 
-    private static AuthorizationException badRequest(StatementRuleViolation exception) {
+    private static AuthorizationException invalidInput(StatementRuleViolation exception) {
         return new AuthorizationException(exception.detail());
     }
 
-    private static AuthorizationException badRequest(RoleRuleViolation exception) {
+    private static AuthorizationException invalidInput(RoleRuleViolation exception) {
         return new AuthorizationException(exception.detail());
     }
 }

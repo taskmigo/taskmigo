@@ -51,14 +51,14 @@ public class DefaultRoleService implements RoleService {
         try {
             id = this.commands.createRuntime(code, displayName, description);
         } catch (RoleRuleViolation exception) {
-            throw badRequest(exception);
+            throw invalidInput(exception);
         }
 
         RoleHierarchy requested;
         try {
             requested = current.replacingChildren(id, requestedChildIds);
         } catch (RoleHierarchyException exception) {
-            throw new RoleException(RoleException.Type.BAD_REQUEST, hierarchyFailureMessage(exception));
+            throw new RoleException(RoleException.Type.INVALID_INPUT, hierarchyFailureMessage(exception));
         }
 
         this.hierarchies.replaceChildren(id, requestedChildIds, requested);
@@ -69,7 +69,7 @@ public class DefaultRoleService implements RoleService {
     @Transactional(readOnly = true)
     public void requireRoles(Collection<UUID> ids) {
         if (!this.roles.containsAll(Set.copyOf(ids))) {
-            throw new RoleException(RoleException.Type.BAD_REQUEST, "One or more Roles do not exist");
+            throw new RoleException(RoleException.Type.INVALID_INPUT, "One or more Roles do not exist");
         }
     }
 
@@ -96,7 +96,7 @@ public class DefaultRoleService implements RoleService {
         try {
             requested = current.replacingChildren(parentRoleId, requestedIds);
         } catch (RoleHierarchyException exception) {
-            throw new RoleException(RoleException.Type.BAD_REQUEST, hierarchyFailureMessage(exception));
+            throw new RoleException(RoleException.Type.INVALID_INPUT, hierarchyFailureMessage(exception));
         }
 
         this.hierarchies.replaceChildren(parentRoleId, requestedIds, requested);
@@ -129,18 +129,18 @@ public class DefaultRoleService implements RoleService {
 
     private static void requireRole(UUID id, RoleHierarchy hierarchy) {
         if (!hierarchy.contains(id)) {
-            throw new RoleException(RoleException.Type.BAD_REQUEST, "Role does not exist");
+            throw new RoleException(RoleException.Type.INVALID_INPUT, "Role does not exist");
         }
     }
 
     private static void requireChildren(Set<UUID> childIds, RoleHierarchy hierarchy) {
         if (!hierarchy.containsAll(childIds)) {
-            throw new RoleException(RoleException.Type.BAD_REQUEST, "One or more child Roles do not exist");
+            throw new RoleException(RoleException.Type.INVALID_INPUT, "One or more child Roles do not exist");
         }
     }
 
-    private static RoleException badRequest(RoleRuleViolation exception) {
-        return new RoleException(RoleException.Type.BAD_REQUEST, exception.detail());
+    private static RoleException invalidInput(RoleRuleViolation exception) {
+        return new RoleException(RoleException.Type.INVALID_INPUT, exception.detail());
     }
 
     private static String hierarchyFailureMessage(RoleHierarchyException exception) {
