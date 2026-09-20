@@ -34,7 +34,7 @@ public final class JSpecifyPackageInfoCheck extends AbstractFileSetCheck {
     );
 
     private final Set<File> directoriesChecked = new HashSet<>();
-    private Path indexedRepositoryRoot;
+    private Optional<Path> indexedRepositoryRoot = Optional.empty();
     private Set<Path> mainSourceRoots = Set.of();
 
     public JSpecifyPackageInfoCheck() {
@@ -78,14 +78,15 @@ public final class JSpecifyPackageInfoCheck extends AbstractFileSetCheck {
         }
 
         SourceLocation location = sourceLocation.orElseThrow();
-        return mainSourceRoots(location.repositoryRoot()).stream()
+        return mainSourceRoots(location.repositoryRoot())
+            .stream()
             .map(root -> root.resolve(location.packagePath()).resolve(PACKAGE_INFO_FILE_NAME))
             .anyMatch(Files::isRegularFile);
     }
 
     private Set<Path> mainSourceRoots(Path repositoryRoot) throws CheckstyleException {
-        if (!repositoryRoot.equals(indexedRepositoryRoot)) {
-            indexedRepositoryRoot = repositoryRoot;
+        if (!indexedRepositoryRoot.filter(repositoryRoot::equals).isPresent()) {
+            indexedRepositoryRoot = Optional.of(repositoryRoot);
             try (
                 Stream<Path> paths = Files.find(
                     repositoryRoot,
@@ -107,11 +108,13 @@ public final class JSpecifyPackageInfoCheck extends AbstractFileSetCheck {
     private static boolean isMainJavaSourceRoot(Path path) {
         Path sourceSetDirectory = path.getParent();
         Path sourceDirectory = sourceSetDirectory == null ? null : sourceSetDirectory.getParent();
-        return "java".equals(fileName(path))
-            && sourceSetDirectory != null
-            && "main".equals(fileName(sourceSetDirectory))
-            && sourceDirectory != null
-            && "src".equals(fileName(sourceDirectory));
+        return (
+            "java".equals(fileName(path)) &&
+            sourceSetDirectory != null &&
+            "main".equals(fileName(sourceSetDirectory)) &&
+            sourceDirectory != null &&
+            "src".equals(fileName(sourceDirectory))
+        );
     }
 
     private static Optional<SourceLocation> sourceLocation(Path packageDirectory) {
@@ -119,10 +122,10 @@ public final class JSpecifyPackageInfoCheck extends AbstractFileSetCheck {
             Path sourceSetDirectory = candidate.getParent();
             Path sourceDirectory = sourceSetDirectory == null ? null : sourceSetDirectory.getParent();
             if (
-                "java".equals(fileName(candidate))
-                    && sourceSetDirectory != null
-                    && sourceDirectory != null
-                    && "src".equals(fileName(sourceDirectory))
+                "java".equals(fileName(candidate)) &&
+                sourceSetDirectory != null &&
+                sourceDirectory != null &&
+                "src".equals(fileName(sourceDirectory))
             ) {
                 Optional<Path> repositoryRoot = repositoryRoot(sourceDirectory.getParent());
                 if (repositoryRoot.isPresent()) {

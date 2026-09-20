@@ -62,9 +62,7 @@ class JSpecifyPackageInfoCheckTest {
     @DisplayName("Allows a test package to reuse main package metadata")
     void allowsTestPackageToReuseMainPackageInfo(@TempDir Path tempDir) throws Exception {
         Files.writeString(tempDir.resolve("settings.gradle.kts"), "rootProject.name = \"test\"\n", UTF_8);
-        Path mainPackage = Files.createDirectories(
-            tempDir.resolve("module-a/src/main/java/io/taskmigo/example")
-        );
+        Path mainPackage = Files.createDirectories(tempDir.resolve("module-a/src/main/java/io/taskmigo/example"));
         Files.writeString(
             mainPackage.resolve("package-info.java"),
             """
@@ -75,9 +73,7 @@ class JSpecifyPackageInfoCheckTest {
             """,
             UTF_8
         );
-        Path testPackage = Files.createDirectories(
-            tempDir.resolve("module-b/src/test/java/io/taskmigo/example")
-        );
+        Path testPackage = Files.createDirectories(tempDir.resolve("module-b/src/test/java/io/taskmigo/example"));
         Path source = Files.writeString(
             testPackage.resolve("ExampleTest.java"),
             "package io.taskmigo.example;\nfinal class ExampleTest {}\n",
