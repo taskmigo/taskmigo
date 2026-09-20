@@ -59,26 +59,23 @@ public final class JSpecifyNullMarkedCheck extends AbstractCheck {
     }
 
     private static boolean hasJSpecifyNullMarkedImport(DetailAST compilationUnit) {
-        boolean hasJSpecifyExplicitImport = false;
-        boolean hasNonJSpecifyExplicitImport = false;
-        boolean hasJSpecifyWildcardImport = false;
+        boolean hasExactImport = false;
+        boolean hasOtherImport = false;
+        boolean hasWildcardImport = false;
 
         for (DetailAST child = compilationUnit.getFirstChild(); child != null; child = child.getNextSibling()) {
             if (child.getType() == TokenTypes.IMPORT) {
                 String importedType = FullIdent.createFullIdentBelow(child).getText();
                 if (JSPECIFY_NULL_MARKED.equals(importedType)) {
-                    hasJSpecifyExplicitImport = true;
+                    hasExactImport = true;
                 } else if (importedType.endsWith("." + NULL_MARKED)) {
-                    hasNonJSpecifyExplicitImport = true;
+                    hasOtherImport = true;
                 } else if (JSPECIFY_ANNOTATIONS_WILDCARD.equals(importedType)) {
-                    hasJSpecifyWildcardImport = true;
+                    hasWildcardImport = true;
                 }
             }
         }
 
-        return (
-            !hasNonJSpecifyExplicitImport &&
-            (hasJSpecifyExplicitImport || hasJSpecifyWildcardImport)
-        );
+        return !hasOtherImport && (hasExactImport || hasWildcardImport);
     }
 }
