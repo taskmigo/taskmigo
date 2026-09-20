@@ -33,10 +33,7 @@ public final class StatementRuleViolation extends RuntimeException {
     }
 
     static StatementRuleViolation invalidCode() {
-        return new StatementRuleViolation(
-            Reason.INVALID_CODE,
-            "code must match [a-zA-Z0-9_-]{6,255}"
-        );
+        return new StatementRuleViolation(Reason.INVALID_CODE, "code must match [a-zA-Z0-9_-]{6,255}");
     }
 
     static StatementRuleViolation required(String field) {

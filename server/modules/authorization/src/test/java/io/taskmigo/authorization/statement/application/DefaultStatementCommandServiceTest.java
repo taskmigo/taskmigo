@@ -70,15 +70,7 @@ class DefaultStatementCommandServiceTest {
 
         // Act + Assert
         assertThatThrownBy(() ->
-            this.service.createRuntime(
-                "users_read",
-                null,
-                Effect.ALLOW,
-                Scope.REQUEST,
-                "GET",
-                "/users",
-                "return true;"
-            )
+            this.service.createRuntime("users_read", null, Effect.ALLOW, Scope.REQUEST, "GET", "/users", "return true;")
         )
             .isInstanceOf(StatementRuleViolation.class)
             .hasMessage("Statement code already exists");

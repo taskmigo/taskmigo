@@ -43,15 +43,7 @@ class DefaultStatementServiceTest {
 
         // Act + Assert
         assertThatThrownBy(() ->
-            this.service.create(
-                "users_read",
-                null,
-                Effect.ALLOW,
-                Scope.REQUEST,
-                "GET",
-                "/users",
-                "return true;"
-            )
+            this.service.create("users_read", null, Effect.ALLOW, Scope.REQUEST, "GET", "/users", "return true;")
         )
             .isInstanceOf(AuthorizationException.class)
             .hasMessage("Statement code already exists");

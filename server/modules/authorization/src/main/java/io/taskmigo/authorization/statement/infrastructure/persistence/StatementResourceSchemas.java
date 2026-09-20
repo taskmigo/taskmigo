@@ -57,12 +57,7 @@ public class StatementResourceSchemas {
 
     @Bean
     QueryPredicateBinder<StatementInfo, StatementEntity> statementQueryPredicateBinder() {
-        return new JpaQueryPredicateBinder<>(
-            StatementInfo.class,
-            StatementEntity.class,
-            paths(),
-            types()
-        );
+        return new JpaQueryPredicateBinder<>(StatementInfo.class, StatementEntity.class, paths(), types());
     }
 
     @Bean
@@ -131,7 +126,10 @@ public class StatementResourceSchemas {
 
             @Override
             public Optional<QueryField> field(QueryPath path) {
-                return declared.stream().filter(field -> field.path().equals(path)).findFirst();
+                return declared
+                    .stream()
+                    .filter(field -> field.path().equals(path))
+                    .findFirst();
             }
 
             @Override
@@ -154,7 +152,10 @@ public class StatementResourceSchemas {
 
             @Override
             public Optional<ObjectAuthorizationField> field(ObjectAuthorizationPath path) {
-                return declared.stream().filter(field -> field.path().equals(path)).findFirst();
+                return declared
+                    .stream()
+                    .filter(field -> field.path().equals(path))
+                    .findFirst();
             }
 
             @Override

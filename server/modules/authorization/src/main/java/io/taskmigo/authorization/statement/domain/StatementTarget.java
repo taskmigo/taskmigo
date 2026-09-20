@@ -6,7 +6,6 @@ import org.jspecify.annotations.Nullable;
 ///
 /// Regex compilation and target applicability are authorization-runtime concerns and are deliberately not validated here.
 public record StatementTarget(String method, String path) {
-
     private static final int MAX_METHOD_LENGTH = 16;
     private static final int MAX_PATH_LENGTH = 2000;
 

@@ -294,10 +294,7 @@ class DefaultAuthorizationProvisioningServiceTest {
             .hasMessageContaining("Managed authorization Role does not exist");
     }
 
-    private static DefaultAuthorizationProvisioningService service(
-        RoleStore roles,
-        StatementCommandService commands
-    ) {
+    private static DefaultAuthorizationProvisioningService service(RoleStore roles, StatementCommandService commands) {
         return new DefaultAuthorizationProvisioningService(
             mock(RoleService.class),
             roles,

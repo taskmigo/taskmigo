@@ -11,8 +11,10 @@ public final class Statement {
 
     private final UUID id;
     private final StatementCode code;
+
     @Nullable
     private String description;
+
     private Effect effect;
     private Scope scope;
     private StatementTarget target;

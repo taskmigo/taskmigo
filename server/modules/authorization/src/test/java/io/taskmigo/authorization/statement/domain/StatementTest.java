@@ -54,16 +54,7 @@ class StatementTest {
 
         // Act + Assert
         assertThatThrownBy(() ->
-            Statement.create(
-                UUID.randomUUID(),
-                "users_read",
-                null,
-                Effect.ALLOW,
-                Scope.REQUEST,
-                "GET",
-                "/users",
-                "  "
-            )
+            Statement.create(UUID.randomUUID(), "users_read", null, Effect.ALLOW, Scope.REQUEST, "GET", "/users", "  ")
         )
             .isInstanceOf(StatementRuleViolation.class)
             .hasMessageContaining("policy");

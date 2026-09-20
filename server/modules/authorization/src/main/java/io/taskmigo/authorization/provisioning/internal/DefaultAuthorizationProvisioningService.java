@@ -59,15 +59,7 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
     ) {
         StatementMutationResult mutation;
         try {
-            mutation = this.statementCommands.reconcileManaged(
-                code,
-                description,
-                effect,
-                scope,
-                method,
-                path,
-                policy
-            );
+            mutation = this.statementCommands.reconcileManaged(code, description, effect, scope, method, path, policy);
         } catch (StatementRuleViolation exception) {
             throw badRequest(exception);
         }
@@ -75,8 +67,8 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
         ReconciliationAction action = mutation.created()
             ? ReconciliationAction.ADDED
             : mutation.changed()
-                ? ReconciliationAction.UPDATED
-                : ReconciliationAction.UNCHANGED;
+              ? ReconciliationAction.UPDATED
+              : ReconciliationAction.UNCHANGED;
         return new ReconciliationResult<>(mutation.id(), action);
     }
 
@@ -124,9 +116,7 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
                 .findByCode(code)
                 .map(Statement::id)
                 .orElseThrow(() ->
-                    new AuthorizationProvisioningException(
-                        "Managed authorization Statement does not exist: " + code
-                    )
+                    new AuthorizationProvisioningException("Managed authorization Statement does not exist: " + code)
                 );
         } catch (StatementRuleViolation exception) {
             throw badRequest(exception);

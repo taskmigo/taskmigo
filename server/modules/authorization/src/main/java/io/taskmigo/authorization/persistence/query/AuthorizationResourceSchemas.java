@@ -110,7 +110,10 @@ public class AuthorizationResourceSchemas {
 
             @Override
             public Optional<QueryField> field(QueryPath path) {
-                return declared.stream().filter(field -> field.path().equals(path)).findFirst();
+                return declared
+                    .stream()
+                    .filter(field -> field.path().equals(path))
+                    .findFirst();
             }
 
             @Override
@@ -133,7 +136,10 @@ public class AuthorizationResourceSchemas {
 
             @Override
             public Optional<ObjectAuthorizationField> field(ObjectAuthorizationPath path) {
-                return declared.stream().filter(field -> field.path().equals(path)).findFirst();
+                return declared
+                    .stream()
+                    .filter(field -> field.path().equals(path))
+                    .findFirst();
             }
 
             @Override

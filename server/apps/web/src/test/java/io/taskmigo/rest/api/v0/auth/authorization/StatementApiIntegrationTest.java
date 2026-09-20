@@ -141,8 +141,12 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
     @DisplayName("lists statements with offset pagination")
     void shouldListStatementsWithOffsetPaginationWhenPageParametersAreProvided() {
         // Arrange
-        this.api().statements().create(this.request("pagination-one-" + UUID.randomUUID()));
-        this.api().statements().create(this.request("pagination-two-" + UUID.randomUUID()));
+        this.api()
+            .statements()
+            .create(this.request("pagination-one-" + UUID.randomUUID()));
+        this.api()
+            .statements()
+            .create(this.request("pagination-two-" + UUID.randomUUID()));
 
         // Act
         String response = this.api().get("/api/v0/statements?page=2&pageSize=1");

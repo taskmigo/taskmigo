@@ -77,10 +77,18 @@ class StatementArtifactFactoryTest {
         );
 
         // Act
-        StatementExecutionArtifact first = this.factory.build(List.of(firstRevision), "GET", "/api/v0/users").getFirst();
-        StatementExecutionArtifact second = this.factory.build(List.of(secondRevision), "GET", "/api/v0/users").getFirst();
-        StatementExecutionArtifact stale = this.factory.build(List.of(firstRevision), "GET", "/api/v0/users").getFirst();
-        StatementExecutionArtifact latest = this.factory.build(List.of(secondRevision), "GET", "/api/v0/users").getFirst();
+        StatementExecutionArtifact first = this.factory
+            .build(List.of(firstRevision), "GET", "/api/v0/users")
+            .getFirst();
+        StatementExecutionArtifact second = this.factory
+            .build(List.of(secondRevision), "GET", "/api/v0/users")
+            .getFirst();
+        StatementExecutionArtifact stale = this.factory
+            .build(List.of(firstRevision), "GET", "/api/v0/users")
+            .getFirst();
+        StatementExecutionArtifact latest = this.factory
+            .build(List.of(secondRevision), "GET", "/api/v0/users")
+            .getFirst();
 
         // Assert
         assertThat(stale.policy()).isNotSameAs(first.policy());
@@ -138,11 +146,7 @@ class StatementArtifactFactoryTest {
         EffectiveStatement effective = effective(invalid, Instant.EPOCH);
 
         // Act
-        List<StatementExecutionArtifact> unrelated = this.factory.build(
-            List.of(effective),
-            "GET",
-            "/api/v0/users"
-        );
+        List<StatementExecutionArtifact> unrelated = this.factory.build(List.of(effective), "GET", "/api/v0/users");
 
         // Assert
         assertThat(unrelated).isEmpty();
@@ -173,11 +177,7 @@ class StatementArtifactFactoryTest {
         EffectiveStatement effective = effective(invalid, Instant.EPOCH);
 
         // Act
-        List<StatementExecutionArtifact> unrelated = this.factory.build(
-            List.of(effective),
-            "GET",
-            "/api/v0/users"
-        );
+        List<StatementExecutionArtifact> unrelated = this.factory.build(List.of(effective), "GET", "/api/v0/users");
 
         // Assert
         assertThat(unrelated).isEmpty();
