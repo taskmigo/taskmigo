@@ -10,8 +10,14 @@ public record StatementTarget(String method, String path) {
     private static final int MAX_PATH_LENGTH = 2000;
 
     public StatementTarget {
-        method = required(method, "target.api.method");
-        path = required(path, "target.api.path");
+        if (method.isBlank()) {
+            throw StatementRuleViolation.nonBlank("target.api.method");
+        }
+        if (path.isBlank()) {
+            throw StatementRuleViolation.nonBlank("target.api.path");
+        }
+        method = method.trim();
+        path = path.trim();
         if (method.length() > MAX_METHOD_LENGTH) {
             throw StatementRuleViolation.tooLong("target.api.method", MAX_METHOD_LENGTH);
         }
@@ -22,7 +28,7 @@ public record StatementTarget(String method, String path) {
 
     /// Creates a target while enforcing only canonical structural constraints.
     public static StatementTarget of(@Nullable String method, @Nullable String path) {
-        return new StatementTarget(method, path);
+        return new StatementTarget(required(method, "target.api.method"), required(path, "target.api.path"));
     }
 
     private static String required(@Nullable String value, String field) {
