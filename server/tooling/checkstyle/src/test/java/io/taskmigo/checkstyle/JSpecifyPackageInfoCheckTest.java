@@ -3,12 +3,11 @@ package io.taskmigo.checkstyle;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.puppycrawl.tools.checkstyle.api.FileText;
+import com.puppycrawl.tools.checkstyle.api.Violation;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.SortedSet;
-
-import com.puppycrawl.tools.checkstyle.api.FileText;
-import com.puppycrawl.tools.checkstyle.api.Violation;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -19,16 +18,15 @@ class JSpecifyPackageInfoCheckTest {
     @DisplayName("Reports a package that does not declare package-info.java")
     void reportsMissingPackageInfo(@TempDir Path tempDir) throws Exception {
         Path packageDirectory = Files.createDirectories(tempDir.resolve("io/taskmigo/example"));
-        Path source =
-            Files.writeString(
-                packageDirectory.resolve("Example.java"),
-                """
-                package io.taskmigo.example;
+        Path source = Files.writeString(
+            packageDirectory.resolve("Example.java"),
+            """
+            package io.taskmigo.example;
 
-                final class Example {}
-                """,
-                UTF_8
-            );
+            final class Example {}
+            """,
+            UTF_8
+        );
 
         SortedSet<Violation> violations = process(new JSpecifyPackageInfoCheck(), source);
 
@@ -41,18 +39,16 @@ class JSpecifyPackageInfoCheckTest {
     @DisplayName("Reports a missing package-info.java only once per package")
     void reportsMissingPackageInfoOnce(@TempDir Path tempDir) throws Exception {
         Path packageDirectory = Files.createDirectories(tempDir.resolve("io/taskmigo/example"));
-        Path first =
-            Files.writeString(
-                packageDirectory.resolve("First.java"),
-                "package io.taskmigo.example;\nfinal class First {}\n",
-                UTF_8
-            );
-        Path second =
-            Files.writeString(
-                packageDirectory.resolve("Second.java"),
-                "package io.taskmigo.example;\nfinal class Second {}\n",
-                UTF_8
-            );
+        Path first = Files.writeString(
+            packageDirectory.resolve("First.java"),
+            "package io.taskmigo.example;\nfinal class First {}\n",
+            UTF_8
+        );
+        Path second = Files.writeString(
+            packageDirectory.resolve("Second.java"),
+            "package io.taskmigo.example;\nfinal class Second {}\n",
+            UTF_8
+        );
         JSpecifyPackageInfoCheck check = new JSpecifyPackageInfoCheck();
 
         assertThat(process(check, first))
@@ -65,18 +61,17 @@ class JSpecifyPackageInfoCheckTest {
     @DisplayName("Accepts package-info.java with the JSpecify NullMarked contract")
     void acceptsNullMarkedPackageInfo(@TempDir Path tempDir) throws Exception {
         Path packageDirectory = Files.createDirectories(tempDir.resolve("io/taskmigo/example"));
-        Path packageInfo =
-            Files.writeString(
-                packageDirectory.resolve("package-info.java"),
-                """
-                /// Example package.
-                @NullMarked
-                package io.taskmigo.example;
+        Path packageInfo = Files.writeString(
+            packageDirectory.resolve("package-info.java"),
+            """
+            /// Example package.
+            @NullMarked
+            package io.taskmigo.example;
 
-                import org.jspecify.annotations.NullMarked;
-                """,
-                UTF_8
-            );
+            import org.jspecify.annotations.NullMarked;
+            """,
+            UTF_8
+        );
 
         assertThat(process(new JSpecifyPackageInfoCheck(), packageInfo)).isEmpty();
     }
@@ -85,15 +80,14 @@ class JSpecifyPackageInfoCheckTest {
     @DisplayName("Rejects package-info.java without NullMarked")
     void rejectsPackageInfoWithoutNullMarked(@TempDir Path tempDir) throws Exception {
         Path packageDirectory = Files.createDirectories(tempDir.resolve("io/taskmigo/example"));
-        Path packageInfo =
-            Files.writeString(
-                packageDirectory.resolve("package-info.java"),
-                """
-                /// Example package.
-                package io.taskmigo.example;
-                """,
-                UTF_8
-            );
+        Path packageInfo = Files.writeString(
+            packageDirectory.resolve("package-info.java"),
+            """
+            /// Example package.
+            package io.taskmigo.example;
+            """,
+            UTF_8
+        );
 
         assertThat(process(new JSpecifyPackageInfoCheck(), packageInfo))
             .extracting(Violation::getKey)
@@ -104,26 +98,24 @@ class JSpecifyPackageInfoCheckTest {
     @DisplayName("Rejects NullMarked imported from a non-JSpecify package")
     void rejectsNonJSpecifyNullMarked(@TempDir Path tempDir) throws Exception {
         Path packageDirectory = Files.createDirectories(tempDir.resolve("io/taskmigo/example"));
-        Path packageInfo =
-            Files.writeString(
-                packageDirectory.resolve("package-info.java"),
-                """
-                /// Example package.
-                @NullMarked
-                package io.taskmigo.example;
+        Path packageInfo = Files.writeString(
+            packageDirectory.resolve("package-info.java"),
+            """
+            /// Example package.
+            @NullMarked
+            package io.taskmigo.example;
 
-                import example.annotations.NullMarked;
-                """,
-                UTF_8
-            );
+            import example.annotations.NullMarked;
+            """,
+            UTF_8
+        );
 
         assertThat(process(new JSpecifyPackageInfoCheck(), packageInfo))
             .extracting(Violation::getKey)
             .containsExactly(JSpecifyPackageInfoCheck.MSG_MISSING_NULL_MARKED);
     }
 
-    private static SortedSet<Violation> process(JSpecifyPackageInfoCheck check, Path source)
-        throws Exception {
+    private static SortedSet<Violation> process(JSpecifyPackageInfoCheck check, Path source) throws Exception {
         return check.process(source.toFile(), new FileText(source.toFile(), UTF_8.name()));
     }
 }
