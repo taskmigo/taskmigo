@@ -71,7 +71,7 @@ subprojects {
 
             extensions.configure<CheckstyleExtension> {
                 toolVersion = libs.versions.checkstyle.get()
-                configFile = rootProject.file("config/checkstyle/checkstyle.xml")
+                configFile = project(checkstyleToolingProjectPath).file("config/checkstyle.xml")
             }
 
             tasks.withType<Checkstyle>().configureEach {
