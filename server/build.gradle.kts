@@ -1,8 +1,6 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.plugins.JavaPluginExtension
-import org.gradle.api.plugins.quality.Checkstyle
-import org.gradle.api.plugins.quality.CheckstyleExtension
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
@@ -18,7 +16,7 @@ plugins {
     alias(libs.plugins.spotless) apply false
 }
 
-val checkstyleToolingProjectPath = ":tooling:checkstyle"
+apply(from = project(":tooling:checkstyle").file("checkstyle.gradle.kts"))
 
 allprojects {
     group = "io.taskmigo"
@@ -27,12 +25,7 @@ allprojects {
 
 subprojects {
     pluginManager.withPlugin("java") {
-        val usesRepositoryCheckstyle = path != checkstyleToolingProjectPath
-
         pluginManager.apply("net.ltgt.errorprone")
-        if (usesRepositoryCheckstyle) {
-            pluginManager.apply("checkstyle")
-        }
         pluginManager.apply("com.diffplug.spotless")
 
         repositories {
@@ -57,28 +50,6 @@ subprojects {
                 importOrder()
                 removeUnusedImports()
                 cleanthat().sourceCompatibility("26")
-            }
-        }
-
-        if (usesRepositoryCheckstyle) {
-            dependencies {
-                add(
-                    "checkstyle",
-                    "com.puppycrawl.tools:checkstyle:${libs.versions.checkstyle.get()}",
-                )
-                add("checkstyle", project(checkstyleToolingProjectPath))
-            }
-
-            extensions.configure<CheckstyleExtension> {
-                toolVersion = libs.versions.checkstyle.get()
-                configFile = project(checkstyleToolingProjectPath).file("config/checkstyle.xml")
-            }
-
-            tasks.withType<Checkstyle>().configureEach {
-                reports {
-                    xml.required.set(false)
-                    html.required.set(true)
-                }
             }
         }
 
