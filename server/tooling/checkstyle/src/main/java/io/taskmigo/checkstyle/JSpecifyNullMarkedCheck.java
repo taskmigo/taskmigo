@@ -6,6 +6,7 @@ import com.puppycrawl.tools.checkstyle.api.FullIdent;
 import com.puppycrawl.tools.checkstyle.api.TokenTypes;
 import com.puppycrawl.tools.checkstyle.utils.AnnotationUtil;
 import com.puppycrawl.tools.checkstyle.utils.CheckUtil;
+import java.util.Optional;
 
 /// Requires existing package-info.java files to opt into JSpecify null-marked semantics.
 ///
@@ -18,7 +19,7 @@ public final class JSpecifyNullMarkedCheck extends AbstractCheck {
     private static final String JSPECIFY_NULL_MARKED = "org.jspecify.annotations.NullMarked";
 
     private boolean hasJSpecifyNullMarkedImport;
-    private DetailAST packageDefinition;
+    private Optional<DetailAST> packageDefinition = Optional.empty();
 
     @Override
     public int[] getDefaultTokens() {
@@ -27,10 +28,7 @@ public final class JSpecifyNullMarkedCheck extends AbstractCheck {
 
     @Override
     public int[] getRequiredTokens() {
-        return new int[] {
-            TokenTypes.PACKAGE_DEF,
-            TokenTypes.IMPORT,
-        };
+        return new int[] { TokenTypes.PACKAGE_DEF, TokenTypes.IMPORT };
     }
 
     @Override
@@ -41,7 +39,7 @@ public final class JSpecifyNullMarkedCheck extends AbstractCheck {
     @Override
     public void beginTree(DetailAST rootAST) {
         hasJSpecifyNullMarkedImport = false;
-        packageDefinition = null;
+        packageDefinition = Optional.empty();
     }
 
     @Override
@@ -51,7 +49,7 @@ public final class JSpecifyNullMarkedCheck extends AbstractCheck {
         }
 
         if (ast.getType() == TokenTypes.PACKAGE_DEF) {
-            packageDefinition = ast;
+            packageDefinition = Optional.of(ast);
         } else if (
             ast.getType() == TokenTypes.IMPORT &&
             JSPECIFY_NULL_MARKED.equals(FullIdent.createFullIdentBelow(ast).getText())
@@ -62,10 +60,11 @@ public final class JSpecifyNullMarkedCheck extends AbstractCheck {
 
     @Override
     public void finishTree(DetailAST rootAST) {
-        if (CheckUtil.isPackageInfo(getFilePath()) && packageDefinition != null) {
-            boolean hasNullMarked = AnnotationUtil.containsAnnotation(packageDefinition, NULL_MARKED);
+        if (CheckUtil.isPackageInfo(getFilePath()) && packageDefinition.isPresent()) {
+            DetailAST packageDef = packageDefinition.orElseThrow();
+            boolean hasNullMarked = AnnotationUtil.containsAnnotation(packageDef, NULL_MARKED);
             if (!hasNullMarked || !hasJSpecifyNullMarkedImport) {
-                log(packageDefinition, MSG_MISSING_NULL_MARKED);
+                log(packageDef, MSG_MISSING_NULL_MARKED);
             }
         }
     }
