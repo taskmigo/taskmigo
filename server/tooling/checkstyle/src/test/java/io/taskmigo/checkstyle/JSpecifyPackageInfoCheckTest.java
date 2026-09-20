@@ -3,6 +3,7 @@ package io.taskmigo.checkstyle;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.puppycrawl.tools.checkstyle.DefaultConfiguration;
 import com.puppycrawl.tools.checkstyle.api.FileText;
 import com.puppycrawl.tools.checkstyle.api.Violation;
 import java.nio.file.Files;
@@ -28,7 +29,7 @@ class JSpecifyPackageInfoCheckTest {
             UTF_8
         );
 
-        SortedSet<Violation> violations = process(new JSpecifyPackageInfoCheck(), source);
+        SortedSet<Violation> violations = process(configuredCheck(), source);
 
         assertThat(violations)
             .extracting(Violation::getKey)
@@ -49,12 +50,41 @@ class JSpecifyPackageInfoCheckTest {
             "package io.taskmigo.example;\nfinal class Second {}\n",
             UTF_8
         );
-        JSpecifyPackageInfoCheck check = new JSpecifyPackageInfoCheck();
+        JSpecifyPackageInfoCheck check = configuredCheck();
 
         assertThat(process(check, first))
             .extracting(Violation::getKey)
             .containsExactly(JSpecifyPackageInfoCheck.MSG_MISSING_PACKAGE_INFO);
         assertThat(process(check, second)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Allows a test package to reuse main package metadata")
+    void allowsTestPackageToReuseMainPackageInfo(@TempDir Path tempDir) throws Exception {
+        Files.writeString(tempDir.resolve("settings.gradle.kts"), "rootProject.name = \"test\"\n", UTF_8);
+        Path mainPackage = Files.createDirectories(
+            tempDir.resolve("module-a/src/main/java/io/taskmigo/example")
+        );
+        Files.writeString(
+            mainPackage.resolve("package-info.java"),
+            """
+            @NullMarked
+            package io.taskmigo.example;
+
+            import org.jspecify.annotations.NullMarked;
+            """,
+            UTF_8
+        );
+        Path testPackage = Files.createDirectories(
+            tempDir.resolve("module-b/src/test/java/io/taskmigo/example")
+        );
+        Path source = Files.writeString(
+            testPackage.resolve("ExampleTest.java"),
+            "package io.taskmigo.example;\nfinal class ExampleTest {}\n",
+            UTF_8
+        );
+
+        assertThat(process(configuredCheck(), source)).isEmpty();
     }
 
     @Test
@@ -73,7 +103,7 @@ class JSpecifyPackageInfoCheckTest {
             UTF_8
         );
 
-        assertThat(process(new JSpecifyPackageInfoCheck(), packageInfo)).isEmpty();
+        assertThat(process(configuredCheck(), packageInfo)).isEmpty();
     }
 
     @Test
@@ -89,7 +119,7 @@ class JSpecifyPackageInfoCheckTest {
             UTF_8
         );
 
-        assertThat(process(new JSpecifyPackageInfoCheck(), packageInfo))
+        assertThat(process(configuredCheck(), packageInfo))
             .extracting(Violation::getKey)
             .containsExactly(JSpecifyPackageInfoCheck.MSG_MISSING_NULL_MARKED);
     }
@@ -110,9 +140,15 @@ class JSpecifyPackageInfoCheckTest {
             UTF_8
         );
 
-        assertThat(process(new JSpecifyPackageInfoCheck(), packageInfo))
+        assertThat(process(configuredCheck(), packageInfo))
             .extracting(Violation::getKey)
             .containsExactly(JSpecifyPackageInfoCheck.MSG_MISSING_NULL_MARKED);
+    }
+
+    private static JSpecifyPackageInfoCheck configuredCheck() throws Exception {
+        JSpecifyPackageInfoCheck check = new JSpecifyPackageInfoCheck();
+        check.configure(new DefaultConfiguration(JSpecifyPackageInfoCheck.class.getName()));
+        return check;
     }
 
     private static SortedSet<Violation> process(JSpecifyPackageInfoCheck check, Path source) throws Exception {
