@@ -1,4 +1,4 @@
-package io.taskmigo.identity.provisioning.internal;
+package io.taskmigo.identity.provisioning.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;

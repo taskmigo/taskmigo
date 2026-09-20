@@ -1,4 +1,4 @@
-package io.taskmigo.identity.provisioning.internal;
+package io.taskmigo.identity.provisioning.application;
 
 import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.SubjectGrantQueryService;

@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.provisioning.internal;
+package io.taskmigo.authorization.provisioning.application;
 
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;

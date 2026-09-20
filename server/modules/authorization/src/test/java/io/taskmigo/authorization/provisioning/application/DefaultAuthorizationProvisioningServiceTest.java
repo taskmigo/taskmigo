@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.provisioning.internal;
+package io.taskmigo.authorization.provisioning.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
