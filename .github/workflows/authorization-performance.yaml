@@ -6,6 +6,7 @@ on:
     paths:
       - server/**
       - .github/workflows/authorization-performance.yaml
+      - "!server/config/checkstyle/*.xml"
   push:
     branches: [next]
     paths:
