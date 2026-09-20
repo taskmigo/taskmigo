@@ -32,7 +32,7 @@
         <module name="PackageDeclaration"/>
 
         <!-- Require package-info.java files to use JSpecify @NullMarked. -->
-        <module name="io.taskmigo.checkstyle.JSpecifyNullMarkedCheck"/>
+        <module name="JSpecifyNullMarked"/>
 
         <!-- Require braces around every control-flow statement. -->
         <module name="NeedBraces"/>

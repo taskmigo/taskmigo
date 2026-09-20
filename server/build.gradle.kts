@@ -1,6 +1,8 @@
 import com.diffplug.gradle.spotless.SpotlessExtension
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.api.plugins.quality.Checkstyle
+import org.gradle.api.plugins.quality.CheckstyleExtension
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat
@@ -16,20 +18,38 @@ plugins {
     alias(libs.plugins.spotless) apply false
 }
 
-apply(from = project(":tooling:checkstyle").file("checkstyle.gradle.kts"))
 
 allprojects {
     group = "io.taskmigo"
     version = "0.0.1-SNAPSHOT"
 }
 
+val githubPackagesUsername = providers
+    .environmentVariable("GITHUB_ACTOR")
+    .orElse(providers.gradleProperty("githubPackagesUsername"))
+val githubPackagesToken = providers
+    .environmentVariable("GITHUB_TOKEN")
+    .orElse(providers.gradleProperty("githubPackagesToken"))
+
 subprojects {
     pluginManager.withPlugin("java") {
+        pluginManager.apply("checkstyle")
         pluginManager.apply("net.ltgt.errorprone")
         pluginManager.apply("com.diffplug.spotless")
 
         repositories {
             mavenCentral()
+            maven {
+                name = "TaskmigoGitHubPackages"
+                url = uri("https://maven.pkg.github.com/taskmigo/checkstyle")
+                credentials {
+                    username = githubPackagesUsername.orNull
+                    password = githubPackagesToken.orNull
+                }
+                content {
+                    includeModule("io.taskmigo", "checkstyle")
+                }
+            }
         }
 
         extensions.configure<JavaPluginExtension> {
@@ -42,6 +62,21 @@ subprojects {
             add("testRuntimeOnly", libs.junit.platform.launcher)
             add("errorprone", libs.errorprone.core)
             add("errorprone", libs.nullaway)
+            add("checkstyle", libs.checkstyle)
+            add("checkstyle", libs.taskmigo.checkstyle)
+        }
+
+        extensions.configure<CheckstyleExtension> {
+            toolVersion = libs.versions.checkstyle.get()
+            configDirectory.set(rootProject.layout.projectDirectory.dir("config/checkstyle"))
+            configFile = rootProject.file("config/checkstyle/checkstyle.xml")
+        }
+
+        tasks.withType<Checkstyle>().configureEach {
+            reports {
+                xml.required.set(false)
+                html.required.set(true)
+            }
         }
 
         extensions.configure<SpotlessExtension> {
