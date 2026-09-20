@@ -11,8 +11,8 @@
     <!-- Reject tab characters in source files. -->
     <module name="FileTabCharacter"/>
 
-    <!-- Require package-info.java and JSpecify @NullMarked for every Java package. -->
-    <module name="io.taskmigo.checkstyle.JSpecifyPackageInfoCheck"/>
+    <!-- Require every Java package to provide package-info.java. -->
+    <module name="JavadocPackage"/>
 
     <module name="TreeWalker">
         <module name="SuppressWarningsHolder"/>
@@ -30,6 +30,9 @@
 
         <!-- Require every Java source file to declare its package explicitly. -->
         <module name="PackageDeclaration"/>
+
+        <!-- Require package-info.java files to use JSpecify @NullMarked. -->
+        <module name="io.taskmigo.checkstyle.JSpecifyNullMarkedCheck"/>
 
         <!-- Require braces around every control-flow statement. -->
         <module name="NeedBraces"/>
