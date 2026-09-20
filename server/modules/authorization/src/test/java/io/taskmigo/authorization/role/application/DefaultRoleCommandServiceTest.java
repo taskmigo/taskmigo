@@ -2,6 +2,7 @@ package io.taskmigo.authorization.role.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -143,8 +144,8 @@ class DefaultRoleCommandServiceTest {
         service.delete(role);
 
         // Assert
+        verify(this.hierarchies).remove(eq(id), remaining.capture());
         verify(this.roles).delete(role);
-        verify(this.hierarchies).synchronize(remaining.capture());
         assertThat(remaining.getValue().contains(id)).isFalse();
     }
 }

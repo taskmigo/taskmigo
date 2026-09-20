@@ -62,6 +62,31 @@ public class JpaRoleHierarchyRepository implements RoleHierarchyRepository {
     }
 
     @Override
+    public void remove(UUID roleId, RoleHierarchy hierarchy) {
+        this.roles.findAllBy().forEach(role -> {
+            if (role.id().equals(roleId)) {
+                if (!role.childRoles().isEmpty()) {
+                    role.replaceChildRoles(Set.of());
+                }
+                return;
+            }
+
+            Set<RoleEntity> children = role.childRoles();
+            if (children.stream().noneMatch(child -> child.id().equals(roleId))) {
+                return;
+            }
+            role.replaceChildRoles(
+                children
+                    .stream()
+                    .filter(child -> !child.id().equals(roleId))
+                    .toList()
+            );
+        });
+        this.roles.flush();
+        this.synchronize(hierarchy);
+    }
+
+    @Override
     public List<UUID> descendantRoleIds(Collection<UUID> ancestorRoleIds) {
         return this.closures
             .findAllByIdAncestorRoleIdIn(ancestorRoleIds)

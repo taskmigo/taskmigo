@@ -82,7 +82,8 @@ public class DefaultRoleCommandService implements RoleCommandService {
     @Transactional
     public void delete(Role role) {
         RoleHierarchy current = this.hierarchies.loadForMutation();
+        RoleHierarchy remaining = current.removing(role.id());
+        this.hierarchies.remove(role.id(), remaining);
         this.roles.delete(role);
-        this.hierarchies.synchronize(current.removing(role.id()));
     }
 }

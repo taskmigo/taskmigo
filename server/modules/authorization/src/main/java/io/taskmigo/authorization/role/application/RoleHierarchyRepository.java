@@ -14,5 +14,7 @@ public interface RoleHierarchyRepository {
 
     void synchronize(RoleHierarchy hierarchy);
 
+    void remove(UUID roleId, RoleHierarchy hierarchy);
+
     List<UUID> descendantRoleIds(Collection<UUID> ancestorRoleIds);
 }
