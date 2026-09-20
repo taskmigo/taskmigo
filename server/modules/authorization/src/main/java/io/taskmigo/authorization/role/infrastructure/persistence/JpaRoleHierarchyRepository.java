@@ -55,7 +55,7 @@ public class JpaRoleHierarchyRepository implements RoleHierarchyRepository {
         this.closureWriter.replace(
             hierarchy.roleIds(),
             roleId -> roleId,
-            hierarchy::reachableFrom,
+            roleId -> hierarchy.reachableFrom(Set.of(roleId)),
             RoleHierarchyClosureEntity::new,
             RoleHierarchyClosureEntity.class
         );
