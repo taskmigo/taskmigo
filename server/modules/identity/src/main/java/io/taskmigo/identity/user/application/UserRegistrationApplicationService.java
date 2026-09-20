@@ -1,7 +1,12 @@
-package io.taskmigo.identity.user;
+package io.taskmigo.identity.user.application;
 
 import io.taskmigo.authorization.role.RoleService;
+import io.taskmigo.authorization.subject.SubjectGrantService;
+import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.group.GroupService;
+import io.taskmigo.identity.user.UserException;
+import io.taskmigo.identity.user.UserRegistrationService;
+import io.taskmigo.identity.user.domain.UserRuleViolation;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
@@ -13,13 +18,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 class UserRegistrationApplicationService implements UserRegistrationService {
 
-    private final UserService users;
+    private final UserCommandService users;
     private final RoleService roles;
+    private final SubjectGrantService grants;
     private final GroupService groups;
 
-    UserRegistrationApplicationService(UserService users, RoleService roles, GroupService groups) {
+    UserRegistrationApplicationService(
+        UserCommandService users,
+        RoleService roles,
+        SubjectGrantService grants,
+        GroupService groups
+    ) {
         this.users = users;
         this.roles = roles;
+        this.grants = grants;
         this.groups = groups;
     }
 
@@ -38,7 +50,14 @@ class UserRegistrationApplicationService implements UserRegistrationService {
         this.roles.requireRoles(requestedRoleIds);
         this.groups.requireGroups(requestedGroupIds);
 
-        UUID userId = this.users.create(username, emails, firstName, lastName, requestedRoleIds);
+        UUID userId;
+        try {
+            userId = this.users.createRuntime(username, emails, firstName, lastName);
+        } catch (UserRuleViolation exception) {
+            throw new UserException(UserException.Type.BAD_REQUEST, exception.detail(), exception);
+        }
+
+        this.grants.setRoles(IdentitySubjects.user(userId), requestedRoleIds);
         requestedGroupIds.forEach(groupId -> this.groups.addMember(groupId, userId));
         return userId;
     }

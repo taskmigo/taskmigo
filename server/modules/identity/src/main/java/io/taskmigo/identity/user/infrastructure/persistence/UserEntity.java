@@ -1,5 +1,7 @@
-package io.taskmigo.identity.persistence.user;
+package io.taskmigo.identity.user.infrastructure.persistence;
 
+import io.taskmigo.identity.user.domain.User;
+import io.taskmigo.identity.user.domain.UserStatus;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -46,59 +48,74 @@ public class UserEntity {
 
     protected UserEntity() {}
 
-    public UserEntity(UUID id, String username, Set<String> emails, String firstName, String lastName) {
+    private UserEntity(
+        UUID id,
+        String username,
+        Set<String> emails,
+        String firstName,
+        String lastName,
+        UserStatus status,
+        @Nullable String passwordHash
+    ) {
         this.id = id;
         this.username = username;
         this.emails.addAll(emails);
         this.firstName = firstName;
         this.lastName = lastName;
-        this.status = UserStatus.ACTIVE;
-        this.passwordHash = null;
+        this.status = status;
+        this.passwordHash = passwordHash;
     }
 
-    public String username() {
-        return this.username;
+    static UserEntity from(User user) {
+        return new UserEntity(
+            user.id(),
+            user.username().value(),
+            user.profile().emails(),
+            user.profile().firstName(),
+            user.profile().lastName(),
+            user.status(),
+            user.credential().passwordHash()
+        );
     }
 
-    public String firstName() {
-        return this.firstName;
+    User toDomain() {
+        return User.restore(
+            this.id,
+            this.username,
+            Set.copyOf(this.emails),
+            this.firstName,
+            this.lastName,
+            this.status,
+            this.passwordHash
+        );
     }
 
-    public String lastName() {
-        return this.lastName;
-    }
-
-    public Set<String> emails() {
-        return Set.copyOf(this.emails);
-    }
-
-    public UserStatus status() {
-        return this.status;
-    }
-
-    public @Nullable String passwordHash() {
-        return this.passwordHash;
-    }
-
-    public String displayName() {
-        return (this.firstName + " " + this.lastName).trim();
-    }
-
-    public UUID id() {
+    UUID id() {
         return this.id;
     }
 
-    public void replaceEmails(Set<String> emails) {
-        this.emails.clear();
-        this.emails.addAll(emails);
+    String username() {
+        return this.username;
     }
 
-    public void updateProfile(String firstName, String lastName) {
-        this.firstName = firstName;
-        this.lastName = lastName;
+    String firstName() {
+        return this.firstName;
     }
 
-    public void setPasswordHash(@Nullable String passwordHash) {
-        this.passwordHash = passwordHash;
+    String lastName() {
+        return this.lastName;
+    }
+
+    Set<String> emails() {
+        return Set.copyOf(this.emails);
+    }
+
+    UserStatus status() {
+        return this.status;
+    }
+
+    @Nullable
+    String passwordHash() {
+        return this.passwordHash;
     }
 }

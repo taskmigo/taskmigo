@@ -8,6 +8,7 @@ import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementService;
+import io.taskmigo.identity.user.UserRegistrationService;
 import io.taskmigo.identity.user.UserService;
 import io.taskmigo.rest.api.v0.testing.ApiIntegrationTestSupport;
 import java.time.Instant;
@@ -22,6 +23,7 @@ class StatementTimestampIntegrationTest extends ApiIntegrationTestSupport {
     private final StatementService statements;
     private final AuthorizationProvisioningService provisioning;
     private final StatementRepository statementRepository;
+    private final UserRegistrationService registrations;
     private final UserService users;
     private final EffectiveStatementResolver resolver;
 
@@ -29,12 +31,14 @@ class StatementTimestampIntegrationTest extends ApiIntegrationTestSupport {
         StatementService statements,
         AuthorizationProvisioningService provisioning,
         StatementRepository statementRepository,
+        UserRegistrationService registrations,
         UserService users,
         EffectiveStatementResolver resolver
     ) {
         this.statements = statements;
         this.provisioning = provisioning;
         this.statementRepository = statementRepository;
+        this.registrations = registrations;
         this.users = users;
         this.resolver = resolver;
     }
@@ -53,12 +57,13 @@ class StatementTimestampIntegrationTest extends ApiIntegrationTestSupport {
             "/timestamp",
             "return true;"
         );
-        UUID userId = this.users.create(
+        UUID userId = this.registrations.register(
             "timestamp-user-" + suffix,
             Set.of("timestamp-" + suffix + "@example.com"),
             "Timestamp",
             "User",
-            List.of()
+            Set.of(),
+            Set.of()
         );
         this.users.setStatements(userId, List.of(statementId));
         StatementEntity created = this.statementRepository.findById(statementId).orElseThrow();
