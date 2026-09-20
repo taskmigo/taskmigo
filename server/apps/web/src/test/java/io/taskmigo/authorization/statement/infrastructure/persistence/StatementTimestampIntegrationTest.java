@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.persistence.statement;
+package io.taskmigo.authorization.statement.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

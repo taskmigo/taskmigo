@@ -53,7 +53,9 @@ class AccessControlPackageArchitectureTest {
                 "io.taskmigo.authorization.request..",
                 "io.taskmigo.authorization.role..",
                 "io.taskmigo.authorization.spi..",
-                "io.taskmigo.authorization.statement..",
+                "io.taskmigo.authorization.statement",
+                "io.taskmigo.authorization.statement.application..",
+                "io.taskmigo.authorization.statement.domain..",
                 "io.taskmigo.authorization.subject.."
             )
             .should()
@@ -90,7 +92,9 @@ class AccessControlPackageArchitectureTest {
                 "io.taskmigo.authorization.request..",
                 "io.taskmigo.authorization.role..",
                 "io.taskmigo.authorization.spi..",
-                "io.taskmigo.authorization.statement..",
+                "io.taskmigo.authorization.statement",
+                "io.taskmigo.authorization.statement.application..",
+                "io.taskmigo.authorization.statement.domain..",
                 "io.taskmigo.authorization.subject.."
             )
             .should()
@@ -106,6 +110,69 @@ class AccessControlPackageArchitectureTest {
 
         // Act + Assert
         contractsDoNotDependOnFrameworkDetails.check(classes);
+    }
+
+    /**
+     * Verifies the published Statement package cannot reach into application or infrastructure implementation.
+     *
+     * Given: production classes in the root Statement API package.
+     * Expect: published Statement contracts remain independent from application services and JPA adapters.
+     */
+    @Test
+    @DisplayName("keeps Statement API independent from implementation layers")
+    void shouldKeepStatementApiIndependentWhenAuthorizationPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule apiDoesNotDependOnImplementation = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.authorization.statement")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "io.taskmigo.authorization.statement.application..",
+                "io.taskmigo.authorization.statement.infrastructure.."
+            );
+
+        // Act + Assert
+        apiDoesNotDependOnImplementation.check(classes);
+    }
+
+    /**
+     * Verifies Statement domain and application dependency direction.
+     *
+     * Given: the canonical Statement domain and application packages.
+     * Expect: domain is framework-neutral and application does not depend on Statement infrastructure.
+     */
+    @Test
+    @DisplayName("keeps Statement domain and application independent from infrastructure")
+    void shouldKeepStatementLayersIndependentWhenAuthorizationPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule domainDoesNotDependOutward = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.authorization.statement.domain..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "io.taskmigo.authorization.statement.application..",
+                "io.taskmigo.authorization.statement.infrastructure..",
+                "org.springframework..",
+                "jakarta.persistence.."
+            );
+        ArchRule applicationDoesNotDependOnInfrastructure = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.authorization.statement.application..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "io.taskmigo.authorization.statement.infrastructure..",
+                "org.springframework.data..",
+                "jakarta.persistence.."
+            );
+
+        // Act + Assert
+        domainDoesNotDependOutward.check(classes);
+        applicationDoesNotDependOnInfrastructure.check(classes);
     }
 
     private static JavaClasses productionClasses() {

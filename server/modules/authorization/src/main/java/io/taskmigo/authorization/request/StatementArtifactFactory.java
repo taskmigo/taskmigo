@@ -46,11 +46,23 @@ final class StatementArtifactFactory {
         this.targetResolver = targetResolver;
     }
 
-    /// Derives executable Statements while retaining only the newest observed reusable revision per Statement id.
-    List<StatementExecutionArtifact> build(Collection<EffectiveStatement> statements) {
+    /// Derives only target-matching Statements so policy semantics remain deferred until the current operation needs them.
+    List<StatementExecutionArtifact> build(
+        Collection<EffectiveStatement> statements,
+        String requestMethod,
+        String requestPath
+    ) {
         List<StatementExecutionArtifact> result = new ArrayList<>();
         for (EffectiveStatement effective : statements) {
             StatementInfo statement = effective.statement();
+            if (!methodMatches(statement, requestMethod)) {
+                continue;
+            }
+            Pattern pathMatcher = this.compileTargetPath(statement);
+            if (!pathMatches(pathMatcher, requestPath)) {
+                continue;
+            }
+
             EnvironmentSchema schema = this.schema(statement);
             ArtifactIdentity identity = new ArtifactIdentity(
                 effective.updatedAt(),
@@ -59,19 +71,24 @@ final class StatementArtifactFactory {
                 POLICY_FINGERPRINT,
                 this.applicableSchemaIdentities(statement)
             );
-            DerivedArtifacts artifacts = this.derive(statement, schema, identity);
+            DerivedArtifacts artifacts = this.derive(statement, schema, pathMatcher, identity);
             result.add(new StatementExecutionArtifact(statement, artifacts.policy(), artifacts.pathMatcher()));
         }
         return List.copyOf(result);
     }
 
-    private DerivedArtifacts derive(StatementInfo statement, EnvironmentSchema schema, ArtifactIdentity identity) {
+    private DerivedArtifacts derive(
+        StatementInfo statement,
+        EnvironmentSchema schema,
+        Pattern pathMatcher,
+        ArtifactIdentity identity
+    ) {
         CachedArtifacts current = this.derived.get(statement.id());
         if (current != null && current.identity().equals(identity)) {
             return current.artifacts();
         }
 
-        DerivedArtifacts compiled = this.compile(statement, schema);
+        DerivedArtifacts compiled = this.compile(statement, schema, pathMatcher);
         CachedArtifacts candidate = new CachedArtifacts(identity, compiled);
         CachedArtifacts retained = Objects.requireNonNull(
             this.derived.compute(statement.id(), (ignored, latest) -> {
@@ -91,17 +108,32 @@ final class StatementArtifactFactory {
         return statement.scope() == Scope.REQUEST ? AuthorizationEmbeddedLanguageSchemas.request() : this.objectSchema;
     }
 
-    private DerivedArtifacts compile(StatementInfo statement, EnvironmentSchema schema) {
+    private DerivedArtifacts compile(StatementInfo statement, EnvironmentSchema schema, Pattern pathMatcher) {
         try {
             return new DerivedArtifacts(
                 this.compiler.compile(statement.policy(), schema, AuthorizationCompilationProfile.policy()),
-                Pattern.compile(statement.target().api().path())
+                pathMatcher
             );
-        } catch (PatternSyntaxException exception) {
-            throw new AuthorizationException("Statement target path is not a valid regular expression");
         } catch (EmbeddedLanguageException exception) {
             throw new AuthorizationException("Invalid Statement policy: " + exception.getMessage());
         }
+    }
+
+    private Pattern compileTargetPath(StatementInfo statement) {
+        try {
+            return Pattern.compile(statement.target().api().path());
+        } catch (PatternSyntaxException exception) {
+            throw new AuthorizationException("Statement target path is not a valid regular expression");
+        }
+    }
+
+    private static boolean methodMatches(StatementInfo statement, String requestMethod) {
+        return statement.target().api().method().equals("*") || statement.target().api().method().equals(requestMethod);
+    }
+
+    private static boolean pathMatches(Pattern pathMatcher, String requestPath) {
+        String pathWithoutQuery = requestPath.split("\\?", 2)[0];
+        return pathMatcher.matcher(pathWithoutQuery).matches();
     }
 
     private List<String> applicableSchemaIdentities(StatementInfo statement) {

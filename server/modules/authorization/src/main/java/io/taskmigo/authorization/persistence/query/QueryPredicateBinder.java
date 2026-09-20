@@ -4,7 +4,6 @@ import io.taskmigo.query.QueryPredicate;
 import org.springframework.data.jpa.domain.Specification;
 
 /// Binds one Access Control-owned Query Predicate to its persistence model.
-@SuppressWarnings("NullableProblems")
 public interface QueryPredicateBinder<Q, E> {
     /// Returns the logical query contract accepted by this binder.
     Class<Q> queryType();

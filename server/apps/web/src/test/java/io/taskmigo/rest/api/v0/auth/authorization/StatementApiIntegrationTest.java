@@ -49,7 +49,7 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
      * Verifies that the public API rejects a Statement with a blank required policy source.
      *
      * Given: a request Statement whose policy is an empty string.
-     * Expect: creation fails with an unprocessable-content response and no Statement is created.
+     * Expect: creation fails with an unprocessable-content response because blank policy is structurally invalid.
      */
     @Test
     @DisplayName("rejects a statement when policy is blank")
@@ -71,25 +71,49 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     /**
-     * Verifies that the public Statement API rejects the removed business-resource policy contract.
+     * Verifies the Phase 4 decision that policy and target semantics are deferred until authorization runtime.
      *
-     * Given: Statements containing a named resources export or a resource intrinsic.
-     * Expect: both requests fail with a bad-request response before either Statement is persisted.
+     * Given: a structurally valid Statement with malformed regex target and malformed policy syntax.
+     * Expect: creation succeeds and listing returns the raw canonical source unchanged.
      */
     @Test
-    @DisplayName("rejects removed resource policy constructs")
-    void shouldRejectStatementWhenPolicyUsesRemovedResourceConstructs() {
+    @DisplayName("persists semantically invalid statement for deferred runtime validation")
+    void shouldPersistStatementWhenSemanticValidationIsDeferred() {
         // Arrange
-        CreateStatementRequest resources = new CreateStatementRequest(
-            "removed-resources-" + UUID.randomUUID(),
+        String code = "deferred-" + UUID.randomUUID();
+        CreateStatementRequest request = new CreateStatementRequest(
+            code,
             null,
             "allow",
             "request",
-            new StatementTarget(new StatementApiTarget("GET", "/api/v0/users")),
-            "return resources();"
+            new StatementTarget(new StatementApiTarget("GET", "[")),
+            "return request.method == ;"
         );
-        CreateStatementRequest intrinsic = new CreateStatementRequest(
-            "removed-intrinsic-" + UUID.randomUUID(),
+
+        // Act
+        this.api().statements().create(request);
+        String response = this.findStatement(code);
+
+        // Assert
+        assertThat(response)
+            .contains("\"code\":\"" + code + "\"")
+            .contains("\"path\":\"[\"")
+            .contains("return request.method == ;");
+    }
+
+    /**
+     * Verifies removed or unsupported policy constructs are persistence input rather than create-time semantics.
+     *
+     * Given: a Statement containing a removed resource intrinsic that cannot compile for authorization.
+     * Expect: creation succeeds; authorization runtime owns the eventual fail-closed semantic validation.
+     */
+    @Test
+    @DisplayName("persists unsupported policy constructs until authorization runtime")
+    void shouldPersistStatementWhenPolicyUsesUnsupportedRuntimeConstructs() {
+        // Arrange
+        String code = "removed-resource-" + UUID.randomUUID();
+        CreateStatementRequest request = new CreateStatementRequest(
+            code,
             null,
             "allow",
             "request",
@@ -97,13 +121,14 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
             "return resource(\"user\", \"id\");"
         );
 
-        // Act + Assert
-        assertThatThrownBy(() -> this.api().statements().create(resources))
-            .isInstanceOf(HttpClientErrorException.BadRequest.class)
-            .hasMessageContaining("policy");
-        assertThatThrownBy(() -> this.api().statements().create(intrinsic))
-            .isInstanceOf(HttpClientErrorException.BadRequest.class)
-            .hasMessageContaining("policy");
+        // Act
+        this.api().statements().create(request);
+        String response = this.findStatement(code);
+
+        // Assert
+        assertThat(response)
+            .contains("\"code\":\"" + code + "\"")
+            .contains("resource(\\\"user\\\", \\\"id\\\")");
     }
 
     /**

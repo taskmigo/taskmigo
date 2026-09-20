@@ -1,5 +1,6 @@
 package io.taskmigo.authorization.provisioning.internal;
 
+import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.core.AuthorizationName;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningService;
@@ -8,11 +9,11 @@ import io.taskmigo.authorization.role.internal.RoleStore;
 import io.taskmigo.authorization.role.internal.RoleStore.RoleState;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
-import io.taskmigo.authorization.statement.StatementDefinition;
-import io.taskmigo.authorization.statement.StatementInfo;
-import io.taskmigo.authorization.statement.StatementPolicyValidator;
 import io.taskmigo.authorization.statement.StatementService;
-import io.taskmigo.authorization.statement.internal.StatementStore;
+import io.taskmigo.authorization.statement.application.StatementCommandService;
+import io.taskmigo.authorization.statement.application.StatementMutationResult;
+import io.taskmigo.authorization.statement.domain.Statement;
+import io.taskmigo.authorization.statement.domain.StatementRuleViolation;
 import io.taskmigo.foundation.ReconciliationAction;
 import io.taskmigo.foundation.ReconciliationResult;
 import java.util.Collection;
@@ -31,21 +32,18 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
     private final RoleService roleService;
     private final RoleStore roles;
     private final StatementService statementService;
-    private final StatementStore statements;
-    private final StatementPolicyValidator policyValidator;
+    private final StatementCommandService statementCommands;
 
     DefaultAuthorizationProvisioningService(
         RoleService roleService,
         RoleStore roles,
         StatementService statementService,
-        StatementStore statements,
-        StatementPolicyValidator policyValidator
+        StatementCommandService statementCommands
     ) {
         this.roleService = roleService;
         this.roles = roles;
         this.statementService = statementService;
-        this.statements = statements;
-        this.policyValidator = policyValidator;
+        this.statementCommands = statementCommands;
     }
 
     @Override
@@ -59,27 +57,19 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
         @Nullable String path,
         @Nullable String policy
     ) {
-        StatementDefinition definition = this.policyValidator.validate(
-            code,
-            description,
-            effect,
-            scope,
-            method,
-            path,
-            policy
-        );
+        StatementMutationResult mutation;
+        try {
+            mutation = this.statementCommands.reconcileManaged(code, description, effect, scope, method, path, policy);
+        } catch (StatementRuleViolation exception) {
+            throw badRequest(exception);
+        }
 
-        Optional<StatementInfo> existing = this.statements.findByCode(definition.code());
-        if (existing.isEmpty()) {
-            return new ReconciliationResult<>(this.statements.create(definition), ReconciliationAction.ADDED);
-        }
-        StatementInfo current = existing.orElseThrow();
-        if (sameStatement(current, definition)) {
-            return new ReconciliationResult<>(current.id(), ReconciliationAction.UNCHANGED);
-        }
-        UUID id = current.id();
-        this.statements.update(id, definition);
-        return new ReconciliationResult<>(id, ReconciliationAction.UPDATED);
+        ReconciliationAction action = mutation.created()
+            ? ReconciliationAction.ADDED
+            : mutation.changed()
+              ? ReconciliationAction.UPDATED
+              : ReconciliationAction.UNCHANGED;
+        return new ReconciliationResult<>(mutation.id(), action);
     }
 
     @Override
@@ -121,12 +111,16 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
     @Override
     @Transactional(readOnly = true)
     public UUID requireStatement(String code) {
-        String validCode = AuthorizationName.required(code, "statement reference");
-        return this.statements
-            .findIdByCode(validCode)
-            .orElseThrow(() ->
-                new AuthorizationProvisioningException("Managed authorization Statement does not exist: " + validCode)
-            );
+        try {
+            return this.statementCommands
+                .findByCode(code)
+                .map(Statement::id)
+                .orElseThrow(() ->
+                    new AuthorizationProvisioningException("Managed authorization Statement does not exist: " + code)
+                );
+        } catch (StatementRuleViolation exception) {
+            throw badRequest(exception);
+        }
     }
 
     @Override
@@ -144,12 +138,16 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
     @Override
     @Transactional
     public boolean deleteStatement(String code) {
-        String validCode = AuthorizationName.required(code, "statement code");
-        Optional<UUID> existingId = this.statements.findIdByCode(validCode);
-        if (existingId.isEmpty()) {
+        Statement existing;
+        try {
+            existing = this.statementCommands.findByCode(code).orElse(null);
+        } catch (StatementRuleViolation exception) {
+            throw badRequest(exception);
+        }
+        if (existing == null) {
             return false;
         }
-        this.statements.delete(existingId.orElseThrow());
+        this.statementCommands.delete(existing);
         return true;
     }
 
@@ -165,14 +163,7 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
         return true;
     }
 
-    private static boolean sameStatement(StatementInfo current, StatementDefinition requested) {
-        return (
-            Objects.equals(current.description(), requested.description()) &&
-            current.effect() == requested.effect() &&
-            current.scope() == requested.scope() &&
-            current.target().api().method().equals(requested.method()) &&
-            current.target().api().path().equals(requested.path()) &&
-            current.policy().equals(requested.policy())
-        );
+    private static AuthorizationException badRequest(StatementRuleViolation exception) {
+        return new AuthorizationException(exception.detail());
     }
 }

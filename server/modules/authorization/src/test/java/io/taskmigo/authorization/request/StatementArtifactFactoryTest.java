@@ -1,7 +1,9 @@
 package io.taskmigo.authorization.request;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfile;
 import io.taskmigo.authorization.spi.EffectiveStatement;
 import io.taskmigo.authorization.spi.ObjectAuthorizationTargetResolver;
@@ -44,9 +46,9 @@ class StatementArtifactFactoryTest {
         EffectiveStatement changed = effective(statement(id, Effect.DENY, "/api/v0/users"), updatedAt.plusSeconds(1));
 
         // Act
-        StatementExecutionArtifact first = this.factory.build(List.of(original)).getFirst();
-        StatementExecutionArtifact second = this.factory.build(List.of(unchanged)).getFirst();
-        StatementExecutionArtifact different = this.factory.build(List.of(changed)).getFirst();
+        StatementExecutionArtifact first = this.factory.build(List.of(original), "GET", "/api/v0/users").getFirst();
+        StatementExecutionArtifact second = this.factory.build(List.of(unchanged), "GET", "/api/v0/users").getFirst();
+        StatementExecutionArtifact different = this.factory.build(List.of(changed), "GET", "/api/v0/users").getFirst();
 
         // Assert
         assertThat(second.policy()).isSameAs(first.policy());
@@ -75,10 +77,18 @@ class StatementArtifactFactoryTest {
         );
 
         // Act
-        StatementExecutionArtifact first = this.factory.build(List.of(firstRevision)).getFirst();
-        StatementExecutionArtifact second = this.factory.build(List.of(secondRevision)).getFirst();
-        StatementExecutionArtifact stale = this.factory.build(List.of(firstRevision)).getFirst();
-        StatementExecutionArtifact latest = this.factory.build(List.of(secondRevision)).getFirst();
+        StatementExecutionArtifact first = this.factory
+            .build(List.of(firstRevision), "GET", "/api/v0/users")
+            .getFirst();
+        StatementExecutionArtifact second = this.factory
+            .build(List.of(secondRevision), "GET", "/api/v0/users")
+            .getFirst();
+        StatementExecutionArtifact stale = this.factory
+            .build(List.of(firstRevision), "GET", "/api/v0/users")
+            .getFirst();
+        StatementExecutionArtifact latest = this.factory
+            .build(List.of(secondRevision), "GET", "/api/v0/users")
+            .getFirst();
 
         // Assert
         assertThat(stale.policy()).isNotSameAs(first.policy());
@@ -104,7 +114,7 @@ class StatementArtifactFactoryTest {
         );
 
         // Act
-        StatementExecutionArtifact artifact = this.factory.build(List.of(statement)).getFirst();
+        StatementExecutionArtifact artifact = this.factory.build(List.of(statement), "GET", "/api/v0/users").getFirst();
 
         // Assert
         assertThat(artifact.policy().sourceFingerprint()).hasSize(64);
@@ -112,6 +122,68 @@ class StatementArtifactFactoryTest {
         assertThat(artifact.policy().profileFingerprint()).isEqualTo(
             AuthorizationCompilationProfile.policy().fingerprint()
         );
+    }
+
+    /**
+     * Verifies semantic policy validation is deferred until a persisted Statement target matches the operation.
+     *
+     * Given: malformed policy source on a Statement targeting a different request path.
+     * Expect: the unrelated operation skips compilation, while a matching operation fails closed during artifact build.
+     */
+    @Test
+    @DisplayName("compiles policy only after statement target matches")
+    void shouldDeferPolicyCompilationUntilStatementTargetMatches() {
+        // Arrange
+        StatementInfo invalid = new StatementInfo(
+            UUID.randomUUID(),
+            "invalid_policy",
+            null,
+            Effect.ALLOW,
+            Scope.REQUEST,
+            new TargetInfo(new ApiInfo("GET", "/api/v0/admin")),
+            "return request.method == ;"
+        );
+        EffectiveStatement effective = effective(invalid, Instant.EPOCH);
+
+        // Act
+        List<StatementExecutionArtifact> unrelated = this.factory.build(List.of(effective), "GET", "/api/v0/users");
+
+        // Assert
+        assertThat(unrelated).isEmpty();
+        assertThatThrownBy(() -> this.factory.build(List.of(effective), "GET", "/api/v0/admin"))
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("Invalid Statement policy");
+    }
+
+    /**
+     * Verifies target regex compilation is also deferred until the Statement method can match the operation.
+     *
+     * Given: a malformed target regex on a Statement for a different HTTP method.
+     * Expect: the unrelated operation skips regex compilation, while a method-matching operation fails closed.
+     */
+    @Test
+    @DisplayName("compiles target regex only after statement method matches")
+    void shouldDeferTargetRegexCompilationUntilStatementMethodMatches() {
+        // Arrange
+        StatementInfo invalid = new StatementInfo(
+            UUID.randomUUID(),
+            "invalid_target",
+            null,
+            Effect.ALLOW,
+            Scope.REQUEST,
+            new TargetInfo(new ApiInfo("POST", "[")),
+            "return true;"
+        );
+        EffectiveStatement effective = effective(invalid, Instant.EPOCH);
+
+        // Act
+        List<StatementExecutionArtifact> unrelated = this.factory.build(List.of(effective), "GET", "/api/v0/users");
+
+        // Assert
+        assertThat(unrelated).isEmpty();
+        assertThatThrownBy(() -> this.factory.build(List.of(effective), "POST", "/api/v0/users"))
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("valid regular expression");
     }
 
     private static EffectiveStatement effective(StatementInfo statement, Instant updatedAt) {
