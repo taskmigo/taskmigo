@@ -9,7 +9,7 @@ import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementService;
-import io.taskmigo.identity.user.UserService;
+import io.taskmigo.identity.user.UserRegistrationService;
 import io.taskmigo.rest.api.v0.testing.ApiIntegrationTestSupport;
 import jakarta.persistence.EntityManagerFactory;
 import java.util.List;
@@ -27,7 +27,7 @@ class EffectiveStatementResolverIntegrationTest extends ApiIntegrationTestSuppor
     private final StatementService statements;
     private final RoleService roles;
     private final RoleAuthorizationService roleAssignments;
-    private final UserService users;
+    private final UserRegistrationService users;
     private final Statistics statistics;
 
     EffectiveStatementResolverIntegrationTest(
@@ -35,7 +35,7 @@ class EffectiveStatementResolverIntegrationTest extends ApiIntegrationTestSuppor
         StatementService statements,
         RoleService roles,
         RoleAuthorizationService roleAssignments,
-        UserService users,
+        UserRegistrationService users,
         EntityManagerFactory entityManagerFactory
     ) {
         this.resolver = resolver;
@@ -54,12 +54,13 @@ class EffectiveStatementResolverIntegrationTest extends ApiIntegrationTestSuppor
         String roleCode = "performance-role-" + UUID.randomUUID();
         UUID roleId = this.roles.createRole(roleCode, roleCode, null, Set.of());
         this.roleAssignments.setStatements(roleId, statementIds);
-        UUID userId = this.users.create(
+        UUID userId = this.users.register(
             "performance-user-" + UUID.randomUUID(),
             Set.of("performance-" + UUID.randomUUID() + "@example.com"),
             "Performance",
             "User",
-            List.of(roleId)
+            List.of(roleId),
+            Set.of()
         );
 
         this.statistics.clear();

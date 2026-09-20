@@ -61,9 +61,9 @@ class IdentityPackageArchitectureTest {
     }
 
     /**
-     * Verifies that Identity domain and application packages do not reach into JPA adapters.
+     * Verifies that Identity domain/application packages do not reach into JPA adapters.
      *
-     * Given: production User, Group, provisioning, and Identity authorization packages.
+     * Given: production User domain/application, Group, provisioning, and Identity authorization packages.
      * Expect: their dependencies exclude Identity persistence, Spring Data, and JPA packages.
      */
     @Test
@@ -75,7 +75,8 @@ class IdentityPackageArchitectureTest {
             .that()
             .resideInAnyPackage(
                 "io.taskmigo.identity.provisioning..",
-                "io.taskmigo.identity.user..",
+                "io.taskmigo.identity.user.domain..",
+                "io.taskmigo.identity.user.application..",
                 "io.taskmigo.identity.group..",
                 "io.taskmigo.identity.authorization.."
             )
@@ -83,6 +84,7 @@ class IdentityPackageArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 "io.taskmigo.identity.persistence..",
+                "io.taskmigo.identity.user.infrastructure..",
                 "org.springframework.data..",
                 "jakarta.persistence.."
             );
@@ -125,6 +127,85 @@ class IdentityPackageArchitectureTest {
 
         // Act + Assert
         contractsDoNotDependOnFrameworkDetails.check(classes);
+    }
+
+    /**
+     * Verifies the published User package cannot reach outward into application or infrastructure implementation.
+     *
+     * Given: production classes in the root User API package.
+     * Expect: published User contracts may depend on domain concepts but not application services or infrastructure.
+     */
+    @Test
+    @DisplayName("keeps User API independent from implementation layers")
+    void shouldKeepUserApiIndependentWhenIdentityPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule userApiDoesNotDependOnImplementation = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.identity.user")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "io.taskmigo.identity.user.application..",
+                "io.taskmigo.identity.user.infrastructure.."
+            );
+
+        // Act + Assert
+        userApiDoesNotDependOnImplementation.check(classes);
+    }
+
+    /**
+     * Verifies the User slice's domain dependency direction.
+     *
+     * Given: the canonical User domain package.
+     * Expect: domain code has no dependency on application/infrastructure packages, Spring, Spring Data, or JPA.
+     */
+    @Test
+    @DisplayName("keeps User domain framework neutral and inward")
+    void shouldKeepUserDomainIndependentWhenIdentityPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule userDomainDependsOnlyInward = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.identity.user.domain..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "io.taskmigo.identity.user.application..",
+                "io.taskmigo.identity.user.infrastructure..",
+                "org.springframework..",
+                "org.springframework.data..",
+                "jakarta.persistence.."
+            );
+
+        // Act + Assert
+        userDomainDependsOnlyInward.check(classes);
+    }
+
+    /**
+     * Verifies the User application layer does not reach into its JPA adapter.
+     *
+     * Given: User application services and command/query ports.
+     * Expect: they do not depend on User infrastructure, Spring Data, or JPA.
+     */
+    @Test
+    @DisplayName("keeps User application independent from infrastructure")
+    void shouldKeepUserApplicationIndependentWhenIdentityPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule userApplicationDoesNotDependOnInfrastructure = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.identity.user.application..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "io.taskmigo.identity.user.infrastructure..",
+                "org.springframework.data..",
+                "jakarta.persistence.."
+            );
+
+        // Act + Assert
+        userApplicationDoesNotDependOnInfrastructure.check(classes);
     }
 
     /**
