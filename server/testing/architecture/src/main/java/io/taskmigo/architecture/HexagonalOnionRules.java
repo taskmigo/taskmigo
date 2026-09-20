@@ -146,10 +146,7 @@ public final class HexagonalOnionRules {
             .resideInAnyPackage(
                 packageArray(
                     combined(
-                        combined(
-                            List.of(context.rootPackage() + "..application.."),
-                            context.legacyAdapterPackages()
-                        ),
+                        combined(List.of(context.rootPackage() + "..application.."), context.legacyAdapterPackages()),
                         context.additionalDomainForbiddenPackages()
                     ),
                     context.rootPackage() + "..adapter..",
@@ -303,10 +300,7 @@ public final class HexagonalOnionRules {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 packageArray(
-                    combined(
-                        List.of(context.rootPackage() + "..application.."),
-                        context.legacyAdapterPackages()
-                    ),
+                    combined(List.of(context.rootPackage() + "..application.."), context.legacyAdapterPackages()),
                     context.rootPackage() + "..adapter..",
                     "io.taskmigo.rest..",
                     "io.taskmigo.internal..",
@@ -333,7 +327,9 @@ public final class HexagonalOnionRules {
                 "jakarta.persistence.."
             )
             .allowEmptyShould(true)
-            .as("executable application driving adapters depend on inbound ports, not implementations or driven adapters");
+            .as(
+                "executable application driving adapters depend on inbound ports, not implementations or driven adapters"
+            );
     }
 
     private static List<String> combined(List<String> first, List<String> second) {

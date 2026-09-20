@@ -14,17 +14,17 @@ repository-wide package move.
 The migration uses the following runtime project boundaries unless a later tracked phase records a stronger reason to
 split or remove one.
 
-| Project | Phase 1 decision | Boundary rationale |
-| --- | --- | --- |
-| `:apps:web` | **Fixed executable root** | HTTP/API/OAuth/Spring Security driving adapter and web composition root. Executable applications remain dependency leaves. |
-| `:apps:worker` | **Fixed executable root** | Background-job driving adapter and worker composition root. |
-| `:apps:migration` | **Fixed executable root** | Schema/data/provisioning driving adapter and migration composition root. |
-| `:modules:identity` | **Retain one bounded-context project during migration** | Identity capabilities share one ownership/lifecycle boundary. Onion rings are package boundaries because separate ring projects would add dependency plumbing without useful independent lifecycle or reuse. |
-| `:modules:access-control` | **Retain one bounded-context project during migration** | Access Control capabilities share one ownership/lifecycle boundary and optimized authorization paths. Package rules provide ring isolation without forcing aggregate traversal or one-project-per-ring ceremony. |
-| `:modules:language` | **Retain supporting-capability project** | Language is consumer-neutral, independently meaningful, and reusable by Query and Access Control without depending on either consumer. |
-| `:modules:query` | **Retain supporting-capability project** | Query owns consumer-neutral filter/query semantics used by multiple resource owners. Resource-specific database binding remains outside Query. |
-| `:modules:foundation` | **Retain as a provisional technical dependency floor** | Current contents are domain-neutral primitives/contracts used across modules. It must not acquire bounded-context ports, adapters, or semantics. Phase 5 re-evaluates whether the project remains justified. |
-| `:modules:database` | **Retain as provisional shared technical infrastructure** | It currently owns the single V1 Flyway schema, datasource/JPA runtime support, and generic Criteria mechanics. It must remain independent from bounded-context semantics. Phase 5 re-evaluates whether these responsibilities still justify one project. |
+| Project                   | Phase 1 decision                                          | Boundary rationale                                                                                                                                                                                                                                       |
+| ------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `:apps:web`               | **Fixed executable root**                                 | HTTP/API/OAuth/Spring Security driving adapter and web composition root. Executable applications remain dependency leaves.                                                                                                                               |
+| `:apps:worker`            | **Fixed executable root**                                 | Background-job driving adapter and worker composition root.                                                                                                                                                                                              |
+| `:apps:migration`         | **Fixed executable root**                                 | Schema/data/provisioning driving adapter and migration composition root.                                                                                                                                                                                 |
+| `:modules:identity`       | **Retain one bounded-context project during migration**   | Identity capabilities share one ownership/lifecycle boundary. Onion rings are package boundaries because separate ring projects would add dependency plumbing without useful independent lifecycle or reuse.                                             |
+| `:modules:access-control` | **Retain one bounded-context project during migration**   | Access Control capabilities share one ownership/lifecycle boundary and optimized authorization paths. Package rules provide ring isolation without forcing aggregate traversal or one-project-per-ring ceremony.                                         |
+| `:modules:language`       | **Retain supporting-capability project**                  | Language is consumer-neutral, independently meaningful, and reusable by Query and Access Control without depending on either consumer.                                                                                                                   |
+| `:modules:query`          | **Retain supporting-capability project**                  | Query owns consumer-neutral filter/query semantics used by multiple resource owners. Resource-specific database binding remains outside Query.                                                                                                           |
+| `:modules:foundation`     | **Retain as a provisional technical dependency floor**    | Current contents are domain-neutral primitives/contracts used across modules. It must not acquire bounded-context ports, adapters, or semantics. Phase 5 re-evaluates whether the project remains justified.                                             |
+| `:modules:database`       | **Retain as provisional shared technical infrastructure** | It currently owns the single V1 Flyway schema, datasource/JPA runtime support, and generic Criteria mechanics. It must remain independent from bounded-context semantics. Phase 5 re-evaluates whether these responsibilities still justify one project. |
 
 The current physical directory name `server/modules/authorization` remains an implementation detail behind the logical
 Gradle project `:modules:access-control`. Renaming that directory alone would add no enforcement and is therefore not a
@@ -87,17 +87,17 @@ when classpath isolation provides materially stronger protection than package en
 
 ## Enforcement allocation
 
-| Concern | Primary enforcement | Reason |
-| --- | --- | --- |
-| Executable applications are dependency leaves | Gradle project graph | A reusable project cannot compile against an app unless the project dependency is declared. |
-| Supporting-capability / bounded-context project direction | Gradle + Spring Modulith | Project classpaths constrain coarse direction; Modulith constrains logical/private package access. |
-| Cross-context published contracts | Spring Modulith named interfaces + Gradle direction | Ownership is logical and should not require splitting every published interface into a project. |
-| Domain -> application/adapter prohibition | ArchUnit | Domain and outer rings intentionally share a bounded-context project. |
-| Application -> adapter prohibition | ArchUnit | Same-project vertical slices need package-level dependency checks. |
-| Inbound/outbound port direction | ArchUnit | Port direction is package semantics, not an independent deployment/reuse boundary. |
-| Driving/driven adapter direction | ArchUnit | Adapters may share an executable or bounded-context project while remaining directionally isolated. |
-| JPA/Spring Data containment | ArchUnit | Persistence frameworks are permitted only in current/future driven persistence adapter packages. |
-| Shared architecture rule implementation | `:testing:architecture` | Reusable test mechanism without creating a production dependency. |
+| Concern                                                   | Primary enforcement                                 | Reason                                                                                              |
+| --------------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Executable applications are dependency leaves             | Gradle project graph                                | A reusable project cannot compile against an app unless the project dependency is declared.         |
+| Supporting-capability / bounded-context project direction | Gradle + Spring Modulith                            | Project classpaths constrain coarse direction; Modulith constrains logical/private package access.  |
+| Cross-context published contracts                         | Spring Modulith named interfaces + Gradle direction | Ownership is logical and should not require splitting every published interface into a project.     |
+| Domain -> application/adapter prohibition                 | ArchUnit                                            | Domain and outer rings intentionally share a bounded-context project.                               |
+| Application -> adapter prohibition                        | ArchUnit                                            | Same-project vertical slices need package-level dependency checks.                                  |
+| Inbound/outbound port direction                           | ArchUnit                                            | Port direction is package semantics, not an independent deployment/reuse boundary.                  |
+| Driving/driven adapter direction                          | ArchUnit                                            | Adapters may share an executable or bounded-context project while remaining directionally isolated. |
+| JPA/Spring Data containment                               | ArchUnit                                            | Persistence frameworks are permitted only in current/future driven persistence adapter packages.    |
+| Shared architecture rule implementation                   | `:testing:architecture`                             | Reusable test mechanism without creating a production dependency.                                   |
 
 Spring Modulith verification in `web`, `worker`, and `migration` remains mandatory and is not replaced by ArchUnit.
 

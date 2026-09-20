@@ -1,8 +1,7 @@
 package io.taskmigo;
 
-import static org.assertj.core.api.Assertions.assertThatCode;
-
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -36,8 +35,9 @@ class ModulithArchitectureTest {
         String importRootPackage = "io.taskmigo";
 
         // Act + Assert
-        assertThatCode(() -> HexagonalOnionRules.checkDrivingApplication(applicationRootPackage, importRootPackage))
-            .doesNotThrowAnyException();
+        assertThatCode(() ->
+            HexagonalOnionRules.checkDrivingApplication(applicationRootPackage, importRootPackage)
+        ).doesNotThrowAnyException();
     }
 
     /**

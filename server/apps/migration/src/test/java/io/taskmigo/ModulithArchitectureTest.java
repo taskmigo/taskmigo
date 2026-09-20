@@ -37,7 +37,8 @@ class ModulithArchitectureTest {
         String importRootPackage = "io.taskmigo.migration";
 
         // Act + Assert
-        assertThatCode(() -> HexagonalOnionRules.checkDrivingApplication(applicationRootPackage, importRootPackage))
-            .doesNotThrowAnyException();
+        assertThatCode(() ->
+            HexagonalOnionRules.checkDrivingApplication(applicationRootPackage, importRootPackage)
+        ).doesNotThrowAnyException();
     }
 }

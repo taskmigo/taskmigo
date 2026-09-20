@@ -5,6 +5,5 @@ import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 interface ApplicationViolation {
-
     LegacyPersistenceAdapter adapter();
 }

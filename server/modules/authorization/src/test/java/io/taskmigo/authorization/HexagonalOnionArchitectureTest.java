@@ -15,15 +15,9 @@ class HexagonalOnionArchitectureTest {
             "io.taskmigo.authorization.request",
             "io.taskmigo.authorization.object"
         ),
-        List.of(
-            "io.taskmigo.authorization..infrastructure..",
-            "io.taskmigo.authorization.persistence.."
-        ),
+        List.of("io.taskmigo.authorization..infrastructure..", "io.taskmigo.authorization.persistence.."),
         List.of("io.taskmigo.authorization.object.persistence.."),
-        List.of(
-            "io.taskmigo.authorization..infrastructure.persistence..",
-            "io.taskmigo.authorization.persistence.."
-        ),
+        List.of("io.taskmigo.authorization..infrastructure.persistence..", "io.taskmigo.authorization.persistence.."),
         List.of(
             "io.taskmigo.authorization.core",
             "io.taskmigo.authorization.object",

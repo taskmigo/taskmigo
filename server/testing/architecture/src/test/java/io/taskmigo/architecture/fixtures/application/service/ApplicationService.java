@@ -5,6 +5,5 @@ import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 public interface ApplicationService {
-
     EntityManager entityManager();
 }
