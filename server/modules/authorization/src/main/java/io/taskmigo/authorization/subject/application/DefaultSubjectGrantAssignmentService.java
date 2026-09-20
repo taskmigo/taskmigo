@@ -19,7 +19,11 @@ class DefaultSubjectGrantAssignmentService implements SubjectGrantAssignmentServ
     private final StatementService statements;
     private final SubjectGrantRepository grants;
 
-    DefaultSubjectGrantAssignmentService(RoleService roles, StatementService statements, SubjectGrantRepository grants) {
+    DefaultSubjectGrantAssignmentService(
+        RoleService roles,
+        StatementService statements,
+        SubjectGrantRepository grants
+    ) {
         this.roles = roles;
         this.statements = statements;
         this.grants = grants;

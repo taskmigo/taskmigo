@@ -72,7 +72,9 @@ class GroupHierarchyIntegrationTest {
         assertThat(this.effectiveRoles.effectiveRoles(IdentitySubjects.group(backend)))
             .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(employee, developer).stream().sorted().toList());
-        assertThat(this.effectiveRoles.effectiveRoles(IdentitySubjects.group(frontend))).extracting(RoleInfo::id).containsExactly(employee);
+        assertThat(this.effectiveRoles.effectiveRoles(IdentitySubjects.group(frontend)))
+            .extracting(RoleInfo::id)
+            .containsExactly(employee);
         assertThat(
             this.jdbc.queryForObject(
                 "select count(*) from group_hierarchy where parent_group_id = ? and child_group_id = ?",
@@ -126,8 +128,12 @@ class GroupHierarchyIntegrationTest {
             .isInstanceOf(GroupException.class)
             .hasMessageContaining("Group hierarchy must be acyclic");
 
-        assertThat(this.effectiveRoles.effectiveRoles(IdentitySubjects.group(root))).extracting(RoleInfo::id).containsExactly(role);
-        assertThat(this.effectiveRoles.effectiveRoles(IdentitySubjects.group(leaf))).extracting(RoleInfo::id).containsExactly(role);
+        assertThat(this.effectiveRoles.effectiveRoles(IdentitySubjects.group(root)))
+            .extracting(RoleInfo::id)
+            .containsExactly(role);
+        assertThat(this.effectiveRoles.effectiveRoles(IdentitySubjects.group(leaf)))
+            .extracting(RoleInfo::id)
+            .containsExactly(role);
         assertThat(
             this.jdbc.queryForObject(
                 "select count(*) from group_hierarchy_closure where ancestor_group_id = ? and descendant_group_id = ?",

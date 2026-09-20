@@ -219,7 +219,9 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
             .containsExactlyElementsOf(
                 List.of(roleA, roleB, employee, backendDeveloper, developer).stream().sorted().toList()
             );
-        assertThat(this.effectiveRoles.effectiveRolesForPrincipal(childRoleUser)).extracting(RoleInfo::id).containsExactly(roleB);
+        assertThat(this.effectiveRoles.effectiveRolesForPrincipal(childRoleUser))
+            .extracting(RoleInfo::id)
+            .containsExactly(roleB);
         assertThat(this.effectiveRoles.effectiveRolesForPrincipal(backendUser))
             .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(backendDeveloper, developer).stream().sorted().toList());
