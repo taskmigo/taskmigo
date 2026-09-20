@@ -1,11 +1,14 @@
 package io.taskmigo;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
+
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
+import io.taskmigo.architecture.HexagonalOnionRules;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
@@ -16,6 +19,25 @@ class ModulithArchitectureTest {
     @DisplayName("verifies application module boundaries")
     void shouldVerifyModuleBoundariesWhenApplicationModulesAreInspected() {
         ApplicationModules.of(TaskmigoApplication.class).verify();
+    }
+
+    /**
+     * Verifies that target driving adapters cannot bypass inbound ports.
+     *
+     * Given: the web application classpath before Phase 4 moves HTTP/security adapters under `io.taskmigo.web.adapter.in`.
+     * Expect: the shared Hexagonal/Onion driving-adapter rule accepts the current package graph and will reject
+     * dependencies on application-service implementations, outbound ports, driven adapters, Spring Data, or JPA.
+     */
+    @Test
+    @DisplayName("keeps target web driving adapters on inbound ports")
+    void shouldKeepDrivingAdaptersOnInboundPortsWhenWebPackagesAreInspected() {
+        // Arrange
+        String applicationRootPackage = "io.taskmigo.web";
+        String importRootPackage = "io.taskmigo";
+
+        // Act + Assert
+        assertThatCode(() -> HexagonalOnionRules.checkDrivingApplication(applicationRootPackage, importRootPackage))
+            .doesNotThrowAnyException();
     }
 
     /**
