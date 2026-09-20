@@ -2,9 +2,9 @@
 
 ## Scope and source of truth
 
-This document implements Phase 0 of [issue #117](https://github.com/taskmigo/taskmigo/issues/117). It records the business behavior that later Clean Architecture and rich-domain refactors must preserve, while separating persistence/framework mechanics that may be replaced.
+This document was created for Phase 0 of [issue #117](https://github.com/taskmigo/taskmigo/issues/117) and is revalidated as the minimum business-invariant ledger for Phase 0 of [issue #141](https://github.com/taskmigo/taskmigo/issues/141). It records the business behavior that architectural refactors must preserve while separating persistence/framework mechanics that may be replaced.
 
-Current consolidation baseline: `next` at commit 584c7a806a115137d9320bee2b5120c743c99073 (the merge result of PR #138). The Phase 8 failure/foundation cleanup baseline was e6eff3592793371e6a9849decfcc2cafff2b3815 (the merge result of PR #137), the Phase 0 refresh baseline was 5196391c97b1acda71c6f9cf68200f1232d85aa3 (the merge result of PR #120), and the original discovery baseline was 13c32739893833f266034dc2af9d35f2be55bf66 (the merge result of PR #116). Specification comparison baseline remains taskmigo/specification at 8d9e838f8839eb97ca9aadd30bae1983669f22a6.
+Current Hexagonal/Onion migration revalidation baseline: `next` at commit 74b83399077479b3177b260d1d48b5e0aae0abb8, the reviewed implementation baseline recorded by issue #141. The last executable-behavior consolidation baseline remains 584c7a806a115137d9320bee2b5120c743c99073 (the merge result of PR #138); the only repository delta from that commit through 74b83399077479b3177b260d1d48b5e0aae0abb8 is the ledger baseline metadata update in PR #139, so no runtime, client, schema, or test behavior changed after the existing safety net was consolidated. The Phase 8 failure/foundation cleanup baseline was e6eff3592793371e6a9849decfcc2cafff2b3815 (the merge result of PR #137), the Phase 0 refresh baseline was 5196391c97b1acda71c6f9cf68200f1232d85aa3 (the merge result of PR #120), and the original discovery baseline was 13c32739893833f266034dc2af9d35f2be55bf66 (the merge result of PR #116). Specification comparison baseline remains taskmigo/specification at 8d9e838f8839eb97ca9aadd30bae1983669f22a6, which is also the current `next` head during this revalidation.
 
 Evidence precedence follows issue #117: current executable behavior and integration/E2E tests; recent merged PR decisions; active PRs targeting next; current API/database/provisioning invariants; then specification/history. When sources disagree, Phase 0 records the conflict instead of freezing one side in a characterization test.
 
@@ -14,6 +14,28 @@ Classifications:
 - **IMPLEMENTATION DETAIL** - may be replaced if confirmed behavior and required boundaries remain intact.
 - **SUPERSEDED** - historical behavior/direction replaced by newer evidence; do not preserve it.
 - **UNRESOLVED** - evidence conflicts or the requirement is specification-only; do not choose a side in Phase 0.
+
+## Issue #141 Phase 0 revalidation
+
+The ledger was revalidated against the exact `next` baseline recorded by issue #141 before any Hexagonal/Onion structural work. The result is deliberately conservative:
+
+- All **CONFIRMED BUSINESS** rows below still describe behavior that later phases must preserve.
+- All **IMPLEMENTATION DETAIL** rows remain replaceable and MUST NOT become compatibility constraints merely because the current Clean Architecture implementation uses them.
+- The resolved historical mismatches remain resolved; no new implementation/specification conflict was discovered.
+- M-003 remains **UNRESOLVED** and is not a characterization target for this migration.
+- The comparison from the last executable-behavior consolidation commit to the issue #141 baseline contains no executable-code delta, so there is no new behavior to freeze before the structural migration starts.
+
+### Characterization coverage audit
+
+The Phase 1 safety net from PR #119 remains present on the issue #141 baseline and covers the gaps that were identified after the original ledger was written. In particular, the current suite characterizes Request Authorization default deny and deny precedence, Object Authorization filtering before pagination, User normalization/reserved-system behavior, managed deletion, OAuth client secret rotation, and system-User deletion restrictions.
+
+The broader existing regression suite continues to cover hierarchy direction/cycle rollback, assignment replacement and deduplication, registration rollback, bounded effective-state resolution, authentication, filtering/pagination contracts, migration credential idempotency, SERIALIZABLE reconciliation/retry behavior, and post-commit change logging.
+
+No missing characterization test was identified by this revalidation. Phase 0 therefore does not add duplicate tests solely to create a new migration-specific test layer. If a later package/project move exposes an uncharacterized confirmed invariant, that invariant MUST receive the cheapest meaningful characterization test before the affected behavior is moved.
+
+### Architecture decision handoff
+
+The package and dependency conventions for the new architecture are frozen separately in [ADR-001: DDD with Onion and Hexagonal architecture](adr-001-ddd-onion-hexagonal.md). Phase 1 may redesign the physical library/project graph, but it must use that ADR and this ledger together: the ADR defines allowed dependency direction; this ledger defines behavior that may not change.
 
 ## Business invariant and behavior matrix
 
