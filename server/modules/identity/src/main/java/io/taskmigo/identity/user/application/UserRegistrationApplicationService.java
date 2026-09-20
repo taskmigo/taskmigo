@@ -1,7 +1,6 @@
 package io.taskmigo.identity.user.application;
 
-import io.taskmigo.authorization.role.RoleService;
-import io.taskmigo.authorization.subject.SubjectGrantService;
+import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.group.GroupService;
 import io.taskmigo.identity.membership.MembershipService;
@@ -20,21 +19,18 @@ import org.springframework.transaction.annotation.Transactional;
 class UserRegistrationApplicationService implements UserRegistrationService {
 
     private final UserCommandService users;
-    private final RoleService roles;
-    private final SubjectGrantService grants;
+    private final SubjectGrantAssignmentService grantAssignments;
     private final GroupService groups;
     private final MembershipService memberships;
 
     UserRegistrationApplicationService(
         UserCommandService users,
-        RoleService roles,
-        SubjectGrantService grants,
+        SubjectGrantAssignmentService grantAssignments,
         GroupService groups,
         MembershipService memberships
     ) {
         this.users = users;
-        this.roles = roles;
-        this.grants = grants;
+        this.grantAssignments = grantAssignments;
         this.groups = groups;
         this.memberships = memberships;
     }
@@ -51,7 +47,6 @@ class UserRegistrationApplicationService implements UserRegistrationService {
     ) {
         Set<UUID> requestedRoleIds = roleIds == null ? Set.of() : Set.copyOf(roleIds);
         Set<UUID> requestedGroupIds = groupIds == null ? Set.of() : Set.copyOf(groupIds);
-        this.roles.requireRoles(requestedRoleIds);
         this.groups.requireGroups(requestedGroupIds);
 
         UUID userId;
@@ -61,7 +56,7 @@ class UserRegistrationApplicationService implements UserRegistrationService {
             throw new UserException(UserException.Type.BAD_REQUEST, exception.detail(), exception);
         }
 
-        this.grants.setRoles(IdentitySubjects.user(userId), requestedRoleIds);
+        this.grantAssignments.setRoles(IdentitySubjects.user(userId), requestedRoleIds);
         this.memberships.setGroupsForUser(userId, requestedGroupIds);
         return userId;
     }

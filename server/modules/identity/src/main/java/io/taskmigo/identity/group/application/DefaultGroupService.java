@@ -1,9 +1,7 @@
 package io.taskmigo.identity.group.application;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.role.RoleInfo;
-import io.taskmigo.authorization.subject.SubjectGrantService;
-import io.taskmigo.authorization.subject.SubjectRef;
+import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.group.GroupException;
@@ -12,43 +10,33 @@ import io.taskmigo.identity.group.GroupService;
 import io.taskmigo.identity.group.domain.GroupRuleViolation;
 import io.taskmigo.identity.group.domain.hierarchy.GroupHierarchy;
 import io.taskmigo.identity.group.domain.hierarchy.GroupHierarchyException;
-import io.taskmigo.identity.membership.application.MembershipRepository;
-import io.taskmigo.identity.user.UserService;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/// Coordinates runtime Group profile, hierarchy, and Access Control use cases.
+/// Coordinates runtime Group profile, hierarchy, and grant-assignment use cases.
 @Service
 public class DefaultGroupService implements GroupService {
 
     private final GroupCommandService commands;
     private final GroupQueryRepository groups;
     private final GroupHierarchyRepository hierarchies;
-    private final MembershipRepository memberships;
-    private final UserService users;
-    private final SubjectGrantService grants;
+    private final SubjectGrantAssignmentService grantAssignments;
 
     public DefaultGroupService(
         GroupCommandService commands,
         GroupQueryRepository groups,
         GroupHierarchyRepository hierarchies,
-        MembershipRepository memberships,
-        UserService users,
-        SubjectGrantService grants
+        SubjectGrantAssignmentService grantAssignments
     ) {
         this.commands = commands;
         this.groups = groups;
         this.hierarchies = hierarchies;
-        this.memberships = memberships;
-        this.users = users;
-        this.grants = grants;
+        this.grantAssignments = grantAssignments;
     }
 
     @Override
@@ -97,7 +85,7 @@ public class DefaultGroupService implements GroupService {
         }
 
         this.hierarchies.replaceChildren(id, requestedChildIds, requested);
-        this.grants.setRoles(IdentitySubjects.group(id), requestedRoleIds);
+        this.grantAssignments.setRoles(IdentitySubjects.group(id), requestedRoleIds);
         return id;
     }
 
@@ -131,31 +119,7 @@ public class DefaultGroupService implements GroupService {
     @Transactional
     public void setRoles(UUID groupId, Collection<UUID> roleIds) {
         this.requireGroup(groupId);
-        this.grants.setRoles(IdentitySubjects.group(groupId), roleIds);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<RoleInfo> effectiveRoles(UUID groupId) {
-        this.requireGroup(groupId);
-        LinkedHashSet<SubjectRef> subjects = new LinkedHashSet<>();
-        this.hierarchies.descendantGroupIds(Set.of(groupId)).forEach(id -> subjects.add(IdentitySubjects.group(id)));
-        return this.grants.effectiveRoles(subjects);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<RoleInfo> effectiveRolesForUser(UUID userId) {
-        this.users.require(userId);
-        LinkedHashSet<SubjectRef> subjects = new LinkedHashSet<>();
-        subjects.add(IdentitySubjects.user(userId));
-        List<UUID> directGroupIds = this.memberships.groupsForUser(userId);
-        if (!directGroupIds.isEmpty()) {
-            this.hierarchies
-                .descendantGroupIds(directGroupIds)
-                .forEach(groupId -> subjects.add(IdentitySubjects.group(groupId)));
-        }
-        return this.grants.effectiveRoles(subjects);
+        this.grantAssignments.setRoles(IdentitySubjects.group(groupId), roleIds);
     }
 
     private void requireGroup(UUID id) {

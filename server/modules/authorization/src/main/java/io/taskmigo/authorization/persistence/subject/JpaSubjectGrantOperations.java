@@ -1,15 +1,16 @@
 package io.taskmigo.authorization.persistence.subject;
 
 import io.taskmigo.authorization.subject.SubjectRef;
-import io.taskmigo.authorization.subject.internal.SubjectGrantStore;
+import io.taskmigo.authorization.subject.application.SubjectGrantRepository;
+import io.taskmigo.authorization.subject.domain.SubjectGrants;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
-/// Implements subject-grant persistence with JPA entities and repositories.
+/// Implements direct Subject grant persistence with JPA bindings.
 @Service
-public class JpaSubjectGrantOperations implements SubjectGrantStore {
+public class JpaSubjectGrantOperations implements SubjectGrantRepository {
 
     private final SubjectRoleBindingRepository roleBindings;
     private final SubjectStatementBindingRepository statementBindings;
@@ -23,10 +24,17 @@ public class JpaSubjectGrantOperations implements SubjectGrantStore {
     }
 
     @Override
-    public void replaceRoleIds(SubjectRef subject, Set<UUID> roleIds) {
+    public SubjectGrants load(SubjectRef subject) {
+        return new SubjectGrants(subject, this.roleIds(subject), this.statementIds(subject));
+    }
+
+    @Override
+    public void saveRoles(SubjectGrants grants) {
+        SubjectRef subject = grants.subject();
         this.roleBindings.deleteAllBySubjectTypeAndSubjectId(subject.type(), subject.id());
         this.roleBindings.saveAll(
-            roleIds
+            grants
+                .roleIds()
                 .stream()
                 .map(roleId -> new SubjectRoleBindingEntity(UUID.randomUUID(), subject, roleId))
                 .toList()
@@ -34,18 +42,19 @@ public class JpaSubjectGrantOperations implements SubjectGrantStore {
     }
 
     @Override
-    public void replaceStatementIds(SubjectRef subject, Set<UUID> statementIds) {
+    public void saveStatements(SubjectGrants grants) {
+        SubjectRef subject = grants.subject();
         this.statementBindings.deleteAllBySubjectTypeAndSubjectId(subject.type(), subject.id());
         this.statementBindings.saveAll(
-            statementIds
+            grants
+                .statementIds()
                 .stream()
                 .map(statementId -> new SubjectStatementBindingEntity(UUID.randomUUID(), subject, statementId))
                 .toList()
         );
     }
 
-    @Override
-    public Set<UUID> roleIds(SubjectRef subject) {
+    private Set<UUID> roleIds(SubjectRef subject) {
         return this.roleBindings
             .findAllBySubjectTypeAndSubjectId(subject.type(), subject.id())
             .stream()
@@ -53,8 +62,7 @@ public class JpaSubjectGrantOperations implements SubjectGrantStore {
             .collect(Collectors.toUnmodifiableSet());
     }
 
-    @Override
-    public Set<UUID> statementIds(SubjectRef subject) {
+    private Set<UUID> statementIds(SubjectRef subject) {
         return this.statementBindings
             .findAllBySubjectTypeAndSubjectId(subject.type(), subject.id())
             .stream()

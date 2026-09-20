@@ -8,7 +8,6 @@
         "authorization :: object",
         "authorization :: object-persistence",
         "authorization :: spi",
-        "authorization :: role",
         "authorization :: subject",
     }
 )
