@@ -1,6 +1,6 @@
 ---
 name: github-pr-ci-workflow
-description: "Drive GitHub pull requests and CI to completion efficiently. Use whenever an agent creates or updates a PR, checks GitHub Actions/pipeline status, investigates failed checks, pushes CI fixes, or is asked to continue until CI is healthy. Enforces SHA-anchored, fail-fast CI triage; small targeted GitHub queries; batched fixes; and non-blocking status checks. Avoids stale workflow runs, repeated full-PR/log fetches, busy waiting, unnecessary reruns, and retrying unavailable local Git/network paths."
+description: "Drive GitHub pull requests and CI to completion efficiently. Use whenever an agent creates or updates a PR, checks GitHub Actions/pipeline status, investigates failed checks, pushes CI fixes, or is asked to continue until CI is healthy. Enforces SHA-anchored, fail-fast CI triage; hard anti-stall budgets; bounded GitHub connector batches; batched fixes; and non-blocking status checks. Avoids stale workflow runs, repeated polling, oversized tool batches, repeated full-PR/log fetches, busy waiting, unnecessary reruns, and retrying unavailable local Git/network paths."
 ---
 
 # GitHub PR and CI Workflow
@@ -45,6 +45,32 @@ The goal is not to "watch CI." The goal is to extract the earliest actionable fa
    - After an expensive request times out or returns an oversized/truncated payload, do not immediately repeat the same request.
    - Switch to a narrower endpoint or smaller resource.
    - Retry the identical expensive operation at most once, and only when there is evidence the failure was transient.
+
+7. **Use hard anti-stall budgets, not judgment alone.**
+   - For one head SHA, take at most one immediate workflow-summary snapshot after a push.
+   - A second snapshot in the same user turn is allowed only after useful non-polling work has occurred or the user explicitly asks for fresh status.
+   - Never issue two consecutive status-only queries that can return the same in-progress state.
+   - Perform at most two automatic CI repair pushes after the initial implementation push in one user turn. If the current SHA is still not green after those repair cycles, stop tool activity and report the exact blocker/status instead of continuing to spin.
+   - Once a new head SHA exists, do not poll workflow runs or jobs from an older SHA. Old completed logs may be consulted only if they were already known to contain a concrete diagnostic that still applies; they are never current-state evidence.
+
+8. **Bound GitHub connector mutation batches.**
+   - Never create one GitHub blob per file in an unbounded loop for a multi-file change.
+   - Prefer one `create_tree` operation with inline file content for a focused multi-file edit.
+   - If the payload is too large, chain a small number of tree updates and create one final commit.
+   - Keep a single Code Mode orchestration block to roughly 10 awaited GitHub connector calls or fewer. If more operations are genuinely needed, split them into intentional batches with a checkpoint between batches.
+   - Do not print raw large API payloads into context. Parse and project only the fields or error window needed for the next decision.
+
+## Pre-CI preflight
+
+Before opening a PR or pushing a large refactor when no local build runner is available:
+
+1. Search for references to removed or renamed classes, packages, methods, and persistence adapters.
+2. Inspect compile-sensitive call sites changed by the refactor, especially method references, generic functional interfaces, Spring Data derived-query names, constructor injection, and moved package imports.
+3. Confirm that new application/domain packages do not violate the repository architecture rules already visible in tests or `AGENTS.md`.
+4. For multi-file connector edits, verify the final branch tree/ref points to the intended commit before creating the PR.
+5. Do not claim local validation when only static inspection was possible; CI remains the execution evidence.
+
+This preflight does not replace CI. Its purpose is to eliminate obvious compile/reference mistakes before starting an expensive workflow cycle.
 
 ## CI triage procedure
 
@@ -143,11 +169,12 @@ Fix the concrete compiler/static-analysis diagnostic first. Do not infer a broad
 
 1. Re-read the PR and capture the **new head SHA**.
 2. Forget old run ids as authoritative state.
-3. Fetch workflow runs for the new SHA.
-4. Apply the same fail-fast triage.
-5. Do not continue monitoring workflow runs tied to the previous SHA.
+3. Do not query old in-progress runs again just to see how they finish.
+4. Fetch workflow runs for the new SHA once they exist.
+5. Apply the same fail-fast triage.
+6. If the new SHA has only pending runs and there is no useful non-polling work left, report the pending state and stop.
 
-A new commit invalidates the previous "all green" conclusion.
+A new commit invalidates every previous current-state conclusion. Old completed diagnostics are historical evidence only.
 
 ## Local workspace and network failures
 
@@ -169,6 +196,8 @@ Do not turn an environment networking problem into a repository debugging task.
 - Do not run concurrent writes against the same file path.
 - Before updating an existing file, fetch its current blob SHA.
 - After a write, use the returned commit/blob SHA for any immediately subsequent sequential update.
+- For many-file changes, prefer tree-level writes with inline content over per-file blob creation loops.
+- When a connector/API operation fails because the orchestration itself is too large, reduce the batch size or switch primitives; do not replay the same oversized orchestration.
 
 ## Pull request finalization
 
@@ -217,6 +246,10 @@ If a response is truncated, immediately switch to smaller targeted calls rather 
 Do **not**:
 
 - Poll the entire PR repeatedly while CI is running.
+- Poll an old SHA after a new commit has been pushed.
+- Issue consecutive status-only requests with no new signal between them.
+- Exceed the per-turn repair budget trying to force a green pipeline in one response.
+- Create dozens of blobs/tool calls in one orchestration block when one or a few tree writes can represent the same change.
 - Wait for the slowest job before inspecting an already-failed fast job.
 - Keep checking workflow runs from an old SHA after a push.
 - Fix only the first failure when several completed jobs already expose independent failures.
