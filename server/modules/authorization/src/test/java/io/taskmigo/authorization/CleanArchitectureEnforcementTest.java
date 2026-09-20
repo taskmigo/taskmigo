@@ -67,7 +67,6 @@ class CleanArchitectureEnforcementTest {
             .resideInAnyPackage(
                 "io.taskmigo.authorization..infrastructure..",
                 "io.taskmigo.authorization.persistence..",
-                "io.taskmigo.authorization.object.persistence..",
                 "io.taskmigo.rest..",
                 "io.taskmigo.internal..",
                 "io.taskmigo.migration..",
@@ -111,7 +110,6 @@ class CleanArchitectureEnforcementTest {
                 "io.taskmigo.authorization..application..",
                 "io.taskmigo.authorization..infrastructure..",
                 "io.taskmigo.authorization.persistence..",
-                "io.taskmigo.authorization.object.persistence..",
                 "io.taskmigo.rest..",
                 "io.taskmigo.internal..",
                 "io.taskmigo.migration..",
@@ -157,7 +155,6 @@ class CleanArchitectureEnforcementTest {
             .resideInAnyPackage(
                 "io.taskmigo.authorization..infrastructure..",
                 "io.taskmigo.authorization.persistence..",
-                "io.taskmigo.authorization.object.persistence..",
                 "org.springframework.data..",
                 "jakarta.persistence..",
                 "org.springframework.boot.test.context..",
