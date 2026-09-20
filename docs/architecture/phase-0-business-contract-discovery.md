@@ -4,7 +4,7 @@
 
 This document implements Phase 0 of [issue #117](https://github.com/taskmigo/taskmigo/issues/117). It records the business behavior that later Clean Architecture and rich-domain refactors must preserve, while separating persistence/framework mechanics that may be replaced.
 
-Current consolidation baseline: `next` at commit e6eff3592793371e6a9849decfcc2cafff2b3815 (the merge result of PR #137). The Phase 0 refresh baseline was 5196391c97b1acda71c6f9cf68200f1232d85aa3 (the merge result of PR #120), and the original discovery baseline was 13c32739893833f266034dc2af9d35f2be55bf66 (the merge result of PR #116). Specification comparison baseline remains taskmigo/specification at 8d9e838f8839eb97ca9aadd30bae1983669f22a6.
+Current consolidation baseline: `next` at commit 584c7a806a115137d9320bee2b5120c743c99073 (the merge result of PR #138). The Phase 8 failure/foundation cleanup baseline was e6eff3592793371e6a9849decfcc2cafff2b3815 (the merge result of PR #137), the Phase 0 refresh baseline was 5196391c97b1acda71c6f9cf68200f1232d85aa3 (the merge result of PR #120), and the original discovery baseline was 13c32739893833f266034dc2af9d35f2be55bf66 (the merge result of PR #116). Specification comparison baseline remains taskmigo/specification at 8d9e838f8839eb97ca9aadd30bae1983669f22a6.
 
 Evidence precedence follows issue #117: current executable behavior and integration/E2E tests; recent merged PR decisions; active PRs targeting next; current API/database/provisioning invariants; then specification/history. When sources disagree, Phase 0 records the conflict instead of freezing one side in a characterization test.
 
