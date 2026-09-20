@@ -28,6 +28,9 @@ permissions:
   checks: write
   security-events: write
 
+env:
+  SARIF_PATH: qodana/results/qodana.sarif.json
+
 jobs:
   analyze:
     name: Analyze
@@ -36,6 +39,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7.0.1
         with:
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
       - name: Set up Java
@@ -53,31 +57,43 @@ jobs:
         with:
           pr-mode: false
           use-caches: false
-          upload-result: false
-          args: >-
-            --project-dir server
+          use-annotations: false
+          push-fixes: pull-request
+          args: --project-dir server --apply-fixes
 
-      - name: Publish Qodana results to job summary
+      - name: Check Qodana SARIF
+        id: qodana-sarif
         if: ${{ always() }}
         shell: bash
-        env:
-          SARIF_FILE: ${{ runner.temp }}/qodana/results/qodana.sarif.json
         run: |
+          SARIF_FILE="$RUNNER_TEMP/$SARIF_PATH"
+
+          echo "file=$SARIF_FILE" >> "$GITHUB_OUTPUT"
+          [[ -f "$SARIF_FILE" ]] && echo "exists=true" >> "$GITHUB_OUTPUT"
+
+      - name: Publish Qodana results to job summary
+        if: ${{ always() && steps.qodana-sarif.outputs.exists == 'true' }}
+        shell: bash
+        env:
+          SARIF_FILE: ${{ steps.qodana-sarif.outputs.file }}
+        run: |
+          COUNT=$(jq '[.runs[]?.results[]?] | length' "$SARIF_FILE")
+
           {
             echo "## Qodana results"
             echo
-            if [[ -f "$SARIF_FILE" ]]; then
-              echo '```json'
-              jq '{results: [.runs[]?.results[]?]}' "$SARIF_FILE"
-              echo '```'
-            else
-              echo "Qodana did not produce a SARIF report."
-            fi
+            echo "<details>"
+            printf '<summary>%s issue(s) found</summary>\n\n' "$COUNT"
+            echo '```json'
+            jq '[.runs[]?.results[]?]' "$SARIF_FILE"
+            echo '```'
+            echo
+            echo "</details>"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload SARIF
-        if: ${{ always() }}
+        if: ${{ always() && steps.qodana-sarif.outputs.exists == 'true' }}
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: ${{ runner.temp }}/qodana/results/qodana.sarif.json
+          sarif_file: ${{ steps.qodana-sarif.outputs.file }}
           wait-for-processing: true
