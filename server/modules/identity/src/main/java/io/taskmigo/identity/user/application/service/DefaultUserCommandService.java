@@ -1,5 +1,8 @@
-package io.taskmigo.identity.user.application;
+package io.taskmigo.identity.user.application.service;
 
+import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
+import io.taskmigo.identity.user.application.port.in.internal.UserMutationResult;
+import io.taskmigo.identity.user.application.port.out.UserCommandRepository;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.Username;
 import java.util.Collection;
@@ -7,12 +10,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-/// Applies canonical User mutations through a domain-shaped command repository.
-@Service
-public class DefaultUserCommandService implements UserCommandService {
+/// Applies canonical User mutations through a domain-shaped outbound repository port.
+///
+/// Transaction scope is owned by the calling use case: runtime registration and managed provisioning both invoke this
+/// service from their enclosing application transaction.
+public final class DefaultUserCommandService implements UserCommandService {
 
     private final UserCommandRepository users;
 
@@ -21,7 +24,6 @@ public class DefaultUserCommandService implements UserCommandService {
     }
 
     @Override
-    @Transactional
     public UUID createRuntime(
         @Nullable String username,
         @Nullable Set<String> emails,
@@ -34,7 +36,6 @@ public class DefaultUserCommandService implements UserCommandService {
     }
 
     @Override
-    @Transactional
     public UserMutationResult reconcileManaged(
         @Nullable String username,
         @Nullable String initialPasswordHash,
@@ -67,13 +68,11 @@ public class DefaultUserCommandService implements UserCommandService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Optional<User> findByUsername(@Nullable String username) {
         return this.users.findByUsername(Username.of(username));
     }
 
     @Override
-    @Transactional
     public void delete(User user) {
         this.users.delete(user);
     }

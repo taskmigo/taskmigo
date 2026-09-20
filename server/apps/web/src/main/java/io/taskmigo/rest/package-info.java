@@ -9,6 +9,7 @@
         "authorization :: spi",
         "authorization :: statement",
         "identity :: user",
+        "identity :: user-input",
         "identity :: group",
     }
 )

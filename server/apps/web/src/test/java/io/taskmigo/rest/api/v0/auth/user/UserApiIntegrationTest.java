@@ -10,7 +10,7 @@ import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.subject.SubjectRoleQueryService;
 import io.taskmigo.identity.group.GroupService;
-import io.taskmigo.identity.user.UserService;
+import io.taskmigo.identity.user.application.port.in.api.UserService;
 import io.taskmigo.rest.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.CreateGroupRequest;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.CreateRoleRequest;

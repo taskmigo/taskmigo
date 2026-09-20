@@ -1,4 +1,4 @@
-package io.taskmigo.identity.user.infrastructure.persistence;
+package io.taskmigo.identity.user.adapter.out.persistence;
 
 import java.util.Optional;
 import java.util.UUID;

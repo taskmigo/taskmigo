@@ -1,7 +1,7 @@
-package io.taskmigo.identity.user.infrastructure.persistence;
+package io.taskmigo.identity.user.adapter.out.persistence;
 
 import io.taskmigo.identity.user.UserException;
-import io.taskmigo.identity.user.application.UserCommandRepository;
+import io.taskmigo.identity.user.application.port.out.UserCommandRepository;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.Username;
 import java.util.Optional;
