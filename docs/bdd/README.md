@@ -76,7 +76,7 @@ Playwright tests under `e2e/` implement this contract.
 Every E2E test that implements a BDD scenario must include the scenario identifier in its test title, for example:
 
 ```ts
-test('BDD-AUTH-001: authenticated user can access the account page', async ({ page }) => {
+test("BDD-AUTH-001: authenticated user can access the account page", async ({ page }) => {
   // ...
 });
 ```
