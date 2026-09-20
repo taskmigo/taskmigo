@@ -1,12 +1,13 @@
-package io.taskmigo.identity.provisioning.application;
+package io.taskmigo.identity.provisioning.application.service;
 
 import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.SubjectGrantQueryService;
+import io.taskmigo.identity.application.port.out.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.membership.application.port.in.api.MembershipService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningException;
 import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
-import io.taskmigo.identity.provisioning.IdentityProvisioningService;
+import io.taskmigo.identity.provisioning.application.port.in.api.IdentityProvisioningService;
 import io.taskmigo.identity.user.UserException;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
 import io.taskmigo.identity.user.application.port.in.internal.UserMutationResult;
@@ -16,33 +17,59 @@ import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-/// Reconciles managed Identity state through the same canonical User command path used by runtime registration.
-@Service
-class DefaultIdentityProvisioningService implements IdentityProvisioningService {
+/// Reconciles managed Identity state through canonical User, Membership, and Access Control ports.
+public final class DefaultIdentityProvisioningService implements IdentityProvisioningService {
 
     private final UserCommandService users;
     private final SubjectGrantAssignmentService grantAssignments;
     private final SubjectGrantQueryService grantQueries;
     private final MembershipService memberships;
+    private final TransactionRunner transactions;
 
-    DefaultIdentityProvisioningService(
+    public DefaultIdentityProvisioningService(
         UserCommandService users,
         SubjectGrantAssignmentService grantAssignments,
         SubjectGrantQueryService grantQueries,
-        MembershipService memberships
+        MembershipService memberships,
+        TransactionRunner transactions
     ) {
         this.users = users;
         this.grantAssignments = grantAssignments;
         this.grantQueries = grantQueries;
         this.memberships = memberships;
+        this.transactions = transactions;
     }
 
     @Override
-    @Transactional
     public IdentityProvisioningResult<UUID> reconcileUser(
+        @Nullable String username,
+        @Nullable String initialPasswordHash,
+        @Nullable Collection<String> emails,
+        @Nullable String firstName,
+        @Nullable String lastName,
+        Collection<UUID> roleIds,
+        Collection<UUID> groupIds
+    ) {
+        return this.transactions.write(() ->
+            this.reconcileUserInTransaction(
+                username,
+                initialPasswordHash,
+                emails,
+                firstName,
+                lastName,
+                roleIds,
+                groupIds
+            )
+        );
+    }
+
+    @Override
+    public boolean deleteUser(String username) {
+        return this.transactions.write(() -> this.deleteUserInTransaction(username));
+    }
+
+    private IdentityProvisioningResult<UUID> reconcileUserInTransaction(
         @Nullable String username,
         @Nullable String initialPasswordHash,
         @Nullable Collection<String> emails,
@@ -86,9 +113,7 @@ class DefaultIdentityProvisioningService implements IdentityProvisioningService 
         return new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.UPDATED);
     }
 
-    @Override
-    @Transactional
-    public boolean deleteUser(String username) {
+    private boolean deleteUserInTransaction(String username) {
         User existing;
         try {
             existing = this.users.findByUsername(username).orElse(null);

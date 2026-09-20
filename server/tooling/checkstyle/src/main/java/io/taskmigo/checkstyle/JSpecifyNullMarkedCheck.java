@@ -42,40 +42,43 @@ public final class JSpecifyNullMarkedCheck extends AbstractCheck {
         }
 
         DetailAST packageDefinition = compilationUnit.findFirstToken(TokenTypes.PACKAGE_DEF);
-        if (
-            packageDefinition != null &&
-            !isJSpecifyNullMarked(compilationUnit, packageDefinition)
-        ) {
+        if (packageDefinition != null && !isJSpecifyNullMarked(compilationUnit, packageDefinition)) {
             this.log(packageDefinition, MSG_MISSING_NULL_MARKED);
         }
     }
 
-    private static boolean isJSpecifyNullMarked(
-        DetailAST compilationUnit,
-        DetailAST packageDefinition
-    ) {
+    private static boolean isJSpecifyNullMarked(DetailAST compilationUnit, DetailAST packageDefinition) {
         if (AnnotationUtil.containsAnnotation(packageDefinition, JSPECIFY_NULL_MARKED)) {
             return true;
         }
 
-        return AnnotationUtil.containsAnnotation(packageDefinition, NULL_MARKED) &&
-            hasJSpecifyNullMarkedImport(compilationUnit);
+        return (
+            AnnotationUtil.containsAnnotation(packageDefinition, NULL_MARKED) &&
+            hasJSpecifyNullMarkedImport(compilationUnit)
+        );
     }
 
     private static boolean hasJSpecifyNullMarkedImport(DetailAST compilationUnit) {
-        boolean result = false;
-        for (
-            DetailAST child = compilationUnit.getFirstChild();
-            child != null && !result;
-            child = child.getNextSibling()
-        ) {
+        boolean hasJSpecifyExplicitImport = false;
+        boolean hasNonJSpecifyExplicitImport = false;
+        boolean hasJSpecifyWildcardImport = false;
+
+        for (DetailAST child = compilationUnit.getFirstChild(); child != null; child = child.getNextSibling()) {
             if (child.getType() == TokenTypes.IMPORT) {
                 String importedType = FullIdent.createFullIdentBelow(child).getText();
-                result =
-                    JSPECIFY_NULL_MARKED.equals(importedType) ||
-                    JSPECIFY_ANNOTATIONS_WILDCARD.equals(importedType);
+                if (JSPECIFY_NULL_MARKED.equals(importedType)) {
+                    hasJSpecifyExplicitImport = true;
+                } else if (importedType.endsWith("." + NULL_MARKED)) {
+                    hasNonJSpecifyExplicitImport = true;
+                } else if (JSPECIFY_ANNOTATIONS_WILDCARD.equals(importedType)) {
+                    hasJSpecifyWildcardImport = true;
+                }
             }
         }
-        return result;
+
+        return (
+            !hasNonJSpecifyExplicitImport &&
+            (hasJSpecifyExplicitImport || hasJSpecifyWildcardImport)
+        );
     }
 }

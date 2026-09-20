@@ -1,6 +1,6 @@
-package io.taskmigo.identity.persistence.integration;
+package io.taskmigo.identity.adapter.out.accesscontrol;
 
-import io.taskmigo.authorization.spi.EffectiveSubjectResolver;
+import io.taskmigo.authorization.application.port.out.EffectiveSubjectResolver;
 import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.group.GroupException;
@@ -16,7 +16,7 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/// Implements the Access Control effective-subject SPI from Identity membership and hierarchy state.
+/// Adapts Identity membership and hierarchy state to Access Control's effective-subject outbound port.
 @Service
 public class IdentityEffectiveSubjectResolver implements EffectiveSubjectResolver {
 

@@ -109,6 +109,24 @@ class JSpecifyNullMarkedCheckTest {
         assertThat(violations(packageInfo)).isOne();
     }
 
+    @Test
+    @DisplayName("Rejects a non-JSpecify explicit NullMarked import even with a JSpecify wildcard")
+    void rejectsNonJSpecifyExplicitNullMarkedWithJSpecifyWildcard(@TempDir Path tempDir) throws Exception {
+        Path packageInfo = Files.writeString(
+            tempDir.resolve("package-info.java"),
+            """
+            @NullMarked
+            package io.taskmigo.example;
+
+            import example.annotations.NullMarked;
+            import org.jspecify.annotations.*;
+            """,
+            UTF_8
+        );
+
+        assertThat(violations(packageInfo)).isOne();
+    }
+
     private static int violations(Path source) throws Exception {
         DefaultConfiguration check = new DefaultConfiguration(JSpecifyNullMarkedCheck.class.getName());
         DefaultConfiguration treeWalker = new DefaultConfiguration(TreeWalker.class.getName());

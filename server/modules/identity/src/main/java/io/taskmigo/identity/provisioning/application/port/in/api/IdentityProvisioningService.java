@@ -1,5 +1,6 @@
-package io.taskmigo.identity.provisioning;
+package io.taskmigo.identity.provisioning.application.port.in.api;
 
+import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
 import java.util.Collection;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
