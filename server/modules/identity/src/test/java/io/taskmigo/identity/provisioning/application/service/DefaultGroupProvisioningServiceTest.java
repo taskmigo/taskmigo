@@ -129,7 +129,13 @@ class DefaultGroupProvisioningServiceTest {
         when(hierarchies.loadForMutation()).thenReturn(current);
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
-        var service = new DefaultGroupProvisioningService(groups, hierarchies, grantAssignments, grantQueries, directTransactions());
+        var service = new DefaultGroupProvisioningService(
+            groups,
+            hierarchies,
+            grantAssignments,
+            grantQueries,
+            directTransactions()
+        );
 
         // Act
         boolean removed = service.deleteGroup("engineering");

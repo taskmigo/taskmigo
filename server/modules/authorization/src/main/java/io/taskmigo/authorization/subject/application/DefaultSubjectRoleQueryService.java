@@ -3,7 +3,6 @@ package io.taskmigo.authorization.subject.application;
 import io.taskmigo.authorization.application.port.out.EffectiveSubjectResolver;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.role.RoleService;
-import io.taskmigo.authorization.application.port.out.EffectiveSubjectResolver;
 import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.authorization.subject.SubjectRoleQueryService;
 import java.util.Collection;
