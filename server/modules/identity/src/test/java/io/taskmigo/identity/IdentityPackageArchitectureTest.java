@@ -77,7 +77,9 @@ class IdentityPackageArchitectureTest {
                 "io.taskmigo.identity.provisioning..",
                 "io.taskmigo.identity.user.domain..",
                 "io.taskmigo.identity.user.application..",
-                "io.taskmigo.identity.group..",
+                "io.taskmigo.identity.group.domain..",
+                "io.taskmigo.identity.group.application..",
+                "io.taskmigo.identity.membership.application..",
                 "io.taskmigo.identity.authorization.."
             )
             .should()
@@ -85,6 +87,8 @@ class IdentityPackageArchitectureTest {
             .resideInAnyPackage(
                 "io.taskmigo.identity.persistence..",
                 "io.taskmigo.identity.user.infrastructure..",
+                "io.taskmigo.identity.group.infrastructure..",
+                "io.taskmigo.identity.membership.infrastructure..",
                 "org.springframework.data..",
                 "jakarta.persistence.."
             );
@@ -111,7 +115,8 @@ class IdentityPackageArchitectureTest {
             .resideInAnyPackage(
                 "io.taskmigo.identity.provisioning..",
                 "io.taskmigo.identity.user..",
-                "io.taskmigo.identity.group..",
+                "io.taskmigo.identity.group",
+                "io.taskmigo.identity.membership",
                 "io.taskmigo.identity.authorization.."
             )
             .should()
@@ -209,6 +214,75 @@ class IdentityPackageArchitectureTest {
     }
 
     /**
+     * Verifies the published Group and Membership APIs remain independent from implementation layers.
+     *
+     * Given: root API packages for Group and Membership.
+     * Expect: published contracts do not depend on their application or infrastructure implementations.
+     */
+    @Test
+    @DisplayName("keeps Group and Membership APIs independent from implementation layers")
+    void shouldKeepGroupAndMembershipApisIndependentWhenIdentityPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule apiDoesNotDependOnImplementation = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.identity.group", "io.taskmigo.identity.membership")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "io.taskmigo.identity.group.application..",
+                "io.taskmigo.identity.group.infrastructure..",
+                "io.taskmigo.identity.membership.application..",
+                "io.taskmigo.identity.membership.infrastructure.."
+            );
+
+        // Act + Assert
+        apiDoesNotDependOnImplementation.check(classes);
+    }
+
+    /**
+     * Verifies Group domain and application dependency direction.
+     *
+     * Given: the canonical Group domain and application packages.
+     * Expect: domain is framework neutral and application does not depend on Group/Membership infrastructure.
+     */
+    @Test
+    @DisplayName("keeps Group domain and application independent from infrastructure")
+    void shouldKeepGroupLayersIndependentWhenIdentityPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule groupDomainDoesNotDependOutward = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.identity.group.domain..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "io.taskmigo.identity.group.application..",
+                "io.taskmigo.identity.group.infrastructure..",
+                "org.springframework..",
+                "jakarta.persistence.."
+            );
+        ArchRule groupApplicationDoesNotDependOnInfrastructure = noClasses()
+            .that()
+            .resideInAnyPackage(
+                "io.taskmigo.identity.group.application..",
+                "io.taskmigo.identity.membership.application.."
+            )
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "io.taskmigo.identity.group.infrastructure..",
+                "io.taskmigo.identity.membership.infrastructure..",
+                "org.springframework.data..",
+                "jakarta.persistence.."
+            );
+
+        // Act + Assert
+        groupDomainDoesNotDependOutward.check(classes);
+        groupApplicationDoesNotDependOnInfrastructure.check(classes);
+    }
+
+    /**
      * Verifies that Group hierarchy rules remain independent from persistence implementation details.
      *
      * Given: production classes in the Group hierarchy domain package.
@@ -221,7 +295,7 @@ class IdentityPackageArchitectureTest {
         JavaClasses classes = productionClasses();
         ArchRule hierarchyDoesNotDependOnPersistence = noClasses()
             .that()
-            .resideInAnyPackage("io.taskmigo.identity.group.hierarchy..")
+            .resideInAnyPackage("io.taskmigo.identity.group.domain.hierarchy..")
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(

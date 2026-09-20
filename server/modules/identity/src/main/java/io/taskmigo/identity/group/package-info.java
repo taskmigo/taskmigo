@@ -1,6 +1,7 @@
-/// Owns Group contracts and application use cases for memberships and hierarchy.
+/// Publishes runtime Group contracts.
 ///
-/// JPA adapters remain private in the owning persistence package.
+/// Domain behavior, application orchestration, hierarchy locking, memberships, and persistence adapters remain private
+/// to the Identity bounded context.
 @NamedInterface("group")
 @NullMarked
 package io.taskmigo.identity.group;

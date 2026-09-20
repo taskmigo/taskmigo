@@ -11,6 +11,7 @@ import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.StatementService;
 import io.taskmigo.identity.group.GroupService;
+import io.taskmigo.identity.provisioning.GroupProvisioningService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserInfo;
@@ -31,6 +32,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
@@ -64,7 +66,9 @@ class MigrationIntegrationTest {
     private final StatementService statements;
     private final AuthorizationProvisioningService authorizationProvisioning;
     private final IdentityProvisioningService identityProvisioning;
-    private final GroupService groups;
+    private final GroupProvisioningService groups;
+    private final GroupService runtimeGroups;
+    private final JdbcTemplate jdbc;
 
     MigrationIntegrationTest(
         Flyway flyway,
@@ -77,7 +81,9 @@ class MigrationIntegrationTest {
         StatementService statements,
         AuthorizationProvisioningService authorizationProvisioning,
         IdentityProvisioningService identityProvisioning,
-        GroupService groups
+        GroupProvisioningService groups,
+        GroupService runtimeGroups,
+        JdbcTemplate jdbc
     ) {
         this.flyway = flyway;
         this.clients = clients;
@@ -90,6 +96,8 @@ class MigrationIntegrationTest {
         this.authorizationProvisioning = authorizationProvisioning;
         this.identityProvisioning = identityProvisioning;
         this.groups = groups;
+        this.runtimeGroups = runtimeGroups;
+        this.jdbc = jdbc;
     }
 
     /**
@@ -108,6 +116,9 @@ class MigrationIntegrationTest {
         assertThat(
             this.passwordEncoder.matches("integration-password", Objects.requireNonNull(system.passwordHash()))
         ).isTrue();
+        assertThat(this.runtimeGroups.effectiveRolesForUser(system.id()))
+            .extracting(RoleInfo::code)
+            .contains("basic-user");
 
         RegisteredClient browser = this.storedClient("browser");
         assertThat(InternalClientMetadata.isManaged(browser)).isTrue();
@@ -343,11 +354,42 @@ class MigrationIntegrationTest {
 
         // Assert
         assertThat(this.users.findForAuthentication(username)).isEmpty();
-        assertThat(this.groups.deleteByCode(groupCode)).isFalse();
+        assertThat(this.groups.deleteGroup(groupCode)).isFalse();
         assertThatThrownBy(() -> this.authorizationProvisioning.requireRole(roleCode)).hasMessageContaining(
             "Managed authorization Role does not exist"
         );
         assertThat(this.statements.list(1, 100).items()).extracting(StatementInfo::code).doesNotContain(statementCode);
+    }
+
+    /**
+     * Verifies that managed Group deletion rebuilds transitive closure rather than relying only on FK cascades.
+     *
+     * Given: a runtime hierarchy root -> middle -> leaf and managed deletion of the middle Group by stable code.
+     * Expect: root-to-leaf closure is removed while reflexive closure for the remaining Groups is preserved.
+     */
+    @Test
+    @DisplayName("rebuilds Group closure when managed deletion removes an intermediate Group")
+    void shouldRebuildGroupClosureWhenManagedDeletionRemovesIntermediateGroup() {
+        // Arrange
+        String suffix = UUID.randomUUID().toString().replace("-", "");
+        String rootCode = "root-" + suffix;
+        String middleCode = "middle-" + suffix;
+        String leafCode = "leaf-" + suffix;
+        UUID root = this.runtimeGroups.create(rootCode, "Root", null);
+        UUID middle = this.runtimeGroups.create(middleCode, "Middle", null);
+        UUID leaf = this.runtimeGroups.create(leafCode, "Leaf", null);
+        this.runtimeGroups.setChildGroups(root, Set.of(middle));
+        this.runtimeGroups.setChildGroups(middle, Set.of(leaf));
+        assertThat(this.closureCount(root, leaf)).isEqualTo(1);
+
+        // Act
+        boolean removed = this.groups.deleteGroup(middleCode);
+
+        // Assert
+        assertThat(removed).isTrue();
+        assertThat(this.closureCount(root, leaf)).isZero();
+        assertThat(this.closureCount(root, root)).isEqualTo(1);
+        assertThat(this.closureCount(leaf, leaf)).isEqualTo(1);
     }
 
     /**
@@ -501,6 +543,17 @@ class MigrationIntegrationTest {
         assertThatThrownBy(() ->
             this.migration.reconcile(resources(Map.of("unmanaged", client(clientId, "secret"))))
         ).hasMessageContaining("Refusing to adopt unmanaged OAuth client");
+    }
+
+    private int closureCount(UUID ancestorId, UUID descendantId) {
+        return Objects.requireNonNull(
+            this.jdbc.queryForObject(
+                "select count(*) from group_hierarchy_closure where ancestor_group_id = ? and descendant_group_id = ?",
+                Integer.class,
+                ancestorId,
+                descendantId
+            )
+        );
     }
 
     private static MigrationResourceLoader.MigrationResources resources(Map<String, Client> clients) {
