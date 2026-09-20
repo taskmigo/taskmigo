@@ -1,6 +1,8 @@
 package io.taskmigo.authorization.statement.infrastructure.persistence;
 
 import io.taskmigo.authorization.statement.ApiInfo;
+import io.taskmigo.authorization.statement.Effect;
+import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.TargetInfo;
 import io.taskmigo.authorization.statement.domain.Statement;
@@ -32,11 +34,11 @@ public class StatementEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
-    io.taskmigo.authorization.statement.Effect effect;
+    Effect effect;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 16)
-    io.taskmigo.authorization.statement.Scope scope;
+    Scope scope;
 
     @Column(nullable = false, length = 16)
     String method;
@@ -60,7 +62,12 @@ public class StatementEntity {
     private StatementEntity(Statement statement) {
         this.id = statement.id();
         this.code = statement.code().value();
-        this.update(statement);
+        this.description = statement.description();
+        this.effect = statement.effect();
+        this.scope = statement.scope();
+        this.method = statement.target().method();
+        this.path = statement.target().path();
+        this.policy = statement.policy().source();
     }
 
     static StatementEntity from(Statement statement) {

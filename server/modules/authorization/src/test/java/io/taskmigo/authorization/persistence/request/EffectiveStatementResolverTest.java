@@ -7,8 +7,6 @@ import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.persistence.role.RoleEntity;
 import io.taskmigo.authorization.persistence.role.RoleRepository;
-import io.taskmigo.authorization.statement.infrastructure.persistence.StatementEntity;
-import io.taskmigo.authorization.statement.infrastructure.persistence.StatementRepository;
 import io.taskmigo.authorization.spi.EffectiveStatement;
 import io.taskmigo.authorization.spi.EffectiveSubjectResolver;
 import io.taskmigo.authorization.statement.ApiInfo;
@@ -16,6 +14,8 @@ import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.TargetInfo;
+import io.taskmigo.authorization.statement.infrastructure.persistence.StatementEntity;
+import io.taskmigo.authorization.statement.infrastructure.persistence.StatementRepository;
 import io.taskmigo.authorization.subject.SubjectGrantService;
 import io.taskmigo.authorization.subject.SubjectRef;
 import java.time.Instant;

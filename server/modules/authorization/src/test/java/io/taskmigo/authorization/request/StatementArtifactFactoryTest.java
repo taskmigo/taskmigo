@@ -149,6 +149,41 @@ class StatementArtifactFactoryTest {
             .hasMessageContaining("Invalid Statement policy");
     }
 
+    /**
+     * Verifies target regex compilation is also deferred until the Statement method can match the operation.
+     *
+     * Given: a malformed target regex on a Statement for a different HTTP method.
+     * Expect: the unrelated operation skips regex compilation, while a method-matching operation fails closed.
+     */
+    @Test
+    @DisplayName("compiles target regex only after statement method matches")
+    void shouldDeferTargetRegexCompilationUntilStatementMethodMatches() {
+        // Arrange
+        StatementInfo invalid = new StatementInfo(
+            UUID.randomUUID(),
+            "invalid_target",
+            null,
+            Effect.ALLOW,
+            Scope.REQUEST,
+            new TargetInfo(new ApiInfo("POST", "[")),
+            "return true;"
+        );
+        EffectiveStatement effective = effective(invalid, Instant.EPOCH);
+
+        // Act
+        List<StatementExecutionArtifact> unrelated = this.factory.build(
+            List.of(effective),
+            "GET",
+            "/api/v0/users"
+        );
+
+        // Assert
+        assertThat(unrelated).isEmpty();
+        assertThatThrownBy(() -> this.factory.build(List.of(effective), "POST", "/api/v0/users"))
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("valid regular expression");
+    }
+
     private static EffectiveStatement effective(StatementInfo statement, Instant updatedAt) {
         return new EffectiveStatement(statement, updatedAt);
     }

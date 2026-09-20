@@ -2,11 +2,11 @@ package io.taskmigo.authorization.persistence.request;
 
 import io.taskmigo.authorization.persistence.role.RoleEntity;
 import io.taskmigo.authorization.persistence.role.RoleRepository;
-import io.taskmigo.authorization.statement.infrastructure.persistence.StatementEntity;
-import io.taskmigo.authorization.statement.infrastructure.persistence.StatementRepository;
 import io.taskmigo.authorization.spi.EffectiveStatement;
 import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.spi.EffectiveSubjectResolver;
+import io.taskmigo.authorization.statement.infrastructure.persistence.StatementEntity;
+import io.taskmigo.authorization.statement.infrastructure.persistence.StatementRepository;
 import io.taskmigo.authorization.subject.SubjectGrantService;
 import io.taskmigo.authorization.subject.SubjectRef;
 import java.util.HashSet;

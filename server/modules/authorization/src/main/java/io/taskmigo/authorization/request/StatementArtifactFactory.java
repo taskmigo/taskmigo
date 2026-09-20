@@ -55,8 +55,11 @@ final class StatementArtifactFactory {
         List<StatementExecutionArtifact> result = new ArrayList<>();
         for (EffectiveStatement effective : statements) {
             StatementInfo statement = effective.statement();
+            if (!methodMatches(statement, requestMethod)) {
+                continue;
+            }
             Pattern pathMatcher = this.compileTargetPath(statement);
-            if (!matches(statement, pathMatcher, requestMethod, requestPath)) {
+            if (!pathMatches(pathMatcher, requestPath)) {
                 continue;
             }
 
@@ -124,18 +127,13 @@ final class StatementArtifactFactory {
         }
     }
 
-    private static boolean matches(
-        StatementInfo statement,
-        Pattern pathMatcher,
-        String requestMethod,
-        String requestPath
-    ) {
+    private static boolean methodMatches(StatementInfo statement, String requestMethod) {
+        return statement.target().api().method().equals("*") || statement.target().api().method().equals(requestMethod);
+    }
+
+    private static boolean pathMatches(Pattern pathMatcher, String requestPath) {
         String pathWithoutQuery = requestPath.split("\\?", 2)[0];
-        return (
-            (statement.target().api().method().equals("*") ||
-                statement.target().api().method().equals(requestMethod)) &&
-            pathMatcher.matcher(pathWithoutQuery).matches()
-        );
+        return pathMatcher.matcher(pathWithoutQuery).matches();
     }
 
     private List<String> applicableSchemaIdentities(StatementInfo statement) {
