@@ -17,7 +17,7 @@ on:
       - e2e/**
       - "!e2e/**/*.md"
       - .github/docker-bake.integration.hcl
-      - .github/workflows/kubernetes-integration.yml
+      - .github/workflows/kubernetes-integration.yaml
   push:
     branches: [next]
     paths:
@@ -34,7 +34,7 @@ on:
       - e2e/**
       - "!e2e/**/*.md"
       - .github/docker-bake.integration.hcl
-      - .github/workflows/kubernetes-integration.yml
+      - .github/workflows/kubernetes-integration.yaml
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}

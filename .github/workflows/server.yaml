@@ -7,14 +7,14 @@ on:
       - server/**
       - "!server/**/*.md"
       - "!server/benchmarks/**"
-      - .github/workflows/server.yml
+      - .github/workflows/server.yaml
   push:
     branches: [next]
     paths:
       - server/**
       - "!server/**/*.md"
       - "!server/benchmarks/**"
-      - .github/workflows/server.yml
+      - .github/workflows/server.yaml
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}

@@ -5,12 +5,12 @@ on:
   pull_request:
     paths:
       - server/**
-      - .github/workflows/authorization-performance.yml
+      - .github/workflows/authorization-performance.yaml
   push:
     branches: [next]
     paths:
       - server/**
-      - .github/workflows/authorization-performance.yml
+      - .github/workflows/authorization-performance.yaml
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}

@@ -1,18 +1,20 @@
 ---
-name: Markdown
+name: YAML
 
 on:
   pull_request:
     paths:
-      - "**/*.md"
-      - .markdownlint-cli2.jsonc
-      - .github/workflows/markdown.yml
+      - "**/*.yaml"
+      - "**/*.yml"
+      - .yamllint
+      - .github/workflows/yaml.yaml
   push:
     branches: [next]
     paths:
-      - "**/*.md"
-      - .markdownlint-cli2.jsonc
-      - .github/workflows/markdown.yml
+      - "**/*.yaml"
+      - "**/*.yml"
+      - .yamllint
+      - .github/workflows/yaml.yaml
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -29,7 +31,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7.0.1
 
-      - name: Check Markdown
-        uses: DavidAnson/markdownlint-cli2-action@v24.2.0
-        with:
-          globs: "**/*.md"
+      - name: Install yamllint
+        run: pip install yamllint==1.38.0
+
+      - name: Check YAML
+        run: yamllint .
