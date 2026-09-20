@@ -1,8 +1,10 @@
 package io.taskmigo.authorization.request;
 
-import static org.assertj.core.api.Assertions.assertThat;\nimport static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.authorization.core.AuthorizationException;\nimport io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfile;
+import io.taskmigo.authorization.core.AuthorizationException;
+import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfile;
 import io.taskmigo.authorization.spi.EffectiveStatement;
 import io.taskmigo.authorization.spi.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.ApiInfo;

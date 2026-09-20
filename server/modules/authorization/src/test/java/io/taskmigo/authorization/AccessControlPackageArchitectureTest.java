@@ -53,7 +53,9 @@ class AccessControlPackageArchitectureTest {
                 "io.taskmigo.authorization.request..",
                 "io.taskmigo.authorization.role..",
                 "io.taskmigo.authorization.spi..",
-                "io.taskmigo.authorization.statement",\n                "io.taskmigo.authorization.statement.application..",\n                "io.taskmigo.authorization.statement.domain..",
+                "io.taskmigo.authorization.statement",
+                "io.taskmigo.authorization.statement.application..",
+                "io.taskmigo.authorization.statement.domain..",
                 "io.taskmigo.authorization.subject.."
             )
             .should()
@@ -90,7 +92,9 @@ class AccessControlPackageArchitectureTest {
                 "io.taskmigo.authorization.request..",
                 "io.taskmigo.authorization.role..",
                 "io.taskmigo.authorization.spi..",
-                "io.taskmigo.authorization.statement",\n                "io.taskmigo.authorization.statement.application..",\n                "io.taskmigo.authorization.statement.domain..",
+                "io.taskmigo.authorization.statement",
+                "io.taskmigo.authorization.statement.application..",
+                "io.taskmigo.authorization.statement.domain..",
                 "io.taskmigo.authorization.subject.."
             )
             .should()
