@@ -160,7 +160,9 @@ class GroupHierarchyIntegrationTest {
             .isInstanceOf(RoleException.class)
             .hasMessage("One or more Roles do not exist");
 
-        assertThat(this.effectiveRoles.effectiveRoles(IdentitySubjects.group(root))).extracting(RoleInfo::id).containsExactly(role);
+        assertThat(this.effectiveRoles.effectiveRoles(IdentitySubjects.group(root)))
+            .extracting(RoleInfo::id)
+            .containsExactly(role);
     }
 
     private UUID group(String name) {
