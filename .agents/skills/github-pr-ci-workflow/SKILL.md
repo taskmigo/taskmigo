@@ -150,9 +150,49 @@ Fix the concrete compiler/static-analysis diagnostic first. Do not infer a broad
 
 #### Qodana
 
-- Read the Qodana PR summary/comment or SARIF summary before full job logs.
-- Address all reported new problems in the same batch.
-- Only inspect raw Qodana logs when the summary is insufficient or Qodana itself failed to execute.
+Treat the Qodana summary/SARIF output as the primary diagnostic channel. The workflow log is usually only useful for determining whether Qodana itself executed successfully.
+
+Use this evidence order:
+
+1. Re-anchor to the current PR head SHA and identify the failed Qodana run for that SHA.
+2. Read the PR conversation/check metadata before downloading the job log.
+   - Qodana Action commonly posts a bot summary on the PR with the inspection name, severity, and number of new problems.
+   - A repository workflow may also publish SARIF results into `$GITHUB_STEP_SUMMARY`. When the available GitHub tooling exposes that summary, read it before any raw log.
+   - If the user gives a specific Actions run URL, fetch that exact run first rather than searching for a different run.
+3. When detailed SARIF findings are available, extract only the actionable fields:
+   - inspection/rule id;
+   - message;
+   - source file;
+   - start/end line or region;
+   - severity;
+   - count of findings.
+   Group findings by inspection and file, then fix all findings supported by the same root cause in one batch.
+4. Fetch the failed job log only when:
+   - Qodana failed to initialize/import/analyze;
+   - the summary is missing;
+   - or execution/configuration diagnostics are required.
+   Do not expect the raw log to contain contents written to `$GITHUB_STEP_SUMMARY`; those are separate output channels.
+5. Treat GitHub Code Scanning as a secondary signal, not a substitute for the Qodana result.
+   - A successful Code Scanning upload/check or "no new alerts" message does **not** prove the Qodana Action had zero findings.
+   - PR mapping, fingerprints, upload behavior, and Qodana's own `failThreshold` can make those two signals differ.
+6. If only an aggregate inspection/count is accessible and exact file/line locations are not:
+   - do **not** invent locations;
+   - inspect only the current PR diff for patterns that match the named inspection;
+   - state internally which part is direct evidence versus correlation;
+   - apply a fix only when the inspection semantics and finding count strongly support it;
+   - otherwise report that detailed locations are unavailable rather than mutating CI to expose them.
+7. Never modify Qodana workflow/configuration merely to obtain diagnostics.
+   - Do not add artifact-upload steps, enable `upload-result`, connect Qodana Cloud, change `failThreshold`, alter the profile/excludes, or add suppressions just to make findings visible.
+   - Such workflow/config changes are allowed only when the user explicitly asks to improve the CI/Qodana workflow itself, and should normally be made in a separate focused PR.
+8. For `Nullability problems`, inspect nullness contracts before changing behavior:
+   - enclosing/package `@NullMarked` scope;
+   - `@Nullable` annotations;
+   - method overrides and generic return contracts;
+   - anonymous/test helper implementations;
+   - moved/renamed packages that may cause an existing smell to be reported as "new".
+   Prefer restoring the intended nullness contract over adding suppressions or defensive behavior changes unrelated to the finding.
+
+Address all supported new Qodana problems in the same batch. Do not weaken static-analysis policy to make the pipeline green.
 
 #### Kubernetes / E2E
 
@@ -256,6 +296,9 @@ Do **not**:
 - Re-run CI before determining whether the failure is deterministic code/configuration.
 - Re-run all jobs when only one flaky job needs a retry and a targeted retry is supported.
 - Fetch full logs before checking job/step summaries.
+- Modify a Qodana workflow, threshold, profile, suppressions, or artifact settings solely to extract diagnostics from a failing Qodana run.
+- Treat a successful GitHub Code Scanning upload/check as proof that the Qodana Action had no findings.
+- Claim exact Qodana file/line locations when only aggregate inspection/count evidence is available.
 - Retry a known-broken local Git/network operation several times.
 - Update the PR checklist to green before final-head verification.
 - Assume an API mutation option is valid for both same-repository and fork PRs.
