@@ -45,6 +45,30 @@ class ObjectAuthorizationServiceTest {
     );
 
     /**
+     * Verifies the default-deny Object Authorization contract.
+     *
+     * Given: an operation with no matching Object Authorization Statements.
+     * Expect: the resulting predicate is constant false.
+     */
+    @Test
+    @DisplayName("returns an always false predicate when no object allow exists")
+    void shouldReturnAlwaysFalseWhenNoObjectAllowExists() {
+        // Arrange
+        AuthorizationOperation operation = new AuthorizationOperation(
+            new AuthorizationSnapshot(UUID.randomUUID(), List.of(), Map.of()),
+            "GET",
+            "/api/v0/objects"
+        );
+
+        // Act
+        ObjectAuthorizationPredicate<TestObject> predicate = this.service.authorize(operation, this.schema);
+
+        // Assert
+        assertThat(predicate.isAlwaysFalse()).isTrue();
+        assertThat(predicate.isAlwaysTrue()).isFalse();
+    }
+
+    /**
      * Verifies that an unconditional allow policy becomes an opaque predicate granting every object.
      *
      * Given: one matching Object Authorization Statement with an unconditional allow policy.
