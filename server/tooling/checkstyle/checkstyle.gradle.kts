@@ -3,6 +3,8 @@ import org.gradle.api.plugins.quality.Checkstyle
 import org.gradle.api.plugins.quality.CheckstyleExtension
 
 val checkstyleToolingProjectPath = ":tooling:checkstyle"
+val checkstyleToolingProject = project(checkstyleToolingProjectPath)
+val checkstyleConfigDirectory = checkstyleToolingProject.layout.projectDirectory.dir("config")
 val checkstyleVersion = extensions
     .getByType<VersionCatalogsExtension>()
     .named("libs")
@@ -19,12 +21,13 @@ subprojects {
                 // Keep both the Checkstyle engine and Taskmigo rules on the verification-only
                 // Checkstyle classpath. Neither dependency participates in application runtime.
                 add("checkstyle", "com.puppycrawl.tools:checkstyle:$checkstyleVersion")
-                add("checkstyle", project(checkstyleToolingProjectPath))
+                add("checkstyle", checkstyleToolingProject)
             }
 
             extensions.configure<CheckstyleExtension> {
                 toolVersion = checkstyleVersion
-                configFile = project(checkstyleToolingProjectPath).file("config/checkstyle.xml")
+                configDirectory.set(checkstyleConfigDirectory)
+                configFile = checkstyleConfigDirectory.file("checkstyle.xml").asFile
             }
 
             tasks.withType<Checkstyle>().configureEach {

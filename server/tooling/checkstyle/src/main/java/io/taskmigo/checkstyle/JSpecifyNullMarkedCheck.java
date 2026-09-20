@@ -1,71 +1,81 @@
 package io.taskmigo.checkstyle;
 
+import com.puppycrawl.tools.checkstyle.StatelessCheck;
 import com.puppycrawl.tools.checkstyle.api.AbstractCheck;
 import com.puppycrawl.tools.checkstyle.api.DetailAST;
 import com.puppycrawl.tools.checkstyle.api.FullIdent;
 import com.puppycrawl.tools.checkstyle.api.TokenTypes;
 import com.puppycrawl.tools.checkstyle.utils.AnnotationUtil;
 import com.puppycrawl.tools.checkstyle.utils.CheckUtil;
-import java.util.Optional;
 
 /// Requires existing package-info.java files to opt into JSpecify null-marked semantics.
 ///
 /// Package presence is deliberately handled by Checkstyle's built-in JavadocPackage check.
+@StatelessCheck
 public final class JSpecifyNullMarkedCheck extends AbstractCheck {
 
     static final String MSG_MISSING_NULL_MARKED = "jspecify.nullMarked";
 
     private static final String NULL_MARKED = "NullMarked";
     private static final String JSPECIFY_NULL_MARKED = "org.jspecify.annotations.NullMarked";
-
-    private boolean hasJSpecifyNullMarkedImport;
-    private Optional<DetailAST> packageDefinition = Optional.empty();
+    private static final String JSPECIFY_ANNOTATIONS_WILDCARD = "org.jspecify.annotations.*";
 
     @Override
     public int[] getDefaultTokens() {
-        return getRequiredTokens();
+        return new int[] { TokenTypes.COMPILATION_UNIT };
     }
 
     @Override
     public int[] getRequiredTokens() {
-        return new int[] { TokenTypes.PACKAGE_DEF, TokenTypes.IMPORT };
+        return new int[] { TokenTypes.COMPILATION_UNIT };
     }
 
     @Override
     public int[] getAcceptableTokens() {
-        return getRequiredTokens();
+        return new int[] { TokenTypes.COMPILATION_UNIT };
     }
 
     @Override
-    public void beginTree(DetailAST rootAST) {
-        hasJSpecifyNullMarkedImport = false;
-        packageDefinition = Optional.empty();
-    }
-
-    @Override
-    public void visitToken(DetailAST ast) {
-        if (!CheckUtil.isPackageInfo(getFilePath())) {
+    public void visitToken(DetailAST compilationUnit) {
+        if (!CheckUtil.isPackageInfo(this.getFilePath())) {
             return;
         }
 
-        if (ast.getType() == TokenTypes.PACKAGE_DEF) {
-            packageDefinition = Optional.of(ast);
-        } else if (
-            ast.getType() == TokenTypes.IMPORT &&
-            JSPECIFY_NULL_MARKED.equals(FullIdent.createFullIdentBelow(ast).getText())
+        DetailAST packageDefinition = compilationUnit.findFirstToken(TokenTypes.PACKAGE_DEF);
+        if (
+            packageDefinition != null &&
+            !isJSpecifyNullMarked(compilationUnit, packageDefinition)
         ) {
-            hasJSpecifyNullMarkedImport = true;
+            this.log(packageDefinition, MSG_MISSING_NULL_MARKED);
         }
     }
 
-    @Override
-    public void finishTree(DetailAST rootAST) {
-        if (CheckUtil.isPackageInfo(getFilePath()) && packageDefinition.isPresent()) {
-            DetailAST packageDef = packageDefinition.orElseThrow();
-            boolean hasNullMarked = AnnotationUtil.containsAnnotation(packageDef, NULL_MARKED);
-            if (!hasNullMarked || !hasJSpecifyNullMarkedImport) {
-                log(packageDef, MSG_MISSING_NULL_MARKED);
+    private static boolean isJSpecifyNullMarked(
+        DetailAST compilationUnit,
+        DetailAST packageDefinition
+    ) {
+        if (AnnotationUtil.containsAnnotation(packageDefinition, JSPECIFY_NULL_MARKED)) {
+            return true;
+        }
+
+        return AnnotationUtil.containsAnnotation(packageDefinition, NULL_MARKED) &&
+            hasJSpecifyNullMarkedImport(compilationUnit);
+    }
+
+    private static boolean hasJSpecifyNullMarkedImport(DetailAST compilationUnit) {
+        boolean result = false;
+        for (
+            DetailAST child = compilationUnit.getFirstChild();
+            child != null && !result;
+            child = child.getNextSibling()
+        ) {
+            if (child.getType() == TokenTypes.IMPORT) {
+                String importedType = FullIdent.createFullIdentBelow(child).getText();
+                result =
+                    JSPECIFY_NULL_MARKED.equals(importedType) ||
+                    JSPECIFY_ANNOTATIONS_WILDCARD.equals(importedType);
             }
         }
+        return result;
     }
 }

@@ -32,8 +32,8 @@ class JSpecifyNullMarkedCheckTest {
     }
 
     @Test
-    @DisplayName("Accepts package-info.java with JSpecify NullMarked")
-    void acceptsJSpecifyNullMarked(@TempDir Path tempDir) throws Exception {
+    @DisplayName("Accepts package-info.java with imported JSpecify NullMarked")
+    void acceptsImportedJSpecifyNullMarked(@TempDir Path tempDir) throws Exception {
         Path packageInfo = Files.writeString(
             tempDir.resolve("package-info.java"),
             """
@@ -41,6 +41,38 @@ class JSpecifyNullMarkedCheckTest {
             package io.taskmigo.example;
 
             import org.jspecify.annotations.NullMarked;
+            """,
+            UTF_8
+        );
+
+        assertThat(violations(packageInfo)).isZero();
+    }
+
+    @Test
+    @DisplayName("Accepts package-info.java with fully qualified JSpecify NullMarked")
+    void acceptsFullyQualifiedJSpecifyNullMarked(@TempDir Path tempDir) throws Exception {
+        Path packageInfo = Files.writeString(
+            tempDir.resolve("package-info.java"),
+            """
+            @org.jspecify.annotations.NullMarked
+            package io.taskmigo.example;
+            """,
+            UTF_8
+        );
+
+        assertThat(violations(packageInfo)).isZero();
+    }
+
+    @Test
+    @DisplayName("Accepts package-info.java with a JSpecify annotation wildcard import")
+    void acceptsJSpecifyWildcardImport(@TempDir Path tempDir) throws Exception {
+        Path packageInfo = Files.writeString(
+            tempDir.resolve("package-info.java"),
+            """
+            @NullMarked
+            package io.taskmigo.example;
+
+            import org.jspecify.annotations.*;
             """,
             UTF_8
         );
