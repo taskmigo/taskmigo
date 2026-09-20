@@ -7,8 +7,8 @@ import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.persistence.role.RoleEntity;
 import io.taskmigo.authorization.persistence.role.RoleRepository;
-import io.taskmigo.authorization.persistence.statement.StatementEntity;
-import io.taskmigo.authorization.persistence.statement.StatementRepository;
+import io.taskmigo.authorization.statement.infrastructure.persistence.StatementEntity;
+import io.taskmigo.authorization.statement.infrastructure.persistence.StatementRepository;
 import io.taskmigo.authorization.spi.EffectiveStatement;
 import io.taskmigo.authorization.spi.EffectiveSubjectResolver;
 import io.taskmigo.authorization.statement.ApiInfo;

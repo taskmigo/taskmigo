@@ -36,7 +36,7 @@ final class RequestAuthorizationService implements RequestAuthorization {
             Map.of("method", request.method(), "path", request.path(), "pathVariables", request.pathVariables())
         );
         try {
-            AuthorizationSnapshot snapshot = this.snapshot(principal.id(), roots);
+            AuthorizationSnapshot snapshot = this.snapshot(principal.id(), request.method(), request.path(), roots);
             AuthorizationOperation operation = new AuthorizationOperation(snapshot, request.method(), request.path());
             boolean granted = this.authorize(operation.snapshot(), operation.method(), operation.path()).allowed();
             return new RequestAuthorizationResult(granted, operation);
@@ -57,7 +57,7 @@ final class RequestAuthorizationService implements RequestAuthorization {
     /// @return the transport-neutral authorization decision
     RequestAuthorizationDecision authorize(UUID userId, String method, String path, Map<String, ?> roots) {
         try {
-            return this.authorize(this.snapshot(userId, roots), method, path);
+            return this.authorize(this.snapshot(userId, method, path, roots), method, path);
         } catch (AuthorizationException exception) {
             return new RequestAuthorizationDecision(false);
         }
@@ -106,11 +106,13 @@ final class RequestAuthorizationService implements RequestAuthorization {
     /// Creates the one authorization snapshot used by a request operation.
     ///
     /// @param userId the user whose effective authorization state is captured
+    /// @param method the current request method used to select target-matching Statements
+    /// @param path the current request path used to select target-matching Statements
     /// @param roots the approved principal and request values for the operation
     /// @return an immutable authorization snapshot
-    AuthorizationSnapshot snapshot(UUID userId, Map<String, ?> roots) {
+    AuthorizationSnapshot snapshot(UUID userId, String method, String path, Map<String, ?> roots) {
         List<EffectiveStatement> effectiveStatements = this.statements.resolve(userId);
-        return new AuthorizationSnapshot(userId, this.artifacts.build(effectiveStatements), roots);
+        return new AuthorizationSnapshot(userId, this.artifacts.build(effectiveStatements, method, path), roots);
     }
 
     private static boolean constantTrue(CompiledSource policy) {

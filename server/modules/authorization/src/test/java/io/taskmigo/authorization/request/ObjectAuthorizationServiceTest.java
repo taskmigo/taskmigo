@@ -275,7 +275,7 @@ class ObjectAuthorizationServiceTest {
     }
 
     private AuthorizationOperation operation(StatementInfo statement) {
-        List<StatementExecutionArtifact> executable = this.artifacts.build(List.of(effective(statement)));
+        List<StatementExecutionArtifact> executable = this.artifacts.build(List.of(effective(statement)), "GET", "/api/v0/objects");
         return new AuthorizationOperation(
             new AuthorizationSnapshot(UUID.randomUUID(), executable, Map.of()),
             "GET",
