@@ -4,7 +4,6 @@ import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import org.springframework.data.jpa.domain.Specification;
 
 /// Binds one Access Control-owned Object Authorization predicate to its persistence model.
-@SuppressWarnings("NullableProblems")
 public interface ObjectAuthorizationPredicateBinder<Q, E> {
     /// Returns the logical object contract accepted by this binder.
     Class<Q> objectType();
