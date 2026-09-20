@@ -11,6 +11,37 @@
     <!-- Reject tab characters in source files. -->
     <module name="FileTabCharacter"/>
 
+    <!-- Require every Java package to provide package-level metadata. -->
+    <module name="JavadocPackage"/>
+
+    <!-- package-info.java must use JSpecify's package-level nullness contract. -->
+    <module name="RegexpSingleline">
+        <property name="id" value="PackageNullMarkedImport"/>
+        <property
+            name="format"
+            value="^import org\.jspecify\.annotations\.NullMarked;$"
+        />
+        <property name="minimum" value="1"/>
+        <property name="maximum" value="1"/>
+        <property name="fileExtensions" value="java"/>
+        <property
+            name="message"
+            value="package-info.java must import org.jspecify.annotations.NullMarked exactly once."
+        />
+    </module>
+
+    <!-- Apply the required package-info.java import check only to package-info.java files. -->
+    <module name="SuppressionSingleFilter">
+        <property name="files" value="^(?!.*package-info\.java$).*$"/>
+        <property name="id" value="PackageNullMarkedImport"/>
+    </module>
+
+    <!-- Apply the required package annotation check only to package-info.java files. -->
+    <module name="SuppressionSingleFilter">
+        <property name="files" value="^(?!.*package-info\.java$).*$"/>
+        <property name="id" value="PackageNullMarked"/>
+    </module>
+
     <module name="TreeWalker">
         <module name="SuppressWarningsHolder"/>
 
@@ -27,6 +58,19 @@
 
         <!-- Require every Java source file to declare its package explicitly. -->
         <module name="PackageDeclaration"/>
+
+        <!-- Require every package-info.java declaration to opt into JSpecify null-marked semantics. -->
+        <module name="MatchXpath">
+            <property name="id" value="PackageNullMarked"/>
+            <property
+                name="query"
+                value="//PACKAGE_DEF[not(ANNOTATIONS/ANNOTATION[IDENT[@text='NullMarked']])]"
+            />
+            <message
+                key="matchxpath.match"
+                value="package-info.java must annotate its package with @NullMarked."
+            />
+        </module>
 
         <!-- Require braces around every control-flow statement. -->
         <module name="NeedBraces"/>
