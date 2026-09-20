@@ -1,4 +1,4 @@
-package io.taskmigo.identity.user.application;
+package io.taskmigo.identity.user.application.port.out;
 
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.Username;

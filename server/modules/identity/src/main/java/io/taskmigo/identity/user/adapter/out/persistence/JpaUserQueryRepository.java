@@ -1,4 +1,4 @@
-package io.taskmigo.identity.user.infrastructure.persistence;
+package io.taskmigo.identity.user.adapter.out.persistence;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
@@ -6,7 +6,7 @@ import io.taskmigo.identity.persistence.query.ObjectAuthorizationPredicateBinder
 import io.taskmigo.identity.persistence.query.QueryPredicateBinder;
 import io.taskmigo.identity.user.AuthenticationInfo;
 import io.taskmigo.identity.user.UserInfo;
-import io.taskmigo.identity.user.application.UserQueryRepository;
+import io.taskmigo.identity.user.application.port.out.UserQueryRepository;
 import io.taskmigo.identity.user.domain.UserProfile;
 import io.taskmigo.identity.user.domain.UserStatus;
 import io.taskmigo.query.QueryPredicate;

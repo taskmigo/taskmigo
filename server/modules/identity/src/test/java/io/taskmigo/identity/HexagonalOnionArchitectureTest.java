@@ -16,6 +16,7 @@ class HexagonalOnionArchitectureTest {
         List.of("io.taskmigo.identity..infrastructure.persistence..", "io.taskmigo.identity.persistence.."),
         List.of(
             "io.taskmigo.identity.user",
+            "io.taskmigo.identity.user.application.port.in.api",
             "io.taskmigo.identity.group",
             "io.taskmigo.identity.membership",
             "io.taskmigo.identity.provisioning",

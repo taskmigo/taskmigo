@@ -1,4 +1,4 @@
-package io.taskmigo.identity.user.application;
+package io.taskmigo.identity.user.application.port.in.internal;
 
 import java.util.UUID;
 

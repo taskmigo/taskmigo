@@ -8,7 +8,7 @@ import io.taskmigo.identity.group.application.GroupHierarchyRepository;
 import io.taskmigo.identity.group.application.GroupQueryRepository;
 import io.taskmigo.identity.membership.application.MembershipRepository;
 import io.taskmigo.identity.user.UserException;
-import io.taskmigo.identity.user.application.UserQueryRepository;
+import io.taskmigo.identity.user.application.port.out.UserQueryRepository;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;

@@ -9,7 +9,7 @@ import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementService;
-import io.taskmigo.identity.user.UserRegistrationService;
+import io.taskmigo.identity.user.application.port.in.api.UserRegistrationService;
 import io.taskmigo.rest.api.v0.testing.ApiIntegrationTestSupport;
 import jakarta.persistence.EntityManagerFactory;
 import java.util.List;

@@ -1,82 +1,86 @@
-package io.taskmigo.identity.user.application;
+package io.taskmigo.identity.user.application.service;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.SubjectGrantQueryService;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.identity.application.port.out.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.user.AuthenticationInfo;
 import io.taskmigo.identity.user.UserException;
 import io.taskmigo.identity.user.UserInfo;
-import io.taskmigo.identity.user.UserService;
+import io.taskmigo.identity.user.application.port.in.api.UserService;
+import io.taskmigo.identity.user.application.port.out.UserQueryRepository;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-/// Implements published User query use cases without coupling reads to aggregate persistence.
-@Service
-public class DefaultUserService implements UserService {
+/// Implements the User inbound port while keeping persistence and transaction mechanics behind outbound ports.
+public final class DefaultUserService implements UserService {
 
     private final UserQueryRepository users;
     private final SubjectGrantQueryService grantQueries;
     private final SubjectGrantAssignmentService grantAssignments;
+    private final TransactionRunner transactions;
 
     public DefaultUserService(
         UserQueryRepository users,
         SubjectGrantQueryService grantQueries,
-        SubjectGrantAssignmentService grantAssignments
+        SubjectGrantAssignmentService grantAssignments,
+        TransactionRunner transactions
     ) {
         this.users = users;
         this.grantQueries = grantQueries;
         this.grantAssignments = grantAssignments;
+        this.transactions = transactions;
     }
 
     @Override
-    @Transactional(readOnly = true)
     public UserInfo require(UUID id) {
-        return this.users.find(id).orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"));
+        return this.transactions.read(() ->
+            this.users.find(id).orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"))
+        );
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Optional<AuthenticationInfo> findForAuthentication(String username) {
-        return this.users.findForAuthentication(username);
+        return this.transactions.read(() -> this.users.findForAuthentication(username));
     }
 
     @Override
-    @Transactional(readOnly = true)
     public OffsetPage<UserInfo> list(
         int page,
         int perPage,
         QueryPredicate<UserInfo> filter,
         ObjectAuthorizationPredicate<UserInfo> authorization
     ) {
-        return this.users.list(page, perPage, filter, authorization);
+        return this.transactions.read(() -> this.users.list(page, perPage, filter, authorization));
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Set<UUID> roleIds(UUID userId) {
-        this.requireExisting(userId);
-        return this.grantQueries.roleIds(IdentitySubjects.user(userId));
+        return this.transactions.read(() -> {
+            this.requireExisting(userId);
+            return this.grantQueries.roleIds(IdentitySubjects.user(userId));
+        });
     }
 
     @Override
-    @Transactional
     public void setStatements(UUID userId, Collection<UUID> statementIds) {
-        this.requireExisting(userId);
-        this.grantAssignments.setStatements(IdentitySubjects.user(userId), statementIds);
+        this.transactions.write(() -> {
+            this.requireExisting(userId);
+            this.grantAssignments.setStatements(IdentitySubjects.user(userId), statementIds);
+        });
     }
 
     @Override
-    @Transactional
     public void setRoles(UUID userId, Collection<UUID> roleIds) {
-        this.requireExisting(userId);
-        this.grantAssignments.setRoles(IdentitySubjects.user(userId), roleIds);
+        this.transactions.write(() -> {
+            this.requireExisting(userId);
+            this.grantAssignments.setRoles(IdentitySubjects.user(userId), roleIds);
+        });
     }
 
     private void requireExisting(UUID userId) {

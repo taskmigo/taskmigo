@@ -16,7 +16,7 @@ import io.taskmigo.identity.provisioning.GroupProvisioningService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserInfo;
-import io.taskmigo.identity.user.UserService;
+import io.taskmigo.identity.user.application.port.in.api.UserService;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;

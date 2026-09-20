@@ -6,7 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.identity.group.application.GroupQueryRepository;
-import io.taskmigo.identity.user.UserService;
+import io.taskmigo.identity.user.application.port.in.api.UserService;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;

@@ -1,7 +1,7 @@
-/// Publishes User-facing application contracts.
+/// Publishes User data/error contracts shared with driving adapters.
 ///
-/// Domain behavior, application implementation, and persistence adapters live in inward-facing subpackages and are not
-/// part of the named interface.
+/// User use cases are exposed separately through the `user-input` named interface; domain, application implementation,
+/// outbound ports, and driven adapters remain internal to Identity.
 @NamedInterface("user")
 @NullMarked
 package io.taskmigo.identity.user;

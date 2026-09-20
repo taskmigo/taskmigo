@@ -1,4 +1,4 @@
-package io.taskmigo.identity.user;
+package io.taskmigo.identity.user.application.port.in.api;
 
 import java.util.Collection;
 import java.util.Set;

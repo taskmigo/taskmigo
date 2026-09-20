@@ -3,7 +3,7 @@ package io.taskmigo.identity.membership.application;
 import io.taskmigo.identity.group.GroupException;
 import io.taskmigo.identity.group.application.GroupQueryRepository;
 import io.taskmigo.identity.membership.MembershipService;
-import io.taskmigo.identity.user.UserService;
+import io.taskmigo.identity.user.application.port.in.api.UserService;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;

@@ -1,4 +1,4 @@
-package io.taskmigo.identity.user.infrastructure.persistence;
+package io.taskmigo.identity.user.adapter.out.persistence;
 
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.UserStatus;

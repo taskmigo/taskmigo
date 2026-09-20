@@ -86,7 +86,7 @@ class IdentityPackageArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 "io.taskmigo.identity.persistence..",
-                "io.taskmigo.identity.user.infrastructure..",
+                "io.taskmigo.identity.user.adapter..",
                 "io.taskmigo.identity.group.infrastructure..",
                 "io.taskmigo.identity.membership.infrastructure..",
                 "org.springframework.data..",
@@ -150,10 +150,7 @@ class IdentityPackageArchitectureTest {
             .resideInAnyPackage("io.taskmigo.identity.user")
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage(
-                "io.taskmigo.identity.user.application..",
-                "io.taskmigo.identity.user.infrastructure.."
-            );
+            .resideInAnyPackage("io.taskmigo.identity.user.application..", "io.taskmigo.identity.user.adapter..");
 
         // Act + Assert
         userApiDoesNotDependOnImplementation.check(classes);
@@ -177,7 +174,7 @@ class IdentityPackageArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 "io.taskmigo.identity.user.application..",
-                "io.taskmigo.identity.user.infrastructure..",
+                "io.taskmigo.identity.user.adapter..",
                 "org.springframework..",
                 "org.springframework.data..",
                 "jakarta.persistence.."
@@ -204,7 +201,7 @@ class IdentityPackageArchitectureTest {
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
-                "io.taskmigo.identity.user.infrastructure..",
+                "io.taskmigo.identity.user.adapter..",
                 "org.springframework.data..",
                 "jakarta.persistence.."
             );

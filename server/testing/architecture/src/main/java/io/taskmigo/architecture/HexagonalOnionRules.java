@@ -197,6 +197,8 @@ public final class HexagonalOnionRules {
         return noClasses()
             .that()
             .resideInAnyPackage(context.rootPackage() + "..application.port.in..")
+            .and()
+            .doNotHaveSimpleName("package-info")
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
