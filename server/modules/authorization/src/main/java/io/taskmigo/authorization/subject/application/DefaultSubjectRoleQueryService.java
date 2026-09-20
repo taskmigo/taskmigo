@@ -37,17 +37,17 @@ class DefaultSubjectRoleQueryService implements SubjectRoleQueryService {
         return this.effectiveRoles(this.subjects.expand(subject));
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<RoleInfo> effectiveRolesForPrincipal(UUID principalId) {
-        return this.effectiveRoles(this.subjects.resolve(principalId));
-    }
-
     private List<RoleInfo> effectiveRoles(Collection<SubjectRef> subjects) {
         Set<UUID> roleIds = new LinkedHashSet<>();
         for (SubjectRef subject : subjects) {
             roleIds.addAll(this.grants.load(subject).roleIds());
         }
         return this.roles.effectiveRoles(roleIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<RoleInfo> effectiveRolesForPrincipal(UUID principalId) {
+        return this.effectiveRoles(this.subjects.resolve(principalId));
     }
 }

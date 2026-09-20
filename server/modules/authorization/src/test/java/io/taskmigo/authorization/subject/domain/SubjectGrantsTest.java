@@ -3,6 +3,7 @@ package io.taskmigo.authorization.subject.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.taskmigo.authorization.subject.SubjectRef;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -26,7 +27,7 @@ class SubjectGrantsTest {
         SubjectGrants grants = new SubjectGrants(subject, Set.of(), Set.of(statementId));
 
         // Act
-        SubjectGrants replaced = grants.replacingRoles(java.util.List.of(roleId, roleId));
+        SubjectGrants replaced = grants.replacingRoles(List.of(roleId, roleId));
 
         // Assert
         assertThat(replaced.roleIds()).containsExactly(roleId);
@@ -49,7 +50,7 @@ class SubjectGrantsTest {
         SubjectGrants grants = new SubjectGrants(subject, Set.of(roleId), Set.of());
 
         // Act
-        SubjectGrants replaced = grants.replacingStatements(java.util.List.of(statementId, statementId));
+        SubjectGrants replaced = grants.replacingStatements(List.of(statementId, statementId));
 
         // Assert
         assertThat(replaced.roleIds()).containsExactly(roleId);
