@@ -43,7 +43,7 @@ class IdentityPackageArchitectureTest {
         JavaClasses classes = productionClasses();
         ArchRule persistenceDoesNotDependOnApplications = noClasses()
             .that()
-            .resideInAnyPackage("io.taskmigo.identity.persistence..")
+            .resideInAnyPackage("io.taskmigo.identity..adapter.out.persistence..")
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
@@ -104,10 +104,7 @@ class IdentityPackageArchitectureTest {
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
-                "io.taskmigo.identity.persistence..",
-                "io.taskmigo.identity.user.adapter..",
-                "io.taskmigo.identity.group.adapter..",
-                "io.taskmigo.identity.membership.adapter..",
+                "io.taskmigo.identity..adapter..",
                 "org.springframework.data..",
                 "jakarta.persistence.."
             );
@@ -315,7 +312,7 @@ class IdentityPackageArchitectureTest {
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
-                "io.taskmigo.identity.persistence..",
+                "io.taskmigo.identity..adapter..",
                 "jakarta.persistence..",
                 "org.springframework.data.."
             );
