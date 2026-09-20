@@ -43,7 +43,13 @@ public class DefaultRoleCommandService implements RoleCommandService {
         RoleCode normalizedCode = RoleCode.of(code);
         Role existing = this.roles.findByCode(normalizedCode).orElse(null);
         if (existing == null) {
-            Role created = Role.create(UUID.randomUUID(), normalizedCode.value(), displayName, description, statementIds);
+            Role created = Role.create(
+                UUID.randomUUID(),
+                normalizedCode.value(),
+                displayName,
+                description,
+                statementIds
+            );
             this.roles.save(created);
             return new RoleMutationResult(created.id(), true, true);
         }

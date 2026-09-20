@@ -12,7 +12,6 @@ import org.springframework.data.jpa.repository.Lock;
 
 /// Owns database access to Role rows while keeping command, hierarchy, and optimized-read loading explicit.
 public interface RoleRepository extends JpaRepository<RoleEntity, UUID>, JpaSpecificationExecutor<RoleEntity> {
-
     @EntityGraph(attributePaths = "statementIds")
     Optional<RoleEntity> findByCode(String code);
 

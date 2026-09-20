@@ -40,9 +40,6 @@ public final class RoleRuleViolation extends RuntimeException {
     }
 
     static RoleRuleViolation tooLong(String field, int maxLength) {
-        return new RoleRuleViolation(
-            Reason.FIELD_TOO_LONG,
-            field + " must not exceed " + maxLength + " characters"
-        );
+        return new RoleRuleViolation(Reason.FIELD_TOO_LONG, field + " must not exceed " + maxLength + " characters");
     }
 }

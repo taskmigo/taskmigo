@@ -15,10 +15,7 @@ public class JpaRoleEffectiveStatementRepository implements RoleEffectiveStateme
     private final RoleRepository roles;
     private final RoleHierarchyClosureRepository closures;
 
-    public JpaRoleEffectiveStatementRepository(
-        RoleRepository roles,
-        RoleHierarchyClosureRepository closures
-    ) {
+    public JpaRoleEffectiveStatementRepository(RoleRepository roles, RoleHierarchyClosureRepository closures) {
         this.roles = roles;
         this.closures = closures;
     }

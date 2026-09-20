@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-interface RoleHierarchyClosureRepository
-    extends JpaRepository<RoleHierarchyClosureEntity, RoleHierarchyClosureId>
-{
+interface RoleHierarchyClosureRepository extends JpaRepository<RoleHierarchyClosureEntity, RoleHierarchyClosureId> {
     List<RoleHierarchyClosureEntity> findAllByIdAncestorRoleIdIn(Collection<UUID> ancestorRoleIds);
 }

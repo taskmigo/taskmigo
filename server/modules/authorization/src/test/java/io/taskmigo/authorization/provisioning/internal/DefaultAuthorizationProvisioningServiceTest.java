@@ -232,12 +232,7 @@ class DefaultAuthorizationProvisioningServiceTest {
         var service = service(roles, mock(StatementCommandService.class), statements);
 
         // Act
-        ReconciliationResult<UUID> result = service.reconcileRole(
-            "reader",
-            "Reader",
-            null,
-            Set.of(statementId)
-        );
+        ReconciliationResult<UUID> result = service.reconcileRole("reader", "Reader", null, Set.of(statementId));
 
         // Assert
         assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.ADDED));

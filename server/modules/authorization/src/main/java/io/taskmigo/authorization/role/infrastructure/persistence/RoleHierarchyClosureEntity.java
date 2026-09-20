@@ -59,8 +59,9 @@ public class RoleHierarchyClosureEntity {
             if (!(other instanceof RoleHierarchyClosureId value)) {
                 return false;
             }
-            return this.ancestorRoleId.equals(value.ancestorRoleId)
-                && this.descendantRoleId.equals(value.descendantRoleId);
+            return (
+                this.ancestorRoleId.equals(value.ancestorRoleId) && this.descendantRoleId.equals(value.descendantRoleId)
+            );
         }
 
         @Override
