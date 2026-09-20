@@ -62,7 +62,7 @@ subprojects {
             add("testRuntimeOnly", libs.junit.platform.launcher)
             add("errorprone", libs.errorprone.core)
             add("errorprone", libs.nullaway)
-            add("checkstyle", libs.checkstyle)
+            add("checkstyle", libs.checkstyle.engine)
             add("checkstyle", libs.taskmigo.checkstyle)
         }
 
