@@ -52,7 +52,13 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups, directTransactions());
+        var service = new DefaultIdentityProvisioningService(
+            users,
+            grantAssignments,
+            grantQueries,
+            groups,
+            directTransactions()
+        );
 
         // Act
         IdentityProvisioningResult<UUID> result = service.reconcileUser(
@@ -93,7 +99,13 @@ class DefaultIdentityProvisioningServiceTest {
         when(grantQueries.statementIds(IdentitySubjects.user(id))).thenReturn(Set.of());
         MembershipService groups = mock(MembershipService.class);
         when(groups.groupsForUser(id)).thenReturn(List.of());
-        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups, directTransactions());
+        var service = new DefaultIdentityProvisioningService(
+            users,
+            grantAssignments,
+            grantQueries,
+            groups,
+            directTransactions()
+        );
 
         // Act
         IdentityProvisioningResult<UUID> result = service.reconcileUser(
@@ -135,7 +147,13 @@ class DefaultIdentityProvisioningServiceTest {
         when(grantQueries.statementIds(IdentitySubjects.user(id))).thenReturn(Set.of());
         MembershipService groups = mock(MembershipService.class);
         when(groups.groupsForUser(id)).thenReturn(List.of());
-        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups, directTransactions());
+        var service = new DefaultIdentityProvisioningService(
+            users,
+            grantAssignments,
+            grantQueries,
+            groups,
+            directTransactions()
+        );
 
         // Act
         IdentityProvisioningResult<UUID> result = service.reconcileUser(
@@ -171,7 +189,13 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups, directTransactions());
+        var service = new DefaultIdentityProvisioningService(
+            users,
+            grantAssignments,
+            grantQueries,
+            groups,
+            directTransactions()
+        );
 
         // Act
         boolean removed = service.deleteUser("alice");
@@ -199,7 +223,13 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups, directTransactions());
+        var service = new DefaultIdentityProvisioningService(
+            users,
+            grantAssignments,
+            grantQueries,
+            groups,
+            directTransactions()
+        );
 
         // Act
         boolean removed = service.deleteUser("alice");
@@ -228,7 +258,13 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups, directTransactions());
+        var service = new DefaultIdentityProvisioningService(
+            users,
+            grantAssignments,
+            grantQueries,
+            groups,
+            directTransactions()
+        );
 
         // Act + Assert
         assertThatThrownBy(() -> service.deleteUser("system"))
@@ -286,6 +322,7 @@ class DefaultIdentityProvisioningServiceTest {
             username.equals("system") ? "{bcrypt}hash" : null
         );
     }
+
     private static TransactionRunner directTransactions() {
         return new TransactionRunner() {
             @Override

@@ -36,12 +36,6 @@ class ProvisioningApplicationConfiguration {
         MembershipService memberships,
         TransactionRunner transactions
     ) {
-        return new DefaultIdentityProvisioningService(
-            users,
-            grantAssignments,
-            grantQueries,
-            memberships,
-            transactions
-        );
+        return new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, memberships, transactions);
     }
 }

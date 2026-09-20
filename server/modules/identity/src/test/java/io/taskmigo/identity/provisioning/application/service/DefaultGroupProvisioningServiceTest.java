@@ -51,7 +51,13 @@ class DefaultGroupProvisioningServiceTest {
         when(hierarchies.loadForMutation()).thenReturn(hierarchy);
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
-        var service = new DefaultGroupProvisioningService(groups, hierarchies, grantAssignments, grantQueries, directTransactions());
+        var service = new DefaultGroupProvisioningService(
+            groups,
+            hierarchies,
+            grantAssignments,
+            grantQueries,
+            directTransactions()
+        );
 
         // Act
         IdentityProvisioningResult<UUID> result = service.reconcileGroup(
@@ -141,6 +147,7 @@ class DefaultGroupProvisioningServiceTest {
             )
         );
     }
+
     private static TransactionRunner directTransactions() {
         return new TransactionRunner() {
             @Override
