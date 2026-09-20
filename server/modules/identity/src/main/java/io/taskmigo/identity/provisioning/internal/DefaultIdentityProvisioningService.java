@@ -4,7 +4,7 @@ import io.taskmigo.authorization.subject.SubjectGrantService;
 import io.taskmigo.foundation.ReconciliationAction;
 import io.taskmigo.foundation.ReconciliationResult;
 import io.taskmigo.identity.authorization.IdentitySubjects;
-import io.taskmigo.identity.group.GroupService;
+import io.taskmigo.identity.membership.MembershipService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningException;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
 import io.taskmigo.identity.user.UserException;
@@ -25,12 +25,16 @@ class DefaultIdentityProvisioningService implements IdentityProvisioningService 
 
     private final UserCommandService users;
     private final SubjectGrantService grants;
-    private final GroupService groups;
+    private final MembershipService memberships;
 
-    DefaultIdentityProvisioningService(UserCommandService users, SubjectGrantService grants, GroupService groups) {
+    DefaultIdentityProvisioningService(
+        UserCommandService users,
+        SubjectGrantService grants,
+        MembershipService memberships
+    ) {
         this.users = users;
         this.grants = grants;
-        this.groups = groups;
+        this.memberships = memberships;
     }
 
     @Override
@@ -57,13 +61,13 @@ class DefaultIdentityProvisioningService implements IdentityProvisioningService 
         if (mutation.created()) {
             this.grants.setRoles(IdentitySubjects.user(id), requestedRoleIds);
             this.grants.setStatements(IdentitySubjects.user(id), Set.of());
-            this.groups.setGroupsForUser(id, requestedGroupIds);
+            this.memberships.setGroupsForUser(id, requestedGroupIds);
             return new ReconciliationResult<>(id, ReconciliationAction.ADDED);
         }
 
         boolean rolesChanged = !this.grants.roleIds(IdentitySubjects.user(id)).equals(requestedRoleIds);
         boolean statementsChanged = !this.grants.statementIds(IdentitySubjects.user(id)).isEmpty();
-        boolean groupsChanged = !Set.copyOf(this.groups.groupsForUser(id)).equals(requestedGroupIds);
+        boolean groupsChanged = !Set.copyOf(this.memberships.groupsForUser(id)).equals(requestedGroupIds);
         if (!mutation.changed() && !rolesChanged && !statementsChanged && !groupsChanged) {
             return new ReconciliationResult<>(id, ReconciliationAction.UNCHANGED);
         }
@@ -74,7 +78,7 @@ class DefaultIdentityProvisioningService implements IdentityProvisioningService 
             this.grants.setStatements(IdentitySubjects.user(id), Set.of());
         }
         if (groupsChanged) {
-            this.groups.setGroupsForUser(id, requestedGroupIds);
+            this.memberships.setGroupsForUser(id, requestedGroupIds);
         }
         return new ReconciliationResult<>(id, ReconciliationAction.UPDATED);
     }
@@ -99,7 +103,7 @@ class DefaultIdentityProvisioningService implements IdentityProvisioningService 
 
         this.grants.setRoles(IdentitySubjects.user(existing.id()), Set.of());
         this.grants.setStatements(IdentitySubjects.user(existing.id()), Set.of());
-        this.groups.setGroupsForUser(existing.id(), Set.of());
+        this.memberships.setGroupsForUser(existing.id(), Set.of());
         this.users.delete(existing);
         return true;
     }

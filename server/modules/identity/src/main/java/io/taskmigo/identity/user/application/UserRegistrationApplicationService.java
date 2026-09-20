@@ -4,6 +4,7 @@ import io.taskmigo.authorization.role.RoleService;
 import io.taskmigo.authorization.subject.SubjectGrantService;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.group.GroupService;
+import io.taskmigo.identity.membership.MembershipService;
 import io.taskmigo.identity.user.UserException;
 import io.taskmigo.identity.user.UserRegistrationService;
 import io.taskmigo.identity.user.domain.UserRuleViolation;
@@ -22,17 +23,20 @@ class UserRegistrationApplicationService implements UserRegistrationService {
     private final RoleService roles;
     private final SubjectGrantService grants;
     private final GroupService groups;
+    private final MembershipService memberships;
 
     UserRegistrationApplicationService(
         UserCommandService users,
         RoleService roles,
         SubjectGrantService grants,
-        GroupService groups
+        GroupService groups,
+        MembershipService memberships
     ) {
         this.users = users;
         this.roles = roles;
         this.grants = grants;
         this.groups = groups;
+        this.memberships = memberships;
     }
 
     @Override
@@ -58,7 +62,7 @@ class UserRegistrationApplicationService implements UserRegistrationService {
         }
 
         this.grants.setRoles(IdentitySubjects.user(userId), requestedRoleIds);
-        requestedGroupIds.forEach(groupId -> this.groups.addMember(groupId, userId));
+        this.memberships.setGroupsForUser(userId, requestedGroupIds);
         return userId;
     }
 }

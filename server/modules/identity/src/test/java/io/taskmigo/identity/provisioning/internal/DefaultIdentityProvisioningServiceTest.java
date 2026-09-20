@@ -12,7 +12,7 @@ import io.taskmigo.authorization.subject.SubjectGrantService;
 import io.taskmigo.foundation.ReconciliationAction;
 import io.taskmigo.foundation.ReconciliationResult;
 import io.taskmigo.identity.authorization.IdentitySubjects;
-import io.taskmigo.identity.group.GroupService;
+import io.taskmigo.identity.membership.MembershipService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningException;
 import io.taskmigo.identity.user.application.UserCommandService;
 import io.taskmigo.identity.user.application.UserMutationResult;
@@ -46,7 +46,7 @@ class DefaultIdentityProvisioningServiceTest {
             new UserMutationResult(id, true, true)
         );
         SubjectGrantService grants = mock(SubjectGrantService.class);
-        GroupService groups = mock(GroupService.class);
+        MembershipService groups = mock(MembershipService.class);
         var service = new DefaultIdentityProvisioningService(users, grants, groups);
 
         // Act
@@ -85,7 +85,7 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantService grants = mock(SubjectGrantService.class);
         when(grants.roleIds(IdentitySubjects.user(id))).thenReturn(Set.of());
         when(grants.statementIds(IdentitySubjects.user(id))).thenReturn(Set.of());
-        GroupService groups = mock(GroupService.class);
+        MembershipService groups = mock(MembershipService.class);
         when(groups.groupsForUser(id)).thenReturn(List.of());
         var service = new DefaultIdentityProvisioningService(users, grants, groups);
 
@@ -126,7 +126,7 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantService grants = mock(SubjectGrantService.class);
         when(grants.roleIds(IdentitySubjects.user(id))).thenReturn(Set.of());
         when(grants.statementIds(IdentitySubjects.user(id))).thenReturn(Set.of());
-        GroupService groups = mock(GroupService.class);
+        MembershipService groups = mock(MembershipService.class);
         when(groups.groupsForUser(id)).thenReturn(List.of());
         var service = new DefaultIdentityProvisioningService(users, grants, groups);
 
@@ -162,7 +162,7 @@ class DefaultIdentityProvisioningServiceTest {
         User existing = user("alice");
         when(users.findByUsername("alice")).thenReturn(Optional.of(existing));
         SubjectGrantService grants = mock(SubjectGrantService.class);
-        GroupService groups = mock(GroupService.class);
+        MembershipService groups = mock(MembershipService.class);
         var service = new DefaultIdentityProvisioningService(users, grants, groups);
 
         // Act
@@ -189,7 +189,7 @@ class DefaultIdentityProvisioningServiceTest {
         UserCommandService users = mock(UserCommandService.class);
         when(users.findByUsername("alice")).thenReturn(Optional.empty());
         SubjectGrantService grants = mock(SubjectGrantService.class);
-        GroupService groups = mock(GroupService.class);
+        MembershipService groups = mock(MembershipService.class);
         var service = new DefaultIdentityProvisioningService(users, grants, groups);
 
         // Act
@@ -217,7 +217,7 @@ class DefaultIdentityProvisioningServiceTest {
         User system = user("system");
         when(users.findByUsername("system")).thenReturn(Optional.of(system));
         SubjectGrantService grants = mock(SubjectGrantService.class);
-        GroupService groups = mock(GroupService.class);
+        MembershipService groups = mock(MembershipService.class);
         var service = new DefaultIdentityProvisioningService(users, grants, groups);
 
         // Act + Assert
@@ -245,7 +245,7 @@ class DefaultIdentityProvisioningServiceTest {
         var service = new DefaultIdentityProvisioningService(
             users,
             mock(SubjectGrantService.class),
-            mock(GroupService.class)
+            mock(MembershipService.class)
         );
 
         // Act + Assert

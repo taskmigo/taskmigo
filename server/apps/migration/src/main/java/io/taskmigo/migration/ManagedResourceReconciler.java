@@ -6,7 +6,7 @@ import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.foundation.ReconciliationAction;
 import io.taskmigo.foundation.ReconciliationResult;
-import io.taskmigo.identity.group.GroupService;
+import io.taskmigo.identity.provisioning.GroupProvisioningService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,13 +25,13 @@ final class ManagedResourceReconciler {
 
     private final AuthorizationProvisioningService authorization;
     private final IdentityProvisioningService identity;
-    private final GroupService groups;
+    private final GroupProvisioningService groups;
     private final PasswordEncoder passwordEncoder;
 
     ManagedResourceReconciler(
         AuthorizationProvisioningService authorization,
         IdentityProvisioningService identity,
-        GroupService groups,
+        GroupProvisioningService groups,
         PasswordEncoder passwordEncoder
     ) {
         this.authorization = authorization;
@@ -106,7 +106,7 @@ final class ManagedResourceReconciler {
             .stream()
             .filter(MigrationResourceLoader.Group::absent)
             .forEach(group -> {
-                if (this.groups.deleteByCode(group.code())) {
+                if (this.groups.deleteGroup(group.code())) {
                     changes.add(change("group", group.code(), ReconciliationAction.REMOVED));
                 }
             });
@@ -186,7 +186,7 @@ final class ManagedResourceReconciler {
                 continue;
             }
             Set<UUID> ids = definition.roles().stream().map(roleIds::get).collect(Collectors.toSet());
-            ReconciliationResult<UUID> reconciliation = this.groups.reconcile(
+            ReconciliationResult<UUID> reconciliation = this.groups.reconcileGroup(
                 definition.code(),
                 definition.displayName(),
                 definition.description(),
