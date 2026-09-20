@@ -393,6 +393,37 @@ class MigrationIntegrationTest {
     }
 
     /**
+     * Verifies that managed Role deletion rebuilds transitive closure instead of relying only on FK cascades.
+     *
+     * Given: a runtime Role hierarchy root -> middle -> leaf.
+     * Expect: deleting the managed middle Role removes stale root-to-leaf closure while preserving reflexive closure.
+     */
+    @Test
+    @DisplayName("rebuilds Role closure when managed deletion removes an intermediate Role")
+    void shouldRebuildRoleClosureWhenManagedDeletionRemovesIntermediateRole() {
+        // Arrange
+        String suffix = UUID.randomUUID().toString().replace("-", "");
+        String rootCode = "role-root-" + suffix;
+        String middleCode = "role-middle-" + suffix;
+        String leafCode = "role-leaf-" + suffix;
+        UUID root = this.roles.createRole(rootCode, "Root", null, Set.of());
+        UUID middle = this.roles.createRole(middleCode, "Middle", null, Set.of());
+        UUID leaf = this.roles.createRole(leafCode, "Leaf", null, Set.of());
+        this.roles.setChildRoles(root, Set.of(middle));
+        this.roles.setChildRoles(middle, Set.of(leaf));
+        assertThat(this.roleClosureCount(root, leaf)).isEqualTo(1);
+
+        // Act
+        boolean removed = this.authorizationProvisioning.deleteRole(middleCode);
+
+        // Assert
+        assertThat(removed).isTrue();
+        assertThat(this.roleClosureCount(root, leaf)).isZero();
+        assertThat(this.roleClosureCount(root, root)).isEqualTo(1);
+        assertThat(this.roleClosureCount(leaf, leaf)).isEqualTo(1);
+    }
+
+    /**
      * Verifies that managed OAuth client credentials rotate when desired secret input changes.
      *
      * Given: an existing managed client reconciled first with one raw secret and then with a different raw secret.
@@ -549,6 +580,17 @@ class MigrationIntegrationTest {
         return Objects.requireNonNull(
             this.jdbc.queryForObject(
                 "select count(*) from group_hierarchy_closure where ancestor_group_id = ? and descendant_group_id = ?",
+                Integer.class,
+                ancestorId,
+                descendantId
+            )
+        );
+    }
+
+    private int roleClosureCount(UUID ancestorId, UUID descendantId) {
+        return Objects.requireNonNull(
+            this.jdbc.queryForObject(
+                "select count(*) from role_hierarchy_closure where ancestor_role_id = ? and descendant_role_id = ?",
                 Integer.class,
                 ancestorId,
                 descendantId

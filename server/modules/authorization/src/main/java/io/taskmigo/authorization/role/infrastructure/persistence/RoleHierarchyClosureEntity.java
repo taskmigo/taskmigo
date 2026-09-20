@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.persistence.role;
+package io.taskmigo.authorization.role.infrastructure.persistence;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;

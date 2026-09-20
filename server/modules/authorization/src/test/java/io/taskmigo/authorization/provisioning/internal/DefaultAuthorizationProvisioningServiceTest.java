@@ -8,8 +8,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
-import io.taskmigo.authorization.role.RoleService;
-import io.taskmigo.authorization.role.internal.RoleStore;
+import io.taskmigo.authorization.role.application.RoleCommandService;
+import io.taskmigo.authorization.role.application.RoleHierarchyRepository;
+import io.taskmigo.authorization.role.application.RoleMutationResult;
+import io.taskmigo.authorization.role.domain.Role;
+import io.taskmigo.authorization.role.domain.hierarchy.RoleHierarchy;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementService;
@@ -18,6 +21,7 @@ import io.taskmigo.authorization.statement.application.StatementMutationResult;
 import io.taskmigo.authorization.statement.domain.Statement;
 import io.taskmigo.foundation.ReconciliationAction;
 import io.taskmigo.foundation.ReconciliationResult;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -50,7 +54,7 @@ class DefaultAuthorizationProvisioningServiceTest {
                 "return true;"
             )
         ).thenReturn(new StatementMutationResult(id, true, true));
-        var service = service(mock(RoleStore.class), commands);
+        var service = service(mock(RoleCommandService.class), commands, mock(StatementService.class));
 
         // Act
         ReconciliationResult<UUID> result = service.reconcileStatement(
@@ -90,7 +94,7 @@ class DefaultAuthorizationProvisioningServiceTest {
                 "return false;"
             )
         ).thenReturn(new StatementMutationResult(id, false, true));
-        var service = service(mock(RoleStore.class), commands);
+        var service = service(mock(RoleCommandService.class), commands, mock(StatementService.class));
 
         // Act
         ReconciliationResult<UUID> result = service.reconcileStatement(
@@ -111,7 +115,7 @@ class DefaultAuthorizationProvisioningServiceTest {
      * Verifies managed Statement reconciliation remains idempotent when canonical state is unchanged.
      *
      * Given: command reconciliation reports an existing unchanged Statement.
-     * Expect: provisioning returns UNCHANGED without a persistence-shaped Statement store dependency.
+     * Expect: provisioning returns UNCHANGED.
      */
     @Test
     @DisplayName("reports unchanged when canonical statement command finds identical managed state")
@@ -130,7 +134,7 @@ class DefaultAuthorizationProvisioningServiceTest {
                 "return true;"
             )
         ).thenReturn(new StatementMutationResult(id, false, false));
-        var service = service(mock(RoleStore.class), commands);
+        var service = service(mock(RoleCommandService.class), commands, mock(StatementService.class));
 
         // Act
         ReconciliationResult<UUID> result = service.reconcileStatement(
@@ -160,7 +164,7 @@ class DefaultAuthorizationProvisioningServiceTest {
         StatementCommandService commands = mock(StatementCommandService.class);
         Statement statement = statement("projects_read");
         when(commands.findByCode("projects_read")).thenReturn(Optional.of(statement));
-        var service = service(mock(RoleStore.class), commands);
+        var service = service(mock(RoleCommandService.class), commands, mock(StatementService.class));
 
         // Act
         UUID id = service.requireStatement("projects_read");
@@ -181,7 +185,7 @@ class DefaultAuthorizationProvisioningServiceTest {
         // Arrange
         StatementCommandService commands = mock(StatementCommandService.class);
         when(commands.findByCode("projects_read")).thenReturn(Optional.empty());
-        var service = service(mock(RoleStore.class), commands);
+        var service = service(mock(RoleCommandService.class), commands, mock(StatementService.class));
 
         // Act + Assert
         assertThatThrownBy(() -> service.requireStatement("projects_read"))
@@ -202,7 +206,7 @@ class DefaultAuthorizationProvisioningServiceTest {
         StatementCommandService commands = mock(StatementCommandService.class);
         Statement statement = statement("projects_read");
         when(commands.findByCode("projects_read")).thenReturn(Optional.of(statement));
-        var service = service(mock(RoleStore.class), commands);
+        var service = service(mock(RoleCommandService.class), commands, mock(StatementService.class));
 
         // Act
         boolean removed = service.deleteStatement("projects_read");
@@ -213,80 +217,79 @@ class DefaultAuthorizationProvisioningServiceTest {
     }
 
     /**
-     * Verifies existing Role provisioning behavior remains unchanged while Statement persistence is refactored.
+     * Verifies managed Role creation delegates to the canonical Role command path.
      *
-     * Given: no persisted Role and a runtime Role service that creates one.
-     * Expect: managed reconciliation reports ADDED and retains Statement existence validation through StatementService.
+     * Given: valid direct Statement references and command reconciliation that creates a Role.
+     * Expect: provisioning validates Statements and maps the Role mutation to ADDED.
      */
     @Test
-    @DisplayName("creates missing managed role through existing role path")
+    @DisplayName("creates missing managed role through canonical role command")
     void shouldCreateRoleWhenManagedRoleIsMissing() {
         // Arrange
-        RoleStore roles = mock(RoleStore.class);
-        RoleService roleService = mock(RoleService.class);
-        StatementService statementService = mock(StatementService.class);
+        RoleCommandService roles = mock(RoleCommandService.class);
+        StatementService statements = mock(StatementService.class);
         UUID id = UUID.randomUUID();
-        when(roles.findByCode("reader")).thenReturn(Optional.empty());
-        when(roleService.createRole("reader", "Reader", null, Set.of())).thenReturn(id);
+        UUID statementId = UUID.randomUUID();
+        when(roles.reconcileManaged("reader", "Reader", null, Set.of(statementId))).thenReturn(
+            new RoleMutationResult(id, true, true)
+        );
+        RoleHierarchyRepository hierarchies = mock(RoleHierarchyRepository.class);
+        RoleHierarchy hierarchy = RoleHierarchy.from(Map.of(id, Set.of()));
+        when(hierarchies.loadForMutation()).thenReturn(hierarchy);
         var service = new DefaultAuthorizationProvisioningService(
-            roleService,
             roles,
-            statementService,
+            hierarchies,
+            statements,
             mock(StatementCommandService.class)
         );
 
         // Act
-        ReconciliationResult<UUID> result = service.reconcileRole("reader", "Reader", null, Set.of());
+        ReconciliationResult<UUID> result = service.reconcileRole("reader", "Reader", null, Set.of(statementId));
 
         // Assert
         assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.ADDED));
-        verify(statementService).requireStatements(Set.of());
-        verify(roleService).createRole("reader", "Reader", null, Set.of());
+        verify(statements).requireStatements(Set.of(statementId));
+        verify(hierarchies).synchronize(hierarchy);
     }
 
     /**
-     * Verifies unchanged Role reconciliation still avoids a Role persistence update.
+     * Verifies unchanged managed Role reconciliation avoids persistence-shaped provisioning behavior.
      *
-     * Given: a persisted Role whose display name, description, and Statement ids match managed state.
-     * Expect: provisioning reports UNCHANGED and skips Role update.
+     * Given: canonical Role reconciliation reports no state change.
+     * Expect: provisioning returns UNCHANGED without a second mutation.
      */
     @Test
     @DisplayName("keeps identical managed role unchanged")
     void shouldSkipRoleUpdateWhenManagedRoleStateIsIdentical() {
         // Arrange
-        RoleStore roles = mock(RoleStore.class);
+        RoleCommandService roles = mock(RoleCommandService.class);
         UUID id = UUID.randomUUID();
-        when(roles.findByCode("reader")).thenReturn(
-            Optional.of(new RoleStore.RoleState(id, "reader", "Reader", null, Set.of(), Set.of()))
+        when(roles.reconcileManaged("reader", "Reader", null, Set.of())).thenReturn(
+            new RoleMutationResult(id, false, false)
         );
-        var service = service(roles, mock(StatementCommandService.class));
+        var service = service(roles, mock(StatementCommandService.class), mock(StatementService.class));
 
         // Act
         ReconciliationResult<UUID> result = service.reconcileRole("reader", "Reader", null, Set.of());
 
         // Assert
         assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.UNCHANGED));
-        verify(roles, never()).updateDisplayNameDescriptionAndStatements(
-            ArgumentMatchers.any(),
-            ArgumentMatchers.any(),
-            ArgumentMatchers.any(),
-            ArgumentMatchers.any()
-        );
+        verify(roles, never()).delete(ArgumentMatchers.any());
     }
 
     /**
      * Verifies missing managed Role references remain typed provisioning failures.
      *
-     * Given: no Role exists for the requested code.
+     * Given: no Role aggregate exists for the requested code.
      * Expect: requireRole raises AuthorizationProvisioningException.
      */
     @Test
     @DisplayName("reports provisioning failure when managed role reference is missing")
     void shouldReportProvisioningFailureWhenManagedRoleIsMissing() {
         // Arrange
-        RoleStore roles = mock(RoleStore.class);
+        RoleCommandService roles = mock(RoleCommandService.class);
         when(roles.findByCode("missing-role")).thenReturn(Optional.empty());
-        var service = service(roles, mock(StatementCommandService.class));
+        var service = service(roles, mock(StatementCommandService.class), mock(StatementService.class));
 
         // Act + Assert
         assertThatThrownBy(() -> service.requireRole("missing-role"))
@@ -294,12 +297,39 @@ class DefaultAuthorizationProvisioningServiceTest {
             .hasMessageContaining("Managed authorization Role does not exist");
     }
 
-    private static DefaultAuthorizationProvisioningService service(RoleStore roles, StatementCommandService commands) {
+    /**
+     * Verifies managed Role deletion delegates to the canonical Role command path.
+     *
+     * Given: an existing managed Role resolved by stable code.
+     * Expect: provisioning deletes the aggregate through RoleCommandService and reports removal.
+     */
+    @Test
+    @DisplayName("deletes managed role through canonical command service")
+    void shouldDeleteRoleWhenManagedRoleExists() {
+        // Arrange
+        RoleCommandService roles = mock(RoleCommandService.class);
+        Role role = Role.restore(UUID.randomUUID(), "reader", "Reader", null, Set.of());
+        when(roles.findByCode("reader")).thenReturn(Optional.of(role));
+        var service = service(roles, mock(StatementCommandService.class), mock(StatementService.class));
+
+        // Act
+        boolean removed = service.deleteRole("reader");
+
+        // Assert
+        assertThat(removed).isTrue();
+        verify(roles).delete(role);
+    }
+
+    private static DefaultAuthorizationProvisioningService service(
+        RoleCommandService roles,
+        StatementCommandService statements,
+        StatementService statementService
+    ) {
         return new DefaultAuthorizationProvisioningService(
-            mock(RoleService.class),
             roles,
-            mock(StatementService.class),
-            commands
+            mock(RoleHierarchyRepository.class),
+            statementService,
+            statements
         );
     }
 
