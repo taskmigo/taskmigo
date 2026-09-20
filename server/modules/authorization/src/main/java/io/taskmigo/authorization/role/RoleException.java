@@ -4,14 +4,14 @@ import io.taskmigo.foundation.DomainException;
 import io.taskmigo.foundation.DomainFailureType;
 import java.io.Serial;
 
-/// Reports a Role-domain failure with a transport-neutral category.
+/// Reports a Role-domain failure with a semantic failure category.
 public final class RoleException extends DomainException {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
     public enum Type {
-        BAD_REQUEST,
+        INVALID_INPUT,
     }
 
     public RoleException(Type type, String message) {

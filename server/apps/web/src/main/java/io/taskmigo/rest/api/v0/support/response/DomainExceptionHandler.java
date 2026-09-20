@@ -1,6 +1,7 @@
 package io.taskmigo.rest.api.v0.support.response;
 
 import io.taskmigo.foundation.DomainException;
+import io.taskmigo.foundation.DomainFailureType;
 import org.jspecify.annotations.Nullable;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -22,25 +23,26 @@ final class DomainExceptionHandler {
 
     @ExceptionHandler(DomainException.class)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> domain(DomainException exception) {
-        return this.failure(exception.type().name(), exception.getMessage());
+        return this.failure(exception.type(), exception.getMessage());
     }
 
     private ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> failure(
-        String type,
+        DomainFailureType type,
         @Nullable String exceptionMessage
     ) {
-        HttpStatus status = switch (type) {
-            case "NOT_FOUND" -> HttpStatus.NOT_FOUND;
-            case "CONFLICT" -> HttpStatus.CONFLICT;
-            default -> HttpStatus.BAD_REQUEST;
+        TransportFailure mapping = switch (type) {
+            case INVALID_INPUT -> new TransportFailure(HttpStatus.BAD_REQUEST, "BAD_REQUEST");
+            case NOT_FOUND -> new TransportFailure(HttpStatus.NOT_FOUND, "NOT_FOUND");
+            case CONFLICT -> new TransportFailure(HttpStatus.CONFLICT, "CONFLICT");
         };
         String message = exceptionMessage == null ? "Operation failed" : exceptionMessage;
-        String code = "DOMAIN_" + type;
         return this.responses.failure(
-            status,
-            "domain." + type.toLowerCase(),
+            mapping.status(),
+            "domain." + mapping.legacyType().toLowerCase(),
             message,
-            new ApiResponse.Error(code, message, null)
+            new ApiResponse.Error("DOMAIN_" + mapping.legacyType(), message, null)
         );
     }
+
+    private record TransportFailure(HttpStatus status, String legacyType) {}
 }

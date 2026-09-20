@@ -10,10 +10,9 @@ import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.SubjectGrantQueryService;
-import io.taskmigo.foundation.ReconciliationAction;
-import io.taskmigo.foundation.ReconciliationResult;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.membership.MembershipService;
+import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
 import io.taskmigo.identity.provisioning.IdentityProvisioningException;
 import io.taskmigo.identity.user.application.UserCommandService;
 import io.taskmigo.identity.user.application.UserMutationResult;
@@ -52,7 +51,7 @@ class DefaultIdentityProvisioningServiceTest {
         var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups);
 
         // Act
-        ReconciliationResult<UUID> result = service.reconcileUser(
+        IdentityProvisioningResult<UUID> result = service.reconcileUser(
             "alice",
             "{bcrypt}hash",
             List.of("Alice@EXAMPLE.COM"),
@@ -63,7 +62,7 @@ class DefaultIdentityProvisioningServiceTest {
         );
 
         // Assert
-        assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.ADDED));
+        assertThat(result).isEqualTo(new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.CREATED));
         verify(grantAssignments).setRoles(IdentitySubjects.user(id), Set.of(roleId));
         verify(grantAssignments).setStatements(IdentitySubjects.user(id), Set.of());
         verify(groups).setGroupsForUser(id, Set.of(groupId));
@@ -93,7 +92,7 @@ class DefaultIdentityProvisioningServiceTest {
         var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups);
 
         // Act
-        ReconciliationResult<UUID> result = service.reconcileUser(
+        IdentityProvisioningResult<UUID> result = service.reconcileUser(
             " alice ",
             null,
             List.of("ALICE@example.com"),
@@ -104,7 +103,7 @@ class DefaultIdentityProvisioningServiceTest {
         );
 
         // Assert
-        assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.UPDATED));
+        assertThat(result).isEqualTo(new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.UPDATED));
         verify(users).reconcileManaged(" alice ", null, List.of("ALICE@example.com"), " Alice ", " User ");
         verify(grantAssignments, never()).setRoles(any(), any());
         verify(grantAssignments, never()).setStatements(any(), any());
@@ -135,7 +134,7 @@ class DefaultIdentityProvisioningServiceTest {
         var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups);
 
         // Act
-        ReconciliationResult<UUID> result = service.reconcileUser(
+        IdentityProvisioningResult<UUID> result = service.reconcileUser(
             "alice",
             "{bcrypt}different",
             List.of("alice@example.com"),
@@ -146,7 +145,7 @@ class DefaultIdentityProvisioningServiceTest {
         );
 
         // Assert
-        assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.UNCHANGED));
+        assertThat(result).isEqualTo(new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.UNCHANGED));
         verify(grantAssignments, never()).setRoles(any(), any());
         verify(grantAssignments, never()).setStatements(any(), any());
         verify(groups, never()).setGroupsForUser(any(), any());

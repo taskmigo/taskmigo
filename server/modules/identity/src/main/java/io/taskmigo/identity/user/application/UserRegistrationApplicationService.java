@@ -53,7 +53,7 @@ class UserRegistrationApplicationService implements UserRegistrationService {
         try {
             userId = this.users.createRuntime(username, emails, firstName, lastName);
         } catch (UserRuleViolation exception) {
-            throw new UserException(UserException.Type.BAD_REQUEST, exception.detail(), exception);
+            throw new UserException(UserException.Type.INVALID_INPUT, exception.detail(), exception);
         }
 
         this.grantAssignments.setRoles(IdentitySubjects.user(userId), requestedRoleIds);

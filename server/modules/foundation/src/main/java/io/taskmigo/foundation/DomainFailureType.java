@@ -1,8 +1,8 @@
 package io.taskmigo.foundation;
 
-/// Classifies transport-neutral domain failures shared across business capabilities.
+/// Classifies semantic domain failures shared across business capabilities.
 public enum DomainFailureType {
-    BAD_REQUEST,
+    INVALID_INPUT,
     NOT_FOUND,
     CONFLICT,
 }

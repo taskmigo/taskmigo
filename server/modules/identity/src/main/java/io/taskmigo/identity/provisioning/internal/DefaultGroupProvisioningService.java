@@ -2,8 +2,6 @@ package io.taskmigo.identity.provisioning.internal;
 
 import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.SubjectGrantQueryService;
-import io.taskmigo.foundation.ReconciliationAction;
-import io.taskmigo.foundation.ReconciliationResult;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.group.GroupException;
 import io.taskmigo.identity.group.application.GroupCommandService;
@@ -13,6 +11,7 @@ import io.taskmigo.identity.group.domain.Group;
 import io.taskmigo.identity.group.domain.GroupRuleViolation;
 import io.taskmigo.identity.group.domain.hierarchy.GroupHierarchy;
 import io.taskmigo.identity.provisioning.GroupProvisioningService;
+import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
@@ -43,7 +42,7 @@ class DefaultGroupProvisioningService implements GroupProvisioningService {
 
     @Override
     @Transactional
-    public ReconciliationResult<UUID> reconcileGroup(
+    public IdentityProvisioningResult<UUID> reconcileGroup(
         @Nullable String code,
         @Nullable String displayName,
         @Nullable String description,
@@ -54,7 +53,7 @@ class DefaultGroupProvisioningService implements GroupProvisioningService {
         try {
             mutation = this.groups.reconcileManaged(code, displayName, description);
         } catch (GroupRuleViolation exception) {
-            throw badRequest(exception);
+            throw invalidInput(exception);
         }
 
         UUID id = mutation.id();
@@ -62,17 +61,17 @@ class DefaultGroupProvisioningService implements GroupProvisioningService {
             GroupHierarchy hierarchy = this.hierarchies.loadForMutation();
             this.hierarchies.synchronize(hierarchy);
             this.grantAssignments.setRoles(IdentitySubjects.group(id), requestedRoleIds);
-            return new ReconciliationResult<>(id, ReconciliationAction.ADDED);
+            return new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.CREATED);
         }
 
         boolean rolesChanged = !this.grantQueries.roleIds(IdentitySubjects.group(id)).equals(requestedRoleIds);
         if (!mutation.changed() && !rolesChanged) {
-            return new ReconciliationResult<>(id, ReconciliationAction.UNCHANGED);
+            return new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.UNCHANGED);
         }
         if (rolesChanged) {
             this.grantAssignments.setRoles(IdentitySubjects.group(id), requestedRoleIds);
         }
-        return new ReconciliationResult<>(id, ReconciliationAction.UPDATED);
+        return new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.UPDATED);
     }
 
     @Override
@@ -82,7 +81,7 @@ class DefaultGroupProvisioningService implements GroupProvisioningService {
         try {
             existing = this.groups.findByCode(code).orElse(null);
         } catch (GroupRuleViolation exception) {
-            throw badRequest(exception);
+            throw invalidInput(exception);
         }
         if (existing == null) {
             return false;
@@ -96,7 +95,7 @@ class DefaultGroupProvisioningService implements GroupProvisioningService {
         return true;
     }
 
-    private static GroupException badRequest(GroupRuleViolation exception) {
-        return new GroupException(GroupException.Type.BAD_REQUEST, exception.detail());
+    private static GroupException invalidInput(GroupRuleViolation exception) {
+        return new GroupException(GroupException.Type.INVALID_INPUT, exception.detail());
     }
 }

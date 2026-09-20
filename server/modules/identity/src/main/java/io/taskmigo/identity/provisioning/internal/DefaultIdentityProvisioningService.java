@@ -2,11 +2,10 @@ package io.taskmigo.identity.provisioning.internal;
 
 import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.SubjectGrantQueryService;
-import io.taskmigo.foundation.ReconciliationAction;
-import io.taskmigo.foundation.ReconciliationResult;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.membership.MembershipService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningException;
+import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
 import io.taskmigo.identity.user.UserException;
 import io.taskmigo.identity.user.application.UserCommandService;
@@ -43,7 +42,7 @@ class DefaultIdentityProvisioningService implements IdentityProvisioningService 
 
     @Override
     @Transactional
-    public ReconciliationResult<UUID> reconcileUser(
+    public IdentityProvisioningResult<UUID> reconcileUser(
         @Nullable String username,
         @Nullable String initialPasswordHash,
         @Nullable Collection<String> emails,
@@ -66,14 +65,14 @@ class DefaultIdentityProvisioningService implements IdentityProvisioningService 
             this.grantAssignments.setRoles(IdentitySubjects.user(id), requestedRoleIds);
             this.grantAssignments.setStatements(IdentitySubjects.user(id), Set.of());
             this.memberships.setGroupsForUser(id, requestedGroupIds);
-            return new ReconciliationResult<>(id, ReconciliationAction.ADDED);
+            return new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.CREATED);
         }
 
         boolean rolesChanged = !this.grantQueries.roleIds(IdentitySubjects.user(id)).equals(requestedRoleIds);
         boolean statementsChanged = !this.grantQueries.statementIds(IdentitySubjects.user(id)).isEmpty();
         boolean groupsChanged = !Set.copyOf(this.memberships.groupsForUser(id)).equals(requestedGroupIds);
         if (!mutation.changed() && !rolesChanged && !statementsChanged && !groupsChanged) {
-            return new ReconciliationResult<>(id, ReconciliationAction.UNCHANGED);
+            return new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.UNCHANGED);
         }
         if (rolesChanged) {
             this.grantAssignments.setRoles(IdentitySubjects.user(id), requestedRoleIds);
@@ -84,7 +83,7 @@ class DefaultIdentityProvisioningService implements IdentityProvisioningService 
         if (groupsChanged) {
             this.memberships.setGroupsForUser(id, requestedGroupIds);
         }
-        return new ReconciliationResult<>(id, ReconciliationAction.UPDATED);
+        return new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.UPDATED);
     }
 
     @Override
@@ -119,6 +118,6 @@ class DefaultIdentityProvisioningService implements IdentityProvisioningService 
         ) {
             return new IdentityProvisioningException(exception.detail());
         }
-        return new UserException(UserException.Type.BAD_REQUEST, exception.detail(), exception);
+        return new UserException(UserException.Type.INVALID_INPUT, exception.detail(), exception);
     }
 }

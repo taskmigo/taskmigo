@@ -84,8 +84,8 @@ Classifications:
 | Pagination | User/Group/Role/Statement lists use deterministic ID ordering before offset pagination. | **CONFIRMED BUSINESS** | four JPA list adapters |
 | Pagination | Filtering/Object Authorization affects rows and totals before page slicing; hidden/unmatched rows must not inflate pagination metadata. | **CONFIRMED BUSINESS** | DB specifications; current Query/Authorization specs |
 | Pagination | JavaBean accessor shape on OffsetPageRequest is a transport implementation detail. | **IMPLEMENTATION DETAIL** | PR #96 |
-| Errors | Domain failures use transport-neutral BAD_REQUEST, NOT_FOUND, and CONFLICT categories. | **CONFIRMED BUSINESS** | DomainFailureType; bounded-context exceptions |
-| Errors | v0 maps those categories to HTTP 400/404/409 and stable DOMAIN_BAD_REQUEST, DOMAIN_NOT_FOUND, and DOMAIN_CONFLICT error codes. | **CONFIRMED BUSINESS** | DomainExceptionHandler |
+| Errors | Domain/application failures use semantic INVALID_INPUT, NOT_FOUND, and CONFLICT categories; HTTP vocabulary is adapter-owned. | **CONFIRMED BUSINESS** | DomainFailureType; bounded-context exceptions |
+| Errors | v0 maps INVALID_INPUT/NOT_FOUND/CONFLICT to HTTP 400/404/409 while preserving stable DOMAIN_BAD_REQUEST, DOMAIN_NOT_FOUND, and DOMAIN_CONFLICT error codes. | **CONFIRMED BUSINESS** | DomainExceptionHandler |
 | Errors | Bean validation maps to HTTP 422 VALIDATION_ERROR; malformed body maps to HTTP 400 MALFORMED_REQUEST. | **CONFIRMED BUSINESS** | ApiV0ExceptionHandler |
 | Errors | Invalid filterBy maps to HTTP 400 INVALID_FILTER; authenticated access denial maps to HTTP 403 FORBIDDEN. | **CONFIRMED BUSINESS** | ApiV0ExceptionHandler |
 | Errors | Unexpected exceptions are redacted behind HTTP 500 INTERNAL_ERROR; raw internal details are not public contract. | **CONFIRMED BUSINESS** | ApiV0ExceptionHandler.handleUnexpected |
