@@ -8,6 +8,7 @@
         "authorization :: spi",
         "authorization :: statement",
         "identity :: provisioning",
+        "identity :: provisioning-input",
         "identity :: user",
         "identity :: group",
     }

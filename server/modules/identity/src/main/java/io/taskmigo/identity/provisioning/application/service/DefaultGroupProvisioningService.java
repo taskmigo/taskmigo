@@ -1,7 +1,8 @@
-package io.taskmigo.identity.provisioning.application;
+package io.taskmigo.identity.provisioning.application.service;
 
 import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.SubjectGrantQueryService;
+import io.taskmigo.identity.application.port.out.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.group.GroupException;
 import io.taskmigo.identity.group.application.port.in.internal.GroupCommandService;
@@ -10,39 +11,52 @@ import io.taskmigo.identity.group.application.port.out.GroupHierarchyRepository;
 import io.taskmigo.identity.group.domain.Group;
 import io.taskmigo.identity.group.domain.GroupRuleViolation;
 import io.taskmigo.identity.group.domain.hierarchy.GroupHierarchy;
-import io.taskmigo.identity.provisioning.GroupProvisioningService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
+import io.taskmigo.identity.provisioning.application.port.in.api.GroupProvisioningService;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-/// Reconciles managed Group profile and grants through the canonical Group command path.
-@Service
-class DefaultGroupProvisioningService implements GroupProvisioningService {
+/// Reconciles managed Group profile and grants through canonical Identity and Access Control ports.
+public final class DefaultGroupProvisioningService implements GroupProvisioningService {
 
     private final GroupCommandService groups;
     private final GroupHierarchyRepository hierarchies;
     private final SubjectGrantAssignmentService grantAssignments;
     private final SubjectGrantQueryService grantQueries;
+    private final TransactionRunner transactions;
 
-    DefaultGroupProvisioningService(
+    public DefaultGroupProvisioningService(
         GroupCommandService groups,
         GroupHierarchyRepository hierarchies,
         SubjectGrantAssignmentService grantAssignments,
-        SubjectGrantQueryService grantQueries
+        SubjectGrantQueryService grantQueries,
+        TransactionRunner transactions
     ) {
         this.groups = groups;
         this.hierarchies = hierarchies;
         this.grantAssignments = grantAssignments;
         this.grantQueries = grantQueries;
+        this.transactions = transactions;
     }
 
     @Override
-    @Transactional
     public IdentityProvisioningResult<UUID> reconcileGroup(
+        @Nullable String code,
+        @Nullable String displayName,
+        @Nullable String description,
+        Collection<UUID> roleIds
+    ) {
+        return this.transactions.write(() -> this.reconcileGroupInTransaction(code, displayName, description, roleIds));
+    }
+
+    @Override
+    public boolean deleteGroup(String code) {
+        return this.transactions.write(() -> this.deleteGroupInTransaction(code));
+    }
+
+    private IdentityProvisioningResult<UUID> reconcileGroupInTransaction(
         @Nullable String code,
         @Nullable String displayName,
         @Nullable String description,
@@ -74,9 +88,7 @@ class DefaultGroupProvisioningService implements GroupProvisioningService {
         return new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.UPDATED);
     }
 
-    @Override
-    @Transactional
-    public boolean deleteGroup(String code) {
+    private boolean deleteGroupInTransaction(String code) {
         Group existing;
         try {
             existing = this.groups.findByCode(code).orElse(null);
