@@ -309,7 +309,7 @@ class IdentityPackageArchitectureTest {
      * Verifies that Identity no longer imports Access Control Role models or broad Role services.
      *
      * Given: every production class owned by Identity after the Phase 6 contract split.
-     * Expect: Identity depends on subject capabilities and the effective-subject SPI, not the Role package.
+     * Expect: Identity depends on subject capabilities and the Access Control-owned subject-resolution port, not the Role package.
      */
     @Test
     @DisplayName("keeps Access Control Role contracts out of Identity")

@@ -7,7 +7,7 @@ import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.role.application.RoleEffectiveStatementRepository;
 import io.taskmigo.authorization.spi.EffectiveStatement;
-import io.taskmigo.authorization.spi.EffectiveSubjectResolver;
+import io.taskmigo.authorization.application.port.out.EffectiveSubjectResolver;
 import io.taskmigo.authorization.statement.ApiInfo;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;

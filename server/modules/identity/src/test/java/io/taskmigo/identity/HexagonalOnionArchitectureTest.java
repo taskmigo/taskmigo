@@ -22,6 +22,7 @@ class HexagonalOnionArchitectureTest {
             "io.taskmigo.identity.membership",
             "io.taskmigo.identity.membership.application.port.in.api",
             "io.taskmigo.identity.provisioning",
+            "io.taskmigo.identity.provisioning.application.port.in.api",
             "io.taskmigo.identity.authorization"
         )
     );

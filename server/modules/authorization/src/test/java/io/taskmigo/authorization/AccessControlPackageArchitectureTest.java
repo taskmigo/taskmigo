@@ -47,6 +47,7 @@ class AccessControlPackageArchitectureTest {
         ArchRule contractsDoNotDependOnJpaAdapters = noClasses()
             .that()
             .resideInAnyPackage(
+                "io.taskmigo.authorization.application.port.out..",
                 "io.taskmigo.authorization.core..",
                 "io.taskmigo.authorization.object..",
                 "io.taskmigo.authorization.provisioning..",

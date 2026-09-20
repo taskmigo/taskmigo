@@ -1,4 +1,4 @@
-package io.taskmigo.identity.provisioning.application;
+package io.taskmigo.identity.provisioning.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.SubjectGrantQueryService;
+import io.taskmigo.identity.application.port.out.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.membership.application.port.in.api.MembershipService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningException;
@@ -23,9 +24,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
+import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+@NullMarked
 class DefaultIdentityProvisioningServiceTest {
 
     /**
@@ -48,7 +52,7 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups);
+        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups, directTransactions());
 
         // Act
         IdentityProvisioningResult<UUID> result = service.reconcileUser(
@@ -89,7 +93,7 @@ class DefaultIdentityProvisioningServiceTest {
         when(grantQueries.statementIds(IdentitySubjects.user(id))).thenReturn(Set.of());
         MembershipService groups = mock(MembershipService.class);
         when(groups.groupsForUser(id)).thenReturn(List.of());
-        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups);
+        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups, directTransactions());
 
         // Act
         IdentityProvisioningResult<UUID> result = service.reconcileUser(
@@ -131,7 +135,7 @@ class DefaultIdentityProvisioningServiceTest {
         when(grantQueries.statementIds(IdentitySubjects.user(id))).thenReturn(Set.of());
         MembershipService groups = mock(MembershipService.class);
         when(groups.groupsForUser(id)).thenReturn(List.of());
-        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups);
+        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups, directTransactions());
 
         // Act
         IdentityProvisioningResult<UUID> result = service.reconcileUser(
@@ -167,7 +171,7 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups);
+        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups, directTransactions());
 
         // Act
         boolean removed = service.deleteUser("alice");
@@ -195,7 +199,7 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups);
+        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups, directTransactions());
 
         // Act
         boolean removed = service.deleteUser("alice");
@@ -224,7 +228,7 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups);
+        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups, directTransactions());
 
         // Act + Assert
         assertThatThrownBy(() -> service.deleteUser("system"))
@@ -252,7 +256,8 @@ class DefaultIdentityProvisioningServiceTest {
             users,
             mock(SubjectGrantAssignmentService.class),
             mock(SubjectGrantQueryService.class),
-            mock(MembershipService.class)
+            mock(MembershipService.class),
+            directTransactions()
         );
 
         // Act + Assert
@@ -280,5 +285,23 @@ class DefaultIdentityProvisioningServiceTest {
             UserStatus.ACTIVE,
             username.equals("system") ? "{bcrypt}hash" : null
         );
+    }
+    private static TransactionRunner directTransactions() {
+        return new TransactionRunner() {
+            @Override
+            public <T> T read(Supplier<T> work) {
+                return work.get();
+            }
+
+            @Override
+            public <T> T write(Supplier<T> work) {
+                return work.get();
+            }
+
+            @Override
+            public void write(Runnable work) {
+                work.run();
+            }
+        };
     }
 }

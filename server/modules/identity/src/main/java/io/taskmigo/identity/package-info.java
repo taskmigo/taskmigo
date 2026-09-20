@@ -7,7 +7,7 @@
         "query :: persistence",
         "authorization :: object",
         "authorization :: object-persistence",
-        "authorization :: spi",
+        "authorization :: subject-resolution-port",
         "authorization :: subject",
     }
 )
