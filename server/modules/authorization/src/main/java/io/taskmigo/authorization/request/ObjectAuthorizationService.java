@@ -7,24 +7,30 @@ import io.taskmigo.authorization.object.ObjectAuthorization;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicates;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.authorization.object.domain.ObjectAuthorizationPredicateComposer;
+import io.taskmigo.authorization.object.domain.ObjectAuthorizationPredicateComposer.Rule;
 import io.taskmigo.authorization.object.persistence.ObjectAuthorizationExpression;
 import io.taskmigo.authorization.object.persistence.ObjectAuthorizationExpressionValidator;
 import io.taskmigo.authorization.object.persistence.ObjectAuthorizationPredicateModels;
 import io.taskmigo.authorization.spi.ObjectAuthorizationTargetResolver;
-import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageType;
 import io.taskmigo.language.PartialProgram;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 
-/// Evaluates effective object Statements into opaque Object Authorization predicates.
+/// Orchestrates Object Authorization Language work and delegates final predicate composition to the pure domain composer.
 @Service
 public class ObjectAuthorizationService implements ObjectAuthorization {
+
+    private static final ObjectAuthorizationPredicateComposer COMPOSER = new ObjectAuthorizationPredicateComposer(
+        ObjectAuthorizationPredicates.standard()
+    );
 
     private final LanguageCompiler compiler;
     private final ObjectAuthorizationTargetResolver targetResolver;
@@ -44,8 +50,7 @@ public class ObjectAuthorizationService implements ObjectAuthorization {
             throw new AuthorizationException("authorization context is not valid for this operation");
         }
         try {
-            ObjectAuthorizationPredicate<Q> allows = ObjectAuthorizationPredicateModels.constant(schema, false);
-            ObjectAuthorizationPredicate<Q> denies = ObjectAuthorizationPredicateModels.constant(schema, false);
+            List<Rule<Q>> rules = new ArrayList<>();
             for (var artifact : operation.snapshot().executableStatements()) {
                 var statement = artifact.statement();
                 if (statement.scope() == Scope.OBJECT && artifact.matches(operation.method(), operation.path())) {
@@ -58,17 +63,10 @@ public class ObjectAuthorizationService implements ObjectAuthorization {
                         schema,
                         this.partial(policy, operation.snapshot().roots())
                     );
-                    if (statement.effect() == Effect.ALLOW) {
-                        allows = ObjectAuthorizationPredicates.standard().or(allows, predicate);
-                    } else {
-                        denies = ObjectAuthorizationPredicates.standard().or(denies, predicate);
-                    }
+                    rules.add(new Rule<>(statement.effect(), predicate));
                 }
             }
-            return ObjectAuthorizationPredicates.standard().and(
-                allows,
-                ObjectAuthorizationPredicates.standard().not(denies)
-            );
+            return COMPOSER.compose(ObjectAuthorizationPredicateModels.constant(schema, false), rules);
         } catch (EmbeddedLanguageException | IllegalArgumentException exception) {
             throw new AuthorizationException("Invalid Object authorization policy: " + exception.getMessage());
         }

@@ -1,6 +1,10 @@
 package io.taskmigo.authorization.request;
 
 import io.taskmigo.authorization.core.AuthorizationException;
+import io.taskmigo.authorization.request.domain.RequestAuthorizationDecider;
+import io.taskmigo.authorization.request.domain.RequestAuthorizationDecider.Evaluation;
+import io.taskmigo.authorization.request.domain.RequestAuthorizationDecider.Rule;
+import io.taskmigo.authorization.request.domain.RequestAuthorizationDecider.State;
 import io.taskmigo.authorization.spi.EffectiveStatement;
 import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.Effect;
@@ -14,9 +18,11 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
-/// Evaluates request-targeted authorization Statements independently of the web security framework.
+/// Resolves one authorization operation and delegates Request decision semantics to the pure domain decider.
 @Service
 final class RequestAuthorizationService implements RequestAuthorization {
+
+    private static final RequestAuthorizationDecider DECIDER = new RequestAuthorizationDecider();
 
     private final EffectiveStatementResolver statements;
     private final StatementArtifactFactory artifacts;
@@ -71,36 +77,27 @@ final class RequestAuthorizationService implements RequestAuthorization {
     /// @return the transport-neutral authorization decision
     RequestAuthorizationDecision authorize(AuthorizationSnapshot snapshot, String method, String path) {
         Map<String, ?> approvedRoots = snapshot.roots();
-        List<Evaluation> evaluations = new ArrayList<>();
+        List<PolicyRule> rules = new ArrayList<>();
         for (var artifact : snapshot.executableStatements()) {
             StatementInfo statement = artifact.statement();
             if (statement.scope() == Scope.REQUEST && artifact.matches(method, path)) {
-                if (statement.effect() == Effect.DENY && constantTrue(artifact.policy())) {
-                    return new RequestAuthorizationDecision(false);
-                }
-                evaluations.add(new Evaluation(statement, artifact.policy()));
+                rules.add(new PolicyRule(statement.effect(), artifact.policy()));
             }
         }
 
-        boolean allowed = false;
-        for (Evaluation evaluation : evaluations) {
-            StatementInfo statement = evaluation.statement();
-            try {
-                Object value = evaluation.policy().evaluate(approvedRoots);
-                if (!(value instanceof Boolean matches)) {
-                    throw new AuthorizationException("Request authorization policy result is not Bool");
-                }
-                if (matches) {
-                    if (statement.effect() == Effect.DENY) {
-                        return new RequestAuthorizationDecision(false);
-                    }
-                    allowed = true;
-                }
-            } catch (AuthorizationException | EmbeddedLanguageException exception) {
-                return new RequestAuthorizationDecision(false);
+        State state = DECIDER.start(
+            rules
+                .stream()
+                .map(rule -> new Rule(rule.effect(), constantTrue(rule.policy())))
+                .toList()
+        );
+        for (PolicyRule rule : rules) {
+            if (state.terminal()) {
+                break;
             }
+            state = DECIDER.apply(state, rule.effect(), evaluate(rule.policy(), approvedRoots));
         }
-        return new RequestAuthorizationDecision(allowed);
+        return new RequestAuthorizationDecision(DECIDER.finish(state).allowed());
     }
 
     /// Creates the one authorization snapshot used by a request operation.
@@ -115,11 +112,23 @@ final class RequestAuthorizationService implements RequestAuthorization {
         return new AuthorizationSnapshot(userId, this.artifacts.build(effectiveStatements, method, path), roots);
     }
 
+    private static Evaluation evaluate(CompiledSource policy, Map<String, ?> roots) {
+        try {
+            Object value = policy.evaluate(roots);
+            if (!(value instanceof Boolean matches)) {
+                return Evaluation.ERROR;
+            }
+            return matches ? Evaluation.MATCHES : Evaluation.DOES_NOT_MATCH;
+        } catch (AuthorizationException | EmbeddedLanguageException exception) {
+            return Evaluation.ERROR;
+        }
+    }
+
     private static boolean constantTrue(CompiledSource policy) {
         return policy.constantBoolean().orElse(false);
     }
 
-    private record Evaluation(StatementInfo statement, CompiledSource policy) {}
+    private record PolicyRule(Effect effect, CompiledSource policy) {}
 
     private static final class FailedAuthorizationContext implements AuthorizationContext {}
 }
