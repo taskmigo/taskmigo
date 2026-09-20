@@ -51,7 +51,9 @@ class AccessControlPackageArchitectureTest {
                 "io.taskmigo.authorization.object..",
                 "io.taskmigo.authorization.provisioning..",
                 "io.taskmigo.authorization.request..",
-                "io.taskmigo.authorization.role..",
+                "io.taskmigo.authorization.role",
+                "io.taskmigo.authorization.role.application..",
+                "io.taskmigo.authorization.role.domain..",
                 "io.taskmigo.authorization.spi..",
                 "io.taskmigo.authorization.statement",
                 "io.taskmigo.authorization.statement.application..",
@@ -62,6 +64,8 @@ class AccessControlPackageArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 "io.taskmigo.authorization.persistence..",
+                "io.taskmigo.authorization.role.infrastructure..",
+                "io.taskmigo.authorization.statement.infrastructure..",
                 "org.springframework.data..",
                 "jakarta.persistence.."
             );
@@ -71,12 +75,10 @@ class AccessControlPackageArchitectureTest {
     }
 
     /**
-     * Verifies that published Access Control contracts remain independent from framework-specific representation and
-     * OAuth server implementation concerns.
+     * Verifies published Access Control contracts remain independent from framework-specific representation concerns.
      *
-     * Given: production classes in the public Access Control contract packages.
-     * Expect: those classes do not depend on Spring Core type descriptors, Jackson 2/3, Spring Web, Servlet, or Spring
-     * Authorization Server implementation APIs.
+     * Given: production classes in the public/domain/application Access Control contract packages.
+     * Expect: those classes do not depend on web, serialization, or OAuth-server implementation APIs.
      */
     @Test
     @DisplayName("keeps Access Control contracts framework neutral")
@@ -90,7 +92,9 @@ class AccessControlPackageArchitectureTest {
                 "io.taskmigo.authorization.object..",
                 "io.taskmigo.authorization.provisioning..",
                 "io.taskmigo.authorization.request..",
-                "io.taskmigo.authorization.role..",
+                "io.taskmigo.authorization.role",
+                "io.taskmigo.authorization.role.application..",
+                "io.taskmigo.authorization.role.domain..",
                 "io.taskmigo.authorization.spi..",
                 "io.taskmigo.authorization.statement",
                 "io.taskmigo.authorization.statement.application..",
@@ -166,6 +170,69 @@ class AccessControlPackageArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 "io.taskmigo.authorization.statement.infrastructure..",
+                "org.springframework.data..",
+                "jakarta.persistence.."
+            );
+
+        // Act + Assert
+        domainDoesNotDependOutward.check(classes);
+        applicationDoesNotDependOnInfrastructure.check(classes);
+    }
+
+    /**
+     * Verifies the published Role package cannot reach into tactical implementation layers.
+     *
+     * Given: production classes in the root Role API package.
+     * Expect: published Role contracts remain independent from application services and JPA adapters.
+     */
+    @Test
+    @DisplayName("keeps Role API independent from implementation layers")
+    void shouldKeepRoleApiIndependentWhenAuthorizationPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule apiDoesNotDependOnImplementation = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.authorization.role")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "io.taskmigo.authorization.role.application..",
+                "io.taskmigo.authorization.role.infrastructure.."
+            );
+
+        // Act + Assert
+        apiDoesNotDependOnImplementation.check(classes);
+    }
+
+    /**
+     * Verifies Role domain and application dependency direction.
+     *
+     * Given: canonical Role domain and application packages.
+     * Expect: Role domain is framework-neutral and Role application code does not depend on Role infrastructure.
+     */
+    @Test
+    @DisplayName("keeps Role domain and application independent from infrastructure")
+    void shouldKeepRoleLayersIndependentWhenAuthorizationPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule domainDoesNotDependOutward = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.authorization.role.domain..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "io.taskmigo.authorization.role.application..",
+                "io.taskmigo.authorization.role.infrastructure..",
+                "org.springframework..",
+                "jakarta.persistence.."
+            );
+        ArchRule applicationDoesNotDependOnInfrastructure = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.authorization.role.application..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "io.taskmigo.authorization.role.infrastructure..",
                 "org.springframework.data..",
                 "jakarta.persistence.."
             );

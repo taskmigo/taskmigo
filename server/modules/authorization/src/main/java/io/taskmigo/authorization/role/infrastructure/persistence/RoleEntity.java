@@ -1,10 +1,10 @@
-package io.taskmigo.authorization.persistence.role;
+package io.taskmigo.authorization.role.infrastructure.persistence;
 
+import io.taskmigo.authorization.role.domain.Role;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
@@ -35,7 +35,7 @@ public class RoleEntity {
     @Nullable
     String description;
 
-    @ElementCollection(fetch = FetchType.EAGER)
+    @ElementCollection
     @CollectionTable(name = "role_statements", joinColumns = @JoinColumn(name = "role_id"))
     @Column(name = "statement_id", nullable = false)
     Set<UUID> statementIds = new LinkedHashSet<>();
@@ -54,53 +54,57 @@ public class RoleEntity {
 
     protected RoleEntity() {}
 
-    public RoleEntity(UUID id, String code, String displayName, @Nullable String description) {
-        this.id = id;
-        this.code = code;
-        this.displayName = displayName;
-        this.description = description;
+    private RoleEntity(Role role) {
+        this.id = role.id();
+        this.code = role.code().value();
+        this.displayName = role.profile().displayName();
+        this.description = role.profile().description();
+        this.statementIds.addAll(role.statementIds());
     }
 
-    public UUID id() {
+    static RoleEntity from(Role role) {
+        return new RoleEntity(role);
+    }
+
+    Role toDomain() {
+        return Role.restore(this.id, this.code, this.displayName, this.description, this.statementIds);
+    }
+
+    void update(Role role) {
+        this.displayName = role.profile().displayName();
+        this.description = role.profile().description();
+        this.statementIds.clear();
+        this.statementIds.addAll(role.statementIds());
+    }
+
+    UUID id() {
         return this.id;
     }
 
-    public String code() {
+    String code() {
         return this.code;
     }
 
-    public String displayName() {
+    String displayName() {
         return this.displayName;
     }
 
-    public @Nullable String description() {
+    @Nullable
+    String description() {
         return this.description;
     }
 
+    /// Returns direct Statement ids for the optimized effective-authorization read path.
     public Set<UUID> statementIds() {
         return Set.copyOf(this.statementIds);
     }
 
-    public Set<RoleEntity> childRoles() {
+    Set<RoleEntity> childRoles() {
         return Set.copyOf(this.childRoles);
     }
 
-    public void addChildRoles(Collection<RoleEntity> children) {
-        this.childRoles.addAll(children);
-    }
-
-    public void replaceChildRoles(Collection<RoleEntity> children) {
+    void replaceChildRoles(Collection<RoleEntity> children) {
         this.childRoles.clear();
         this.childRoles.addAll(children);
-    }
-
-    public void replaceStatementIds(Set<UUID> statementIds) {
-        this.statementIds.clear();
-        this.statementIds.addAll(statementIds);
-    }
-
-    public void updateDisplayNameAndDescription(String displayName, @Nullable String description) {
-        this.displayName = displayName;
-        this.description = description;
     }
 }

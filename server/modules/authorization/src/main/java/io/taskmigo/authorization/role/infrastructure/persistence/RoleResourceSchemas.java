@@ -1,9 +1,12 @@
-package io.taskmigo.authorization.persistence.query;
+package io.taskmigo.authorization.role.infrastructure.persistence;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationField;
 import io.taskmigo.authorization.object.ObjectAuthorizationPath;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
-import io.taskmigo.authorization.persistence.role.RoleEntity;
+import io.taskmigo.authorization.persistence.query.JpaObjectAuthorizationPredicateBinder;
+import io.taskmigo.authorization.persistence.query.JpaQueryPredicateBinder;
+import io.taskmigo.authorization.persistence.query.ObjectAuthorizationPredicateBinder;
+import io.taskmigo.authorization.persistence.query.QueryPredicateBinder;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.query.QueryField;
@@ -19,14 +22,13 @@ import java.util.stream.Collectors;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/// Registers Query Filtering, Object Authorization, and persistence mappings still shared by Access Control Roles.
+/// Registers Role-owned Query Filtering, Object Authorization, and persistence mappings.
 @Configuration(proxyBeanMethods = false)
-public class AuthorizationResourceSchemas {
+public class RoleResourceSchemas {
 
     private static final TypeDescriptor STRING_TYPE = TypeDescriptor.of(String.class);
     private static final TypeDescriptor UUID_TYPE = TypeDescriptor.of(UUID.class);
 
-    /// Registers the Role collection query contract.
     @Bean
     QuerySchema<RoleInfo> roleQuerySchema() {
         return schema(
@@ -40,7 +42,6 @@ public class AuthorizationResourceSchemas {
         );
     }
 
-    /// Registers the Role Object Authorization contract.
     @Bean
     ObjectAuthorizationSchema<RoleInfo> roleObjectAuthorizationSchema() {
         return objectSchema(
@@ -54,7 +55,6 @@ public class AuthorizationResourceSchemas {
         );
     }
 
-    /// Registers the trusted Role query-to-entity mapping.
     @Bean
     QueryPredicateBinder<RoleInfo, RoleEntity> roleQueryPredicateBinder() {
         return new JpaQueryPredicateBinder<>(
@@ -65,7 +65,6 @@ public class AuthorizationResourceSchemas {
         );
     }
 
-    /// Registers the trusted Role object-policy-to-entity mapping.
     @Bean
     ObjectAuthorizationPredicateBinder<RoleInfo, RoleEntity> roleObjectAuthorizationPredicateBinder() {
         return new JpaObjectAuthorizationPredicateBinder<>(
@@ -110,10 +109,7 @@ public class AuthorizationResourceSchemas {
 
             @Override
             public Optional<QueryField> field(QueryPath path) {
-                return declared
-                    .stream()
-                    .filter(field -> field.path().equals(path))
-                    .findFirst();
+                return declared.stream().filter(field -> field.path().equals(path)).findFirst();
             }
 
             @Override
@@ -136,10 +132,7 @@ public class AuthorizationResourceSchemas {
 
             @Override
             public Optional<ObjectAuthorizationField> field(ObjectAuthorizationPath path) {
-                return declared
-                    .stream()
-                    .filter(field -> field.path().equals(path))
-                    .findFirst();
+                return declared.stream().filter(field -> field.path().equals(path)).findFirst();
             }
 
             @Override

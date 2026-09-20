@@ -1,34 +1,38 @@
-package io.taskmigo.authorization.role.internal;
+package io.taskmigo.authorization.role.application;
 
-import io.taskmigo.authorization.core.AuthorizationName;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.role.RoleException;
-import io.taskmigo.authorization.role.RoleHierarchy;
-import io.taskmigo.authorization.role.RoleHierarchyException;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.role.RoleService;
-import io.taskmigo.authorization.role.internal.RoleStore.RoleState;
+import io.taskmigo.authorization.role.domain.RoleRuleViolation;
+import io.taskmigo.authorization.role.domain.hierarchy.RoleHierarchy;
+import io.taskmigo.authorization.role.domain.hierarchy.RoleHierarchyException;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.QueryPredicate;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/// Implements Role use cases independently from the JPA adapter.
+/// Coordinates runtime Role profile, hierarchy, and read use cases.
 @Service
-class DefaultRoleService implements RoleService {
+public class DefaultRoleService implements RoleService {
 
-    private final RoleStore roles;
+    private final RoleCommandService commands;
+    private final RoleQueryRepository roles;
+    private final RoleHierarchyRepository hierarchies;
 
-    DefaultRoleService(RoleStore roles) {
+    public DefaultRoleService(
+        RoleCommandService commands,
+        RoleQueryRepository roles,
+        RoleHierarchyRepository hierarchies
+    ) {
+        this.commands = commands;
         this.roles = roles;
+        this.hierarchies = hierarchies;
     }
 
     @Override
@@ -39,37 +43,32 @@ class DefaultRoleService implements RoleService {
         @Nullable String description,
         @Nullable Collection<UUID> childRoleIds
     ) {
-        UUID id = UUID.randomUUID();
         Set<UUID> requestedChildIds = childRoleIds == null ? Set.of() : Set.copyOf(childRoleIds);
-        List<RoleState> allRoles = new ArrayList<>(this.roles.loadAllForUpdate());
-        requireChildren(requestedChildIds, allRoles);
+        RoleHierarchy current = this.hierarchies.loadForMutation();
+        requireChildren(requestedChildIds, current);
 
-        RoleHierarchy hierarchy;
+        UUID id;
         try {
-            hierarchy = hierarchy(allRoles).replacingChildren(id, requestedChildIds);
+            id = this.commands.createRuntime(code, displayName, description);
+        } catch (RoleRuleViolation exception) {
+            throw badRequest(exception);
+        }
+
+        RoleHierarchy requested;
+        try {
+            requested = current.replacingChildren(id, requestedChildIds);
         } catch (RoleHierarchyException exception) {
             throw new RoleException(RoleException.Type.BAD_REQUEST, hierarchyFailureMessage(exception));
         }
 
-        RoleState role = new RoleState(
-            id,
-            AuthorizationName.requiredRole(code, "code"),
-            AuthorizationName.requiredDisplayName(displayName, "displayName"),
-            description,
-            Set.of(),
-            requestedChildIds
-        );
-        this.roles.create(role);
-        allRoles.add(role);
-        this.roles.replaceClosure(allRoles, hierarchy);
+        this.hierarchies.replaceChildren(id, requestedChildIds, requested);
         return id;
     }
 
     @Override
     @Transactional(readOnly = true)
     public void requireRoles(Collection<UUID> ids) {
-        Set<UUID> requestedIds = Set.copyOf(ids);
-        if (!this.roles.containsAll(requestedIds)) {
+        if (!this.roles.containsAll(Set.copyOf(ids))) {
             throw new RoleException(RoleException.Type.BAD_REQUEST, "One or more Roles do not exist");
         }
     }
@@ -89,31 +88,18 @@ class DefaultRoleService implements RoleService {
     @Transactional
     public void setChildRoles(UUID parentRoleId, Collection<UUID> childRoleIds) {
         Set<UUID> requestedIds = Set.copyOf(childRoleIds);
-        List<RoleState> allRoles = new ArrayList<>(this.roles.loadAllForUpdate());
-        RoleState parent = state(parentRoleId, allRoles);
-        requireChildren(requestedIds, allRoles);
+        RoleHierarchy current = this.hierarchies.loadForMutation();
+        requireRole(parentRoleId, current);
+        requireChildren(requestedIds, current);
 
-        RoleHierarchy hierarchy;
+        RoleHierarchy requested;
         try {
-            hierarchy = hierarchy(allRoles).replacingChildren(parent.id(), requestedIds);
+            requested = current.replacingChildren(parentRoleId, requestedIds);
         } catch (RoleHierarchyException exception) {
             throw new RoleException(RoleException.Type.BAD_REQUEST, hierarchyFailureMessage(exception));
         }
 
-        this.roles.replaceChildren(parent.id(), requestedIds);
-        allRoles.replaceAll(role ->
-            role.id().equals(parent.id())
-                ? new RoleState(
-                      role.id(),
-                      role.code(),
-                      role.displayName(),
-                      role.description(),
-                      role.statementIds(),
-                      requestedIds
-                  )
-                : role
-        );
-        this.roles.replaceClosure(allRoles, hierarchy);
+        this.hierarchies.replaceChildren(parentRoleId, requestedIds, requested);
     }
 
     @Override
@@ -135,30 +121,26 @@ class DefaultRoleService implements RoleService {
         }
         this.requireRoles(requestedIds);
         return this.roles
-            .findByIds(this.roles.descendantRoleIds(requestedIds))
+            .findByIds(this.hierarchies.descendantRoleIds(requestedIds))
             .stream()
             .sorted((left, right) -> left.id().compareTo(right.id()))
             .toList();
     }
 
-    private static RoleState state(UUID id, Collection<RoleState> roles) {
-        return roles
-            .stream()
-            .filter(role -> role.id().equals(id))
-            .findFirst()
-            .orElseThrow(() -> new RoleException(RoleException.Type.BAD_REQUEST, "Role does not exist"));
+    private static void requireRole(UUID id, RoleHierarchy hierarchy) {
+        if (!hierarchy.contains(id)) {
+            throw new RoleException(RoleException.Type.BAD_REQUEST, "Role does not exist");
+        }
     }
 
-    private static void requireChildren(Set<UUID> childIds, Collection<RoleState> roles) {
-        long found = roles.stream().map(RoleState::id).filter(childIds::contains).count();
-        if (found != childIds.size()) {
+    private static void requireChildren(Set<UUID> childIds, RoleHierarchy hierarchy) {
+        if (!hierarchy.containsAll(childIds)) {
             throw new RoleException(RoleException.Type.BAD_REQUEST, "One or more child Roles do not exist");
         }
     }
 
-    private static RoleHierarchy hierarchy(Collection<RoleState> roles) {
-        Map<UUID, Set<UUID>> children = roles.stream().collect(Collectors.toMap(RoleState::id, RoleState::childIds));
-        return RoleHierarchy.from(children);
+    private static RoleException badRequest(RoleRuleViolation exception) {
+        return new RoleException(RoleException.Type.BAD_REQUEST, exception.detail());
     }
 
     private static String hierarchyFailureMessage(RoleHierarchyException exception) {

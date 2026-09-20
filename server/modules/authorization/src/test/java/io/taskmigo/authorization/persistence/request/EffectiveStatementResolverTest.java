@@ -5,8 +5,7 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.authorization.persistence.role.RoleEntity;
-import io.taskmigo.authorization.persistence.role.RoleRepository;
+import io.taskmigo.authorization.role.application.RoleEffectiveStatementRepository;
 import io.taskmigo.authorization.spi.EffectiveStatement;
 import io.taskmigo.authorization.spi.EffectiveSubjectResolver;
 import io.taskmigo.authorization.statement.ApiInfo;
@@ -31,7 +30,6 @@ class EffectiveStatementResolverTest {
 
     private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final UUID DIRECT_ROLE_ID = UUID.fromString("00000000-0000-0000-0000-000000000002");
-    private static final UUID CHILD_ROLE_ID = UUID.fromString("00000000-0000-0000-0000-000000000003");
     private static final UUID DIRECT_STATEMENT_ID = UUID.fromString("00000000-0000-0000-0000-000000000004");
     private static final UUID ROLE_STATEMENT_ID = UUID.fromString("00000000-0000-0000-0000-000000000005");
     private static final UUID CHILD_STATEMENT_ID = UUID.fromString("00000000-0000-0000-0000-000000000006");
@@ -39,7 +37,7 @@ class EffectiveStatementResolverTest {
 
     private final EffectiveSubjectResolver subjects = mock(EffectiveSubjectResolver.class);
     private final SubjectGrantService grants = mock(SubjectGrantService.class);
-    private final RoleRepository roles = mock(RoleRepository.class);
+    private final RoleEffectiveStatementRepository roles = mock(RoleEffectiveStatementRepository.class);
     private final StatementRepository statements = mock(StatementRepository.class);
     private final DatabaseEffectiveStatementResolver resolver = new DatabaseEffectiveStatementResolver(
         this.subjects,
@@ -48,25 +46,30 @@ class EffectiveStatementResolverTest {
         this.statements
     );
 
+    /**
+     * Verifies the resolver combines direct subject Statements with the bounded Role effective-state port.
+     *
+     * Given: a subject with one direct Statement and one Role whose effective assignments contain two Statements.
+     * Expect: all three Statements are loaded once through the Statement repository and returned deterministically.
+     */
     @Test
     @DisplayName("resolves direct and inherited statements from effective subjects")
     void shouldResolveStatementsFromSubjectBindingsAndRoleHierarchy() {
+        // Arrange
         when(this.subjects.resolve(USER_ID)).thenReturn(Set.of(USER));
         when(this.grants.statementIds(USER)).thenReturn(Set.of(DIRECT_STATEMENT_ID));
         when(this.grants.roleIds(USER)).thenReturn(Set.of(DIRECT_ROLE_ID));
-        when(this.roles.findDescendantRoleIds(Set.of(DIRECT_ROLE_ID))).thenReturn(
-            List.of(DIRECT_ROLE_ID, CHILD_ROLE_ID)
+        when(this.roles.statementIdsForRoles(Set.of(DIRECT_ROLE_ID))).thenReturn(
+            Set.of(ROLE_STATEMENT_ID, CHILD_STATEMENT_ID)
         );
-        RoleEntity directRole = role(Set.of(ROLE_STATEMENT_ID));
-        RoleEntity childRole = role(Set.of(CHILD_STATEMENT_ID));
         List<StatementEntity> persistedStatements = List.of(
             statement(DIRECT_STATEMENT_ID, "direct"),
             statement(ROLE_STATEMENT_ID, "role"),
             statement(CHILD_STATEMENT_ID, "child")
         );
-        when(this.roles.findDistinctByIdIn(anyCollection())).thenReturn(List.of(directRole, childRole));
         when(this.statements.findAllByIdIn(anyCollection())).thenReturn(persistedStatements);
 
+        // Act
         List<String> names = this.resolver
             .resolve(USER_ID)
             .stream()
@@ -74,12 +77,20 @@ class EffectiveStatementResolverTest {
             .map(StatementInfo::code)
             .toList();
 
+        // Assert
         assertThat(names).containsExactly("direct", "role", "child");
     }
 
+    /**
+     * Verifies large direct Statement sets retain one bounded Statement repository read.
+     *
+     * Given: a subject with five hundred directly assigned Statements and no Roles.
+     * Expect: all Statements are resolved without Role graph traversal.
+     */
     @Test
     @DisplayName("resolves a large direct subject statement set with one repository query")
     void shouldResolveFiveHundredDirectStatements() {
+        // Arrange
         Set<UUID> ids = IntStream.range(0, 500)
             .mapToObj(EffectiveStatementResolverTest::id)
             .collect(Collectors.toSet());
@@ -89,15 +100,14 @@ class EffectiveStatementResolverTest {
         when(this.subjects.resolve(USER_ID)).thenReturn(Set.of(USER));
         when(this.grants.statementIds(USER)).thenReturn(ids);
         when(this.grants.roleIds(USER)).thenReturn(Set.of());
+        when(this.roles.statementIdsForRoles(Set.of())).thenReturn(Set.of());
         when(this.statements.findAllByIdIn(ids)).thenReturn(persistedStatements);
 
-        assertThat(this.resolver.resolve(USER_ID)).hasSize(500);
-    }
+        // Act
+        List<EffectiveStatement> resolved = this.resolver.resolve(USER_ID);
 
-    private static RoleEntity role(Set<UUID> statementIds) {
-        RoleEntity role = mock(RoleEntity.class);
-        when(role.statementIds()).thenReturn(statementIds);
-        return role;
+        // Assert
+        assertThat(resolved).hasSize(500);
     }
 
     private static StatementEntity statement(UUID id, String name) {

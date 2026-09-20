@@ -1,7 +1,6 @@
 package io.taskmigo.authorization.persistence.request;
 
-import io.taskmigo.authorization.persistence.role.RoleEntity;
-import io.taskmigo.authorization.persistence.role.RoleRepository;
+import io.taskmigo.authorization.role.application.RoleEffectiveStatementRepository;
 import io.taskmigo.authorization.spi.EffectiveStatement;
 import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.spi.EffectiveSubjectResolver;
@@ -24,13 +23,13 @@ public class DatabaseEffectiveStatementResolver implements EffectiveStatementRes
 
     private final EffectiveSubjectResolver subjects;
     private final SubjectGrantService grants;
-    private final RoleRepository roles;
+    private final RoleEffectiveStatementRepository roles;
     private final StatementRepository statements;
 
     DatabaseEffectiveStatementResolver(
         EffectiveSubjectResolver subjects,
         SubjectGrantService grants,
-        RoleRepository roles,
+        RoleEffectiveStatementRepository roles,
         StatementRepository statements
     ) {
         this.subjects = subjects;
@@ -58,14 +57,7 @@ public class DatabaseEffectiveStatementResolver implements EffectiveStatementRes
             roleIds.addAll(this.grants.roleIds(subject));
         }
 
-        if (!roleIds.isEmpty()) {
-            Set<UUID> reachableRoleIds = new HashSet<>(roleIds);
-            reachableRoleIds.addAll(this.roles.findDescendantRoleIds(roleIds));
-            for (RoleEntity role : this.roles.findDistinctByIdIn(reachableRoleIds)) {
-                statementIds.addAll(role.statementIds());
-            }
-        }
-
+        statementIds.addAll(this.roles.statementIdsForRoles(roleIds));
         if (statementIds.isEmpty()) {
             return List.of();
         }

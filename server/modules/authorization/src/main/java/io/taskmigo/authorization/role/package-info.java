@@ -1,6 +1,4 @@
-/// Owns authorization role domain contracts and application use cases.
-///
-/// JPA adapters remain private in the owning persistence package.
+/// Publishes Access Control Role contracts while domain, application, and infrastructure details remain internal layers.
 @NamedInterface("role")
 @NullMarked
 package io.taskmigo.authorization.role;
