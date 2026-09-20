@@ -88,7 +88,10 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
         if (mutation.created()) {
             this.roleHierarchies.synchronize(this.roleHierarchies.loadForMutation());
         }
-        return new AuthorizationProvisioningResult<>(mutation.id(), provisioningChange(mutation.created(), mutation.changed()));
+        return new AuthorizationProvisioningResult<>(
+            mutation.id(),
+            provisioningChange(mutation.created(), mutation.changed())
+        );
     }
 
     @Override
