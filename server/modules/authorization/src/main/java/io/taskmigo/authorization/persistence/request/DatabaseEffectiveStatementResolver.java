@@ -6,8 +6,9 @@ import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.spi.EffectiveSubjectResolver;
 import io.taskmigo.authorization.statement.infrastructure.persistence.StatementEntity;
 import io.taskmigo.authorization.statement.infrastructure.persistence.StatementRepository;
-import io.taskmigo.authorization.subject.SubjectGrantService;
 import io.taskmigo.authorization.subject.SubjectRef;
+import io.taskmigo.authorization.subject.application.SubjectGrantRepository;
+import io.taskmigo.authorization.subject.domain.SubjectGrants;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -22,13 +23,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class DatabaseEffectiveStatementResolver implements EffectiveStatementResolver {
 
     private final EffectiveSubjectResolver subjects;
-    private final SubjectGrantService grants;
+    private final SubjectGrantRepository grants;
     private final RoleEffectiveStatementRepository roles;
     private final StatementRepository statements;
 
     DatabaseEffectiveStatementResolver(
         EffectiveSubjectResolver subjects,
-        SubjectGrantService grants,
+        SubjectGrantRepository grants,
         RoleEffectiveStatementRepository roles,
         StatementRepository statements
     ) {
@@ -53,8 +54,9 @@ public class DatabaseEffectiveStatementResolver implements EffectiveStatementRes
         Set<UUID> statementIds = new HashSet<>();
         Set<UUID> roleIds = new HashSet<>();
         for (SubjectRef subject : effectiveSubjects) {
-            statementIds.addAll(this.grants.statementIds(subject));
-            roleIds.addAll(this.grants.roleIds(subject));
+            SubjectGrants directGrants = this.grants.load(subject);
+            statementIds.addAll(directGrants.statementIds());
+            roleIds.addAll(directGrants.roleIds());
         }
 
         statementIds.addAll(this.roles.statementIdsForRoles(roleIds));

@@ -3,7 +3,9 @@ package io.taskmigo.identity.persistence.integration;
 import io.taskmigo.authorization.spi.EffectiveSubjectResolver;
 import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.identity.authorization.IdentitySubjects;
+import io.taskmigo.identity.group.GroupException;
 import io.taskmigo.identity.group.application.GroupHierarchyRepository;
+import io.taskmigo.identity.group.application.GroupQueryRepository;
 import io.taskmigo.identity.membership.application.MembershipRepository;
 import io.taskmigo.identity.user.UserException;
 import io.taskmigo.identity.user.application.UserQueryRepository;
@@ -14,20 +16,23 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/// Adapts Identity membership and Group hierarchy read ports to Access Control subjects.
+/// Implements the Access Control effective-subject SPI from Identity membership and hierarchy state.
 @Service
 public class IdentityEffectiveSubjectResolver implements EffectiveSubjectResolver {
 
     private final UserQueryRepository users;
+    private final GroupQueryRepository groups;
     private final MembershipRepository memberships;
     private final GroupHierarchyRepository hierarchies;
 
     public IdentityEffectiveSubjectResolver(
         UserQueryRepository users,
+        GroupQueryRepository groups,
         MembershipRepository memberships,
         GroupHierarchyRepository hierarchies
     ) {
         this.users = users;
+        this.groups = groups;
         this.memberships = memberships;
         this.hierarchies = hierarchies;
     }
@@ -48,6 +53,27 @@ public class IdentityEffectiveSubjectResolver implements EffectiveSubjectResolve
                 .descendantGroupIds(directGroupIds)
                 .forEach(groupId -> subjects.add(IdentitySubjects.group(groupId)));
         }
+        return Set.copyOf(subjects);
+    }
+
+    /// Expands Identity-owned subjects while treating subjects owned by other contexts as leaves.
+    @Transactional(readOnly = true)
+    @Override
+    public Set<SubjectRef> expand(SubjectRef subject) {
+        if (IdentitySubjects.isUser(subject)) {
+            return this.resolve(subject.id());
+        }
+        if (!IdentitySubjects.isGroup(subject)) {
+            return Set.of(subject);
+        }
+        if (!this.groups.exists(subject.id())) {
+            throw new GroupException(GroupException.Type.NOT_FOUND, "Group not found");
+        }
+
+        LinkedHashSet<SubjectRef> subjects = new LinkedHashSet<>();
+        this.hierarchies
+            .descendantGroupIds(Set.of(subject.id()))
+            .forEach(groupId -> subjects.add(IdentitySubjects.group(groupId)));
         return Set.copyOf(subjects);
     }
 }

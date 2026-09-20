@@ -20,4 +20,14 @@ public final class IdentitySubjects {
     public static SubjectRef group(UUID groupId) {
         return new SubjectRef(GROUP, groupId);
     }
+
+    /// Returns whether the subject represents an Identity User.
+    public static boolean isUser(SubjectRef subject) {
+        return USER.equals(subject.type());
+    }
+
+    /// Returns whether the subject represents an Identity Group.
+    public static boolean isGroup(SubjectRef subject) {
+        return GROUP.equals(subject.type());
+    }
 }

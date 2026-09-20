@@ -1,11 +1,9 @@
 package io.taskmigo.identity.group;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
-import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
@@ -33,8 +31,4 @@ public interface GroupService {
     void setChildGroups(UUID parentGroupId, Collection<UUID> childGroupIds);
 
     void setRoles(UUID groupId, Collection<UUID> roleIds);
-
-    List<RoleInfo> effectiveRoles(UUID groupId);
-
-    List<RoleInfo> effectiveRolesForUser(UUID userId);
 }

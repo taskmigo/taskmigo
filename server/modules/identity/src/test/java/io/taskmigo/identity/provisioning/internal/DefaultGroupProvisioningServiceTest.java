@@ -6,7 +6,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.authorization.subject.SubjectGrantService;
+import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
+import io.taskmigo.authorization.subject.SubjectGrantQueryService;
 import io.taskmigo.foundation.ReconciliationAction;
 import io.taskmigo.foundation.ReconciliationResult;
 import io.taskmigo.identity.authorization.IdentitySubjects;
@@ -45,8 +46,9 @@ class DefaultGroupProvisioningServiceTest {
         GroupHierarchy hierarchy = GroupHierarchy.from(Map.of(id, List.of()));
         GroupHierarchyRepository hierarchies = mock(GroupHierarchyRepository.class);
         when(hierarchies.loadForMutation()).thenReturn(hierarchy);
-        SubjectGrantService grants = mock(SubjectGrantService.class);
-        var service = new DefaultGroupProvisioningService(groups, hierarchies, grants);
+        SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
+        SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
+        var service = new DefaultGroupProvisioningService(groups, hierarchies, grantAssignments, grantQueries);
 
         // Act
         ReconciliationResult<UUID> result = service.reconcileGroup("engineering", "Engineering", null, Set.of(roleId));
@@ -54,7 +56,7 @@ class DefaultGroupProvisioningServiceTest {
         // Assert
         assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.ADDED));
         verify(hierarchies).synchronize(hierarchy);
-        verify(grants).setRoles(IdentitySubjects.group(id), Set.of(roleId));
+        verify(grantAssignments).setRoles(IdentitySubjects.group(id), Set.of(roleId));
     }
 
     /**
@@ -72,16 +74,22 @@ class DefaultGroupProvisioningServiceTest {
         when(groups.reconcileManaged("engineering", "Engineering", null)).thenReturn(
             new GroupMutationResult(id, false, false)
         );
-        SubjectGrantService grants = mock(SubjectGrantService.class);
-        when(grants.roleIds(IdentitySubjects.group(id))).thenReturn(Set.of());
-        var service = new DefaultGroupProvisioningService(groups, mock(GroupHierarchyRepository.class), grants);
+        SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
+        SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
+        when(grantQueries.roleIds(IdentitySubjects.group(id))).thenReturn(Set.of());
+        var service = new DefaultGroupProvisioningService(
+            groups,
+            mock(GroupHierarchyRepository.class),
+            grantAssignments,
+            grantQueries
+        );
 
         // Act
         ReconciliationResult<UUID> result = service.reconcileGroup("engineering", "Engineering", null, Set.of());
 
         // Assert
         assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.UNCHANGED));
-        verify(grants, never()).setRoles(IdentitySubjects.group(id), Set.of());
+        verify(grantAssignments, never()).setRoles(IdentitySubjects.group(id), Set.of());
     }
 
     /**
@@ -104,15 +112,16 @@ class DefaultGroupProvisioningServiceTest {
         );
         GroupHierarchyRepository hierarchies = mock(GroupHierarchyRepository.class);
         when(hierarchies.loadForMutation()).thenReturn(current);
-        SubjectGrantService grants = mock(SubjectGrantService.class);
-        var service = new DefaultGroupProvisioningService(groups, hierarchies, grants);
+        SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
+        SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
+        var service = new DefaultGroupProvisioningService(groups, hierarchies, grantAssignments, grantQueries);
 
         // Act
         boolean removed = service.deleteGroup("engineering");
 
         // Assert
         assertThat(removed).isTrue();
-        verify(grants).setRoles(IdentitySubjects.group(existing.id()), Set.of());
+        verify(grantAssignments).setRoles(IdentitySubjects.group(existing.id()), Set.of());
         verify(groups).delete(existing);
         verify(hierarchies).remove(
             ArgumentMatchers.eq(existing.id()),

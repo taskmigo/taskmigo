@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.role.RoleService;
+import io.taskmigo.authorization.subject.SubjectRoleQueryService;
+import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.group.GroupService;
 import io.taskmigo.rest.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.rest.api.v0.testing.TaskmigoApiClient.CreateGroupRequest;
@@ -20,11 +22,18 @@ class GroupApiIntegrationTest extends ApiIntegrationTestSupport {
 
     private final RoleService access;
     private final GroupService groups;
+    private final SubjectRoleQueryService effectiveRoles;
     private final JdbcTemplate jdbc;
 
-    GroupApiIntegrationTest(RoleService access, GroupService groups, JdbcTemplate jdbc) {
+    GroupApiIntegrationTest(
+        RoleService access,
+        GroupService groups,
+        SubjectRoleQueryService effectiveRoles,
+        JdbcTemplate jdbc
+    ) {
         this.access = access;
         this.groups = groups;
+        this.effectiveRoles = effectiveRoles;
         this.jdbc = jdbc;
     }
 
@@ -43,7 +52,7 @@ class GroupApiIntegrationTest extends ApiIntegrationTestSupport {
                 new CreateGroupRequest("Engineering", null, List.of(backend, backend), List.of(employee, employee))
             );
 
-        assertThat(this.groups.effectiveRoles(created))
+        assertThat(this.effectiveRoles.effectiveRoles(IdentitySubjects.group(created)))
             .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(employee, developer).stream().sorted().toList());
         assertThat(
@@ -72,7 +81,7 @@ class GroupApiIntegrationTest extends ApiIntegrationTestSupport {
             .groups()
             .create(new CreateGroupRequest(uniqueGroupCode("Leaf"), null, null, null));
 
-        assertThat(this.groups.effectiveRoles(created)).isEmpty();
+        assertThat(this.effectiveRoles.effectiveRoles(IdentitySubjects.group(created))).isEmpty();
     }
 
     @Test

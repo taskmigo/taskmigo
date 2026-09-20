@@ -242,6 +242,44 @@ class AccessControlPackageArchitectureTest {
         applicationDoesNotDependOnInfrastructure.check(classes);
     }
 
+    /**
+     * Verifies direct Subject grant domain and application dependency direction.
+     *
+     * Given: the Phase 6 Subject grant domain and application packages.
+     * Expect: domain stays framework-neutral and application stays independent from persistence adapters.
+     */
+    @Test
+    @DisplayName("keeps Subject grant domain and application independent from infrastructure")
+    void shouldKeepSubjectGrantLayersIndependentWhenAuthorizationPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule domainDoesNotDependOutward = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.authorization.subject.domain..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "io.taskmigo.authorization.subject.application..",
+                "io.taskmigo.authorization.persistence..",
+                "org.springframework..",
+                "jakarta.persistence.."
+            );
+        ArchRule applicationDoesNotDependOnInfrastructure = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.authorization.subject.application..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "io.taskmigo.authorization.persistence..",
+                "org.springframework.data..",
+                "jakarta.persistence.."
+            );
+
+        // Act + Assert
+        domainDoesNotDependOutward.check(classes);
+        applicationDoesNotDependOnInfrastructure.check(classes);
+    }
+
     private static JavaClasses productionClasses() {
         return new ClassFileImporter()
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)

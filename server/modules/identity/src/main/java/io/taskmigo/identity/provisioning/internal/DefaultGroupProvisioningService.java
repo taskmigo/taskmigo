@@ -1,6 +1,7 @@
 package io.taskmigo.identity.provisioning.internal;
 
-import io.taskmigo.authorization.subject.SubjectGrantService;
+import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
+import io.taskmigo.authorization.subject.SubjectGrantQueryService;
 import io.taskmigo.foundation.ReconciliationAction;
 import io.taskmigo.foundation.ReconciliationResult;
 import io.taskmigo.identity.authorization.IdentitySubjects;
@@ -25,16 +26,19 @@ class DefaultGroupProvisioningService implements GroupProvisioningService {
 
     private final GroupCommandService groups;
     private final GroupHierarchyRepository hierarchies;
-    private final SubjectGrantService grants;
+    private final SubjectGrantAssignmentService grantAssignments;
+    private final SubjectGrantQueryService grantQueries;
 
     DefaultGroupProvisioningService(
         GroupCommandService groups,
         GroupHierarchyRepository hierarchies,
-        SubjectGrantService grants
+        SubjectGrantAssignmentService grantAssignments,
+        SubjectGrantQueryService grantQueries
     ) {
         this.groups = groups;
         this.hierarchies = hierarchies;
-        this.grants = grants;
+        this.grantAssignments = grantAssignments;
+        this.grantQueries = grantQueries;
     }
 
     @Override
@@ -57,16 +61,16 @@ class DefaultGroupProvisioningService implements GroupProvisioningService {
         if (mutation.created()) {
             GroupHierarchy hierarchy = this.hierarchies.loadForMutation();
             this.hierarchies.synchronize(hierarchy);
-            this.grants.setRoles(IdentitySubjects.group(id), requestedRoleIds);
+            this.grantAssignments.setRoles(IdentitySubjects.group(id), requestedRoleIds);
             return new ReconciliationResult<>(id, ReconciliationAction.ADDED);
         }
 
-        boolean rolesChanged = !this.grants.roleIds(IdentitySubjects.group(id)).equals(requestedRoleIds);
+        boolean rolesChanged = !this.grantQueries.roleIds(IdentitySubjects.group(id)).equals(requestedRoleIds);
         if (!mutation.changed() && !rolesChanged) {
             return new ReconciliationResult<>(id, ReconciliationAction.UNCHANGED);
         }
         if (rolesChanged) {
-            this.grants.setRoles(IdentitySubjects.group(id), requestedRoleIds);
+            this.grantAssignments.setRoles(IdentitySubjects.group(id), requestedRoleIds);
         }
         return new ReconciliationResult<>(id, ReconciliationAction.UPDATED);
     }
@@ -86,7 +90,7 @@ class DefaultGroupProvisioningService implements GroupProvisioningService {
 
         GroupHierarchy current = this.hierarchies.loadForMutation();
         GroupHierarchy remaining = current.removing(existing.id());
-        this.grants.setRoles(IdentitySubjects.group(existing.id()), Set.of());
+        this.grantAssignments.setRoles(IdentitySubjects.group(existing.id()), Set.of());
         this.hierarchies.remove(existing.id(), remaining);
         this.groups.delete(existing);
         return true;

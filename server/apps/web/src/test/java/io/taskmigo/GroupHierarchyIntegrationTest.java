@@ -6,6 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.taskmigo.authorization.role.RoleException;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.role.RoleService;
+import io.taskmigo.authorization.subject.SubjectRoleQueryService;
+import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.group.GroupException;
 import io.taskmigo.identity.group.GroupService;
 import java.util.List;
@@ -31,11 +33,18 @@ class GroupHierarchyIntegrationTest {
 
     private final GroupService groups;
     private final RoleService access;
+    private final SubjectRoleQueryService effectiveRoles;
     private final JdbcTemplate jdbc;
 
-    GroupHierarchyIntegrationTest(GroupService groups, RoleService access, JdbcTemplate jdbc) {
+    GroupHierarchyIntegrationTest(
+        GroupService groups,
+        RoleService access,
+        SubjectRoleQueryService effectiveRoles,
+        JdbcTemplate jdbc
+    ) {
         this.groups = groups;
         this.access = access;
+        this.effectiveRoles = effectiveRoles;
         this.jdbc = jdbc;
     }
 
@@ -57,13 +66,15 @@ class GroupHierarchyIntegrationTest {
         this.groups.setRoles(platform, List.of(developer, developer));
         this.groups.setRoles(frontend, Set.of(employee));
 
-        assertThat(this.groups.effectiveRoles(engineering))
+        assertThat(this.effectiveRoles.effectiveRoles(IdentitySubjects.group(engineering)))
             .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(employee, developer, manager).stream().sorted().toList());
-        assertThat(this.groups.effectiveRoles(backend))
+        assertThat(this.effectiveRoles.effectiveRoles(IdentitySubjects.group(backend)))
             .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(employee, developer).stream().sorted().toList());
-        assertThat(this.groups.effectiveRoles(frontend)).extracting(RoleInfo::id).containsExactly(employee);
+        assertThat(this.effectiveRoles.effectiveRoles(IdentitySubjects.group(frontend)))
+            .extracting(RoleInfo::id)
+            .containsExactly(employee);
         assertThat(
             this.jdbc.queryForObject(
                 "select count(*) from group_hierarchy where parent_group_id = ? and child_group_id = ?",
@@ -117,8 +128,12 @@ class GroupHierarchyIntegrationTest {
             .isInstanceOf(GroupException.class)
             .hasMessageContaining("Group hierarchy must be acyclic");
 
-        assertThat(this.groups.effectiveRoles(root)).extracting(RoleInfo::id).containsExactly(role);
-        assertThat(this.groups.effectiveRoles(leaf)).extracting(RoleInfo::id).containsExactly(role);
+        assertThat(this.effectiveRoles.effectiveRoles(IdentitySubjects.group(root)))
+            .extracting(RoleInfo::id)
+            .containsExactly(role);
+        assertThat(this.effectiveRoles.effectiveRoles(IdentitySubjects.group(leaf)))
+            .extracting(RoleInfo::id)
+            .containsExactly(role);
         assertThat(
             this.jdbc.queryForObject(
                 "select count(*) from group_hierarchy_closure where ancestor_group_id = ? and descendant_group_id = ?",
@@ -145,7 +160,9 @@ class GroupHierarchyIntegrationTest {
             .isInstanceOf(RoleException.class)
             .hasMessage("One or more Roles do not exist");
 
-        assertThat(this.groups.effectiveRoles(root)).extracting(RoleInfo::id).containsExactly(role);
+        assertThat(this.effectiveRoles.effectiveRoles(IdentitySubjects.group(root)))
+            .extracting(RoleInfo::id)
+            .containsExactly(role);
     }
 
     private UUID group(String name) {

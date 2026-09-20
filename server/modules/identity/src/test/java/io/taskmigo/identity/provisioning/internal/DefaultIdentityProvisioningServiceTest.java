@@ -8,7 +8,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.authorization.subject.SubjectGrantService;
+import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
+import io.taskmigo.authorization.subject.SubjectGrantQueryService;
 import io.taskmigo.foundation.ReconciliationAction;
 import io.taskmigo.foundation.ReconciliationResult;
 import io.taskmigo.identity.authorization.IdentitySubjects;
@@ -45,9 +46,10 @@ class DefaultIdentityProvisioningServiceTest {
         when(users.reconcileManaged("alice", "{bcrypt}hash", List.of("Alice@EXAMPLE.COM"), "Alice", "User")).thenReturn(
             new UserMutationResult(id, true, true)
         );
-        SubjectGrantService grants = mock(SubjectGrantService.class);
+        SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
+        SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = new DefaultIdentityProvisioningService(users, grants, groups);
+        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups);
 
         // Act
         ReconciliationResult<UUID> result = service.reconcileUser(
@@ -62,8 +64,8 @@ class DefaultIdentityProvisioningServiceTest {
 
         // Assert
         assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.ADDED));
-        verify(grants).setRoles(IdentitySubjects.user(id), Set.of(roleId));
-        verify(grants).setStatements(IdentitySubjects.user(id), Set.of());
+        verify(grantAssignments).setRoles(IdentitySubjects.user(id), Set.of(roleId));
+        verify(grantAssignments).setStatements(IdentitySubjects.user(id), Set.of());
         verify(groups).setGroupsForUser(id, Set.of(groupId));
     }
 
@@ -82,12 +84,13 @@ class DefaultIdentityProvisioningServiceTest {
         when(users.reconcileManaged(" alice ", null, List.of("ALICE@example.com"), " Alice ", " User ")).thenReturn(
             new UserMutationResult(id, false, true)
         );
-        SubjectGrantService grants = mock(SubjectGrantService.class);
-        when(grants.roleIds(IdentitySubjects.user(id))).thenReturn(Set.of());
-        when(grants.statementIds(IdentitySubjects.user(id))).thenReturn(Set.of());
+        SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
+        SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
+        when(grantQueries.roleIds(IdentitySubjects.user(id))).thenReturn(Set.of());
+        when(grantQueries.statementIds(IdentitySubjects.user(id))).thenReturn(Set.of());
         MembershipService groups = mock(MembershipService.class);
         when(groups.groupsForUser(id)).thenReturn(List.of());
-        var service = new DefaultIdentityProvisioningService(users, grants, groups);
+        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups);
 
         // Act
         ReconciliationResult<UUID> result = service.reconcileUser(
@@ -103,8 +106,8 @@ class DefaultIdentityProvisioningServiceTest {
         // Assert
         assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.UPDATED));
         verify(users).reconcileManaged(" alice ", null, List.of("ALICE@example.com"), " Alice ", " User ");
-        verify(grants, never()).setRoles(any(), any());
-        verify(grants, never()).setStatements(any(), any());
+        verify(grantAssignments, never()).setRoles(any(), any());
+        verify(grantAssignments, never()).setStatements(any(), any());
         verify(groups, never()).setGroupsForUser(any(), any());
     }
 
@@ -123,12 +126,13 @@ class DefaultIdentityProvisioningServiceTest {
         when(
             users.reconcileManaged("alice", "{bcrypt}different", List.of("alice@example.com"), "Alice", "User")
         ).thenReturn(new UserMutationResult(id, false, false));
-        SubjectGrantService grants = mock(SubjectGrantService.class);
-        when(grants.roleIds(IdentitySubjects.user(id))).thenReturn(Set.of());
-        when(grants.statementIds(IdentitySubjects.user(id))).thenReturn(Set.of());
+        SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
+        SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
+        when(grantQueries.roleIds(IdentitySubjects.user(id))).thenReturn(Set.of());
+        when(grantQueries.statementIds(IdentitySubjects.user(id))).thenReturn(Set.of());
         MembershipService groups = mock(MembershipService.class);
         when(groups.groupsForUser(id)).thenReturn(List.of());
-        var service = new DefaultIdentityProvisioningService(users, grants, groups);
+        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups);
 
         // Act
         ReconciliationResult<UUID> result = service.reconcileUser(
@@ -143,8 +147,8 @@ class DefaultIdentityProvisioningServiceTest {
 
         // Assert
         assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.UNCHANGED));
-        verify(grants, never()).setRoles(any(), any());
-        verify(grants, never()).setStatements(any(), any());
+        verify(grantAssignments, never()).setRoles(any(), any());
+        verify(grantAssignments, never()).setStatements(any(), any());
         verify(groups, never()).setGroupsForUser(any(), any());
     }
 
@@ -161,17 +165,18 @@ class DefaultIdentityProvisioningServiceTest {
         UserCommandService users = mock(UserCommandService.class);
         User existing = user("alice");
         when(users.findByUsername("alice")).thenReturn(Optional.of(existing));
-        SubjectGrantService grants = mock(SubjectGrantService.class);
+        SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
+        SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = new DefaultIdentityProvisioningService(users, grants, groups);
+        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups);
 
         // Act
         boolean removed = service.deleteUser("alice");
 
         // Assert
         assertThat(removed).isTrue();
-        verify(grants).setRoles(IdentitySubjects.user(existing.id()), Set.of());
-        verify(grants).setStatements(IdentitySubjects.user(existing.id()), Set.of());
+        verify(grantAssignments).setRoles(IdentitySubjects.user(existing.id()), Set.of());
+        verify(grantAssignments).setStatements(IdentitySubjects.user(existing.id()), Set.of());
         verify(groups).setGroupsForUser(existing.id(), Set.of());
         verify(users).delete(existing);
     }
@@ -188,9 +193,10 @@ class DefaultIdentityProvisioningServiceTest {
         // Arrange
         UserCommandService users = mock(UserCommandService.class);
         when(users.findByUsername("alice")).thenReturn(Optional.empty());
-        SubjectGrantService grants = mock(SubjectGrantService.class);
+        SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
+        SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = new DefaultIdentityProvisioningService(users, grants, groups);
+        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups);
 
         // Act
         boolean removed = service.deleteUser("alice");
@@ -198,8 +204,8 @@ class DefaultIdentityProvisioningServiceTest {
         // Assert
         assertThat(removed).isFalse();
         verify(users, never()).delete(any());
-        verify(grants, never()).setRoles(any(), any());
-        verify(grants, never()).setStatements(any(), any());
+        verify(grantAssignments, never()).setRoles(any(), any());
+        verify(grantAssignments, never()).setStatements(any(), any());
         verify(groups, never()).setGroupsForUser(any(), any());
     }
 
@@ -216,17 +222,18 @@ class DefaultIdentityProvisioningServiceTest {
         UserCommandService users = mock(UserCommandService.class);
         User system = user("system");
         when(users.findByUsername("system")).thenReturn(Optional.of(system));
-        SubjectGrantService grants = mock(SubjectGrantService.class);
+        SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
+        SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = new DefaultIdentityProvisioningService(users, grants, groups);
+        var service = new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, groups);
 
         // Act + Assert
         assertThatThrownBy(() -> service.deleteUser("system"))
             .isInstanceOf(IdentityProvisioningException.class)
             .hasMessageContaining("system user cannot be deleted");
         verify(users, never()).delete(any());
-        verify(grants, never()).setRoles(any(), any());
-        verify(grants, never()).setStatements(any(), any());
+        verify(grantAssignments, never()).setRoles(any(), any());
+        verify(grantAssignments, never()).setStatements(any(), any());
         verify(groups, never()).setGroupsForUser(any(), any());
     }
 
@@ -244,7 +251,8 @@ class DefaultIdentityProvisioningServiceTest {
         when(users.reconcileManaged("system", null, null, "System", "User")).thenThrow(systemCredentialFailure());
         var service = new DefaultIdentityProvisioningService(
             users,
-            mock(SubjectGrantService.class),
+            mock(SubjectGrantAssignmentService.class),
+            mock(SubjectGrantQueryService.class),
             mock(MembershipService.class)
         );
 

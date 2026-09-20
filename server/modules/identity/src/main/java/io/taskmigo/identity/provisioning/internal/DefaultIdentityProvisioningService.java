@@ -1,6 +1,7 @@
 package io.taskmigo.identity.provisioning.internal;
 
-import io.taskmigo.authorization.subject.SubjectGrantService;
+import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
+import io.taskmigo.authorization.subject.SubjectGrantQueryService;
 import io.taskmigo.foundation.ReconciliationAction;
 import io.taskmigo.foundation.ReconciliationResult;
 import io.taskmigo.identity.authorization.IdentitySubjects;
@@ -24,16 +25,19 @@ import org.springframework.transaction.annotation.Transactional;
 class DefaultIdentityProvisioningService implements IdentityProvisioningService {
 
     private final UserCommandService users;
-    private final SubjectGrantService grants;
+    private final SubjectGrantAssignmentService grantAssignments;
+    private final SubjectGrantQueryService grantQueries;
     private final MembershipService memberships;
 
     DefaultIdentityProvisioningService(
         UserCommandService users,
-        SubjectGrantService grants,
+        SubjectGrantAssignmentService grantAssignments,
+        SubjectGrantQueryService grantQueries,
         MembershipService memberships
     ) {
         this.users = users;
-        this.grants = grants;
+        this.grantAssignments = grantAssignments;
+        this.grantQueries = grantQueries;
         this.memberships = memberships;
     }
 
@@ -59,23 +63,23 @@ class DefaultIdentityProvisioningService implements IdentityProvisioningService 
 
         UUID id = mutation.id();
         if (mutation.created()) {
-            this.grants.setRoles(IdentitySubjects.user(id), requestedRoleIds);
-            this.grants.setStatements(IdentitySubjects.user(id), Set.of());
+            this.grantAssignments.setRoles(IdentitySubjects.user(id), requestedRoleIds);
+            this.grantAssignments.setStatements(IdentitySubjects.user(id), Set.of());
             this.memberships.setGroupsForUser(id, requestedGroupIds);
             return new ReconciliationResult<>(id, ReconciliationAction.ADDED);
         }
 
-        boolean rolesChanged = !this.grants.roleIds(IdentitySubjects.user(id)).equals(requestedRoleIds);
-        boolean statementsChanged = !this.grants.statementIds(IdentitySubjects.user(id)).isEmpty();
+        boolean rolesChanged = !this.grantQueries.roleIds(IdentitySubjects.user(id)).equals(requestedRoleIds);
+        boolean statementsChanged = !this.grantQueries.statementIds(IdentitySubjects.user(id)).isEmpty();
         boolean groupsChanged = !Set.copyOf(this.memberships.groupsForUser(id)).equals(requestedGroupIds);
         if (!mutation.changed() && !rolesChanged && !statementsChanged && !groupsChanged) {
             return new ReconciliationResult<>(id, ReconciliationAction.UNCHANGED);
         }
         if (rolesChanged) {
-            this.grants.setRoles(IdentitySubjects.user(id), requestedRoleIds);
+            this.grantAssignments.setRoles(IdentitySubjects.user(id), requestedRoleIds);
         }
         if (statementsChanged) {
-            this.grants.setStatements(IdentitySubjects.user(id), Set.of());
+            this.grantAssignments.setStatements(IdentitySubjects.user(id), Set.of());
         }
         if (groupsChanged) {
             this.memberships.setGroupsForUser(id, requestedGroupIds);
@@ -101,8 +105,8 @@ class DefaultIdentityProvisioningService implements IdentityProvisioningService 
             throw provisioningFailure(exception);
         }
 
-        this.grants.setRoles(IdentitySubjects.user(existing.id()), Set.of());
-        this.grants.setStatements(IdentitySubjects.user(existing.id()), Set.of());
+        this.grantAssignments.setRoles(IdentitySubjects.user(existing.id()), Set.of());
+        this.grantAssignments.setStatements(IdentitySubjects.user(existing.id()), Set.of());
         this.memberships.setGroupsForUser(existing.id(), Set.of());
         this.users.delete(existing);
         return true;

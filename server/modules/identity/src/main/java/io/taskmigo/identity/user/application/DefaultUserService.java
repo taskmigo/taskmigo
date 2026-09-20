@@ -1,7 +1,8 @@
 package io.taskmigo.identity.user.application;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.subject.SubjectGrantService;
+import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
+import io.taskmigo.authorization.subject.SubjectGrantQueryService;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.user.AuthenticationInfo;
@@ -21,11 +22,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class DefaultUserService implements UserService {
 
     private final UserQueryRepository users;
-    private final SubjectGrantService grants;
+    private final SubjectGrantQueryService grantQueries;
+    private final SubjectGrantAssignmentService grantAssignments;
 
-    public DefaultUserService(UserQueryRepository users, SubjectGrantService grants) {
+    public DefaultUserService(
+        UserQueryRepository users,
+        SubjectGrantQueryService grantQueries,
+        SubjectGrantAssignmentService grantAssignments
+    ) {
         this.users = users;
-        this.grants = grants;
+        this.grantQueries = grantQueries;
+        this.grantAssignments = grantAssignments;
     }
 
     @Override
@@ -55,21 +62,21 @@ public class DefaultUserService implements UserService {
     @Transactional(readOnly = true)
     public Set<UUID> roleIds(UUID userId) {
         this.requireExisting(userId);
-        return this.grants.roleIds(IdentitySubjects.user(userId));
+        return this.grantQueries.roleIds(IdentitySubjects.user(userId));
     }
 
     @Override
     @Transactional
     public void setStatements(UUID userId, Collection<UUID> statementIds) {
         this.requireExisting(userId);
-        this.grants.setStatements(IdentitySubjects.user(userId), statementIds);
+        this.grantAssignments.setStatements(IdentitySubjects.user(userId), statementIds);
     }
 
     @Override
     @Transactional
     public void setRoles(UUID userId, Collection<UUID> roleIds) {
         this.requireExisting(userId);
-        this.grants.setRoles(IdentitySubjects.user(userId), roleIds);
+        this.grantAssignments.setRoles(IdentitySubjects.user(userId), roleIds);
     }
 
     private void requireExisting(UUID userId) {
