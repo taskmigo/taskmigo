@@ -87,8 +87,8 @@ class IdentityPackageArchitectureTest {
             .resideInAnyPackage(
                 "io.taskmigo.identity.persistence..",
                 "io.taskmigo.identity.user.adapter..",
-                "io.taskmigo.identity.group.infrastructure..",
-                "io.taskmigo.identity.membership.infrastructure..",
+                "io.taskmigo.identity.group.adapter..",
+                "io.taskmigo.identity.membership.adapter..",
                 "org.springframework.data..",
                 "jakarta.persistence.."
             );
@@ -228,9 +228,9 @@ class IdentityPackageArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 "io.taskmigo.identity.group.application..",
-                "io.taskmigo.identity.group.infrastructure..",
+                "io.taskmigo.identity.group.adapter..",
                 "io.taskmigo.identity.membership.application..",
-                "io.taskmigo.identity.membership.infrastructure.."
+                "io.taskmigo.identity.membership.adapter.."
             );
 
         // Act + Assert
@@ -255,7 +255,7 @@ class IdentityPackageArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 "io.taskmigo.identity.group.application..",
-                "io.taskmigo.identity.group.infrastructure..",
+                "io.taskmigo.identity.group.adapter..",
                 "org.springframework..",
                 "jakarta.persistence.."
             );
@@ -268,8 +268,8 @@ class IdentityPackageArchitectureTest {
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
-                "io.taskmigo.identity.group.infrastructure..",
-                "io.taskmigo.identity.membership.infrastructure..",
+                "io.taskmigo.identity.group.adapter..",
+                "io.taskmigo.identity.membership.adapter..",
                 "org.springframework.data..",
                 "jakarta.persistence.."
             );

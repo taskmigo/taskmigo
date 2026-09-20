@@ -11,6 +11,7 @@
         "identity :: user",
         "identity :: user-input",
         "identity :: group",
+        "identity :: group-input",
     }
 )
 @NullMarked

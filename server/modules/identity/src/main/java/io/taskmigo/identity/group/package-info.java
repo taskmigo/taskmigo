@@ -1,7 +1,7 @@
-/// Publishes runtime Group contracts.
+/// Publishes Group data/error contracts shared with driving adapters.
 ///
-/// Domain behavior, application orchestration, hierarchy locking, memberships, and persistence adapters remain private
-/// to the Identity bounded context.
+/// Group use cases are exposed separately through the `group-input` named interface; domain, application implementation,
+/// outbound ports, and driven adapters remain internal to Identity.
 @NamedInterface("group")
 @NullMarked
 package io.taskmigo.identity.group;

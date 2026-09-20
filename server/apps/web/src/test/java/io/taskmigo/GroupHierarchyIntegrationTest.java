@@ -9,7 +9,7 @@ import io.taskmigo.authorization.role.RoleService;
 import io.taskmigo.authorization.subject.SubjectRoleQueryService;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.group.GroupException;
-import io.taskmigo.identity.group.GroupService;
+import io.taskmigo.identity.group.application.port.in.api.GroupService;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
