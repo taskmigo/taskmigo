@@ -105,7 +105,7 @@ public final class HexagonalOnionRules {
     }
 
     static List<ArchRule> tacticalTestRules(Context context) {
-        ArchRule domainTestsWithoutSpring = noClasses()
+        ArchRule domainTestRule = noClasses()
             .that()
             .resideInAnyPackage(context.rootPackage() + "..domain..")
             .and()
@@ -115,7 +115,7 @@ public final class HexagonalOnionRules {
             .resideInAnyPackage("org.springframework..")
             .as("domain tests remain framework neutral");
 
-        ArchRule applicationTestsWithoutPersistenceRuntime = noClasses()
+        ArchRule applicationTestRule = noClasses()
             .that()
             .resideInAnyPackage(context.applicationPackages().toArray(String[]::new))
             .and()
@@ -134,7 +134,7 @@ public final class HexagonalOnionRules {
             )
             .as("application tests remain independent from persistence adapters and Spring test contexts");
 
-        return List.of(domainTestsWithoutSpring, applicationTestsWithoutPersistenceRuntime);
+        return List.of(domainTestRule, applicationTestRule);
     }
 
     static ArchRule domainRule(Context context) {
