@@ -5,7 +5,6 @@ package io.taskmigo.authorization.provisioning;
 /// @param id the stable identifier of the reconciled resource
 /// @param change the semantic state transition performed by provisioning
 public record AuthorizationProvisioningResult<T>(T id, Change change) {
-
     /// Identifies the state transition produced by managed authorization provisioning.
     public enum Change {
         CREATED,

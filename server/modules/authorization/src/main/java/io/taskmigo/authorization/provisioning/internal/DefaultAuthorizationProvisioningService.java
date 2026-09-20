@@ -62,7 +62,10 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
             throw invalidInput(exception);
         }
 
-        return new AuthorizationProvisioningResult<>(mutation.id(), provisioningChange(mutation.created(), mutation.changed()));
+        return new AuthorizationProvisioningResult<>(
+            mutation.id(),
+            provisioningChange(mutation.created(), mutation.changed())
+        );
     }
 
     @Override

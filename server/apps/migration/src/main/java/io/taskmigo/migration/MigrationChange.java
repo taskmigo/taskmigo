@@ -2,7 +2,6 @@ package io.taskmigo.migration;
 
 /// Represents one managed migration resource change that is safe to publish in an operational log.
 record MigrationChange(String resourceType, String resourceKey, Action action) {
-
     enum Action {
         ADDED("added"),
         UPDATED("updated"),

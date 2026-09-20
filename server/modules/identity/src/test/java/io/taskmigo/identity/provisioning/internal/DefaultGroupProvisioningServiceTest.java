@@ -50,7 +50,12 @@ class DefaultGroupProvisioningServiceTest {
         var service = new DefaultGroupProvisioningService(groups, hierarchies, grantAssignments, grantQueries);
 
         // Act
-        IdentityProvisioningResult<UUID> result = service.reconcileGroup("engineering", "Engineering", null, Set.of(roleId));
+        IdentityProvisioningResult<UUID> result = service.reconcileGroup(
+            "engineering",
+            "Engineering",
+            null,
+            Set.of(roleId)
+        );
 
         // Assert
         assertThat(result).isEqualTo(new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.CREATED));

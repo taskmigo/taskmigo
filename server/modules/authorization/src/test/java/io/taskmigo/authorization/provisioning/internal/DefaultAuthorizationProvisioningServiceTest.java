@@ -67,7 +67,9 @@ class DefaultAuthorizationProvisioningServiceTest {
         );
 
         // Assert
-        assertThat(result).isEqualTo(new AuthorizationProvisioningResult<>(id, AuthorizationProvisioningResult.Change.CREATED));
+        assertThat(result).isEqualTo(
+            new AuthorizationProvisioningResult<>(id, AuthorizationProvisioningResult.Change.CREATED)
+        );
     }
 
     /**
@@ -107,7 +109,9 @@ class DefaultAuthorizationProvisioningServiceTest {
         );
 
         // Assert
-        assertThat(result).isEqualTo(new AuthorizationProvisioningResult<>(id, AuthorizationProvisioningResult.Change.UPDATED));
+        assertThat(result).isEqualTo(
+            new AuthorizationProvisioningResult<>(id, AuthorizationProvisioningResult.Change.UPDATED)
+        );
     }
 
     /**
@@ -147,7 +151,9 @@ class DefaultAuthorizationProvisioningServiceTest {
         );
 
         // Assert
-        assertThat(result).isEqualTo(new AuthorizationProvisioningResult<>(id, AuthorizationProvisioningResult.Change.UNCHANGED));
+        assertThat(result).isEqualTo(
+            new AuthorizationProvisioningResult<>(id, AuthorizationProvisioningResult.Change.UNCHANGED)
+        );
     }
 
     /**
@@ -243,10 +249,17 @@ class DefaultAuthorizationProvisioningServiceTest {
         );
 
         // Act
-        AuthorizationProvisioningResult<UUID> result = service.reconcileRole("reader", "Reader", null, Set.of(statementId));
+        AuthorizationProvisioningResult<UUID> result = service.reconcileRole(
+            "reader",
+            "Reader",
+            null,
+            Set.of(statementId)
+        );
 
         // Assert
-        assertThat(result).isEqualTo(new AuthorizationProvisioningResult<>(id, AuthorizationProvisioningResult.Change.CREATED));
+        assertThat(result).isEqualTo(
+            new AuthorizationProvisioningResult<>(id, AuthorizationProvisioningResult.Change.CREATED)
+        );
         verify(statements).requireStatements(Set.of(statementId));
         verify(hierarchies).synchronize(hierarchy);
     }
@@ -272,7 +285,9 @@ class DefaultAuthorizationProvisioningServiceTest {
         AuthorizationProvisioningResult<UUID> result = service.reconcileRole("reader", "Reader", null, Set.of());
 
         // Assert
-        assertThat(result).isEqualTo(new AuthorizationProvisioningResult<>(id, AuthorizationProvisioningResult.Change.UNCHANGED));
+        assertThat(result).isEqualTo(
+            new AuthorizationProvisioningResult<>(id, AuthorizationProvisioningResult.Change.UNCHANGED)
+        );
         verify(roles, never()).delete(ArgumentMatchers.any());
     }
 
