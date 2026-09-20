@@ -18,6 +18,8 @@ plugins {
     alias(libs.plugins.spotless) apply false
 }
 
+val checkstyleToolingProjectPath = ":tooling:checkstyle"
+
 allprojects {
     group = "io.taskmigo"
     version = "0.0.1-SNAPSHOT"
@@ -25,8 +27,12 @@ allprojects {
 
 subprojects {
     pluginManager.withPlugin("java") {
+        val usesRepositoryCheckstyle = path != checkstyleToolingProjectPath
+
         pluginManager.apply("net.ltgt.errorprone")
-        pluginManager.apply("checkstyle")
+        if (usesRepositoryCheckstyle) {
+            pluginManager.apply("checkstyle")
+        }
         pluginManager.apply("com.diffplug.spotless")
 
         repositories {
@@ -54,9 +60,26 @@ subprojects {
             }
         }
 
-        extensions.configure<CheckstyleExtension> {
-            toolVersion = libs.versions.checkstyle.get()
-            configFile = rootProject.file("config/checkstyle/checkstyle.xml")
+        if (usesRepositoryCheckstyle) {
+            dependencies {
+                add(
+                    "checkstyle",
+                    "com.puppycrawl.tools:checkstyle:${libs.versions.checkstyle.get()}",
+                )
+                add("checkstyle", project(checkstyleToolingProjectPath))
+            }
+
+            extensions.configure<CheckstyleExtension> {
+                toolVersion = libs.versions.checkstyle.get()
+                configFile = rootProject.file("config/checkstyle/checkstyle.xml")
+            }
+
+            tasks.withType<Checkstyle>().configureEach {
+                reports {
+                    xml.required.set(false)
+                    html.required.set(true)
+                }
+            }
         }
 
         tasks.withType<JavaCompile>().configureEach {
@@ -74,13 +97,6 @@ subprojects {
             useJUnitPlatform()
             testLogging {
                 exceptionFormat = TestExceptionFormat.FULL
-            }
-        }
-
-        tasks.withType<Checkstyle>().configureEach {
-            reports {
-                xml.required.set(false)
-                html.required.set(true)
             }
         }
 
