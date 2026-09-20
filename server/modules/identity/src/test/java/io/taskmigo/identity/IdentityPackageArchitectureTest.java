@@ -308,6 +308,28 @@ class IdentityPackageArchitectureTest {
         hierarchyDoesNotDependOnPersistence.check(classes);
     }
 
+    /**
+     * Verifies that Identity no longer imports Access Control Role models or broad Role services.
+     *
+     * Given: every production class owned by Identity after the Phase 6 contract split.
+     * Expect: Identity depends on subject capabilities and the effective-subject SPI, not the Role package.
+     */
+    @Test
+    @DisplayName("keeps Access Control Role contracts out of Identity")
+    void shouldAvoidRoleContractsWhenIdentityPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule identityDoesNotDependOnRoleContracts = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.identity..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage("io.taskmigo.authorization.role..");
+
+        // Act + Assert
+        identityDoesNotDependOnRoleContracts.check(classes);
+    }
+
     private static JavaClasses productionClasses() {
         return new ClassFileImporter()
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
