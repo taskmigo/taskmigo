@@ -7,14 +7,14 @@ on:
       - server/**
       - "!server/**/*.md"
       - "!server/benchmarks/**"
-      - .github/workflows/qodana.yml
+      - .github/workflows/qodana.yaml
   push:
     branches: [next]
     paths:
       - server/**
       - "!server/**/*.md"
       - "!server/benchmarks/**"
-      - .github/workflows/qodana.yml
+      - .github/workflows/qodana.yaml
   workflow_dispatch:
 
 concurrency:
