@@ -54,7 +54,6 @@ include:
   - name: MissingOverrideAnnotation
   - name: CStyleArrayDeclaration
   - name: TodoComment
-  - name: BreakStatement
   - name: ConfusingElse
   - name: AssertStatement
   - name: SystemOutErr
@@ -77,6 +76,7 @@ include:
   # - name: UnusedLibrary
   - name: IgnoreResultOfCall
   - name: ResultOfObjectAllocationIgnored
+  # Intentional break statements are allowed; redundant exits should still be removed.
   - name: UnnecessaryBreak
   - name: UnnecessaryCallToStringValueOf
   - name: UnnecessaryConstantArrayCreationExpression

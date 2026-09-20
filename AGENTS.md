@@ -32,12 +32,17 @@ Instructions for AI agents and automated contributors working in this repository
 
 ## Loop control and readability
 
-- Choose loop control based on readability, maintainability, and developer experience rather than applying a blanket rule against `continue`.
+- Choose loop control based on readability, maintainability, and developer experience rather than applying blanket rules against `continue` or `break`.
 - Use `continue` as a guard clause when skipping an inapplicable iteration early reduces nesting and keeps the primary processing path linear.
 - Prefer early, obvious `continue` statements close to the condition they guard so the skipped case is understandable without tracing distant state.
 - Do not scatter many `continue` statements throughout a long loop, hide them inside deeply nested control flow, or use labeled `continue` when a simpler structure can make the target clear.
 - When several `continue` paths make one iteration difficult to reason about, extract the iteration body into a helper or restructure the loop instead of adding more jumps.
 - Treat `UnnecessaryContinue` findings as a signal to remove redundant statements, but do not replace a useful guard-style `continue` with extra nesting solely to satisfy a style preference.
+- Use `break` only when terminating a loop early materially improves developer experience by making the exit condition and overall intent clearer than alternatives such as sentinel flags, extra mutable state, or additional nesting.
+- Prefer a small number of obvious `break` statements close to the condition that ends the loop so the exit path is understandable without tracing distant state.
+- Do not scatter `break` statements throughout a long loop, hide them inside deeply nested control flow, use them merely to shorten code, or use labeled `break` when a simpler structure can make the target clear.
+- When multiple `break` paths make loop termination difficult to reason about, extract the loop body into a helper, express the termination condition in the loop construct, or otherwise restructure the control flow instead of adding more jumps.
+- Treat `UnnecessaryBreak` findings as a signal to remove redundant statements, but do not replace a useful early exit with artificial state or extra nesting solely to satisfy a style preference.
 
 ## Database schema lifecycle
 
