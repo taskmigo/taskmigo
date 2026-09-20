@@ -1,4 +1,4 @@
-package io.taskmigo.identity.persistence.query;
+package io.taskmigo.identity.adapter.out.persistence.query;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.persistence.ObjectAuthorizationPredicateModel;

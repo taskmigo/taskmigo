@@ -12,6 +12,25 @@ import org.junit.jupiter.api.Test;
 class IdentityPackageArchitectureTest {
 
     /**
+     * Verifies that completed Phase 2 adapter migrations cannot regress to transitional package names.
+     *
+     * Given: all production classes in the Identity bounded context.
+     * Expect: no class resides in the retired top-level persistence or infrastructure packages.
+     */
+    @Test
+    @DisplayName("rejects retired Identity adapter package names")
+    void shouldRejectLegacyAdapterPackagesWhenIdentityPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule noLegacyAdapterPackages = noClasses()
+            .should()
+            .resideInAnyPackage("io.taskmigo.identity.persistence..", "io.taskmigo.identity..infrastructure..");
+
+        // Act + Assert
+        noLegacyAdapterPackages.check(classes);
+    }
+
+    /**
      * Verifies that persistence internals do not depend on application adapters.
      *
      * Given: all production classes in the consolidated Identity capability.
