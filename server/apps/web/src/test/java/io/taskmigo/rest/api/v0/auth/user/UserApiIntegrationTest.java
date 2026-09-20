@@ -8,6 +8,7 @@ import io.taskmigo.authorization.role.RoleService;
 import io.taskmigo.authorization.spi.EffectiveStatement;
 import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.StatementInfo;
+import io.taskmigo.authorization.subject.SubjectRoleQueryService;
 import io.taskmigo.identity.group.GroupService;
 import io.taskmigo.identity.user.UserService;
 import io.taskmigo.rest.api.v0.testing.ApiIntegrationTestSupport;
@@ -32,6 +33,7 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
     private final GroupService groups;
     private final UserService users;
     private final EffectiveStatementResolver statementResolver;
+    private final SubjectRoleQueryService effectiveRoles;
     private final JdbcTemplate jdbc;
 
     UserApiIntegrationTest(
@@ -39,12 +41,14 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
         GroupService groups,
         UserService users,
         EffectiveStatementResolver statementResolver,
+        SubjectRoleQueryService effectiveRoles,
         JdbcTemplate jdbc
     ) {
         this.access = access;
         this.groups = groups;
         this.users = users;
         this.statementResolver = statementResolver;
+        this.effectiveRoles = effectiveRoles;
         this.jdbc = jdbc;
     }
 
@@ -139,14 +143,14 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
         UUID withGroups = this.create("groups", Set.of(), List.of(engineering, engineering));
         UUID withBoth = this.create("both", Set.of(employee), Set.of(engineering));
 
-        assertThat(this.groups.effectiveRolesForUser(noAssignments)).isEmpty();
-        assertThat(this.groups.effectiveRolesForUser(withRoles))
+        assertThat(this.effectiveRoles.effectiveRolesForPrincipal(noAssignments)).isEmpty();
+        assertThat(this.effectiveRoles.effectiveRolesForPrincipal(withRoles))
             .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(employee, developer).stream().sorted().toList());
-        assertThat(this.groups.effectiveRolesForUser(withGroups))
+        assertThat(this.effectiveRoles.effectiveRolesForPrincipal(withGroups))
             .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(employee, developer).stream().sorted().toList());
-        assertThat(this.groups.effectiveRolesForUser(withBoth))
+        assertThat(this.effectiveRoles.effectiveRolesForPrincipal(withBoth))
             .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(employee, developer).stream().sorted().toList());
         assertThat(
@@ -210,13 +214,13 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
         UUID childRoleUser = this.create("child-role-user", List.of(roleB), Set.of());
         UUID backendUser = this.create("backend-user", Set.of(), List.of(backend));
 
-        assertThat(this.groups.effectiveRolesForUser(user))
+        assertThat(this.effectiveRoles.effectiveRolesForPrincipal(user))
             .extracting(RoleInfo::id)
             .containsExactlyElementsOf(
                 List.of(roleA, roleB, employee, backendDeveloper, developer).stream().sorted().toList()
             );
-        assertThat(this.groups.effectiveRolesForUser(childRoleUser)).extracting(RoleInfo::id).containsExactly(roleB);
-        assertThat(this.groups.effectiveRolesForUser(backendUser))
+        assertThat(this.effectiveRoles.effectiveRolesForPrincipal(childRoleUser)).extracting(RoleInfo::id).containsExactly(roleB);
+        assertThat(this.effectiveRoles.effectiveRolesForPrincipal(backendUser))
             .extracting(RoleInfo::id)
             .containsExactlyElementsOf(List.of(backendDeveloper, developer).stream().sorted().toList());
 
@@ -226,7 +230,7 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
         assertThatThrownBy(() -> this.groups.setChildGroups(backend, Set.of(engineering))).hasMessageContaining(
             "Group hierarchy must be acyclic"
         );
-        assertThat(this.groups.effectiveRolesForUser(user))
+        assertThat(this.effectiveRoles.effectiveRolesForPrincipal(user))
             .extracting(RoleInfo::id)
             .containsExactlyElementsOf(
                 List.of(roleA, roleB, employee, backendDeveloper, developer).stream().sorted().toList()

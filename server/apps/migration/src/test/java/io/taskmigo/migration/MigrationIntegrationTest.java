@@ -10,6 +10,7 @@ import io.taskmigo.authorization.role.RoleService;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.StatementService;
+import io.taskmigo.authorization.subject.SubjectRoleQueryService;
 import io.taskmigo.identity.group.GroupService;
 import io.taskmigo.identity.provisioning.GroupProvisioningService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningService;
@@ -68,6 +69,7 @@ class MigrationIntegrationTest {
     private final IdentityProvisioningService identityProvisioning;
     private final GroupProvisioningService groups;
     private final GroupService runtimeGroups;
+    private final SubjectRoleQueryService effectiveRoles;
     private final JdbcTemplate jdbc;
 
     MigrationIntegrationTest(
@@ -83,6 +85,7 @@ class MigrationIntegrationTest {
         IdentityProvisioningService identityProvisioning,
         GroupProvisioningService groups,
         GroupService runtimeGroups,
+        SubjectRoleQueryService effectiveRoles,
         JdbcTemplate jdbc
     ) {
         this.flyway = flyway;
@@ -97,6 +100,7 @@ class MigrationIntegrationTest {
         this.identityProvisioning = identityProvisioning;
         this.groups = groups;
         this.runtimeGroups = runtimeGroups;
+        this.effectiveRoles = effectiveRoles;
         this.jdbc = jdbc;
     }
 
@@ -116,7 +120,7 @@ class MigrationIntegrationTest {
         assertThat(
             this.passwordEncoder.matches("integration-password", Objects.requireNonNull(system.passwordHash()))
         ).isTrue();
-        assertThat(this.runtimeGroups.effectiveRolesForUser(system.id()))
+        assertThat(this.effectiveRoles.effectiveRolesForPrincipal(system.id()))
             .extracting(RoleInfo::code)
             .contains("basic-user");
 

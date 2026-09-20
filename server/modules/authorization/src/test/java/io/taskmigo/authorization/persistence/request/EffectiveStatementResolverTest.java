@@ -15,8 +15,9 @@ import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.TargetInfo;
 import io.taskmigo.authorization.statement.infrastructure.persistence.StatementEntity;
 import io.taskmigo.authorization.statement.infrastructure.persistence.StatementRepository;
-import io.taskmigo.authorization.subject.SubjectGrantService;
 import io.taskmigo.authorization.subject.SubjectRef;
+import io.taskmigo.authorization.subject.application.SubjectGrantRepository;
+import io.taskmigo.authorization.subject.domain.SubjectGrants;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -36,7 +37,7 @@ class EffectiveStatementResolverTest {
     private static final SubjectRef USER = new SubjectRef("identity:user", USER_ID);
 
     private final EffectiveSubjectResolver subjects = mock(EffectiveSubjectResolver.class);
-    private final SubjectGrantService grants = mock(SubjectGrantService.class);
+    private final SubjectGrantRepository grants = mock(SubjectGrantRepository.class);
     private final RoleEffectiveStatementRepository roles = mock(RoleEffectiveStatementRepository.class);
     private final StatementRepository statements = mock(StatementRepository.class);
     private final DatabaseEffectiveStatementResolver resolver = new DatabaseEffectiveStatementResolver(
@@ -57,8 +58,9 @@ class EffectiveStatementResolverTest {
     void shouldResolveStatementsFromSubjectBindingsAndRoleHierarchy() {
         // Arrange
         when(this.subjects.resolve(USER_ID)).thenReturn(Set.of(USER));
-        when(this.grants.statementIds(USER)).thenReturn(Set.of(DIRECT_STATEMENT_ID));
-        when(this.grants.roleIds(USER)).thenReturn(Set.of(DIRECT_ROLE_ID));
+        when(this.grants.load(USER)).thenReturn(
+            new SubjectGrants(USER, Set.of(DIRECT_ROLE_ID), Set.of(DIRECT_STATEMENT_ID))
+        );
         when(this.roles.statementIdsForRoles(Set.of(DIRECT_ROLE_ID))).thenReturn(
             Set.of(ROLE_STATEMENT_ID, CHILD_STATEMENT_ID)
         );
@@ -98,8 +100,7 @@ class EffectiveStatementResolverTest {
             .mapToObj(index -> statement(id(index), "statement-" + index))
             .toList();
         when(this.subjects.resolve(USER_ID)).thenReturn(Set.of(USER));
-        when(this.grants.statementIds(USER)).thenReturn(ids);
-        when(this.grants.roleIds(USER)).thenReturn(Set.of());
+        when(this.grants.load(USER)).thenReturn(new SubjectGrants(USER, Set.of(), ids));
         when(this.roles.statementIdsForRoles(Set.of())).thenReturn(Set.of());
         when(this.statements.findAllByIdIn(ids)).thenReturn(persistedStatements);
 
