@@ -4,6 +4,7 @@ import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningService;
 import io.taskmigo.authorization.role.application.RoleCommandService;
+import io.taskmigo.authorization.role.application.RoleHierarchyRepository;
 import io.taskmigo.authorization.role.application.RoleMutationResult;
 import io.taskmigo.authorization.role.domain.Role;
 import io.taskmigo.authorization.role.domain.RoleRuleViolation;
@@ -28,15 +29,18 @@ import org.springframework.transaction.annotation.Transactional;
 class DefaultAuthorizationProvisioningService implements AuthorizationProvisioningService {
 
     private final RoleCommandService roleCommands;
+    private final RoleHierarchyRepository roleHierarchies;
     private final StatementService statementService;
     private final StatementCommandService statementCommands;
 
     DefaultAuthorizationProvisioningService(
         RoleCommandService roleCommands,
+        RoleHierarchyRepository roleHierarchies,
         StatementService statementService,
         StatementCommandService statementCommands
     ) {
         this.roleCommands = roleCommands;
+        this.roleHierarchies = roleHierarchies;
         this.statementService = statementService;
         this.statementCommands = statementCommands;
     }
@@ -78,6 +82,9 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
             mutation = this.roleCommands.reconcileManaged(code, displayName, description, requestedIds);
         } catch (RoleRuleViolation exception) {
             throw badRequest(exception);
+        }
+        if (mutation.created()) {
+            this.roleHierarchies.synchronize(this.roleHierarchies.loadForMutation());
         }
         return new ReconciliationResult<>(mutation.id(), reconciliationAction(mutation.created(), mutation.changed()));
     }

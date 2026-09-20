@@ -7,10 +7,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import org.mockito.ArgumentMatchers;
+
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
 import io.taskmigo.authorization.role.application.RoleCommandService;
+import io.taskmigo.authorization.role.application.RoleHierarchyRepository;
 import io.taskmigo.authorization.role.application.RoleMutationResult;
 import io.taskmigo.authorization.role.domain.Role;
+import io.taskmigo.authorization.role.domain.hierarchy.RoleHierarchy;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementService;
@@ -19,6 +23,7 @@ import io.taskmigo.authorization.statement.application.StatementMutationResult;
 import io.taskmigo.authorization.statement.domain.Statement;
 import io.taskmigo.foundation.ReconciliationAction;
 import io.taskmigo.foundation.ReconciliationResult;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -229,7 +234,15 @@ class DefaultAuthorizationProvisioningServiceTest {
         when(roles.reconcileManaged("reader", "Reader", null, Set.of(statementId))).thenReturn(
             new RoleMutationResult(id, true, true)
         );
-        var service = service(roles, mock(StatementCommandService.class), statements);
+        RoleHierarchyRepository hierarchies = mock(RoleHierarchyRepository.class);
+        RoleHierarchy hierarchy = RoleHierarchy.from(Map.of(id, Set.of()));
+        when(hierarchies.loadForMutation()).thenReturn(hierarchy);
+        var service = new DefaultAuthorizationProvisioningService(
+            roles,
+            hierarchies,
+            statements,
+            mock(StatementCommandService.class)
+        );
 
         // Act
         ReconciliationResult<UUID> result = service.reconcileRole("reader", "Reader", null, Set.of(statementId));
@@ -237,6 +250,7 @@ class DefaultAuthorizationProvisioningServiceTest {
         // Assert
         assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.ADDED));
         verify(statements).requireStatements(Set.of(statementId));
+        verify(hierarchies).synchronize(hierarchy);
     }
 
     /**
@@ -261,7 +275,7 @@ class DefaultAuthorizationProvisioningServiceTest {
 
         // Assert
         assertThat(result).isEqualTo(new ReconciliationResult<>(id, ReconciliationAction.UNCHANGED));
-        verify(roles, never()).delete(org.mockito.ArgumentMatchers.any());
+        verify(roles, never()).delete(ArgumentMatchers.any());
     }
 
     /**
@@ -312,7 +326,12 @@ class DefaultAuthorizationProvisioningServiceTest {
         StatementCommandService statements,
         StatementService statementService
     ) {
-        return new DefaultAuthorizationProvisioningService(roles, statementService, statements);
+        return new DefaultAuthorizationProvisioningService(
+            roles,
+            mock(RoleHierarchyRepository.class),
+            statementService,
+            statements
+        );
     }
 
     private static Statement statement(String code) {
