@@ -7,8 +7,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import org.mockito.ArgumentMatchers;
-
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
 import io.taskmigo.authorization.role.application.RoleCommandService;
 import io.taskmigo.authorization.role.application.RoleHierarchyRepository;
@@ -29,6 +27,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 
 class DefaultAuthorizationProvisioningServiceTest {
 
