@@ -19,7 +19,7 @@ public class JpaRoleHierarchyRepository implements RoleHierarchyRepository {
     private final RoleHierarchyClosureRepository closures;
     private final HierarchyClosureWriter closureWriter;
 
-    public JpaRoleHierarchyRepository(
+    JpaRoleHierarchyRepository(
         RoleRepository roles,
         RoleHierarchyClosureRepository closures,
         HierarchyClosureWriter closureWriter

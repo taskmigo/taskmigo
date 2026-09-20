@@ -66,11 +66,11 @@ public final class Role {
         Collection<UUID> statementIds
     ) {
         RoleProfile requestedProfile = RoleProfile.of(displayName, description);
-        Set<UUID> requestedStatementIds = Set.copyOf(statementIds);
-        boolean changed = !this.profile.equals(requestedProfile) || !this.statementIds.equals(requestedStatementIds);
+        Set<UUID> requestedStatements = Set.copyOf(statementIds);
+        boolean changed = !this.profile.equals(requestedProfile) || !this.statementIds.equals(requestedStatements);
         if (changed) {
             this.profile = requestedProfile;
-            this.statementIds = requestedStatementIds;
+            this.statementIds = requestedStatements;
         }
         return changed;
     }
