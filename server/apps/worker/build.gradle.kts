@@ -14,6 +14,7 @@ dependencies {
     compileOnly(libs.spring.modulith.starter.core)
     testImplementation(platform(libs.spring.modulith.bom))
     testImplementation(libs.spring.modulith.starter.test)
+    testImplementation(project(":testing:architecture"))
 
     implementation(platform(libs.spring.boot.bom))
     implementation(project(":modules:database"))

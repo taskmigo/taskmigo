@@ -14,6 +14,7 @@ COPY modules/authorization/build.gradle.kts modules/authorization/build.gradle.k
 COPY modules/database/build.gradle.kts modules/database/build.gradle.kts
 COPY modules/identity/build.gradle.kts modules/identity/build.gradle.kts
 COPY benchmarks/authorization/build.gradle.kts benchmarks/authorization/build.gradle.kts
+COPY testing/architecture/build.gradle.kts testing/architecture/build.gradle.kts
 COPY apps/migration/build.gradle.kts apps/migration/build.gradle.kts
 COPY apps/web/build.gradle.kts apps/web/build.gradle.kts
 COPY apps/worker/build.gradle.kts apps/worker/build.gradle.kts

@@ -15,6 +15,7 @@ dependencies {
     testImplementation(platform(libs.spring.modulith.bom))
     testImplementation(libs.spring.modulith.starter.test)
     testImplementation(libs.archunit.junit5)
+    testImplementation(project(":testing:architecture"))
 
     implementation(platform(libs.spring.boot.bom))
     implementation(project(":modules:database"))
