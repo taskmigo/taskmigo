@@ -1,10 +1,10 @@
 package io.taskmigo.authorization.statement.application.service;
 
 import io.taskmigo.authorization.statement.Effect;
+import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.application.port.in.internal.StatementCommandService;
 import io.taskmigo.authorization.statement.application.port.in.internal.StatementMutationResult;
 import io.taskmigo.authorization.statement.application.port.out.StatementCommandRepository;
-import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.domain.Statement;
 import io.taskmigo.authorization.statement.domain.StatementCode;
 import io.taskmigo.authorization.statement.domain.StatementRuleViolation;
