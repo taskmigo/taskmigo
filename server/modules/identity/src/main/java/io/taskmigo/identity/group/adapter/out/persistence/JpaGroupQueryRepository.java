@@ -2,10 +2,10 @@ package io.taskmigo.identity.group.adapter.out.persistence;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.identity.group.GroupInfo;
-import io.taskmigo.identity.group.application.port.out.GroupQueryRepository;
 import io.taskmigo.identity.adapter.out.persistence.query.ObjectAuthorizationPredicateBinder;
 import io.taskmigo.identity.adapter.out.persistence.query.QueryPredicateBinder;
+import io.taskmigo.identity.group.GroupInfo;
+import io.taskmigo.identity.group.application.port.out.GroupQueryRepository;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
 import java.util.HashSet;
