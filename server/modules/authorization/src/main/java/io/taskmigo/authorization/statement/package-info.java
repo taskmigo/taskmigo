@@ -1,6 +1,6 @@
-/// Owns authorization Statement contracts and application use cases.
+/// Publishes authorization Statement data contracts.
 ///
-/// JPA adapters remain private in the owning persistence package.
+/// Statement use cases are exposed separately through the `statement-input` named interface.
 @NamedInterface("statement")
 @NullMarked
 package io.taskmigo.authorization.statement;

@@ -1,6 +1,9 @@
-package io.taskmigo.authorization.statement;
+package io.taskmigo.authorization.statement.application.port.in.api;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.authorization.statement.Effect;
+import io.taskmigo.authorization.statement.Scope;
+import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;

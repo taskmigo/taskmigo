@@ -9,7 +9,7 @@ import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.role.RoleService;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
-import io.taskmigo.authorization.statement.StatementService;
+import io.taskmigo.authorization.statement.application.port.in.api.StatementService;
 import io.taskmigo.authorization.subject.SubjectRoleQueryService;
 import io.taskmigo.identity.group.application.port.in.api.GroupService;
 import io.taskmigo.identity.provisioning.application.port.in.api.GroupProvisioningService;

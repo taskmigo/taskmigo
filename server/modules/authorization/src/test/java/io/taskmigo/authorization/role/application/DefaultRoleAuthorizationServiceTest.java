@@ -2,7 +2,7 @@ package io.taskmigo.authorization.role.application;
 
 import static org.mockito.Mockito.verify;
 
-import io.taskmigo.authorization.statement.StatementService;
+import io.taskmigo.authorization.statement.application.port.in.api.StatementService;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;

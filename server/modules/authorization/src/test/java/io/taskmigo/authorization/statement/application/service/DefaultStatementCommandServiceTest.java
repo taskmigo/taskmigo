@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.statement.application;
+package io.taskmigo.authorization.statement.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -8,6 +8,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.statement.Effect;
+import io.taskmigo.authorization.statement.application.port.in.internal.StatementMutationResult;
+import io.taskmigo.authorization.statement.application.port.out.StatementCommandRepository;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.domain.Statement;
 import io.taskmigo.authorization.statement.domain.StatementCode;

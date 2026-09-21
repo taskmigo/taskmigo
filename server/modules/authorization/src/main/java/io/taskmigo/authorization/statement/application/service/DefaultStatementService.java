@@ -1,11 +1,14 @@
-package io.taskmigo.authorization.statement.application;
+package io.taskmigo.authorization.statement.application.service;
 
+import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
-import io.taskmigo.authorization.statement.StatementService;
+import io.taskmigo.authorization.statement.application.port.in.api.StatementService;
+import io.taskmigo.authorization.statement.application.port.in.internal.StatementCommandService;
+import io.taskmigo.authorization.statement.application.port.out.StatementQueryRepository;
 import io.taskmigo.authorization.statement.domain.StatementRuleViolation;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.QueryPredicate;
@@ -13,23 +16,25 @@ import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /// Coordinates published runtime Statement commands and projection queries.
-@Service
-public class DefaultStatementService implements StatementService {
+public final class DefaultStatementService implements StatementService {
 
     private final StatementCommandService commands;
     private final StatementQueryRepository statements;
+    private final TransactionRunner transactions;
 
-    public DefaultStatementService(StatementCommandService commands, StatementQueryRepository statements) {
+    public DefaultStatementService(
+        StatementCommandService commands,
+        StatementQueryRepository statements,
+        TransactionRunner transactions
+    ) {
         this.commands = commands;
         this.statements = statements;
+        this.transactions = transactions;
     }
 
     @Override
-    @Transactional
     public UUID create(
         @Nullable String code,
         @Nullable String description,
@@ -39,36 +44,38 @@ public class DefaultStatementService implements StatementService {
         @Nullable String path,
         @Nullable String policy
     ) {
-        try {
-            return this.commands.createRuntime(code, description, effect, scope, method, path, policy);
-        } catch (StatementRuleViolation exception) {
-            throw badRequest(exception);
-        }
+        return this.transactions.write(() -> {
+            try {
+                return this.commands.createRuntime(code, description, effect, scope, method, path, policy);
+            } catch (StatementRuleViolation exception) {
+                throw badRequest(exception);
+            }
+        });
     }
 
     @Override
-    @Transactional(readOnly = true)
     public OffsetPage<StatementInfo> list(int page, int perPage) {
-        return this.statements.list(page, perPage);
+        return this.transactions.read(() -> this.statements.list(page, perPage));
     }
 
     @Override
-    @Transactional(readOnly = true)
     public OffsetPage<StatementInfo> list(
         int page,
         int perPage,
         QueryPredicate<StatementInfo> filter,
         ObjectAuthorizationPredicate<StatementInfo> authorization
     ) {
-        return this.statements.list(page, perPage, filter, authorization);
+        return this.transactions.read(() -> this.statements.list(page, perPage, filter, authorization));
     }
 
     @Override
-    @Transactional(readOnly = true)
     public void requireStatements(Collection<UUID> ids) {
-        if (!this.statements.containsAll(Set.copyOf(ids))) {
-            throw new AuthorizationException("One or more Statements do not exist");
-        }
+        this.transactions.read(() -> {
+            if (!this.statements.containsAll(Set.copyOf(ids))) {
+                throw new AuthorizationException("One or more Statements do not exist");
+            }
+            return Boolean.TRUE;
+        });
     }
 
     private static AuthorizationException badRequest(StatementRuleViolation exception) {

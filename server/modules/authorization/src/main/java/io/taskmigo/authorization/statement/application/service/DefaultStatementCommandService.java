@@ -1,6 +1,9 @@
-package io.taskmigo.authorization.statement.application;
+package io.taskmigo.authorization.statement.application.service;
 
 import io.taskmigo.authorization.statement.Effect;
+import io.taskmigo.authorization.statement.application.port.in.internal.StatementCommandService;
+import io.taskmigo.authorization.statement.application.port.in.internal.StatementMutationResult;
+import io.taskmigo.authorization.statement.application.port.out.StatementCommandRepository;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.domain.Statement;
 import io.taskmigo.authorization.statement.domain.StatementCode;
@@ -8,12 +11,9 @@ import io.taskmigo.authorization.statement.domain.StatementRuleViolation;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /// Applies canonical Statement mutations through a domain-shaped command repository.
-@Service
-public class DefaultStatementCommandService implements StatementCommandService {
+public final class DefaultStatementCommandService implements StatementCommandService {
 
     private final StatementCommandRepository statements;
 
@@ -22,7 +22,6 @@ public class DefaultStatementCommandService implements StatementCommandService {
     }
 
     @Override
-    @Transactional
     public UUID createRuntime(
         @Nullable String code,
         @Nullable String description,
@@ -50,7 +49,6 @@ public class DefaultStatementCommandService implements StatementCommandService {
     }
 
     @Override
-    @Transactional
     public StatementMutationResult reconcileManaged(
         @Nullable String code,
         @Nullable String description,
@@ -85,13 +83,11 @@ public class DefaultStatementCommandService implements StatementCommandService {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public Optional<Statement> findByCode(@Nullable String code) {
         return this.statements.findByCode(StatementCode.of(code));
     }
 
     @Override
-    @Transactional
     public void delete(Statement statement) {
         this.statements.delete(statement);
     }
