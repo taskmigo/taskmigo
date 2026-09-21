@@ -1,6 +1,6 @@
 package io.taskmigo.authorization.adapter.out.transaction;
 
-import io.taskmigo.authorization.application.port.out.TransactionRunner;
+import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import java.util.Objects;
 import java.util.function.Supplier;
 import org.springframework.stereotype.Component;
