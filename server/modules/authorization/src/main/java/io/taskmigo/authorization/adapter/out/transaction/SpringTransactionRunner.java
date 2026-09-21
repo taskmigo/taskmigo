@@ -8,7 +8,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /// Adapts Access Control application transaction scopes to Spring transaction management.
-@Component
+@Component("authorizationSpringTransactionRunner")
 final class SpringTransactionRunner implements TransactionRunner {
 
     private final TransactionTemplate reads;
