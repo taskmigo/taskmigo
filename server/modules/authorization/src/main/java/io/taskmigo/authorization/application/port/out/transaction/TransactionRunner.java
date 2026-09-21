@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.application.port.out;
+package io.taskmigo.authorization.application.port.out.transaction;
 
 import java.util.function.Supplier;
 
