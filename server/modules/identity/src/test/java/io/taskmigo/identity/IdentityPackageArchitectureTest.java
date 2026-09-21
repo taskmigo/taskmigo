@@ -12,6 +12,25 @@ import org.junit.jupiter.api.Test;
 class IdentityPackageArchitectureTest {
 
     /**
+     * Verifies that completed Phase 2 adapter migrations cannot regress to transitional package names.
+     *
+     * Given: all production classes in the Identity bounded context.
+     * Expect: no class resides in the retired top-level persistence or infrastructure packages.
+     */
+    @Test
+    @DisplayName("rejects retired Identity adapter package names")
+    void shouldRejectLegacyAdapterPackagesWhenIdentityPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule noLegacyAdapterPackages = noClasses()
+            .should()
+            .resideInAnyPackage("io.taskmigo.identity.persistence..", "io.taskmigo.identity..infrastructure..");
+
+        // Act + Assert
+        noLegacyAdapterPackages.check(classes);
+    }
+
+    /**
      * Verifies that persistence internals do not depend on application adapters.
      *
      * Given: all production classes in the consolidated Identity capability.
@@ -24,7 +43,7 @@ class IdentityPackageArchitectureTest {
         JavaClasses classes = productionClasses();
         ArchRule persistenceDoesNotDependOnApplications = noClasses()
             .that()
-            .resideInAnyPackage("io.taskmigo.identity.persistence..")
+            .resideInAnyPackage("io.taskmigo.identity..adapter.out.persistence..")
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
@@ -85,10 +104,7 @@ class IdentityPackageArchitectureTest {
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
-                "io.taskmigo.identity.persistence..",
-                "io.taskmigo.identity.user.adapter..",
-                "io.taskmigo.identity.group.adapter..",
-                "io.taskmigo.identity.membership.adapter..",
+                "io.taskmigo.identity..adapter..",
                 "org.springframework.data..",
                 "jakarta.persistence.."
             );
@@ -296,7 +312,7 @@ class IdentityPackageArchitectureTest {
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
-                "io.taskmigo.identity.persistence..",
+                "io.taskmigo.identity..adapter..",
                 "jakarta.persistence..",
                 "org.springframework.data.."
             );

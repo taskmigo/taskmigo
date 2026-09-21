@@ -108,10 +108,10 @@ locations as **transitional adapter packages** while simultaneously installing t
 
 Current transitional examples include:
 
-- `io.taskmigo.identity..infrastructure..`
-- `io.taskmigo.identity.persistence..`
 - `io.taskmigo.authorization..infrastructure..`
 - `io.taskmigo.authorization.persistence..`
+
+Identity's transitional `infrastructure` / top-level `persistence` locations were retired during Phase 2. Shared JPA predicate binding now lives explicitly under `io.taskmigo.identity.adapter.out.persistence.query`, while capability-specific repositories/entities remain under their resource-owned driven persistence adapters.
 
 `io.taskmigo.authorization.object.persistence..` is deliberately **not** classified as an adapter by Phase 1. Its current
 types are persistence-neutral Object Authorization algebra/contracts consumed by application orchestration and

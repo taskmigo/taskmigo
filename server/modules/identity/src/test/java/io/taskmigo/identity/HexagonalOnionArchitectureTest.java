@@ -11,9 +11,9 @@ class HexagonalOnionArchitectureTest {
     private static final Context ARCHITECTURE = new Context(
         "io.taskmigo.identity",
         List.of("io.taskmigo.identity..application.."),
-        List.of("io.taskmigo.identity..infrastructure..", "io.taskmigo.identity.persistence.."),
         List.of(),
-        List.of("io.taskmigo.identity..infrastructure.persistence..", "io.taskmigo.identity.persistence.."),
+        List.of(),
+        List.of(),
         List.of(
             "io.taskmigo.identity.user",
             "io.taskmigo.identity.user.application.port.in.api",

@@ -1,4 +1,4 @@
-package io.taskmigo.identity.persistence.query;
+package io.taskmigo.identity.adapter.out.persistence.query;
 
 import io.taskmigo.database.criteria.JpaCriteriaComparison;
 import io.taskmigo.query.persistence.QueryExpression;
