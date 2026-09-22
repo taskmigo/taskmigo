@@ -1,7 +1,7 @@
 package io.taskmigo.query;
 
-import io.taskmigo.query.persistence.QueryExpression;
-import io.taskmigo.query.persistence.QueryPredicateModel;
+import io.taskmigo.query.model.QueryExpression;
+import io.taskmigo.query.model.QueryPredicateModel;
 import java.util.Objects;
 
 /// Creates and composes opaque predicates at the logical query boundary.

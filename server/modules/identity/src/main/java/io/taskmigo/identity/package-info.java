@@ -4,7 +4,7 @@
         "foundation",
         "database :: criteria",
         "query",
-        "query :: persistence",
+        "query :: model",
         "authorization :: object",
         "authorization :: object-model",
         "authorization :: subject-resolution-port",

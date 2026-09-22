@@ -1,6 +1,6 @@
 package io.taskmigo.query;
 
-import io.taskmigo.query.persistence.QueryExpression;
+import io.taskmigo.query.model.QueryExpression;
 
 /// Validates that symbolic object paths and operators belong to an explicit Query Schema.
 final class QuerySchemaValidator {

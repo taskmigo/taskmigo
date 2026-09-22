@@ -44,6 +44,25 @@ class QueryPackageArchitectureTest {
         queryContractsDoNotDependOnFrameworkDetails.check(classes);
     }
 
+    /**
+     * Verifies that the persistence-neutral Query model is not placed under a persistence adapter package.
+     *
+     * Given: all production classes in the Query module.
+     * Expect: no class resides in the retired `io.taskmigo.query.persistence` package.
+     */
+    @Test
+    @DisplayName("rejects the retired Query persistence package")
+    void shouldRejectPersistencePackageWhenQueryPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule noLegacyPersistencePackage = noClasses()
+            .should()
+            .resideInAnyPackage("io.taskmigo.query.persistence..");
+
+        // Act + Assert
+        noLegacyPersistencePackage.check(classes);
+    }
+
     private static JavaClasses productionClasses() {
         return new ClassFileImporter()
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)

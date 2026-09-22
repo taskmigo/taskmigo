@@ -1,6 +1,6 @@
 package io.taskmigo.query;
 
-import io.taskmigo.query.persistence.QueryExpression;
+import io.taskmigo.query.model.QueryExpression;
 
 /// Default Boolean-algebra implementation for opaque Query Predicates.
 final class DefaultQueryPredicates implements QueryPredicates {

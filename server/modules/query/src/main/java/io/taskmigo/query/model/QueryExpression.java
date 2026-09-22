@@ -1,4 +1,4 @@
-package io.taskmigo.query.persistence;
+package io.taskmigo.query.model;
 
 import java.util.List;
 import java.util.Objects;
