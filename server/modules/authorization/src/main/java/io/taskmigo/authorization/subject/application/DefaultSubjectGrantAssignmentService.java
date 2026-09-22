@@ -1,6 +1,6 @@
 package io.taskmigo.authorization.subject.application;
 
-import io.taskmigo.authorization.role.RoleService;
+import io.taskmigo.authorization.role.application.port.in.api.RoleService;
 import io.taskmigo.authorization.statement.application.port.in.api.StatementService;
 import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.SubjectRef;

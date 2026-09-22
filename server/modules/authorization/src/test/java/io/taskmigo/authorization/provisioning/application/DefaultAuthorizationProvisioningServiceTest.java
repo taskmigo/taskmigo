@@ -9,9 +9,9 @@ import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningResult;
-import io.taskmigo.authorization.role.application.RoleCommandService;
-import io.taskmigo.authorization.role.application.RoleHierarchyRepository;
-import io.taskmigo.authorization.role.application.RoleMutationResult;
+import io.taskmigo.authorization.role.application.port.in.internal.RoleCommandService;
+import io.taskmigo.authorization.role.application.port.in.internal.RoleMutationResult;
+import io.taskmigo.authorization.role.application.port.out.RoleHierarchyRepository;
 import io.taskmigo.authorization.role.domain.Role;
 import io.taskmigo.authorization.role.domain.hierarchy.RoleHierarchy;
 import io.taskmigo.authorization.statement.Effect;

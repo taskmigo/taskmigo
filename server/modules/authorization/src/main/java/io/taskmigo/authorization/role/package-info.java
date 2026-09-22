@@ -1,4 +1,4 @@
-/// Publishes Access Control Role contracts while domain, application, and infrastructure details remain internal layers.
+/// Publishes Access Control Role data contracts while runtime use cases are exposed through the Role input port.
 @NamedInterface("role")
 @NullMarked
 package io.taskmigo.authorization.role;

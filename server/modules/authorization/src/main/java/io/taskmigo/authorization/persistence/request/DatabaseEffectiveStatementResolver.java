@@ -1,7 +1,7 @@
 package io.taskmigo.authorization.persistence.request;
 
 import io.taskmigo.authorization.application.port.out.EffectiveSubjectResolver;
-import io.taskmigo.authorization.role.application.RoleEffectiveStatementRepository;
+import io.taskmigo.authorization.role.application.port.out.RoleEffectiveStatementRepository;
 import io.taskmigo.authorization.spi.EffectiveStatement;
 import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.adapter.out.persistence.StatementEntity;

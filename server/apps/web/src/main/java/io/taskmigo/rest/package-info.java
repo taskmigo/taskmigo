@@ -6,6 +6,7 @@
         "authorization :: object",
         "authorization :: request",
         "authorization :: role",
+        "authorization :: role-input",
         "authorization :: spi",
         "authorization :: statement",
         "authorization :: statement-input",

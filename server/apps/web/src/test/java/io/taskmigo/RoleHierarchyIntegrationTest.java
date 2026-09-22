@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.authorization.role.RoleInfo;
-import io.taskmigo.authorization.role.RoleService;
+import io.taskmigo.authorization.role.application.port.in.api.RoleService;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
