@@ -17,11 +17,8 @@ dependencies {
     testImplementation(project(":testing:architecture"))
 
     implementation(platform(libs.spring.boot.bom))
-    implementation(project(":modules:database"))
-    implementation(project(":modules:identity"))
     runtimeOnly(libs.jspecify)
     implementation(libs.spring.boot.core.starter)
-    implementation(libs.spring.boot.starter.jackson)
 
     testImplementation(libs.spring.boot.starter.test)
 }
