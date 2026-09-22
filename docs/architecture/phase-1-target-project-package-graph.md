@@ -23,8 +23,8 @@ split or remove one.
 | `:modules:access-control` | **Retain one bounded-context project during migration**   | Access Control capabilities share one ownership/lifecycle boundary and optimized authorization paths. Package rules provide ring isolation without forcing aggregate traversal or one-project-per-ring ceremony.                                         |
 | `:modules:language`       | **Retain supporting-capability project**                  | Language is consumer-neutral, independently meaningful, and reusable by Query and Access Control without depending on either consumer.                                                                                                                   |
 | `:modules:query`          | **Retain supporting-capability project**                  | Query owns consumer-neutral filter/query semantics used by multiple resource owners. Resource-specific database binding remains outside Query.                                                                                                           |
-| `:modules:foundation`     | **Retain as a provisional technical dependency floor**    | Current contents are domain-neutral primitives/contracts used across modules. It must not acquire bounded-context ports, adapters, or semantics. Phase 5 re-evaluates whether the project remains justified.                                             |
-| `:modules:database`       | **Retain as provisional shared technical infrastructure** | It currently owns the single V1 Flyway schema, datasource/JPA runtime support, and generic Criteria mechanics. It must remain independent from bounded-context semantics. Phase 5 re-evaluates whether these responsibilities still justify one project. |
+| `:modules:foundation`     | **Retain as the minimal technical dependency floor**      | Phase 5 confirmed four framework-neutral primitives shared across independent capabilities and web adaptation. Architecture enforcement prevents Foundation from acquiring bounded-context, supporting-capability, application, or persistence dependencies. |
+| `:modules:database`       | **Retain shared technical infrastructure**                | Phase 5 confirmed a coherent shared owner: all three executables import the datasource configuration, Migration consumes the single V1 Flyway schema, and Identity plus Access Control share generic JPA Criteria comparison mechanics. Architecture enforcement keeps higher-level capability ownership out. |
 
 The current physical directory name `server/modules/authorization` remains an implementation detail behind the logical
 Gradle project `:modules:access-control`. Renaming that directory alone would add no enforcement and is therefore not a
@@ -152,14 +152,33 @@ Control private application/domain/adapter packages; Spring Modulith named inter
 
 No reverse Access Control -> Identity project dependency is introduced.
 
+## Phase 5 supporting and technical capability decision
+
+Phase 5 revalidated the supporting and technical projects against actual consumers rather than preserving the Phase 1
+graph by inertia.
+
+- `:modules:language` remains a standalone supporting capability. Query and Access Control consume it, while Language
+  does not depend back on either consumer, executable applications, persistence APIs, or Spring application-service
+  mechanics. ANTLR remains confined to its compiler frontend; no artificial domain/application/adapter rings are added.
+- `:modules:query` remains a standalone supporting capability. Its persistence-neutral predicate representation lives
+  under `io.taskmigo.query.model`; resource-specific JPA binding remains in the Identity and Access Control driven
+  adapters.
+- `:modules:database` remains shared technical infrastructure because its datasource configuration is imported by all
+  three executables, its single V1 Flyway schema is consumed by the migration runtime, and its generic JPA Criteria
+  comparison helper is shared by Identity and Access Control. It must not acquire bounded-context or supporting-capability
+  semantics.
+- `:modules:foundation` remains the minimal dependency floor because its four production types are framework-neutral
+  primitives shared across independent capabilities and HTTP adaptation. It must not acquire ports, adapters,
+  bounded-context semantics, or framework dependencies.
+- No provider-owned port or bounded-context abstraction is moved into Database or Foundation to simplify dependency
+  wiring. Shared placement requires consumer-neutral semantics.
+
 ## Deferred graph decisions
 
 The following remain intentionally deferred to their tracked phases:
 
 - Whether specific persistence/external adapters deserve separate Gradle projects after the vertical migrations expose
   stable seams.
-- Whether `:modules:database` should survive, split, or move schema/runtime responsibilities to better owners.
-- Whether `:modules:foundation` still provides enough value to remain a separate dependency floor.
 - Final `api` versus `implementation` exposure tightening.
 - Removal of every transitional package and generic `spi` name.
 
