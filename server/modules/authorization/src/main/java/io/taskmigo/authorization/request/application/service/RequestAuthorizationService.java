@@ -1,12 +1,19 @@
-package io.taskmigo.authorization.request;
+package io.taskmigo.authorization.request.application.service;
 
 import io.taskmigo.authorization.core.AuthorizationException;
+import io.taskmigo.authorization.request.AuthorizationContext;
+import io.taskmigo.authorization.request.AuthorizationPrincipal;
+import io.taskmigo.authorization.request.AuthorizationRequest;
+import io.taskmigo.authorization.request.RequestAuthorizationResult;
+import io.taskmigo.authorization.request.application.model.AuthorizationOperation;
+import io.taskmigo.authorization.request.application.model.AuthorizationSnapshot;
+import io.taskmigo.authorization.request.application.port.in.api.RequestAuthorization;
+import io.taskmigo.authorization.request.application.port.out.EffectiveStatement;
+import io.taskmigo.authorization.request.application.port.out.EffectiveStatementResolver;
 import io.taskmigo.authorization.request.domain.RequestAuthorizationDecider;
 import io.taskmigo.authorization.request.domain.RequestAuthorizationDecider.Evaluation;
 import io.taskmigo.authorization.request.domain.RequestAuthorizationDecider.Rule;
 import io.taskmigo.authorization.request.domain.RequestAuthorizationDecider.State;
-import io.taskmigo.authorization.spi.EffectiveStatement;
-import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
@@ -16,18 +23,16 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.springframework.stereotype.Service;
 
 /// Resolves one authorization operation and delegates Request decision semantics to the pure domain decider.
-@Service
-final class RequestAuthorizationService implements RequestAuthorization {
+public final class RequestAuthorizationService implements RequestAuthorization {
 
     private static final RequestAuthorizationDecider DECIDER = new RequestAuthorizationDecider();
 
     private final EffectiveStatementResolver statements;
     private final StatementArtifactFactory artifacts;
 
-    RequestAuthorizationService(EffectiveStatementResolver statements, StatementArtifactFactory artifacts) {
+    public RequestAuthorizationService(EffectiveStatementResolver statements, StatementArtifactFactory artifacts) {
         this.statements = statements;
         this.artifacts = artifacts;
     }

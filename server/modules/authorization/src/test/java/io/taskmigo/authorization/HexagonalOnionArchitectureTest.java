@@ -13,6 +13,7 @@ class HexagonalOnionArchitectureTest {
         List.of(
             "io.taskmigo.authorization..application..",
             "io.taskmigo.authorization.request",
+            "io.taskmigo.authorization.request.application.port.in.api",
             "io.taskmigo.authorization.object"
         ),
         List.of("io.taskmigo.authorization..infrastructure..", "io.taskmigo.authorization.persistence.."),
