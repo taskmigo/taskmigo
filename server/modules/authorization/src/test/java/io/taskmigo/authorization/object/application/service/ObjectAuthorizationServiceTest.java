@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.request;
+package io.taskmigo.authorization.object.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -9,13 +9,16 @@ import io.taskmigo.authorization.object.ObjectAuthorizationField;
 import io.taskmigo.authorization.object.ObjectAuthorizationPath;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
+import io.taskmigo.authorization.request.AuthorizationPrincipal;
+import io.taskmigo.authorization.request.AuthorizationRequest;
+import io.taskmigo.authorization.request.RequestAuthorizationResult;
 import io.taskmigo.authorization.request.application.model.AuthorizationOperation;
 import io.taskmigo.authorization.request.application.model.AuthorizationSnapshot;
 import io.taskmigo.authorization.request.application.port.out.EffectiveStatement;
 import io.taskmigo.authorization.request.application.port.out.EffectiveStatementResolver;
 import io.taskmigo.authorization.request.application.service.RequestAuthorizationService;
 import io.taskmigo.authorization.request.application.service.StatementArtifactFactory;
-import io.taskmigo.authorization.spi.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.ApiInfo;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;

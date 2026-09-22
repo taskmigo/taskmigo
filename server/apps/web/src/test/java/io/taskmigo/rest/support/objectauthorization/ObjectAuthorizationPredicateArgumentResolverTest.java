@@ -3,9 +3,9 @@ package io.taskmigo.rest.support.objectauthorization;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.authorization.object.ObjectAuthorization;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.authorization.object.application.port.in.api.ObjectAuthorization;
 import io.taskmigo.authorization.request.AuthorizationContext;
 import java.lang.reflect.Method;
 import java.util.List;

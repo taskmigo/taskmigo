@@ -22,11 +22,12 @@ class HexagonalOnionArchitectureTest {
         List.of(
             "io.taskmigo.authorization.core",
             "io.taskmigo.authorization.object",
+            "io.taskmigo.authorization.object.application.port.in.api",
+            "io.taskmigo.authorization.object.application.port.out",
             "io.taskmigo.authorization.provisioning",
             "io.taskmigo.authorization.request",
             "io.taskmigo.authorization.role",
             "io.taskmigo.authorization.role.application.port.in.api",
-            "io.taskmigo.authorization.spi",
             "io.taskmigo.authorization.statement",
             "io.taskmigo.authorization.statement.application.port.in.api",
             "io.taskmigo.authorization.subject",

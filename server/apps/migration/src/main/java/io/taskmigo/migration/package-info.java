@@ -3,9 +3,9 @@
     allowedDependencies = {
         "foundation",
         "authorization :: object",
+        "authorization :: object-target-resolution-port",
         "authorization :: provisioning",
         "authorization :: role",
-        "authorization :: spi",
         "authorization :: statement",
         "identity :: provisioning",
         "identity :: provisioning-input",
