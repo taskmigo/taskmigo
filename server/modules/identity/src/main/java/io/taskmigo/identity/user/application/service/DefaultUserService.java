@@ -1,8 +1,8 @@
 package io.taskmigo.identity.user.application.service;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
-import io.taskmigo.authorization.subject.SubjectGrantQueryService;
+import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantAssignmentService;
+import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantQueryService;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.application.port.out.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;

@@ -1,19 +1,24 @@
-package io.taskmigo.authorization.subject.application;
+package io.taskmigo.authorization.subject.application.service;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.role.application.port.in.api.RoleService;
 import io.taskmigo.authorization.statement.application.port.in.api.StatementService;
 import io.taskmigo.authorization.subject.SubjectRef;
+import io.taskmigo.authorization.subject.application.port.out.SubjectGrantRepository;
 import io.taskmigo.authorization.subject.domain.SubjectGrants;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
+import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+@NullMarked
 class DefaultSubjectGrantAssignmentServiceTest {
 
     /**
@@ -33,7 +38,7 @@ class DefaultSubjectGrantAssignmentServiceTest {
         StatementService statements = mock(StatementService.class);
         SubjectGrantRepository grants = mock(SubjectGrantRepository.class);
         when(grants.load(subject)).thenReturn(new SubjectGrants(subject, Set.of(), Set.of(statementId)));
-        var service = new DefaultSubjectGrantAssignmentService(roles, statements, grants);
+        var service = new DefaultSubjectGrantAssignmentService(roles, statements, grants, directTransactions());
 
         // Act
         service.setRoles(subject, List.of(roleId, roleId));
@@ -60,7 +65,7 @@ class DefaultSubjectGrantAssignmentServiceTest {
         StatementService statements = mock(StatementService.class);
         SubjectGrantRepository grants = mock(SubjectGrantRepository.class);
         when(grants.load(subject)).thenReturn(new SubjectGrants(subject, Set.of(roleId), Set.of()));
-        var service = new DefaultSubjectGrantAssignmentService(roles, statements, grants);
+        var service = new DefaultSubjectGrantAssignmentService(roles, statements, grants, directTransactions());
 
         // Act
         service.setStatements(subject, List.of(statementId, statementId));
@@ -68,5 +73,24 @@ class DefaultSubjectGrantAssignmentServiceTest {
         // Assert
         verify(statements).requireStatements(Set.of(statementId));
         verify(grants).saveStatements(new SubjectGrants(subject, Set.of(roleId), Set.of(statementId)));
+    }
+
+    private static TransactionRunner directTransactions() {
+        return new TransactionRunner() {
+            @Override
+            public <T> T read(Supplier<T> work) {
+                return work.get();
+            }
+
+            @Override
+            public <T> T write(Supplier<T> work) {
+                return work.get();
+            }
+
+            @Override
+            public void write(Runnable work) {
+                work.run();
+            }
+        };
     }
 }

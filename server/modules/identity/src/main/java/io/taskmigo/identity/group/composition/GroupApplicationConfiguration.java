@@ -1,6 +1,6 @@
 package io.taskmigo.identity.group.composition;
 
-import io.taskmigo.authorization.subject.SubjectGrantAssignmentService;
+import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantAssignmentService;
 import io.taskmigo.identity.application.port.out.TransactionRunner;
 import io.taskmigo.identity.group.application.port.in.api.GroupService;
 import io.taskmigo.identity.group.application.port.in.internal.GroupCommandService;

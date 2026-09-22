@@ -8,7 +8,7 @@ import io.taskmigo.authorization.role.application.port.in.api.RoleService;
 import io.taskmigo.authorization.spi.EffectiveStatement;
 import io.taskmigo.authorization.spi.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.StatementInfo;
-import io.taskmigo.authorization.subject.SubjectRoleQueryService;
+import io.taskmigo.authorization.subject.application.port.in.api.SubjectRoleQueryService;
 import io.taskmigo.identity.group.application.port.in.api.GroupService;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
 import io.taskmigo.rest.api.v0.testing.ApiIntegrationTestSupport;

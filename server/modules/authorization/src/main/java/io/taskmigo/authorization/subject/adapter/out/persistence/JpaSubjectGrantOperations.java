@@ -1,7 +1,7 @@
-package io.taskmigo.authorization.persistence.subject;
+package io.taskmigo.authorization.subject.adapter.out.persistence;
 
 import io.taskmigo.authorization.subject.SubjectRef;
-import io.taskmigo.authorization.subject.application.SubjectGrantRepository;
+import io.taskmigo.authorization.subject.application.port.out.SubjectGrantRepository;
 import io.taskmigo.authorization.subject.domain.SubjectGrants;
 import java.util.Set;
 import java.util.UUID;
