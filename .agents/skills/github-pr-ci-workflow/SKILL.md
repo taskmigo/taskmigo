@@ -60,6 +60,13 @@ The goal is not to "watch CI." The goal is to extract the earliest actionable fa
    - Keep a single Code Mode orchestration block to roughly 10 awaited GitHub connector calls or fewer. If more operations are genuinely needed, split them into intentional batches with a checkpoint between batches.
    - Do not print raw large API payloads into context. Parse and project only the fields or error window needed for the next decision.
 
+9. **Treat explicit maintainer CI updates as stop signals.**
+   - If the maintainer explicitly says all required pipeline/checks have passed for the current PR, stop automated CI polling immediately.
+   - Do not issue another status-only workflow/run/job query merely to reconfirm the maintainer's update.
+   - Process the interruption before any further CI calls: update PR verification/checklists or tracking state that can now be completed, then report the resulting state.
+   - Re-query CI only when the maintainer explicitly asks for independent verification, the PR head changed after the maintainer's update, existing evidence directly conflicts with the update, or exact run data is required for a different concrete task.
+   - A maintainer update does not authorize inventing details such as run ids, timestamps, or per-job results. Record only the state they actually confirmed.
+
 ## Pre-CI preflight
 
 Before opening a PR or pushing a large refactor when no local build runner is available:
@@ -243,13 +250,21 @@ Do not turn an environment networking problem into a repository debugging task.
 
 Do not finalize the PR description from stale evidence.
 
-Before marking pipeline verification complete:
+Before marking pipeline verification complete, use either a final current-head CI snapshot or an explicit maintainer confirmation that all required checks passed for the current PR.
+
+When using CI as the evidence:
 
 1. Confirm the PR head SHA.
 2. Confirm every required check for that SHA is complete and successful.
 3. Confirm there are no hidden failed jobs inside a superficially successful workflow.
 4. Re-check mergeability if that matters to the task.
 5. Update the PR verification/checklist only after this final snapshot.
+
+When the maintainer explicitly confirms all required checks passed:
+
+- Treat that update as current-state evidence for the PR unless the head changes afterward.
+- Do not poll again solely to reproduce the same green status.
+- Update only the verification facts the maintainer actually confirmed.
 
 When using the repository PR template:
 
@@ -300,7 +315,9 @@ Do **not**:
 - Treat a successful GitHub Code Scanning upload/check as proof that the Qodana Action had no findings.
 - Claim exact Qodana file/line locations when only aggregate inspection/count evidence is available.
 - Retry a known-broken local Git/network operation several times.
-- Update the PR checklist to green before final-head verification.
+- Update the PR checklist to green before final-head verification or explicit maintainer confirmation.
+- Continue polling after the maintainer has explicitly confirmed all required checks passed, unless a documented exception requires fresh CI data.
+- Ignore a maintainer interruption and finish an already-started polling loop before processing the new status.
 - Assume an API mutation option is valid for both same-repository and fork PRs.
 
 ## Decision loop
@@ -309,16 +326,18 @@ Use this loop until the current interaction has no further actionable work:
 
 ```text
 current PR head SHA
-    -> compact workflow-run snapshot
-        -> any completed failures?
-            yes -> failed jobs -> failed steps -> minimal logs -> collect all causes
-                 -> fix as one batch -> targeted validation -> push
-                 -> re-anchor to new SHA
-            no  -> any useful work while checks run?
-                    yes -> do it, then take one fresh snapshot if state may have changed
-                    no  -> report exact pending state; do not busy-wait
-        -> all required checks successful on current SHA
-            -> final PR verification + mergeability check
+    -> maintainer explicitly confirms all required checks passed?
+        yes -> stop polling -> finalize supported PR/tracking bookkeeping -> report state
+        no  -> compact workflow-run snapshot
+            -> any completed failures?
+                yes -> failed jobs -> failed steps -> minimal logs -> collect all causes
+                     -> fix as one batch -> targeted validation -> push
+                     -> re-anchor to new SHA
+                no  -> any useful work while checks run?
+                        yes -> do it, then take one fresh snapshot if state may have changed
+                        no  -> report exact pending state; do not busy-wait
+            -> all required checks successful on current SHA
+                -> final PR verification + mergeability check
 ```
 
 Optimize for **time to first actionable diagnosis**, not time spent observing the pipeline.
