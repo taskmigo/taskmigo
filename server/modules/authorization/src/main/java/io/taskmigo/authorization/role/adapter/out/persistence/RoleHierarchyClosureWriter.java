@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.persistence;
+package io.taskmigo.authorization.role.adapter.out.persistence;
 
 import jakarta.persistence.EntityManager;
 import java.util.Collection;
@@ -8,14 +8,14 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import org.springframework.stereotype.Service;
 
-/// Rebuilds an Access Control hierarchy closure without making the closure table an authorization cache.
+/// Rebuilds the Role hierarchy closure without making the closure table an authorization cache.
 @Service
-public final class HierarchyClosureWriter {
+public final class RoleHierarchyClosureWriter {
 
     private final EntityManager entityManager;
 
     /// Creates a writer backed by the current persistence context.
-    public HierarchyClosureWriter(EntityManager entityManager) {
+    public RoleHierarchyClosureWriter(EntityManager entityManager) {
         this.entityManager = entityManager;
     }
 

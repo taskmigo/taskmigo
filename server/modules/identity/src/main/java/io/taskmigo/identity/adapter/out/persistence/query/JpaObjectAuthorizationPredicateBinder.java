@@ -1,7 +1,7 @@
 package io.taskmigo.identity.adapter.out.persistence.query;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.object.persistence.ObjectAuthorizationPredicateModel;
+import io.taskmigo.authorization.object.model.ObjectAuthorizationPredicateModel;
 import java.util.Map;
 import org.springframework.data.jpa.domain.Specification;
 

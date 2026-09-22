@@ -1,17 +1,18 @@
-package io.taskmigo.authorization.object.persistence;
+package io.taskmigo.authorization.object.application.service;
 
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.object.ObjectAuthorizationField;
 import io.taskmigo.authorization.object.ObjectAuthorizationOperator;
 import io.taskmigo.authorization.object.ObjectAuthorizationPath;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
 
 /// Validates Object Authorization expression paths and operators against one logical schema.
-public final class ObjectAuthorizationExpressionValidator {
+final class ObjectAuthorizationExpressionValidator {
 
     private ObjectAuthorizationExpressionValidator() {}
 
-    public static <Q> void validate(ObjectAuthorizationExpression expression, ObjectAuthorizationSchema<Q> schema) {
+    static <Q> void validate(ObjectAuthorizationExpression expression, ObjectAuthorizationSchema<Q> schema) {
         switch (expression) {
             case ObjectAuthorizationExpression.Literal _ -> {
             }

@@ -106,17 +106,11 @@ Spring Modulith verification in `web`, `worker`, and `migration` remains mandato
 Phase 1 does not rename all existing packages. The shared rule configuration therefore recognizes current outward adapter
 locations as **transitional adapter packages** while simultaneously installing the target rules.
 
-Current transitional examples include:
-
-- `io.taskmigo.authorization..infrastructure..`
-- `io.taskmigo.authorization.persistence..`
-
 Identity's transitional `infrastructure` / top-level `persistence` locations were retired during Phase 2. Shared JPA predicate binding now lives explicitly under `io.taskmigo.identity.adapter.out.persistence.query`, while capability-specific repositories/entities remain under their resource-owned driven persistence adapters.
 
-`io.taskmigo.authorization.object.persistence..` is deliberately **not** classified as an adapter by Phase 1. Its current
-types are persistence-neutral Object Authorization algebra/contracts consumed by application orchestration and
-resource-owned JPA binders. The misleading package name is a Phase 3 normalization target; the domain ring remains
-forbidden from depending on it in the meantime.
+Access Control's transitional `infrastructure` / top-level `persistence` locations were retired during Phase 3. Shared JPA predicate binding now lives under `io.taskmigo.authorization.adapter.out.persistence.query`, while Role hierarchy closure maintenance is owned by the Role driven persistence adapter.
+
+The former `io.taskmigo.authorization.object.persistence..` package was also normalized during Phase 3. Its persistence-neutral expression/predicate representation now lives under `io.taskmigo.authorization.object.model..` and is published as the `object-model` named interface for resource-owned persistence binders; application-only expression validation remains in the Object Authorization application service package.
 
 Recognition is not compatibility approval. Phases 2 and 3 remove these transitional locations slice by slice.
 

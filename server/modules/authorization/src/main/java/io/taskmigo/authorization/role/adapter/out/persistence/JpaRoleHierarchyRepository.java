@@ -1,6 +1,5 @@
 package io.taskmigo.authorization.role.adapter.out.persistence;
 
-import io.taskmigo.authorization.persistence.HierarchyClosureWriter;
 import io.taskmigo.authorization.role.application.port.out.RoleHierarchyRepository;
 import io.taskmigo.authorization.role.domain.hierarchy.RoleHierarchy;
 import java.util.Collection;
@@ -17,12 +16,12 @@ public class JpaRoleHierarchyRepository implements RoleHierarchyRepository {
 
     private final RoleRepository roles;
     private final RoleHierarchyClosureRepository closures;
-    private final HierarchyClosureWriter closureWriter;
+    private final RoleHierarchyClosureWriter closureWriter;
 
     JpaRoleHierarchyRepository(
         RoleRepository roles,
         RoleHierarchyClosureRepository closures,
-        HierarchyClosureWriter closureWriter
+        RoleHierarchyClosureWriter closureWriter
     ) {
         this.roles = roles;
         this.closures = closures;
