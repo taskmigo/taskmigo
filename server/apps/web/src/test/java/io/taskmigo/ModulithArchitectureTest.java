@@ -23,9 +23,9 @@ class ModulithArchitectureTest {
     /**
      * Verifies that target driving adapters cannot bypass inbound ports.
      *
-     * Given: the web application classpath before Phase 4 moves HTTP/security adapters under `io.taskmigo.web.adapter.in`.
-     * Expect: the shared Hexagonal/Onion driving-adapter rule accepts the current package graph and will reject
-     * dependencies on application-service implementations, outbound ports, driven adapters, Spring Data, or JPA.
+     * Given: HTTP and security driving adapters under `io.taskmigo.web.adapter.in`.
+     * Expect: the shared Hexagonal/Onion rule rejects dependencies on application-service implementations, outbound
+     * ports, driven adapters, Spring Data, or JPA.
      */
     @Test
     @DisplayName("keeps target web driving adapters on inbound ports")
@@ -38,6 +38,27 @@ class ModulithArchitectureTest {
         assertThatCode(() ->
             HexagonalOnionRules.checkDrivingApplication(applicationRootPackage, importRootPackage)
         ).doesNotThrowAnyException();
+    }
+
+    /**
+     * Verifies Phase 4 adapter migrations cannot regress to legacy web package names.
+     *
+     * Given: production classes on the web application classpath.
+     * Expect: no class remains under the retired REST or internal-security package roots.
+     */
+    @Test
+    @DisplayName("rejects retired web adapter package names")
+    void shouldRejectLegacyWebAdapterPackagesWhenWebPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = new ClassFileImporter()
+            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+            .importPackages("io.taskmigo");
+        ArchRule noLegacyWebAdapterPackages = noClasses()
+            .should()
+            .resideInAnyPackage("io.taskmigo.rest..", "io.taskmigo.internal.security..");
+
+        // Act + Assert
+        noLegacyWebAdapterPackages.check(classes);
     }
 
     /**

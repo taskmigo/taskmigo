@@ -10,7 +10,7 @@ import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.application.port.in.api.StatementService;
 import io.taskmigo.identity.user.application.port.in.api.UserRegistrationService;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
-import io.taskmigo.rest.api.v0.testing.ApiIntegrationTestSupport;
+import io.taskmigo.web.adapter.in.http.api.v0.testing.ApiIntegrationTestSupport;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;

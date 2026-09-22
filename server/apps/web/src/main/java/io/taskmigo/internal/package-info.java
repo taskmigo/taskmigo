@@ -1,7 +1,6 @@
-/// Contains web-only infrastructure that is not part of the public REST API contract.
+/// Contains authorization-server and OAuth web infrastructure pending composition-root normalization.
 @ApplicationModule(
     allowedDependencies = {
-        "rest :: security",
         "authorization :: request",
         "authorization :: request-input",
         "identity :: user",
