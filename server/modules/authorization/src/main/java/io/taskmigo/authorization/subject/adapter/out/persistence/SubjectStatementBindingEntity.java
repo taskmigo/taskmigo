@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.persistence.subject;
+package io.taskmigo.authorization.subject.adapter.out.persistence;
 
 import io.taskmigo.authorization.subject.SubjectRef;
 import jakarta.persistence.Column;
@@ -10,11 +10,11 @@ import java.util.UUID;
 
 @Entity
 @Table(
-    name = "subject_role_bindings",
-    uniqueConstraints = @UniqueConstraint(columnNames = { "subject_type", "subject_id", "role_id" })
+    name = "subject_statement_bindings",
+    uniqueConstraints = @UniqueConstraint(columnNames = { "subject_type", "subject_id", "statement_id" })
 )
 @SuppressWarnings("NotNullFieldNotInitialized")
-public class SubjectRoleBindingEntity {
+public class SubjectStatementBindingEntity {
 
     @Id
     UUID id;
@@ -25,19 +25,19 @@ public class SubjectRoleBindingEntity {
     @Column(name = "subject_id", nullable = false)
     UUID subjectId;
 
-    @Column(name = "role_id", nullable = false)
-    UUID roleId;
+    @Column(name = "statement_id", nullable = false)
+    UUID statementId;
 
-    protected SubjectRoleBindingEntity() {}
+    protected SubjectStatementBindingEntity() {}
 
-    public SubjectRoleBindingEntity(UUID id, SubjectRef subject, UUID roleId) {
+    public SubjectStatementBindingEntity(UUID id, SubjectRef subject, UUID statementId) {
         this.id = id;
         this.subjectType = subject.type();
         this.subjectId = subject.id();
-        this.roleId = roleId;
+        this.statementId = statementId;
     }
 
-    public UUID roleId() {
-        return this.roleId;
+    public UUID statementId() {
+        return this.statementId;
     }
 }

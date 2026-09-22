@@ -9,6 +9,7 @@
         "authorization :: object-persistence",
         "authorization :: subject-resolution-port",
         "authorization :: subject",
+        "authorization :: subject-input",
     }
 )
 @NullMarked

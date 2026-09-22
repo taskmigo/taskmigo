@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.subject.application;
+package io.taskmigo.authorization.subject.application.port.out;
 
 import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.authorization.subject.domain.SubjectGrants;

@@ -50,6 +50,25 @@ class AccessControlPackageArchitectureTest {
     }
 
     /**
+     * Verifies that the completed Subject Grants slice cannot regress to top-level persistence ownership.
+     *
+     * Given: all production classes owned by Access Control.
+     * Expect: no Subject Grant persistence class resides in the retired top-level persistence package.
+     */
+    @Test
+    @DisplayName("rejects retired Subject grant persistence packages")
+    void shouldRejectLegacySubjectGrantPersistenceWhenAuthorizationPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule noLegacySubjectGrantPersistence = noClasses()
+            .should()
+            .resideInAnyPackage("io.taskmigo.authorization.persistence.subject..");
+
+        // Act + Assert
+        noLegacySubjectGrantPersistence.check(classes);
+    }
+
+    /**
      * Verifies the bounded-context dependency direction between Access Control and Identity.
      *
      * Given: all production classes owned by Access Control.
@@ -97,7 +116,9 @@ class AccessControlPackageArchitectureTest {
                 "io.taskmigo.authorization.statement",
                 "io.taskmigo.authorization.statement.application..",
                 "io.taskmigo.authorization.statement.domain..",
-                "io.taskmigo.authorization.subject.."
+                "io.taskmigo.authorization.subject",
+                "io.taskmigo.authorization.subject.application..",
+                "io.taskmigo.authorization.subject.domain.."
             )
             .should()
             .dependOnClassesThat()
@@ -105,6 +126,7 @@ class AccessControlPackageArchitectureTest {
                 "io.taskmigo.authorization.persistence..",
                 "io.taskmigo.authorization.role.adapter..",
                 "io.taskmigo.authorization.statement.adapter..",
+                "io.taskmigo.authorization.subject.adapter..",
                 "org.springframework.data..",
                 "jakarta.persistence.."
             );
@@ -138,7 +160,9 @@ class AccessControlPackageArchitectureTest {
                 "io.taskmigo.authorization.statement",
                 "io.taskmigo.authorization.statement.application..",
                 "io.taskmigo.authorization.statement.domain..",
-                "io.taskmigo.authorization.subject.."
+                "io.taskmigo.authorization.subject",
+                "io.taskmigo.authorization.subject.application..",
+                "io.taskmigo.authorization.subject.domain.."
             )
             .should()
             .dependOnClassesThat()
@@ -284,7 +308,7 @@ class AccessControlPackageArchitectureTest {
     /**
      * Verifies direct Subject grant domain and application dependency direction.
      *
-     * Given: the Phase 6 Subject grant domain and application packages.
+     * Given: the canonical Subject grant domain and application packages.
      * Expect: domain stays framework-neutral and application stays independent from persistence adapters.
      */
     @Test
@@ -300,6 +324,7 @@ class AccessControlPackageArchitectureTest {
             .resideInAnyPackage(
                 "io.taskmigo.authorization.subject.application..",
                 "io.taskmigo.authorization.persistence..",
+                "io.taskmigo.authorization.subject.adapter..",
                 "org.springframework..",
                 "jakarta.persistence.."
             );
@@ -310,6 +335,7 @@ class AccessControlPackageArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 "io.taskmigo.authorization.persistence..",
+                "io.taskmigo.authorization.subject.adapter..",
                 "org.springframework.data..",
                 "jakarta.persistence.."
             );

@@ -1,6 +1,7 @@
-package io.taskmigo.authorization.subject;
+package io.taskmigo.authorization.subject.application.port.in.api;
 
 import io.taskmigo.authorization.role.RoleInfo;
+import io.taskmigo.authorization.subject.SubjectRef;
 import java.util.List;
 import java.util.UUID;
 
