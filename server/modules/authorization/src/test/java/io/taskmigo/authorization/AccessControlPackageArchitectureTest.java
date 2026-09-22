@@ -69,6 +69,23 @@ class AccessControlPackageArchitectureTest {
     }
 
     /**
+     * Verifies the completed Object Authorization slice cannot regress to the generic SPI bucket.
+     *
+     * Given: all production classes owned by Access Control.
+     * Expect: no authorization contract resides in the retired generic SPI package.
+     */
+    @Test
+    @DisplayName("rejects retired generic authorization SPI packages")
+    void shouldRejectGenericSpiWhenAuthorizationPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule noGenericSpi = noClasses().should().resideInAnyPackage("io.taskmigo.authorization.spi..");
+
+        // Act + Assert
+        noGenericSpi.check(classes);
+    }
+
+    /**
      * Verifies the bounded-context dependency direction between Access Control and Identity.
      *
      * Given: all production classes owned by Access Control.
@@ -112,7 +129,6 @@ class AccessControlPackageArchitectureTest {
                 "io.taskmigo.authorization.role",
                 "io.taskmigo.authorization.role.application..",
                 "io.taskmigo.authorization.role.domain..",
-                "io.taskmigo.authorization.spi..",
                 "io.taskmigo.authorization.statement",
                 "io.taskmigo.authorization.statement.application..",
                 "io.taskmigo.authorization.statement.domain..",
@@ -156,7 +172,6 @@ class AccessControlPackageArchitectureTest {
                 "io.taskmigo.authorization.role",
                 "io.taskmigo.authorization.role.application..",
                 "io.taskmigo.authorization.role.domain..",
-                "io.taskmigo.authorization.spi..",
                 "io.taskmigo.authorization.statement",
                 "io.taskmigo.authorization.statement.application..",
                 "io.taskmigo.authorization.statement.domain..",
@@ -177,6 +192,33 @@ class AccessControlPackageArchitectureTest {
 
         // Act + Assert
         contractsDoNotDependOnFrameworkDetails.check(classes);
+    }
+
+    /**
+     * Verifies published Object Authorization contracts remain independent from tactical implementation layers.
+     *
+     * Given: public production contracts in the root Object Authorization package.
+     * Expect: they do not depend on Object Authorization application implementations or top-level persistence adapters.
+     */
+    @Test
+    @DisplayName("keeps Object Authorization API independent from implementation layers")
+    void shouldKeepObjectAuthorizationApiIndependentWhenAuthorizationPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule apiDoesNotDependOnImplementation = noClasses()
+            .that()
+            .arePublic()
+            .and()
+            .resideInAnyPackage("io.taskmigo.authorization.object")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "io.taskmigo.authorization.object.application..",
+                "io.taskmigo.authorization.persistence.."
+            );
+
+        // Act + Assert
+        apiDoesNotDependOnImplementation.check(classes);
     }
 
     /**

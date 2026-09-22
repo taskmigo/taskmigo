@@ -1,8 +1,8 @@
 package io.taskmigo.migration;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.role.RoleInfo;
-import io.taskmigo.authorization.spi.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.identity.group.GroupInfo;
 import io.taskmigo.identity.user.UserInfo;

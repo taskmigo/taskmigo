@@ -1,19 +1,20 @@
-package io.taskmigo.authorization.request;
+package io.taskmigo.authorization.object.application.service;
 
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfile;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
-import io.taskmigo.authorization.object.ObjectAuthorization;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicates;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.authorization.object.application.port.in.api.ObjectAuthorization;
+import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.object.domain.ObjectAuthorizationPredicateComposer;
 import io.taskmigo.authorization.object.domain.ObjectAuthorizationPredicateComposer.Rule;
 import io.taskmigo.authorization.object.persistence.ObjectAuthorizationExpression;
 import io.taskmigo.authorization.object.persistence.ObjectAuthorizationExpressionValidator;
 import io.taskmigo.authorization.object.persistence.ObjectAuthorizationPredicateModels;
+import io.taskmigo.authorization.request.AuthorizationContext;
 import io.taskmigo.authorization.request.application.model.AuthorizationOperation;
-import io.taskmigo.authorization.spi.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.EmbeddedLanguageException;
@@ -23,11 +24,9 @@ import io.taskmigo.language.PartialProgram;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.springframework.stereotype.Service;
 
 /// Orchestrates Object Authorization Language work and delegates final predicate composition to the pure domain composer.
-@Service
-final class ObjectAuthorizationService implements ObjectAuthorization {
+public final class ObjectAuthorizationService implements ObjectAuthorization {
 
     private static final ObjectAuthorizationPredicateComposer COMPOSER = new ObjectAuthorizationPredicateComposer(
         ObjectAuthorizationPredicates.standard()
@@ -37,7 +36,7 @@ final class ObjectAuthorizationService implements ObjectAuthorization {
     private final ObjectAuthorizationTargetResolver targetResolver;
 
     /// Creates the service with the compiler and application-owned Object Authorization target resolver.
-    ObjectAuthorizationService(LanguageCompiler compiler, ObjectAuthorizationTargetResolver targetResolver) {
+    public ObjectAuthorizationService(LanguageCompiler compiler, ObjectAuthorizationTargetResolver targetResolver) {
         this.compiler = compiler;
         this.targetResolver = targetResolver;
     }

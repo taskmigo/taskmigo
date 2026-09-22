@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.request;
+package io.taskmigo.authorization.object.application.service;
 
 import io.taskmigo.authorization.object.persistence.ObjectAuthorizationExpression;
 import io.taskmigo.language.LanguageDiagnostic.SourceSpan;

@@ -2,7 +2,7 @@ package io.taskmigo.rest.support.objectauthorization;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
-import io.taskmigo.authorization.spi.ObjectAuthorizationTargetResolver;
+import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
