@@ -26,6 +26,7 @@ spring-boot-gradle-plugin = { module = "org.springframework.boot:spring-boot-gra
 jspecify = { module = "org.jspecify:jspecify", version.ref = "jspecify" }
 jackson-databind = { module = "tools.jackson.core:jackson-databind" }
 jackson-dataformat-yaml = { module = "tools.jackson.dataformat:jackson-dataformat-yaml" }
+jakarta-persistence-api = { module = "jakarta.persistence:jakarta.persistence-api" }
 spring-modulith-starter-core = { module = "org.springframework.modulith:spring-modulith-starter-core" }
 spring-modulith-starter-test = { module = "org.springframework.modulith:spring-modulith-starter-test" }
 springdoc-openapi-starter-webmvc-scalar = { module = "org.springdoc:springdoc-openapi-starter-webmvc-scalar", version.ref = "springdoc-openapi" }
