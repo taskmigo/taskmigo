@@ -11,6 +11,44 @@ import org.junit.jupiter.api.Test;
 class LanguagePackageArchitectureTest {
 
     /**
+     * Verifies that Language remains a consumer-neutral supporting capability rather than acquiring application or
+     * persistence ownership.
+     *
+     * Given: every compiled class in the Language module.
+     * Expect: Language does not depend on bounded contexts, executable applications, persistence APIs, or Spring
+     * application-service mechanics.
+     */
+    @Test
+    @DisplayName("keeps Language consumer neutral")
+    void shouldKeepLanguageConsumerNeutralWhenLanguagePackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = new ClassFileImporter().importPackages("io.taskmigo.language");
+        ArchRule languageDoesNotDependOnConsumersOrPersistence = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.language..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "io.taskmigo.authorization..",
+                "io.taskmigo.identity..",
+                "io.taskmigo.query..",
+                "io.taskmigo.database..",
+                "io.taskmigo.web..",
+                "io.taskmigo.migration..",
+                "io.taskmigo.worker..",
+                "org.springframework.data..",
+                "org.springframework.stereotype..",
+                "org.springframework.transaction..",
+                "org.springframework.web..",
+                "jakarta.persistence..",
+                "jakarta.servlet.."
+            );
+
+        // Act + Assert
+        languageDoesNotDependOnConsumersOrPersistence.check(classes);
+    }
+
+    /**
      * Verifies that direct evaluation remains independent from the generated parser frontend.
      *
      * Given: the compiled classes of the Language module.
