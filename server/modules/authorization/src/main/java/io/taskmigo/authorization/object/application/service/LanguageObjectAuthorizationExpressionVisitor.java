@@ -1,6 +1,6 @@
 package io.taskmigo.authorization.object.application.service;
 
-import io.taskmigo.authorization.object.persistence.ObjectAuthorizationExpression;
+import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
 import io.taskmigo.language.LanguageDiagnostic.SourceSpan;
 import io.taskmigo.language.LanguageType;
 import io.taskmigo.language.ast.BinaryOperator;
@@ -10,7 +10,7 @@ import io.taskmigo.language.ast.UnaryOperator;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
-/// Converts Language semantics into the Object Authorization-owned persistence model at the module boundary.
+/// Converts Language semantics into the Object Authorization-owned logical model at the module boundary.
 final class LanguageObjectAuthorizationExpressionVisitor implements ExpressionVisitor<ObjectAuthorizationExpression> {
 
     static final LanguageObjectAuthorizationExpressionVisitor INSTANCE =

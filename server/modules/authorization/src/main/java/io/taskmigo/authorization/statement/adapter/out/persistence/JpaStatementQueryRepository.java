@@ -1,8 +1,8 @@
 package io.taskmigo.authorization.statement.adapter.out.persistence;
 
+import io.taskmigo.authorization.adapter.out.persistence.query.ObjectAuthorizationPredicateBinder;
+import io.taskmigo.authorization.adapter.out.persistence.query.QueryPredicateBinder;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.persistence.query.ObjectAuthorizationPredicateBinder;
-import io.taskmigo.authorization.persistence.query.QueryPredicateBinder;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.application.port.out.StatementQueryRepository;
 import io.taskmigo.foundation.OffsetPage;

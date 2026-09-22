@@ -39,6 +39,7 @@ class MigrationPackageArchitectureTest {
                 "io.taskmigo.authorization.subject..",
                 "io.taskmigo.authorization.request..",
                 "io.taskmigo.authorization.object..",
+                "io.taskmigo.authorization..adapter..",
                 "io.taskmigo.authorization.persistence.."
             );
 

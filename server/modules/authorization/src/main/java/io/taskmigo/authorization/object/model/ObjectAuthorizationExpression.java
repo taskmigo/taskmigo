@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.object.persistence;
+package io.taskmigo.authorization.object.model;
 
 import java.util.List;
 import java.util.Objects;

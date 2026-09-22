@@ -1,7 +1,7 @@
 package io.taskmigo.authorization.object;
 
-import io.taskmigo.authorization.object.persistence.ObjectAuthorizationExpression;
-import io.taskmigo.authorization.object.persistence.ObjectAuthorizationPredicateModels;
+import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
+import io.taskmigo.authorization.object.model.ObjectAuthorizationPredicateModels;
 
 /// Applies Boolean identities while composing Object Authorization predicates.
 final class DefaultObjectAuthorizationPredicates implements ObjectAuthorizationPredicates {

@@ -6,7 +6,7 @@
         "query",
         "query :: persistence",
         "authorization :: object",
-        "authorization :: object-persistence",
+        "authorization :: object-model",
         "authorization :: subject-resolution-port",
         "authorization :: subject",
         "authorization :: subject-input",

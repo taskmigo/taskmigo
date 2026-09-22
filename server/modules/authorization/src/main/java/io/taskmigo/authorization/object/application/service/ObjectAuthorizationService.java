@@ -10,9 +10,8 @@ import io.taskmigo.authorization.object.application.port.in.api.ObjectAuthorizat
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.object.domain.ObjectAuthorizationPredicateComposer;
 import io.taskmigo.authorization.object.domain.ObjectAuthorizationPredicateComposer.Rule;
-import io.taskmigo.authorization.object.persistence.ObjectAuthorizationExpression;
-import io.taskmigo.authorization.object.persistence.ObjectAuthorizationExpressionValidator;
-import io.taskmigo.authorization.object.persistence.ObjectAuthorizationPredicateModels;
+import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
+import io.taskmigo.authorization.object.model.ObjectAuthorizationPredicateModels;
 import io.taskmigo.authorization.request.AuthorizationContext;
 import io.taskmigo.authorization.request.application.model.AuthorizationOperation;
 import io.taskmigo.authorization.statement.Scope;

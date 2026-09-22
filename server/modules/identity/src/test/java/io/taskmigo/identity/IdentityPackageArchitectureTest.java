@@ -61,7 +61,7 @@ class IdentityPackageArchitectureTest {
      * Verifies that Identity integrates with Access Control only through published contracts.
      *
      * Given: all production classes in the Identity bounded context.
-     * Expect: no Identity class reaches into Access Control persistence internals.
+     * Expect: no Identity class reaches into Access Control driven adapters or retired persistence packages.
      */
     @Test
     @DisplayName("keeps Access Control persistence private from Identity")
@@ -73,7 +73,7 @@ class IdentityPackageArchitectureTest {
             .resideInAnyPackage("io.taskmigo.identity..")
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage("io.taskmigo.authorization.persistence..");
+            .resideInAnyPackage("io.taskmigo.authorization..adapter..", "io.taskmigo.authorization.persistence..");
 
         // Act + Assert
         identityDoesNotDependOnAccessControlPersistence.check(classes);

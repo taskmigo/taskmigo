@@ -1,6 +1,6 @@
 package io.taskmigo.identity.adapter.out.persistence.query;
 
-import io.taskmigo.authorization.object.persistence.ObjectAuthorizationExpression;
+import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
 import io.taskmigo.database.criteria.JpaCriteriaComparison;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;

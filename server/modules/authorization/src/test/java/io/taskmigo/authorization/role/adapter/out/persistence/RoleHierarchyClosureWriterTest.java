@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.persistence;
+package io.taskmigo.authorization.role.adapter.out.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -17,15 +17,21 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-class HierarchyClosureWriterTest {
+class RoleHierarchyClosureWriterTest {
 
     private static final UUID ROOT_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final UUID CHILD_ID = UUID.fromString("00000000-0000-0000-0000-000000000002");
     private static final UUID LEAF_ID = UUID.fromString("00000000-0000-0000-0000-000000000003");
 
     private final EntityManager entityManager = mock(EntityManager.class);
-    private final HierarchyClosureWriter writer = new HierarchyClosureWriter(this.entityManager);
+    private final RoleHierarchyClosureWriter writer = new RoleHierarchyClosureWriter(this.entityManager);
 
+    /**
+     * Verifies closure rebuilds deduplicate repeated nodes and reachable descendants.
+     *
+     * Given: a three-node hierarchy with a duplicate root and repeated descendant reachability.
+     * Expect: exactly the six unique reflexive-transitive closure rows are persisted after the old closure is cleared.
+     */
     @Test
     @DisplayName("rebuilds a deduplicated reflexive transitive closure")
     void shouldPersistUniqueClosureRowsWhenReachabilityContainsSharedDescendants() {

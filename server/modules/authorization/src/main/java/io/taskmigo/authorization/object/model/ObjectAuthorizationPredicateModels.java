@@ -1,10 +1,10 @@
-package io.taskmigo.authorization.object.persistence;
+package io.taskmigo.authorization.object.model;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import java.util.Objects;
 
-/// Creates and exposes the trusted persistence model behind opaque Object Authorization predicates.
+/// Creates and exposes the trusted logical model behind opaque Object Authorization predicates.
 public final class ObjectAuthorizationPredicateModels {
 
     private ObjectAuthorizationPredicateModels() {}
