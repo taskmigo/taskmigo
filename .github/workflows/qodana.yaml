@@ -24,11 +24,13 @@ concurrency:
 permissions:
   actions: read
   contents: read
+  packages: read
   pull-requests: write
   checks: write
   security-events: write
 
 env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   SARIF_PATH: qodana/results/qodana.sarif.json
 
 jobs:

@@ -1,4 +1,4 @@
-@NullUnmarked
+@NullMarked
 package io.taskmigo.language.antlr;
 
-import org.jspecify.annotations.NullUnmarked;
+import org.jspecify.annotations.NullMarked;

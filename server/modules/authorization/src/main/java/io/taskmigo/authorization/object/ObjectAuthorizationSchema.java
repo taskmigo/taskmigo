@@ -10,7 +10,6 @@ public interface ObjectAuthorizationSchema<Q> {
     Class<Q> objectType();
 
     /// Resolves one explicitly registered Object Authorization path.
-    @SuppressWarnings("NullableProblems")
     Optional<ObjectAuthorizationField> field(ObjectAuthorizationPath path);
 
     /// Returns every explicitly registered Object Authorization field.

@@ -23,7 +23,8 @@ RUN --mount=type=cache,id=taskmigo-gradle,target=/root/.gradle,sharing=locked \
     ./gradlew --no-daemon --parallel \
         :apps:migration:dependencies \
         :apps:web:dependencies \
-        :apps:worker:dependencies
+        :apps:worker:dependencies \
+        --configuration runtimeClasspath
 
 COPY modules/foundation/src modules/foundation/src
 COPY modules/language/src modules/language/src

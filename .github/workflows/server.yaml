@@ -22,11 +22,14 @@ concurrency:
 
 permissions:
   contents: read
+  packages: read
 
 jobs:
   build:
     name: Build and test
     runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     defaults:
       run:
         working-directory: server
