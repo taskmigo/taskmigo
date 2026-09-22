@@ -6,7 +6,7 @@ import io.taskmigo.language.ast.BinaryOperator;
 import io.taskmigo.language.ast.ExpressionVisitor;
 import io.taskmigo.language.ast.QuantifierOperator;
 import io.taskmigo.language.ast.UnaryOperator;
-import io.taskmigo.query.persistence.QueryExpression;
+import io.taskmigo.query.model.QueryExpression;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 

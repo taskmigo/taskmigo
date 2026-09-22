@@ -1,7 +1,7 @@
 package io.taskmigo.identity.adapter.out.persistence.query;
 
 import io.taskmigo.query.QueryPredicate;
-import io.taskmigo.query.persistence.QueryPredicateModel;
+import io.taskmigo.query.model.QueryPredicateModel;
 import java.util.Map;
 import org.springframework.data.jpa.domain.Specification;
 

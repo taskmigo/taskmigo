@@ -5,7 +5,7 @@
         "language",
         "language :: ast",
         "query",
-        "query :: persistence",
+        "query :: model",
         "database :: criteria",
     }
 )

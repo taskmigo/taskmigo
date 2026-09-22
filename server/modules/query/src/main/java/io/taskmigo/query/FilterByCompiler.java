@@ -9,7 +9,7 @@ import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.EnvironmentSchema;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageType;
-import io.taskmigo.query.persistence.QueryExpression;
+import io.taskmigo.query.model.QueryExpression;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
