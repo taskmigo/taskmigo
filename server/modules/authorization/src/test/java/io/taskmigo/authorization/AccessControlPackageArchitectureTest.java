@@ -31,6 +31,25 @@ class AccessControlPackageArchitectureTest {
     }
 
     /**
+     * Verifies that the completed Role and Role-hierarchy slice cannot regress to its transitional infrastructure package.
+     *
+     * Given: all production classes owned by Access Control.
+     * Expect: no Role class resides in the retired infrastructure package.
+     */
+    @Test
+    @DisplayName("rejects retired Role infrastructure packages")
+    void shouldRejectLegacyRoleInfrastructureWhenAuthorizationPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule noLegacyRoleInfrastructure = noClasses()
+            .should()
+            .resideInAnyPackage("io.taskmigo.authorization.role.infrastructure..");
+
+        // Act + Assert
+        noLegacyRoleInfrastructure.check(classes);
+    }
+
+    /**
      * Verifies the bounded-context dependency direction between Access Control and Identity.
      *
      * Given: all production classes owned by Access Control.
@@ -84,7 +103,7 @@ class AccessControlPackageArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 "io.taskmigo.authorization.persistence..",
-                "io.taskmigo.authorization.role.infrastructure..",
+                "io.taskmigo.authorization.role.adapter..",
                 "io.taskmigo.authorization.statement.adapter..",
                 "org.springframework.data..",
                 "jakarta.persistence.."
@@ -217,7 +236,7 @@ class AccessControlPackageArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 "io.taskmigo.authorization.role.application..",
-                "io.taskmigo.authorization.role.infrastructure.."
+                "io.taskmigo.authorization.role.adapter.."
             );
 
         // Act + Assert
@@ -242,7 +261,7 @@ class AccessControlPackageArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 "io.taskmigo.authorization.role.application..",
-                "io.taskmigo.authorization.role.infrastructure..",
+                "io.taskmigo.authorization.role.adapter..",
                 "org.springframework..",
                 "jakarta.persistence.."
             );
@@ -252,7 +271,7 @@ class AccessControlPackageArchitectureTest {
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
-                "io.taskmigo.authorization.role.infrastructure..",
+                "io.taskmigo.authorization.role.adapter..",
                 "org.springframework.data..",
                 "jakarta.persistence.."
             );
