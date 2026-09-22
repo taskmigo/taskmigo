@@ -1,4 +1,4 @@
-package io.taskmigo.internal;
+package io.taskmigo.web.composition.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -44,14 +44,26 @@ class InteractiveAuthenticationIntegrationTest {
         this.users = users;
     }
 
+    /**
+     * Verifies that persisted system-user credentials are exposed through the composed interactive-authentication
+     * services without changing Identity-owned user state.
+     *
+     * Given: the provisioned System User and its persisted password hash.
+     * Expect: the composed UserDetailsService exposes the same enabled principal and the configured encoder validates
+     * the integration password against both persisted and security-facing credentials.
+     */
     @Test
     @DisplayName("authenticates the persisted system user through the web security configuration")
     void shouldAuthenticateSystemUserWhenPersistedCredentialsAreValid() {
+        // Arrange
         var persisted = this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow();
         var info = this.users.require(persisted.id());
-        var principal = this.userDetails.loadUserByUsername(SystemUser.USERNAME);
         String persistedHash = Objects.requireNonNull(persisted.passwordHash());
 
+        // Act
+        var principal = this.userDetails.loadUserByUsername(SystemUser.USERNAME);
+
+        // Assert
         assertThat(info.username()).isEqualTo(SystemUser.USERNAME);
         assertThat(info.firstName()).isEqualTo(SystemUser.FIRST_NAME);
         assertThat(info.lastName()).isEqualTo(SystemUser.LAST_NAME);
@@ -63,19 +75,26 @@ class InteractiveAuthenticationIntegrationTest {
         assertThat(this.passwordEncoder.matches("integration-password", principal.getPassword())).isTrue();
     }
 
+    /**
+     * Verifies that OAuth/OpenID Connect endpoint wiring remains active after moving framework composition.
+     *
+     * Given: the web application running on a random port with a development signing key.
+     * Expect: the provider-discovery document advertises authorization, token, JWK, and logout endpoints.
+     */
     @Test
     @DisplayName("exposes the OpenID Connect provider configuration")
     void shouldExposeOidcProviderConfigurationWhenDiscoveryEndpointIsRequested() {
+        // Arrange
+        RestClient client = RestClient.builder()
+            .baseUrl("http://localhost:" + this.port)
+            .build();
+
+        // Act
         String response = Objects.requireNonNull(
-            RestClient.builder()
-                .baseUrl("http://localhost:" + this.port)
-                .build()
-                .get()
-                .uri("/.well-known/openid-configuration")
-                .retrieve()
-                .body(String.class)
+            client.get().uri("/.well-known/openid-configuration").retrieve().body(String.class)
         );
 
+        // Assert
         assertThat(response)
             .contains("authorization_endpoint")
             .contains("token_endpoint")

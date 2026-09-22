@@ -1,4 +1,4 @@
-package io.taskmigo.internal.auth;
+package io.taskmigo.web.composition.auth;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
