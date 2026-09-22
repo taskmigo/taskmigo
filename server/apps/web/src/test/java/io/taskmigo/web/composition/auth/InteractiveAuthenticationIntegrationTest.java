@@ -85,7 +85,9 @@ class InteractiveAuthenticationIntegrationTest {
     @DisplayName("exposes the OpenID Connect provider configuration")
     void shouldExposeOidcProviderConfigurationWhenDiscoveryEndpointIsRequested() {
         // Arrange
-        RestClient client = RestClient.builder()\n            .baseUrl("http://localhost:" + this.port)\n            .build();
+        RestClient client = RestClient.builder()
+            .baseUrl("http://localhost:" + this.port)
+            .build();
 
         // Act
         String response = Objects.requireNonNull(
