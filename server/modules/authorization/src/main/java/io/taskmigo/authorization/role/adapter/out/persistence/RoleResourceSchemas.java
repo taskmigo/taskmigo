@@ -1,12 +1,12 @@
 package io.taskmigo.authorization.role.adapter.out.persistence;
 
-import io.taskmigo.authorization.object.ObjectAuthorizationField;
-import io.taskmigo.authorization.object.ObjectAuthorizationPath;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.adapter.out.persistence.query.JpaObjectAuthorizationPredicateBinder;
 import io.taskmigo.authorization.adapter.out.persistence.query.JpaQueryPredicateBinder;
 import io.taskmigo.authorization.adapter.out.persistence.query.ObjectAuthorizationPredicateBinder;
 import io.taskmigo.authorization.adapter.out.persistence.query.QueryPredicateBinder;
+import io.taskmigo.authorization.object.ObjectAuthorizationField;
+import io.taskmigo.authorization.object.ObjectAuthorizationPath;
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.query.QueryField;
