@@ -1,4 +1,4 @@
-package io.taskmigo.migration;
+package io.taskmigo.migration.adapter.in.installation;
 
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningResult;

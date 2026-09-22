@@ -1,4 +1,4 @@
-package io.taskmigo.migration;
+package io.taskmigo.migration.adapter.in.installation;
 
 import java.util.List;
 import org.slf4j.Logger;

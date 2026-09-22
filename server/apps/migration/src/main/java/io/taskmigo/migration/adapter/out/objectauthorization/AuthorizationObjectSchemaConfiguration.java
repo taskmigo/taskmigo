@@ -1,4 +1,4 @@
-package io.taskmigo.migration;
+package io.taskmigo.migration.adapter.out.objectauthorization;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;

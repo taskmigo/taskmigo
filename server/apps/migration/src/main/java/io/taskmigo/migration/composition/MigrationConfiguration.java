@@ -1,4 +1,4 @@
-package io.taskmigo.migration;
+package io.taskmigo.migration.composition;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

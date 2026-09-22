@@ -1,4 +1,4 @@
-/// Installation migration tasks executed after schema migration and before runtime applications start.
+/// Hosts the migration executable's installation driving adapters, migration-specific driven adapters, and composition.
 @ApplicationModule(
     allowedDependencies = {
         "foundation",
