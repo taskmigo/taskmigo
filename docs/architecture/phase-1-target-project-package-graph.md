@@ -114,7 +114,7 @@ The former `io.taskmigo.authorization.object.persistence..` package was also nor
 
 Query's former `io.taskmigo.query.persistence..` package was normalized during Phase 5. Its persistence-neutral expression/predicate model now lives under `io.taskmigo.query.model..` and is published as the `model` named interface; JPA binding remains in the resource-owning Identity and Access Control driven adapters.
 
-Recognition is not compatibility approval. Phases 2 and 3 remove these transitional locations slice by slice.
+Recognition is not compatibility approval. The tracked migration phases remove transitional locations slice by slice.
 
 Target-only rules are empty-safe until a target package is introduced. Once a class appears under
 `application.service`, `application.port.in`, `application.port.out`, `adapter.in`, or `adapter.out`, the rule
