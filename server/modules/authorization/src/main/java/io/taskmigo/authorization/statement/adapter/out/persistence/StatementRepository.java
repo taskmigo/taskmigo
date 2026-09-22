@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.statement.infrastructure.persistence;
+package io.taskmigo.authorization.statement.adapter.out.persistence;
 
 import java.util.Collection;
 import java.util.List;

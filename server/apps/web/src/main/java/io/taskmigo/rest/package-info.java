@@ -8,6 +8,7 @@
         "authorization :: role",
         "authorization :: spi",
         "authorization :: statement",
+        "authorization :: statement-input",
         "identity :: user",
         "identity :: user-input",
         "identity :: group",

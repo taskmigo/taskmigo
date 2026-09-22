@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.statement.infrastructure.persistence;
+package io.taskmigo.authorization.statement.adapter.out.persistence;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationField;
 import io.taskmigo.authorization.object.ObjectAuthorizationPath;

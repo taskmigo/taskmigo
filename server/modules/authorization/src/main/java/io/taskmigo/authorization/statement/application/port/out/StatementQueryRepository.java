@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.statement.application;
+package io.taskmigo.authorization.statement.application.port.out;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.statement.StatementInfo;

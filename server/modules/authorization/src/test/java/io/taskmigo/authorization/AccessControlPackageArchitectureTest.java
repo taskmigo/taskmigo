@@ -12,6 +12,25 @@ import org.junit.jupiter.api.Test;
 class AccessControlPackageArchitectureTest {
 
     /**
+     * Verifies that the completed Statement slice cannot regress to its transitional infrastructure package.
+     *
+     * Given: all production classes owned by Access Control.
+     * Expect: no Statement class resides in the retired infrastructure package.
+     */
+    @Test
+    @DisplayName("rejects retired Statement infrastructure packages")
+    void shouldRejectLegacyStatementInfrastructureWhenAuthorizationPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule noLegacyStatementInfrastructure = noClasses()
+            .should()
+            .resideInAnyPackage("io.taskmigo.authorization.statement.infrastructure..");
+
+        // Act + Assert
+        noLegacyStatementInfrastructure.check(classes);
+    }
+
+    /**
      * Verifies the bounded-context dependency direction between Access Control and Identity.
      *
      * Given: all production classes owned by Access Control.
@@ -66,7 +85,7 @@ class AccessControlPackageArchitectureTest {
             .resideInAnyPackage(
                 "io.taskmigo.authorization.persistence..",
                 "io.taskmigo.authorization.role.infrastructure..",
-                "io.taskmigo.authorization.statement.infrastructure..",
+                "io.taskmigo.authorization.statement.adapter..",
                 "org.springframework.data..",
                 "jakarta.persistence.."
             );
@@ -135,7 +154,7 @@ class AccessControlPackageArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 "io.taskmigo.authorization.statement.application..",
-                "io.taskmigo.authorization.statement.infrastructure.."
+                "io.taskmigo.authorization.statement.adapter.."
             );
 
         // Act + Assert
@@ -160,7 +179,7 @@ class AccessControlPackageArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 "io.taskmigo.authorization.statement.application..",
-                "io.taskmigo.authorization.statement.infrastructure..",
+                "io.taskmigo.authorization.statement.adapter..",
                 "org.springframework..",
                 "jakarta.persistence.."
             );
@@ -170,7 +189,7 @@ class AccessControlPackageArchitectureTest {
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
-                "io.taskmigo.authorization.statement.infrastructure..",
+                "io.taskmigo.authorization.statement.adapter..",
                 "org.springframework.data..",
                 "jakarta.persistence.."
             );

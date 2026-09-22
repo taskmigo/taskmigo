@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.statement.application;
+package io.taskmigo.authorization.statement.application.port.in.internal;
 
 import java.util.UUID;
 
