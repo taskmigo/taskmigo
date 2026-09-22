@@ -180,6 +180,33 @@ class AccessControlPackageArchitectureTest {
     }
 
     /**
+     * Verifies published Request Authorization contracts remain independent from implementation layers.
+     *
+     * Given: public production contracts in the root Request package.
+     * Expect: they do not depend on Request application implementations or persistence adapters.
+     */
+    @Test
+    @DisplayName("keeps Request Authorization API independent from implementation layers")
+    void shouldKeepRequestAuthorizationApiIndependentWhenAuthorizationPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule apiDoesNotDependOnImplementation = noClasses()
+            .that()
+            .arePublic()
+            .and()
+            .resideInAnyPackage("io.taskmigo.authorization.request")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage(
+                "io.taskmigo.authorization.request.application..",
+                "io.taskmigo.authorization.persistence.request.."
+            );
+
+        // Act + Assert
+        apiDoesNotDependOnImplementation.check(classes);
+    }
+
+    /**
      * Verifies the published Statement package cannot reach into application or infrastructure implementation.
      *
      * Given: production classes in the root Statement API package.

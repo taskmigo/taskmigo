@@ -3,6 +3,7 @@
     allowedDependencies = {
         "rest :: security",
         "authorization :: request",
+        "authorization :: request-input",
         "identity :: user",
         "identity :: user-input",
     }

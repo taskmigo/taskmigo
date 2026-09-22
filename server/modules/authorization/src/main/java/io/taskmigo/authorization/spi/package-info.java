@@ -1,4 +1,4 @@
-/// Defines integration-facing authorization ports without exposing request-evaluation implementation details.
+/// Publishes the remaining Object Authorization target-resolution integration contract.
 @NamedInterface("spi")
 @NullMarked
 package io.taskmigo.authorization.spi;

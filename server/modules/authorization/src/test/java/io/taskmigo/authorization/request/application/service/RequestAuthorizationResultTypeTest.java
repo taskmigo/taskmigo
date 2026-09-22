@@ -1,11 +1,11 @@
-package io.taskmigo.authorization.request;
+package io.taskmigo.authorization.request.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.authorization.spi.EffectiveStatement;
-import io.taskmigo.authorization.spi.EffectiveStatementResolver;
+import io.taskmigo.authorization.request.application.port.out.EffectiveStatement;
+import io.taskmigo.authorization.request.application.port.out.EffectiveStatementResolver;
 import io.taskmigo.authorization.spi.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.ApiInfo;
 import io.taskmigo.authorization.statement.Effect;

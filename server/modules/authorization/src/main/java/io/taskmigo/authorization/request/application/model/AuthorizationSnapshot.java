@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.request;
+package io.taskmigo.authorization.request.application.model;
 
 import io.taskmigo.authorization.statement.StatementExecutionArtifact;
 import java.util.Collections;
@@ -11,7 +11,11 @@ import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /// Captures the immutable authorization state used throughout one request or authorization operation.
-record AuthorizationSnapshot(UUID userId, List<StatementExecutionArtifact> executableStatements, Map<String, ?> roots) {
+public record AuthorizationSnapshot(
+    UUID userId,
+    List<StatementExecutionArtifact> executableStatements,
+    Map<String, ?> roots
+) {
     /// Creates a snapshot with immutable executable Statements and authorization input values.
     public AuthorizationSnapshot {
         executableStatements = List.copyOf(executableStatements);

@@ -12,6 +12,7 @@ import io.taskmigo.authorization.object.domain.ObjectAuthorizationPredicateCompo
 import io.taskmigo.authorization.object.persistence.ObjectAuthorizationExpression;
 import io.taskmigo.authorization.object.persistence.ObjectAuthorizationExpressionValidator;
 import io.taskmigo.authorization.object.persistence.ObjectAuthorizationPredicateModels;
+import io.taskmigo.authorization.request.application.model.AuthorizationOperation;
 import io.taskmigo.authorization.spi.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.language.CompiledSource;
@@ -26,7 +27,7 @@ import org.springframework.stereotype.Service;
 
 /// Orchestrates Object Authorization Language work and delegates final predicate composition to the pure domain composer.
 @Service
-public class ObjectAuthorizationService implements ObjectAuthorization {
+final class ObjectAuthorizationService implements ObjectAuthorization {
 
     private static final ObjectAuthorizationPredicateComposer COMPOSER = new ObjectAuthorizationPredicateComposer(
         ObjectAuthorizationPredicates.standard()
@@ -36,7 +37,7 @@ public class ObjectAuthorizationService implements ObjectAuthorization {
     private final ObjectAuthorizationTargetResolver targetResolver;
 
     /// Creates the service with the compiler and application-owned Object Authorization target resolver.
-    public ObjectAuthorizationService(LanguageCompiler compiler, ObjectAuthorizationTargetResolver targetResolver) {
+    ObjectAuthorizationService(LanguageCompiler compiler, ObjectAuthorizationTargetResolver targetResolver) {
         this.compiler = compiler;
         this.targetResolver = targetResolver;
     }

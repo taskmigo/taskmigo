@@ -1,4 +1,4 @@
-/// Provides transport-neutral authorization decisions for incoming requests.
+/// Publishes transport-neutral Request Authorization context and data contracts.
 @NamedInterface("request")
 @NullMarked
 package io.taskmigo.authorization.request;

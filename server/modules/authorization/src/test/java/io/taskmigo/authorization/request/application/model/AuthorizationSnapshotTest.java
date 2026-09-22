@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.request;
+package io.taskmigo.authorization.request.application.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

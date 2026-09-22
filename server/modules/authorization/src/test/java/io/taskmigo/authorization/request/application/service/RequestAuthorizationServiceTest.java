@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.request;
+package io.taskmigo.authorization.request.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -7,8 +7,13 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.authorization.spi.EffectiveStatement;
-import io.taskmigo.authorization.spi.EffectiveStatementResolver;
+import io.taskmigo.authorization.request.AuthorizationContext;
+import io.taskmigo.authorization.request.AuthorizationPrincipal;
+import io.taskmigo.authorization.request.AuthorizationRequest;
+import io.taskmigo.authorization.request.RequestAuthorizationResult;
+import io.taskmigo.authorization.request.application.model.AuthorizationSnapshot;
+import io.taskmigo.authorization.request.application.port.out.EffectiveStatement;
+import io.taskmigo.authorization.request.application.port.out.EffectiveStatementResolver;
 import io.taskmigo.authorization.spi.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.ApiInfo;
 import io.taskmigo.authorization.statement.Effect;
