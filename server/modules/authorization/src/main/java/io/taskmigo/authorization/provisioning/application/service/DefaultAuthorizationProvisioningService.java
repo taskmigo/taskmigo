@@ -1,9 +1,10 @@
-package io.taskmigo.authorization.provisioning.application;
+package io.taskmigo.authorization.provisioning.application.service;
 
+import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningResult;
-import io.taskmigo.authorization.provisioning.AuthorizationProvisioningService;
+import io.taskmigo.authorization.provisioning.application.port.in.api.AuthorizationProvisioningService;
 import io.taskmigo.authorization.role.application.port.in.internal.RoleCommandService;
 import io.taskmigo.authorization.role.application.port.in.internal.RoleMutationResult;
 import io.taskmigo.authorization.role.application.port.out.RoleHierarchyRepository;
@@ -20,33 +21,78 @@ import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-/// Reconciles managed authorization state through the canonical Role and Statement command paths.
-@Service
-class DefaultAuthorizationProvisioningService implements AuthorizationProvisioningService {
+/// Reconciles managed Access Control state through canonical Role and Statement application ports.
+public final class DefaultAuthorizationProvisioningService implements AuthorizationProvisioningService {
 
     private final RoleCommandService roleCommands;
     private final RoleHierarchyRepository roleHierarchies;
     private final StatementService statementService;
     private final StatementCommandService statementCommands;
+    private final TransactionRunner transactions;
 
-    DefaultAuthorizationProvisioningService(
+    public DefaultAuthorizationProvisioningService(
         RoleCommandService roleCommands,
         RoleHierarchyRepository roleHierarchies,
         StatementService statementService,
-        StatementCommandService statementCommands
+        StatementCommandService statementCommands,
+        TransactionRunner transactions
     ) {
         this.roleCommands = roleCommands;
         this.roleHierarchies = roleHierarchies;
         this.statementService = statementService;
         this.statementCommands = statementCommands;
+        this.transactions = transactions;
     }
 
     @Override
-    @Transactional
     public AuthorizationProvisioningResult<UUID> reconcileStatement(
+        @Nullable String code,
+        @Nullable String description,
+        @Nullable Effect effect,
+        @Nullable Scope scope,
+        @Nullable String method,
+        @Nullable String path,
+        @Nullable String policy
+    ) {
+        return this.transactions.write(() ->
+            this.reconcileStatementInTransaction(code, description, effect, scope, method, path, policy)
+        );
+    }
+
+    @Override
+    public AuthorizationProvisioningResult<UUID> reconcileRole(
+        @Nullable String code,
+        @Nullable String displayName,
+        @Nullable String description,
+        Collection<UUID> statementIds
+    ) {
+        return this.transactions.write(() ->
+            this.reconcileRoleInTransaction(code, displayName, description, statementIds)
+        );
+    }
+
+    @Override
+    public UUID requireStatement(String code) {
+        return this.transactions.read(() -> this.requireStatementInTransaction(code));
+    }
+
+    @Override
+    public UUID requireRole(String code) {
+        return this.transactions.read(() -> this.requireRoleInTransaction(code));
+    }
+
+    @Override
+    public boolean deleteStatement(String code) {
+        return this.transactions.write(() -> this.deleteStatementInTransaction(code));
+    }
+
+    @Override
+    public boolean deleteRole(String code) {
+        return this.transactions.write(() -> this.deleteRoleInTransaction(code));
+    }
+
+    private AuthorizationProvisioningResult<UUID> reconcileStatementInTransaction(
         @Nullable String code,
         @Nullable String description,
         @Nullable Effect effect,
@@ -68,9 +114,7 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
         );
     }
 
-    @Override
-    @Transactional
-    public AuthorizationProvisioningResult<UUID> reconcileRole(
+    private AuthorizationProvisioningResult<UUID> reconcileRoleInTransaction(
         @Nullable String code,
         @Nullable String displayName,
         @Nullable String description,
@@ -94,9 +138,7 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
         );
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public UUID requireStatement(String code) {
+    private UUID requireStatementInTransaction(String code) {
         try {
             return this.statementCommands
                 .findByCode(code)
@@ -109,9 +151,7 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
         }
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public UUID requireRole(String code) {
+    private UUID requireRoleInTransaction(String code) {
         try {
             return this.roleCommands
                 .findByCode(code)
@@ -124,9 +164,7 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
         }
     }
 
-    @Override
-    @Transactional
-    public boolean deleteStatement(String code) {
+    private boolean deleteStatementInTransaction(String code) {
         Statement existing;
         try {
             existing = this.statementCommands.findByCode(code).orElse(null);
@@ -140,9 +178,7 @@ class DefaultAuthorizationProvisioningService implements AuthorizationProvisioni
         return true;
     }
 
-    @Override
-    @Transactional
-    public boolean deleteRole(String code) {
+    private boolean deleteRoleInTransaction(String code) {
         Role existing;
         try {
             existing = this.roleCommands.findByCode(code).orElse(null);

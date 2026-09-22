@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.provisioning.application;
+package io.taskmigo.authorization.provisioning.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningResult;
 import io.taskmigo.authorization.role.application.port.in.internal.RoleCommandService;
@@ -24,10 +25,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
+import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 
+@NullMarked
 class DefaultAuthorizationProvisioningServiceTest {
 
     /**
@@ -245,7 +249,8 @@ class DefaultAuthorizationProvisioningServiceTest {
             roles,
             hierarchies,
             statements,
-            mock(StatementCommandService.class)
+            mock(StatementCommandService.class),
+            directTransactions()
         );
 
         // Act
@@ -343,8 +348,28 @@ class DefaultAuthorizationProvisioningServiceTest {
             roles,
             mock(RoleHierarchyRepository.class),
             statementService,
-            statements
+            statements,
+            directTransactions()
         );
+    }
+
+    private static TransactionRunner directTransactions() {
+        return new TransactionRunner() {
+            @Override
+            public <T> T read(Supplier<T> work) {
+                return work.get();
+            }
+
+            @Override
+            public <T> T write(Supplier<T> work) {
+                return work.get();
+            }
+
+            @Override
+            public void write(Runnable work) {
+                work.run();
+            }
+        };
     }
 
     private static Statement statement(String code) {
