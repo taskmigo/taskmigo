@@ -5,6 +5,7 @@
         "authorization :: object",
         "authorization :: object-target-resolution-port",
         "authorization :: provisioning",
+        "authorization :: provisioning-input",
         "authorization :: role",
         "authorization :: statement",
         "identity :: provisioning",

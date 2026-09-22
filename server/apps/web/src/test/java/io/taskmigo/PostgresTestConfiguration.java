@@ -1,6 +1,6 @@
 package io.taskmigo;
 
-import io.taskmigo.authorization.provisioning.AuthorizationProvisioningService;
+import io.taskmigo.authorization.provisioning.application.port.in.api.AuthorizationProvisioningService;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.identity.provisioning.application.port.in.api.IdentityProvisioningService;

@@ -25,6 +25,7 @@ class HexagonalOnionArchitectureTest {
             "io.taskmigo.authorization.object.application.port.in.api",
             "io.taskmigo.authorization.object.application.port.out",
             "io.taskmigo.authorization.provisioning",
+            "io.taskmigo.authorization.provisioning.application.port.in.api",
             "io.taskmigo.authorization.request",
             "io.taskmigo.authorization.role",
             "io.taskmigo.authorization.role.application.port.in.api",

@@ -1,5 +1,6 @@
-package io.taskmigo.authorization.provisioning;
+package io.taskmigo.authorization.provisioning.application.port.in.api;
 
+import io.taskmigo.authorization.provisioning.AuthorizationProvisioningResult;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import java.util.Collection;
