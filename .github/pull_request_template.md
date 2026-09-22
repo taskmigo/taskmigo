@@ -73,7 +73,7 @@ Explicitly highlight any potential side effects or breaking contracts.
 - [ ] The PR title follows the sentence format:
   - [ ] Starts with a capital letter (e.g., `"Add OAuth2 login flow for core authentication"`)
   - [ ] Summarizes only the main changes (omits minor fixes or side tasks)
-- [ ] The PR description follows the PR template when creating or updating this pull request.
+- [ ] The PR title and description reflect the current changes and follow the PR template whenever this pull request is created or updated.
 - [ ] The pull request is focused and contains no unrelated changes.
 - [ ] The applicable Taskmigo specification is linked to a **specific release tag** (NOT a branch like `main` or `next`), or `N/A` is justified.
 - [ ] Tests and documentation are updated where applicable.
