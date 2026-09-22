@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.persistence.request;
+package io.taskmigo.authorization.request.adapter.out.persistence;
 
 import io.taskmigo.authorization.request.application.port.out.EffectiveStatement;
 import io.taskmigo.authorization.request.application.port.out.EffectiveStatementResolver;
@@ -18,16 +18,16 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-/// Resolves effective Statements entirely from Access Control state after resolving opaque effective subjects.
+/// Resolves authoritative effective Statements through bounded persistence reads after resolving opaque subjects.
 @Service
-public class DatabaseEffectiveStatementResolver implements EffectiveStatementResolver {
+public class JpaEffectiveStatementResolver implements EffectiveStatementResolver {
 
     private final EffectiveSubjectResolver subjects;
     private final SubjectGrantRepository grants;
     private final RoleEffectiveStatementRepository roles;
     private final StatementRepository statements;
 
-    DatabaseEffectiveStatementResolver(
+    JpaEffectiveStatementResolver(
         EffectiveSubjectResolver subjects,
         SubjectGrantRepository grants,
         RoleEffectiveStatementRepository roles,

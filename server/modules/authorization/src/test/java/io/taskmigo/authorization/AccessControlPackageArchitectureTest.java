@@ -69,6 +69,25 @@ class AccessControlPackageArchitectureTest {
     }
 
     /**
+     * Verifies that the optimized Request Authorization read path cannot regress to top-level persistence ownership.
+     *
+     * Given: all production classes owned by Access Control.
+     * Expect: no request-time persistence class resides in the retired top-level Request persistence package.
+     */
+    @Test
+    @DisplayName("rejects retired Request persistence packages")
+    void shouldRejectLegacyRequestPersistenceWhenAuthorizationPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+        ArchRule noLegacyRequestPersistence = noClasses()
+            .should()
+            .resideInAnyPackage("io.taskmigo.authorization.persistence.request..");
+
+        // Act + Assert
+        noLegacyRequestPersistence.check(classes);
+    }
+
+    /**
      * Verifies the completed Object Authorization slice cannot regress to the generic SPI bucket.
      *
      * Given: all production classes owned by Access Control.
@@ -125,7 +144,9 @@ class AccessControlPackageArchitectureTest {
                 "io.taskmigo.authorization.core..",
                 "io.taskmigo.authorization.object..",
                 "io.taskmigo.authorization.provisioning..",
-                "io.taskmigo.authorization.request..",
+                "io.taskmigo.authorization.request",
+                "io.taskmigo.authorization.request.application..",
+                "io.taskmigo.authorization.request.domain..",
                 "io.taskmigo.authorization.role",
                 "io.taskmigo.authorization.role.application..",
                 "io.taskmigo.authorization.role.domain..",
@@ -140,6 +161,7 @@ class AccessControlPackageArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 "io.taskmigo.authorization.persistence..",
+                "io.taskmigo.authorization.request.adapter..",
                 "io.taskmigo.authorization.role.adapter..",
                 "io.taskmigo.authorization.statement.adapter..",
                 "io.taskmigo.authorization.subject.adapter..",
@@ -168,7 +190,9 @@ class AccessControlPackageArchitectureTest {
                 "io.taskmigo.authorization.core..",
                 "io.taskmigo.authorization.object..",
                 "io.taskmigo.authorization.provisioning..",
-                "io.taskmigo.authorization.request..",
+                "io.taskmigo.authorization.request",
+                "io.taskmigo.authorization.request.application..",
+                "io.taskmigo.authorization.request.domain..",
                 "io.taskmigo.authorization.role",
                 "io.taskmigo.authorization.role.application..",
                 "io.taskmigo.authorization.role.domain..",
@@ -241,7 +265,7 @@ class AccessControlPackageArchitectureTest {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 "io.taskmigo.authorization.request.application..",
-                "io.taskmigo.authorization.persistence.request.."
+                "io.taskmigo.authorization.request.adapter.."
             );
 
         // Act + Assert
