@@ -25,9 +25,8 @@ class ModulithArchitectureTest {
 
     /// Verifies that target driving adapters cannot bypass inbound ports.
     ///
-    /// Given: the migration application package graph before Phase 4 moves migration/provisioning entry points under
-    /// `adapter.in`.
-    /// Expect: the shared Hexagonal/Onion driving-adapter rule accepts the current package graph and will reject
+    /// Given: the migration installation entry points under `io.taskmigo.migration.adapter.in`.
+    /// Expect: the shared Hexagonal/Onion driving-adapter rule rejects
     /// dependencies on application-service implementations, outbound ports, driven adapters, Spring Data, or JPA.
     @Test
     @DisplayName("keeps target migration driving adapters on inbound ports")

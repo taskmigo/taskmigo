@@ -1,4 +1,4 @@
-package io.taskmigo.migration;
+package io.taskmigo.migration.adapter.in.installation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

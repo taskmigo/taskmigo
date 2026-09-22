@@ -1,4 +1,4 @@
-package io.taskmigo.migration;
+package io.taskmigo.migration.adapter.in.installation;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
