@@ -73,6 +73,13 @@ Explicitly highlight any potential side effects or breaking contracts.
 - [ ] The PR title follows the sentence format:
   - [ ] Starts with a capital letter (e.g., `"Add OAuth2 login flow for core authentication"`)
   - [ ] Summarizes only the main changes (omits minor fixes or side tasks)
+- [ ] The PR description follows every section-specific instruction in this template:
+  - [ ] No required section has been removed, renamed, or replaced.
+  - [ ] `Summary` is derived from the raw code diff/changes, not commit messages, PR metadata, or a previous PR description.
+  - [ ] `Specification` links to a specific release tag or tagged commit, or `N/A` is justified.
+  - [ ] `Changes` is derived from code/diff analysis and excludes Git lifecycle operations, formatting noise, temporary actions, mechanical renames, and import reordering.
+  - [ ] `Verification` uses an allowed form: exactly `Covered by automated CI suite.` when CI covers the change, exact manual scenarios when manually tested, or `N/A` when not applicable.
+  - [ ] `Breaking Changes & Risk Assessment` lists concrete supported impacts/risks or exactly `None`.
 - [ ] The pull request is focused and contains no unrelated changes.
 - [ ] The applicable Taskmigo specification is linked to a **specific release tag** (NOT a branch like `main` or `next`), or `N/A` is justified.
 - [ ] Tests and documentation are updated where applicable.
