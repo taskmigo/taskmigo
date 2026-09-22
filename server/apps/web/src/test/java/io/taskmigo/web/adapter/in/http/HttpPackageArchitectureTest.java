@@ -42,19 +42,28 @@ class HttpPackageArchitectureTest {
             .resideInAnyPackage("io.taskmigo.web.adapter.in.http.api.v0.auth.authorization..")
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage("io.taskmigo.web.adapter.in.http.api.v0.auth.group..", "io.taskmigo.web.adapter.in.http.api.v0.auth.user..");
+            .resideInAnyPackage(
+                "io.taskmigo.web.adapter.in.http.api.v0.auth.group..",
+                "io.taskmigo.web.adapter.in.http.api.v0.auth.user.."
+            );
         ArchRule groupDoesNotDependOnOtherFeatures = noClasses()
             .that()
             .resideInAnyPackage("io.taskmigo.web.adapter.in.http.api.v0.auth.group..")
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage("io.taskmigo.web.adapter.in.http.api.v0.auth.authorization..", "io.taskmigo.web.adapter.in.http.api.v0.auth.user..");
+            .resideInAnyPackage(
+                "io.taskmigo.web.adapter.in.http.api.v0.auth.authorization..",
+                "io.taskmigo.web.adapter.in.http.api.v0.auth.user.."
+            );
         ArchRule userDoesNotDependOnOtherFeatures = noClasses()
             .that()
             .resideInAnyPackage("io.taskmigo.web.adapter.in.http.api.v0.auth.user..")
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage("io.taskmigo.web.adapter.in.http.api.v0.auth.authorization..", "io.taskmigo.web.adapter.in.http.api.v0.auth.group..");
+            .resideInAnyPackage(
+                "io.taskmigo.web.adapter.in.http.api.v0.auth.authorization..",
+                "io.taskmigo.web.adapter.in.http.api.v0.auth.group.."
+            );
         ArchRule restApiDoesNotOwnTransactions = noClasses()
             .that()
             .resideInAnyPackage("io.taskmigo.web.adapter.in.http.api..")
