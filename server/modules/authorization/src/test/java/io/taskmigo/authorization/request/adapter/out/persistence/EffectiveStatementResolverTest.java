@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.persistence.request;
+package io.taskmigo.authorization.request.adapter.out.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -40,7 +40,7 @@ class EffectiveStatementResolverTest {
     private final SubjectGrantRepository grants = mock(SubjectGrantRepository.class);
     private final RoleEffectiveStatementRepository roles = mock(RoleEffectiveStatementRepository.class);
     private final StatementRepository statements = mock(StatementRepository.class);
-    private final DatabaseEffectiveStatementResolver resolver = new DatabaseEffectiveStatementResolver(
+    private final JpaEffectiveStatementResolver resolver = new JpaEffectiveStatementResolver(
         this.subjects,
         this.grants,
         this.roles,
