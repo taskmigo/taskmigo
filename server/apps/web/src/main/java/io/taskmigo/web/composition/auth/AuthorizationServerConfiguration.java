@@ -1,4 +1,4 @@
-package io.taskmigo.internal.auth;
+package io.taskmigo.web.composition.auth;
 
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;

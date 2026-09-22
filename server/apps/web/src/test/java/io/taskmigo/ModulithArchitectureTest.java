@@ -41,21 +41,21 @@ class ModulithArchitectureTest {
     }
 
     /**
-     * Verifies Phase 4 adapter migrations cannot regress to legacy web package names.
+     * Verifies Phase 4 web migrations cannot regress to retired top-level packages.
      *
      * Given: production classes on the web application classpath.
-     * Expect: no class remains under the retired REST or internal-security package roots.
+     * Expect: no class remains under the retired REST or internal package roots.
      */
     @Test
-    @DisplayName("rejects retired web adapter package names")
-    void shouldRejectLegacyWebAdapterPackagesWhenWebPackagesAreInspected() {
+    @DisplayName("rejects retired web package names")
+    void shouldRejectLegacyWebPackagesWhenWebPackagesAreInspected() {
         // Arrange
         JavaClasses classes = new ClassFileImporter()
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
             .importPackages("io.taskmigo");
         ArchRule noLegacyWebAdapterPackages = noClasses()
             .should()
-            .resideInAnyPackage("io.taskmigo.rest..", "io.taskmigo.internal.security..");
+            .resideInAnyPackage("io.taskmigo.rest..", "io.taskmigo.internal..");
 
         // Act + Assert
         noLegacyWebAdapterPackages.check(classes);
