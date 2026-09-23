@@ -30,6 +30,41 @@ The current physical directory name `server/modules/authorization` remains an im
 Gradle project `:modules:access-control`. Renaming that directory alone would add no enforcement and is therefore not a
 Phase 1 goal.
 
+## Final dependency direction
+
+```mermaid
+flowchart TD
+    web[apps/web] --> identity[modules/identity]
+    web --> access[modules/access-control]
+    web --> query[modules/query]
+    web --> database[modules/database]
+    web --> foundation[modules/foundation]
+
+    migration[apps/migration] --> identity
+    migration --> access
+    migration --> database
+
+    worker[apps/worker]
+
+    identity --> access
+    identity --> query
+    identity --> database
+    identity --> language[modules/language]
+    identity --> foundation
+
+    access --> query
+    access --> database
+    access --> language
+    access --> foundation
+
+    query --> language
+    query --> foundation
+```
+
+This project-level view is intentionally coarser than the package rules. Spring Modulith named interfaces constrain
+cross-module published contracts, while ArchUnit enforces domain/application/port/adapter direction inside the bounded
+contexts and executable applications.
+
 ## Test-only enforcement project
 
 Phase 1 adds:
@@ -101,10 +136,11 @@ when classpath isolation provides materially stronger protection than package en
 
 Spring Modulith verification in `web`, `worker`, and `migration` remains mandatory and is not replaced by ArchUnit.
 
-## Transitional package policy
+## Completed package normalization
 
-Phase 1 does not rename all existing packages. The shared rule configuration therefore recognizes current outward adapter
-locations as **transitional adapter packages** while simultaneously installing the target rules.
+Phase 1 initially recognized legacy outward-adapter locations while the vertical migrations were in progress. Those
+transitional production locations have now been retired; the final structure uses explicit ports, driven adapters, neutral
+models, and executable driving-adapter packages.
 
 Identity's transitional `infrastructure` / top-level `persistence` locations were retired during Phase 2. Shared JPA predicate binding now lives explicitly under `io.taskmigo.identity.adapter.out.persistence.query`, while capability-specific repositories/entities remain under their resource-owned driven persistence adapters.
 
@@ -114,14 +150,12 @@ The former `io.taskmigo.authorization.object.persistence..` package was also nor
 
 Query's former `io.taskmigo.query.persistence..` package was normalized during Phase 5. Its persistence-neutral expression/predicate model now lives under `io.taskmigo.query.model..` and is published as the `model` named interface; JPA binding remains in the resource-owning Identity and Access Control driven adapters.
 
-Recognition is not compatibility approval. The tracked migration phases remove transitional locations slice by slice.
+The final tree contains no production `io.taskmigo.rest..`, legacy web `io.taskmigo.internal..`, generic
+`io.taskmigo.authorization.spi..`, Identity top-level persistence, Access Control top-level persistence, Object
+Authorization persistence-neutral `persistence` package, or Query persistence-neutral `persistence` package.
 
-Target-only rules are empty-safe until a target package is introduced. Once a class appears under
-`application.service`, `application.port.in`, `application.port.out`, `adapter.in`, or `adapter.out`, the rule
-becomes active for that class immediately.
-
-The existing domain/application/public-contract guards are **not** empty-safe; Phase 1 therefore does not weaken the
-strategic/tactical protections already present before the migration.
+The remaining `application.port.in.internal` packages are intentional context-private inbound ports used by neighboring
+capabilities inside the same bounded context; they are not compatibility aliases.
 
 ## Rules installed before structural moves
 
@@ -189,13 +223,11 @@ Phase 6 revalidated `java-library` exposure against the public contracts that ac
 - Executable applications continue to use `implementation` project dependencies because they are composition leaves,
   not reusable libraries.
 
-## Deferred graph decisions
+## Final graph decision
 
-The following remain intentionally deferred to their tracked phases:
+The migration does not introduce separate Gradle projects for persistence or cross-context adapters. Their current
+package-level boundaries provide sufficient isolation, and no adapter has an independent lifecycle or reuse requirement
+that would justify additional project plumbing.
 
-- Whether specific persistence/external adapters deserve separate Gradle projects after the vertical migrations expose
-  stable seams.
-- Removal of every transitional package and generic `spi` name.
-
-Those deferrals do not weaken Phase 1: new target packages are already mechanically constrained, while current business
-code remains protected until each vertical slice removes its legacy path.
+All transitional production packages and the generic authorization `spi` surface have been retired. The final graph is
+therefore the graph documented above plus the fixed `:testing:architecture` test-only enforcement project.
