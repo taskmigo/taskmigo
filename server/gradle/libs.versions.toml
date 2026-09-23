@@ -29,6 +29,7 @@ jackson-dataformat-yaml = { module = "tools.jackson.dataformat:jackson-dataforma
 jakarta-persistence-api = { module = "jakarta.persistence:jakarta.persistence-api" }
 spring-modulith-starter-core = { module = "org.springframework.modulith:spring-modulith-starter-core" }
 spring-modulith-starter-test = { module = "org.springframework.modulith:spring-modulith-starter-test" }
+spring-modulith-docs = { module = "org.springframework.modulith:spring-modulith-docs" }
 springdoc-openapi-starter-webmvc-scalar = { module = "org.springdoc:springdoc-openapi-starter-webmvc-scalar", version.ref = "springdoc-openapi" }
 spring-boot-core-starter = { module = "org.springframework.boot:spring-boot-starter" }
 spring-boot-starter-jackson = { module = "org.springframework.boot:spring-boot-starter-jackson" }
