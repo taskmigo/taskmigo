@@ -65,7 +65,7 @@ final class InternalClientReconciler {
         }
     }
 
-    private String encodedSecret(String rawSecret, @Nullable ManagedClientRegistry.ExistingClient existing) {
+    private String encodedSecret(String rawSecret, ManagedClientRegistry.@Nullable ExistingClient existing) {
         if (existing != null) {
             var encodedSecret = existing.encodedSecret();
             if (encodedSecret != null && this.passwords.matches(rawSecret, encodedSecret)) {
