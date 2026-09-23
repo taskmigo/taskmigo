@@ -22,7 +22,44 @@ server/apps/
   migration/
 ```
 
-The current `server/modules/*` graph is not a compatibility surface. Phase 1 will choose the target library/project graph based on enforcement value and ownership rather than preserving today's module count or names.
+The `server/modules/*` graph is not a compatibility surface. The implemented library/project graph is documented in [Phase 1 - Target project and package graph](phase-1-target-project-package-graph.md) and is retained only where enforcement value, ownership, reuse, or lifecycle justify a physical boundary.
+
+## Final implemented topology
+
+The migration converged on the following project-level direction. Arrows mean "depends on"; package-level Onion/Hexagonal
+rules further restrict what may be imported inside each project.
+
+```mermaid
+flowchart TD
+    web[apps/web] --> identity[modules/identity]
+    web --> access[modules/access-control]
+    web --> query[modules/query]
+    web --> database[modules/database]
+    web --> foundation[modules/foundation]
+
+    migration[apps/migration] --> identity
+    migration --> access
+    migration --> database
+
+    worker[apps/worker]
+
+    identity --> access
+    identity --> query
+    identity --> database
+    identity --> language[modules/language]
+    identity --> foundation
+
+    access --> query
+    access --> database
+    access --> language
+    access --> foundation
+
+    query --> language
+    query --> foundation
+```
+
+The Worker node is intentionally dependency-free beyond framework/runtime support until a real background-job adapter
+requires a published inbound port.
 
 ## Decision
 
@@ -36,7 +73,7 @@ Logical ownership is independent from physical Gradle topology.
 - No generic shared domain project may become a dumping ground for cross-context types.
 - Cross-context sharing must use deliberately published contracts, opaque identifiers, or events.
 
-A later phase may split, merge, rename, or remove current library projects without changing those ownership rules.
+Physical project boundaries may still evolve in future feature work, but any such change must preserve these ownership rules and independently justify its enforcement or lifecycle value.
 
 ### 2. Onion rings are logical dependency rings, not mandatory Gradle projects
 
@@ -235,7 +272,7 @@ They may use package structures suited to their semantics and MUST NOT gain arti
 
 ### 8. Enforcement is layered by what each mechanism can prove
 
-Phase 1 must choose the strongest proportionate enforcement mechanism:
+The implemented architecture uses the strongest proportionate enforcement mechanism:
 
 - Gradle project dependencies for meaningful compile-time classpath isolation.
 - Spring Modulith for logical application-module boundaries and deliberate published/named interfaces.
@@ -279,7 +316,7 @@ Authorization, Language, and Query behavioral requirements are not changed by th
 - Port direction becomes visible from package ownership instead of requiring class-by-class interpretation.
 - Application/domain code can become framework-neutral without losing application-owned transaction semantics.
 - Cross-context integration keeps DDD ownership while gaining explicit Hexagonal mechanics.
-- Phase 1 can redesign the physical project graph without treating today's modules as accidental compatibility constraints.
+- The physical project graph is explicitly justified rather than treated as an accidental compatibility constraint.
 - Architecture rules can test concrete dependency direction rather than the broader Clean Architecture labels used today.
 
 ### Costs and risks
@@ -290,14 +327,20 @@ Authorization, Language, and Query behavioral requirements are not changed by th
 - Poorly chosen Gradle boundaries could add ceremony; Phase 1 must justify each boundary rather than split by symmetry.
 - During migration, temporary mixed vocabulary is possible, but each vertical PR must remove the old path for the capability it completes.
 
-## Deferred decisions
+## Resolved migration decisions
 
-Phase 0 intentionally does not choose:
+The architecture migration resolved the Phase 0 deferrals as follows:
 
-- The final number or names of reusable Gradle projects.
-- One-project-per-bounded-context versus multiple projects per context.
-- Whether a specific adapter deserves its own project.
-- The final `api` versus `implementation` exposure graph.
-- Exact package names for supporting capabilities that do not need Onion rings.
+- Identity and Access Control remain one Gradle project per bounded context; Onion/Hexagonal rings are package boundaries
+  enforced by ArchUnit and Spring Modulith.
+- Language and Query remain standalone supporting-capability projects without artificial DDD rings.
+- Database remains shared technical infrastructure for datasource/schema support and generic JPA Criteria mechanics.
+- Foundation remains the minimal framework-neutral dependency floor.
+- No persistence or external adapter currently has enough independent lifecycle/reuse value to justify a separate Gradle
+  project; adapter isolation remains package-enforced.
+- Gradle `api` exposure is limited to dependencies whose types are part of published contracts; framework/runtime wiring
+  uses `implementation`.
+- The three executable roots remain `web`, `worker`, and `migration`; Worker currently has no concrete background-job
+  adapter and therefore carries no bounded-context/database dependency by default.
 
-Those decisions belong to Phase 1, where each physical boundary must be justified by enforcement, ownership, reuse, or lifecycle value.
+Future changes may revisit these choices only with a new concrete ownership, isolation, reuse, or lifecycle reason.
