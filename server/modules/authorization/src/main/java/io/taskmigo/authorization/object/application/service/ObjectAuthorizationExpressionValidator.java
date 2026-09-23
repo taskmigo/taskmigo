@@ -45,11 +45,6 @@ final class ObjectAuthorizationExpressionValidator {
                 validate(binary.left(), schema);
                 validate(binary.right(), schema);
             }
-            case ObjectAuthorizationExpression.Conditional conditional -> {
-                validate(conditional.condition(), schema);
-                validate(conditional.whenTrue(), schema);
-                validate(conditional.whenFalse(), schema);
-            }
             case ObjectAuthorizationExpression.Quantifier quantifier -> {
                 ObjectAuthorizationOperator operator = switch (quantifier.operator()) {
                     case ALL -> ObjectAuthorizationOperator.ALL;

@@ -1,5 +1,6 @@
 package io.taskmigo.authorization.object.application.service;
 
+import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
 import io.taskmigo.language.LanguageDiagnostic.SourceSpan;
 import io.taskmigo.language.LanguageType;
@@ -81,7 +82,7 @@ final class LanguageObjectAuthorizationExpressionVisitor implements ExpressionVi
         boolean nullable,
         SourceSpan span
     ) {
-        return new ObjectAuthorizationExpression.Conditional(condition, whenTrue, whenFalse);
+        throw new AuthorizationException("Conditional control flow is not supported by Object Authorization");
     }
 
     @Override

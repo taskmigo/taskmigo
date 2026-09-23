@@ -152,6 +152,24 @@ class ObjectAuthorizationServiceTest {
     }
 
     /**
+     * Verifies that Object policy activation enforces the expression-only source contract.
+     *
+     * Given: a registered Object route and a policy using statement-level `if/else` control flow.
+     * Expect: activation rejects the policy during Language compilation before any persistence predicate exists.
+     */
+    @Test
+    @DisplayName("rejects program control flow during object policy activation")
+    void shouldRejectProgramControlFlowWhenObjectPolicyIsValidated() {
+        // Arrange
+        String policy = "if (object.name == \"alice\") { return true; } else { return false; }";
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.service.validatePolicy(policy, "GET", "/api/v0/objects")).isInstanceOf(
+            EmbeddedLanguageException.class
+        );
+    }
+
+    /**
      * Verifies that a concrete non-Boolean Object result fails closed at authorization time.
      *
      * Given: an Object policy returning a Number and no symbolic Object input.

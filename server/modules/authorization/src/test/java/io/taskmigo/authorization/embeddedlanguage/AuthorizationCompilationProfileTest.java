@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.taskmigo.language.CompilationFeature;
 import io.taskmigo.language.CompilationMode;
 import io.taskmigo.language.CompilationProfile;
-import java.util.EnumSet;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -15,7 +15,7 @@ class AuthorizationCompilationProfileTest {
      * Verifies that Request Authorization retains the bounded program compilation contract.
      *
      * Given: the Request Authorization Compilation Profile.
-     * Expect: it uses program mode with every Language feature family enabled.
+     * Expect: it uses program mode with the explicit Authorization feature allowlist.
      */
     @Test
     @DisplayName("defines the request authorization program profile")
@@ -23,7 +23,18 @@ class AuthorizationCompilationProfileTest {
         // Arrange
         CompilationProfile expected = new CompilationProfile(
             CompilationMode.PROGRAM,
-            EnumSet.allOf(CompilationFeature.class)
+            Set.of(
+                CompilationFeature.LOCAL_BINDINGS,
+                CompilationFeature.CONDITIONAL_CONTROL_FLOW,
+                CompilationFeature.LIST_LITERALS,
+                CompilationFeature.MEMBERSHIP,
+                CompilationFeature.LOGICAL_OPERATORS,
+                CompilationFeature.EQUALITY_OPERATORS,
+                CompilationFeature.ORDERING_OPERATORS,
+                CompilationFeature.ARITHMETIC_OPERATORS,
+                CompilationFeature.COLLECTION_QUANTIFIERS,
+                CompilationFeature.LENGTH_INTRINSIC
+            )
         );
 
         // Act
@@ -44,10 +55,19 @@ class AuthorizationCompilationProfileTest {
     @DisplayName("defines the object authorization expression profile")
     void shouldDefineExpressionProfileWhenObjectAuthorizationCompilesPolicies() {
         // Arrange
-        EnumSet<CompilationFeature> features = EnumSet.allOf(CompilationFeature.class);
-        features.remove(CompilationFeature.LOCAL_BINDINGS);
-        features.remove(CompilationFeature.CONDITIONAL_CONTROL_FLOW);
-        CompilationProfile expected = new CompilationProfile(CompilationMode.EXPRESSION, features);
+        CompilationProfile expected = new CompilationProfile(
+            CompilationMode.EXPRESSION,
+            Set.of(
+                CompilationFeature.LIST_LITERALS,
+                CompilationFeature.MEMBERSHIP,
+                CompilationFeature.LOGICAL_OPERATORS,
+                CompilationFeature.EQUALITY_OPERATORS,
+                CompilationFeature.ORDERING_OPERATORS,
+                CompilationFeature.ARITHMETIC_OPERATORS,
+                CompilationFeature.COLLECTION_QUANTIFIERS,
+                CompilationFeature.LENGTH_INTRINSIC
+            )
+        );
 
         // Act
         CompilationProfile actual = AuthorizationCompilationProfile.objectPolicy();
