@@ -67,14 +67,21 @@ The goal is not to "watch CI." The goal is to extract the earliest actionable fa
    - Re-query CI only when the maintainer explicitly asks for independent verification, the PR head changed after the maintainer's update, existing evidence directly conflicts with the update, or exact run data is required for a different concrete task.
    - A maintainer update does not authorize inventing details such as run ids, timestamps, or per-job results. Record only the state they actually confirmed.
 
-10. **Document a root cause analysis for every bug fix.**
+10. **Document a reviewer-friendly root cause analysis for every bug fix.**
     - Once the defect is understood and fixed, update the pull request with a detailed Root Cause Analysis before finalization.
-    - Base the analysis on direct evidence from the implementation, failing behavior, tests, logs, and issue or incident context. Do not infer the cause from commit messages or restate the symptom as the cause.
-    - Explain the precise technical root cause and failure mechanism: what condition, assumption, control flow, state, contract, or interaction made the bug possible, and how that cause produced the observed behavior.
-    - Explain the escape path: why the defect was introduced or remained undetected, including the concrete gap in tests, review assumptions, validation, static analysis, observability, specification, or other safeguards. Do not use "human error" as a sufficient explanation.
-    - Explain the solution and prevention: what the fix changes, why it addresses the root cause rather than only the symptom, and what regression test or guardrail prevents the same class of failure from recurring.
+    - Write for a reviewer who understands the product/domain but may not know the affected implementation. Do not require prior knowledge of Taskmigo package structure, class names, or internal execution order.
+    - Start with **reviewer context**: in 2–4 sentences, explain the affected behavior, why the relevant subsystem exists, and any term the failure story depends on. Introduce implementation names only after their responsibility is clear.
+    - When useful, show one concrete input, policy, request, state transition, or configuration that reproduces the defect so the rest of the RCA has a shared example.
+    - Explain the **failure mechanism in causal order**, from trigger to user-visible symptom. Prefer numbered steps when the defect crosses multiple components or phases. At every step, say both what the component was expected to guarantee and why the defect was allowed to continue.
+    - Identify the **root cause** as the missing/incorrect contract, assumption, state transition, validation boundary, ownership rule, or interaction that made the failure possible. Do not merely rename the final exception or symptom.
+    - Explain the **escape and detection gaps**: why existing tests, review assumptions, validation, static analysis, observability, or specification did not catch the defect. Do not use "human error" as a sufficient explanation.
+    - Explain the **solution and prevention**: what invariant the fix establishes, why that invariant addresses the cause instead of one failing example, and what regression test or guardrail protects it.
+    - Cite source evidence when it materially helps the reviewer verify a claim. Prefer direct links to the relevant production code and regression tests using immutable GitHub permalinks pinned to the **full fixed commit SHA**, for example `https://github.com/taskmigo/taskmigo/blob/<40-char-fixed-sha>/path/to/File.java#L10-L25`. Never use a moving branch such as `next` for RCA code evidence. If later edits change cited code, refresh the permalink to a fixed commit that contains the final cited implementation.
+    - Historical/pre-fix links may be added when they are necessary to demonstrate the old behavior, but they supplement rather than replace fixed-commit evidence for the implemented correction.
+    - Consider a small Mermaid diagram when the failure path crosses several components, layers, asynchronous steps, or state transitions and prose alone is harder to scan. Use responsibility-first labels, keep the graph focused on the causal path, and make the surrounding prose sufficient without the diagram. Do not add Mermaid for a simple one-step defect merely for decoration.
+    - Base the analysis on direct evidence from the implementation, failing behavior, tests, logs, and issue or incident context. Do not infer the cause from commit messages or repeat the Summary/Changes sections as analysis.
     - If evidence is insufficient to establish part of the analysis, state what is unknown and what evidence is missing instead of speculating.
-    - Revisit the Root Cause Analysis after every material repair that changes the diagnosis so the PR never carries a stale explanation.
+    - Revisit the Root Cause Analysis after every material repair that changes the diagnosis, the failure path, or cited code so the PR never carries a stale explanation or stale permalink.
 
 ## Pre-CI preflight
 

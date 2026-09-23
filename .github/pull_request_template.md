@@ -49,16 +49,51 @@ List meaningful architectural, functional, or structural modifications based str
 
 Required for every pull request that fixes a bug, defect, or regression. For changes that do not fix a defect, write `N/A — this pull request does not fix a defect.`
 
-For bug fixes, provide a detailed evidence-based analysis that covers all of the following:
-- **Root cause:** Identify the precise technical or design condition that made the defect possible. Do not merely restate the observed symptom.
-- **Failure mechanism:** Explain how the root cause produces the reported behavior and under which conditions or execution path it occurs.
-- **Escape analysis:** Explain why the defect was introduced or remained unnoticed. Identify the concrete gap in tests, review assumptions, validation, static analysis, observability, specification, or other safeguards. `Human error` alone is not a sufficient explanation.
-- **Detection gap:** Explain why the existing automated or manual checks did not catch the defect before it reached the reported state.
-- **Solution and prevention:** Explain what the fix changes, why it addresses the root cause instead of only the symptom, and which regression test or guardrail prevents recurrence.
+Write this section for a reviewer who understands the product/domain but may not know Taskmigo's internal packages, classes, or execution flow. The RCA should be understandable without opening the source first.
+
+Recommended structure for bug fixes:
+
+1. **Reviewer context**
+   - In 2–4 sentences, explain the affected behavior and why the relevant subsystem/boundary exists.
+   - Define internal terms before using class/type names as shorthand.
+   - When useful, include one concrete failing input, request, policy, state, or configuration that the rest of the RCA can follow.
+
+2. **Root cause**
+   - Identify the precise technical/design condition that made the defect possible.
+   - Prefer the missing or incorrect invariant/contract/assumption over the final exception.
+   - Do not merely restate the observed symptom.
+
+3. **Failure mechanism**
+   - Walk from trigger to user-visible failure in causal order.
+   - Prefer numbered steps when multiple components/layers are involved.
+   - Explain what each boundary was expected to guarantee and why the bad state was able to cross it.
+
+4. **Escape and detection gaps**
+   - Explain why the defect was introduced or remained unnoticed.
+   - Identify the concrete gap in tests, review assumptions, validation, static analysis, observability, specification, or other safeguards.
+   - `Human error` alone is not a sufficient explanation.
+
+5. **Solution and prevention**
+   - State the invariant established by the fix.
+   - Explain why it addresses the root cause rather than one specific failing input.
+   - Name the regression test(s) or guardrail(s) that prevent recurrence.
+
+### Evidence and visualization
+
+- Cite relevant production code and regression tests when they materially help verify the RCA.
+- Code citations MUST use immutable GitHub permalinks pinned to the **full fixed commit SHA**, e.g. `https://github.com/taskmigo/taskmigo/blob/<40-char-fixed-sha>/path/to/File.java#L10-L25`.
+- Do NOT use moving branch links such as `next`, `main`, or the PR branch for RCA code evidence.
+- Historical/pre-fix links may be included when needed to prove the old behavior, but fixed-commit citations should anchor the implemented correction.
+- If a later push changes cited code, refresh the citation to a fixed commit containing the final implementation.
+- Consider a small Mermaid diagram when the failure crosses several components/layers, asynchronous steps, or state transitions and a diagram makes the causal path easier to scan.
+  - Label nodes by responsibility first; add class/type names only when useful.
+  - Keep the diagram focused on the failure path and corrected boundary.
+  - Mermaid supplements the written RCA; the prose must still stand on its own.
+  - Do not add a diagram to a simple one-step defect just for decoration.
 
 Mandatory (AI):
 - Build the analysis from the actual code/diff, failing behavior, tests, logs, and issue or incident evidence.
-- Keep the analysis current when later fixes change the diagnosis.
+- Keep the analysis current when later fixes change the diagnosis, execution path, or cited code.
 - State unknowns and missing evidence explicitly instead of speculating.
 - Do not copy commit messages or repeat the `Summary` / `Changes` sections as a substitute for analysis.
 
@@ -97,6 +132,7 @@ Explicitly highlight any potential side effects or breaking contracts.
 - [ ] The PR title and description reflect the current changes and follow the PR template whenever this pull request is created or updated.
 - [ ] The pull request is focused and contains no unrelated changes.
 - [ ] The applicable Taskmigo specification is linked to a **specific release tag** (NOT a branch like `main` or `next`), or `N/A` is justified.
+- [ ] For bug fixes, the RCA is understandable without prior internal knowledge and uses fixed-commit code evidence and Mermaid visualization where they materially improve clarity.
 - [ ] Tests and documentation are updated where applicable.
 - [ ] The change follows the contribution guidelines.
 - [ ] All required pipeline checks pass.
