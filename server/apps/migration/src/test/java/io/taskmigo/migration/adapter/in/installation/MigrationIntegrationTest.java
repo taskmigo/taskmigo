@@ -127,7 +127,9 @@ class MigrationIntegrationTest {
             .contains("basic-user");
 
         RegisteredClient browser = this.storedClient("browser");
-        assertThat(browser.getClientSettings().getSettings())\n            .containsEntry("taskmigo.oauth-client.ownership", "internal")\n            .containsEntry("taskmigo.internal-client.managed", "v1");
+        assertThat(browser.getClientSettings().getSettings())
+            .containsEntry("taskmigo.oauth-client.ownership", "internal")
+            .containsEntry("taskmigo.internal-client.managed", "v1");
         assertThat(browser.getClientAuthenticationMethods()).containsExactly(
             ClientAuthenticationMethod.CLIENT_SECRET_BASIC
         );
