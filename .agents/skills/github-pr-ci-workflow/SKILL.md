@@ -1,6 +1,6 @@
 ---
 name: github-pr-ci-workflow
-description: "Drive GitHub pull requests and CI to completion efficiently. Use whenever an agent creates or updates a PR, checks GitHub Actions/pipeline status, investigates failed checks, pushes CI fixes, or is asked to continue until CI is healthy. Enforces SHA-anchored, fail-fast CI triage; hard anti-stall budgets; bounded GitHub connector batches; batched fixes; and non-blocking status checks. Avoids stale workflow runs, repeated polling, oversized tool batches, repeated full-PR/log fetches, busy waiting, unnecessary reruns, and retrying unavailable local Git/network paths."
+description: "Drive GitHub pull requests and CI to completion efficiently. Use whenever an agent creates or updates a PR, checks GitHub Actions/pipeline status, investigates failed checks, pushes CI fixes, or is asked to continue until CI is healthy. Enforces SHA-anchored, fail-fast CI triage; hard anti-stall budgets; bounded GitHub connector batches; batched fixes; non-blocking status checks; and preservation of machine-actionable PR metadata during body rewrites. Avoids stale workflow runs, repeated polling, oversized tool batches, repeated full-PR/log fetches, busy waiting, unnecessary reruns, retrying unavailable local Git/network paths, and accidentally dropping issue-closing directives."
 ---
 
 # GitHub PR and CI Workflow
@@ -82,6 +82,16 @@ The goal is not to "watch CI." The goal is to extract the earliest actionable fa
     - Base the analysis on direct evidence from the implementation, failing behavior, tests, logs, and issue or incident context. Do not infer the cause from commit messages or repeat the Summary/Changes sections as analysis.
     - If evidence is insufficient to establish part of the analysis, state what is unknown and what evidence is missing instead of speculating.
     - Revisit the Root Cause Analysis after every material repair that changes the diagnosis, the failure path, or cited code so the PR never carries a stale explanation or stale permalink.
+
+11. **Preserve machine-actionable PR metadata across title/body rewrites.**
+    - Before replacing or substantially rebuilding an existing PR body, read the current PR body and capture machine-actionable directives that are still semantically valid.
+    - Treat metadata preservation separately from content generation: Summary, Changes, RCA, and other prose must still be rebuilt from the actual diff/evidence when required, but the old body remains authoritative for existing GitHub directives that would otherwise be lost.
+    - At minimum, capture issue-closing directives using GitHub-supported closing keywords such as `close`, `closes`, `closed`, `fix`, `fixes`, `fixed`, `resolve`, `resolves`, and `resolved`, including every referenced issue.
+    - Preserve the exact issue relationship unless the implementation no longer closes that issue, the maintainer explicitly asks to remove/change it, or the issue reference is proven stale.
+    - When rebuilding the body from a PR template, reinsert valid closing directives in a stable visible location, preferably at the end of the Summary or as a standalone line immediately after it.
+    - After every PR body update, re-read the PR and verify that every expected closing directive is still present. If a directive was accidentally dropped, repair the PR body immediately before doing further PR bookkeeping.
+    - Do not treat a plain cross-reference, linked/connected issue relationship, or mention such as `#123` as equivalent to a closing directive. A PR merged into the repository default branch only auto-closes the issue when GitHub receives a valid closing keyword relationship (or the issue is closed separately).
+    - For cross-repository issues, preserve the fully qualified `owner/repository#number` form when that was the original relationship.
 
 ## Pre-CI preflight
 
@@ -285,6 +295,7 @@ When the maintainer explicitly confirms all required checks passed:
 When using the repository PR template:
 
 - Build Summary/Changes from the actual code/diff, not commit messages.
+- Before replacing an existing PR body, capture valid machine-actionable directives such as `Closes #123`; after the update, re-read the PR and verify those directives were preserved.
 - Use pinned specification tags when applicable.
 - Record concrete verification evidence.
 - Do not mark "all required pipeline checks pass" while any required check is still pending.
@@ -335,6 +346,7 @@ Do **not**:
 - Continue polling after the maintainer has explicitly confirmed all required checks passed, unless a documented exception requires fresh CI data.
 - Ignore a maintainer interruption and finish an already-started polling loop before processing the new status.
 - Assume an API mutation option is valid for both same-repository and fork PRs.
+- Rebuild an existing PR body from the template without preserving and verifying still-valid issue-closing directives.
 
 ## Decision loop
 
