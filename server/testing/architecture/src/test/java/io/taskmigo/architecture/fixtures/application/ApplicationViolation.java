@@ -1,9 +1,9 @@
 package io.taskmigo.architecture.fixtures.application;
 
-import io.taskmigo.architecture.fixtures.legacy.LegacyPersistenceAdapter;
+import io.taskmigo.architecture.fixtures.adapter.out.persistence.DrivenAdapterViolation;
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 interface ApplicationViolation {
-    LegacyPersistenceAdapter adapter();
+    DrivenAdapterViolation adapter();
 }

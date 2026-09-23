@@ -10,30 +10,21 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-/// Reusable ArchUnit rules for bounded contexts that migrate to Taskmigo's Hexagonal and Onion package model.
-///
-/// Existing application and adapter package names can be supplied as transitional configuration while target
-/// `application.port.in`, `application.port.out`, `application.service`, `adapter.in`, and `adapter.out`
-/// packages are introduced one vertical slice at a time.
+/// Reusable ArchUnit rules for bounded contexts using Taskmigo's Hexagonal and Onion package model.
 public final class HexagonalOnionRules {
 
     private HexagonalOnionRules() {}
 
-    /// Describes the package boundaries that are currently visible for one bounded context.
-    ///
-    /// Transitional adapter package lists keep current code protected without making those package names part of the
-    /// target architecture. The explicit Hexagonal package rules are always added in addition to these legacy guards.
+    /// Describes the package boundaries for one bounded context.
     ///
     /// @param rootPackage root package of the bounded context
     /// @param applicationPackages current packages that contain application orchestration
-    /// @param legacyAdapterPackages current outward adapter packages that application/domain code must not depend on
     /// @param additionalDomainForbiddenPackages non-adapter packages that must remain outside the domain ring
     /// @param persistenceAdapterPackages current packages allowed to contain JPA or Spring Data dependencies
     /// @param publishedContractPackages current published contract packages protected from implementation leakage
     public record Context(
         String rootPackage,
         List<String> applicationPackages,
-        List<String> legacyAdapterPackages,
         List<String> additionalDomainForbiddenPackages,
         List<String> persistenceAdapterPackages,
         List<String> publishedContractPackages
@@ -41,7 +32,6 @@ public final class HexagonalOnionRules {
         public Context {
             rootPackage = Objects.requireNonNull(rootPackage);
             applicationPackages = List.copyOf(applicationPackages);
-            legacyAdapterPackages = List.copyOf(legacyAdapterPackages);
             additionalDomainForbiddenPackages = List.copyOf(additionalDomainForbiddenPackages);
             persistenceAdapterPackages = List.copyOf(persistenceAdapterPackages);
             publishedContractPackages = List.copyOf(publishedContractPackages);
@@ -124,7 +114,7 @@ public final class HexagonalOnionRules {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 packageArray(
-                    context.legacyAdapterPackages(),
+                    List.of(),
                     context.rootPackage() + "..adapter..",
                     "org.springframework.data..",
                     "jakarta.persistence..",
@@ -146,7 +136,7 @@ public final class HexagonalOnionRules {
             .resideInAnyPackage(
                 packageArray(
                     combined(
-                        combined(List.of(context.rootPackage() + "..application.."), context.legacyAdapterPackages()),
+                        List.of(context.rootPackage() + "..application.."),
                         context.additionalDomainForbiddenPackages()
                     ),
                     context.rootPackage() + "..adapter..",
@@ -169,7 +159,7 @@ public final class HexagonalOnionRules {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 packageArray(
-                    context.legacyAdapterPackages(),
+                    List.of(),
                     context.rootPackage() + "..adapter..",
                     "io.taskmigo.rest..",
                     "io.taskmigo.internal..",
@@ -203,7 +193,7 @@ public final class HexagonalOnionRules {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 packageArray(
-                    context.legacyAdapterPackages(),
+                    List.of(),
                     context.rootPackage() + "..application.service..",
                     context.rootPackage() + "..adapter..",
                     "io.taskmigo.rest..",
@@ -228,7 +218,7 @@ public final class HexagonalOnionRules {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 packageArray(
-                    context.legacyAdapterPackages(),
+                    List.of(),
                     context.rootPackage() + "..application.service..",
                     context.rootPackage() + "..adapter..",
                     "io.taskmigo.rest..",
@@ -304,7 +294,7 @@ public final class HexagonalOnionRules {
             .dependOnClassesThat()
             .resideInAnyPackage(
                 packageArray(
-                    combined(List.of(context.rootPackage() + "..application.."), context.legacyAdapterPackages()),
+                    List.of(context.rootPackage() + "..application.."),
                     context.rootPackage() + "..adapter..",
                     "io.taskmigo.rest..",
                     "io.taskmigo.internal..",

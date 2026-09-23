@@ -13,7 +13,6 @@ class HexagonalOnionArchitectureTest {
         List.of("io.taskmigo.identity..application.."),
         List.of(),
         List.of(),
-        List.of(),
         List.of(
             "io.taskmigo.identity.user",
             "io.taskmigo.identity.user.application.port.in.api",

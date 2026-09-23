@@ -18,7 +18,6 @@ class HexagonalOnionArchitectureTest {
         ),
         List.of(),
         List.of(),
-        List.of(),
         List.of(
             "io.taskmigo.authorization.core",
             "io.taskmigo.authorization.object",
