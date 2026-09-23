@@ -52,15 +52,12 @@ public final class DefaultInstallationService implements InstallationService {
         this.resources.validate(plan);
         this.clients.validate(plan.clients());
 
-        List<InstallationChange> committedChanges = this.transactions.serializable(
-            MAX_RECONCILIATION_ATTEMPTS,
-            () -> {
-                List<InstallationChange> attemptChanges = new ArrayList<>();
-                this.resources.reconcile(plan, attemptChanges);
-                this.clients.reconcile(plan.clients(), attemptChanges);
-                return List.copyOf(attemptChanges);
-            }
-        );
+        List<InstallationChange> committedChanges = this.transactions.serializable(MAX_RECONCILIATION_ATTEMPTS, () -> {
+            List<InstallationChange> attemptChanges = new ArrayList<>();
+            this.resources.reconcile(plan, attemptChanges);
+            this.clients.reconcile(plan.clients(), attemptChanges);
+            return List.copyOf(attemptChanges);
+        });
         this.changes.publish(committedChanges);
     }
 }

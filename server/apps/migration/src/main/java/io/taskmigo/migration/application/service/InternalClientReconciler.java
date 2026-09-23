@@ -8,8 +8,8 @@ import io.taskmigo.migration.application.port.out.PasswordHasher;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
+import org.jspecify.annotations.Nullable;
 
 /// Reconciles desired OAuth client state through the application-owned client registry port.
 final class InternalClientReconciler {
@@ -50,25 +50,24 @@ final class InternalClientReconciler {
             throw new IllegalStateException("Refusing to adopt unmanaged OAuth client: " + definition.clientId());
         }
 
-        String encodedSecret = this.encodedSecret(definition.rawSecret(), existing);
+        String encodedSecret = this.encodedSecret(definition.rawSecret(), existing.orElse(null));
         String id = existing.isPresent() ? existing.orElseThrow().id() : configuredClient.getKey();
         ManagedOAuthClient desired = ManagedOAuthClient.from(id, encodedSecret, definition);
 
-        InstallationChange.Action action =
-            existing.isEmpty()
-                ? InstallationChange.Action.ADDED
-                : this.clients.matches(desired)
-                  ? InstallationChange.Action.UNCHANGED
-                  : InstallationChange.Action.UPDATED;
+        InstallationChange.Action action = existing.isEmpty()
+            ? InstallationChange.Action.ADDED
+            : this.clients.matches(desired)
+              ? InstallationChange.Action.UNCHANGED
+              : InstallationChange.Action.UPDATED;
         if (action != InstallationChange.Action.UNCHANGED) {
             this.clients.save(desired);
             changes.add(new InstallationChange("oauth-client", definition.clientId(), action));
         }
     }
 
-    private String encodedSecret(String rawSecret, Optional<ManagedClientRegistry.ExistingClient> existing) {
-        if (existing.isPresent()) {
-            var encodedSecret = existing.orElseThrow().encodedSecret();
+    private String encodedSecret(String rawSecret, @Nullable ManagedClientRegistry.ExistingClient existing) {
+        if (existing != null) {
+            var encodedSecret = existing.encodedSecret();
             if (encodedSecret != null && this.passwords.matches(rawSecret, encodedSecret)) {
                 return encodedSecret;
             }

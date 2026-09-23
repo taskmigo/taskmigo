@@ -2,7 +2,6 @@ package io.taskmigo.migration.application.model;
 
 /// Represents one managed installation resource change that is safe to publish after commit.
 public record InstallationChange(String resourceType, String resourceKey, Action action) {
-
     /// Classifies the persisted effect of one installation reconciliation.
     public enum Action {
         ADDED("added"),

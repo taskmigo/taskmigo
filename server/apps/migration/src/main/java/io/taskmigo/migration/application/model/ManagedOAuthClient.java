@@ -41,11 +41,7 @@ public record ManagedOAuthClient(
     /// @param encodedSecret encoded client secret
     /// @param definition desired installation definition
     /// @return desired persisted OAuth client state
-    public static ManagedOAuthClient from(
-        String id,
-        String encodedSecret,
-        InstallationPlan.OAuthClient definition
-    ) {
+    public static ManagedOAuthClient from(String id, String encodedSecret, InstallationPlan.OAuthClient definition) {
         return new ManagedOAuthClient(
             id,
             definition.clientId(),

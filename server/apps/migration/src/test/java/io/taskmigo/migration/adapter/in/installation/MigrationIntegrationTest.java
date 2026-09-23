@@ -163,10 +163,7 @@ class MigrationIntegrationTest {
 
         assertThat(browser.clientId()).isEqualTo("browser");
         assertThat(browser.rawSecret()).isEqualTo("browser-integration-secret");
-        assertThat(browser.scopes()).containsExactlyInAnyOrder(
-            OidcScopes.OPENID,
-            OidcScopes.PROFILE
-        );
+        assertThat(browser.scopes()).containsExactlyInAnyOrder(OidcScopes.OPENID, OidcScopes.PROFILE);
     }
 
     /**
@@ -319,13 +316,7 @@ class MigrationIntegrationTest {
             false
         );
         this.migration.install(
-            new InstallationPlan(
-                List.of(user),
-                List.of(role),
-                List.of(statement),
-                List.of(group),
-                Map.of()
-            )
+            new InstallationPlan(List.of(user), List.of(role), List.of(statement), List.of(group), Map.of())
         );
         var absentStatement = new InstallationPlan.Statement(
             statementCode,
