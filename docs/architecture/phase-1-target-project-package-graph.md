@@ -173,13 +173,28 @@ graph by inertia.
 - No provider-owned port or bounded-context abstraction is moved into Database or Foundation to simplify dependency
   wiring. Shared placement requires consumer-neutral semantics.
 
+## Phase 6 Gradle API exposure decision
+
+Phase 6 revalidated `java-library` exposure against the public contracts that actually cross project boundaries.
+
+- `:modules:identity` keeps Foundation, Query, and Access Control as `api` dependencies because its published inbound
+  ports and data contracts expose those project-owned types.
+- `:modules:access-control` keeps Foundation, Language, and Query as `api` dependencies because published authorization
+  contracts expose their types, but Spring Boot itself is implementation wiring and is no longer exported to consumers.
+- `:modules:query` keeps Foundation and Language as `api` dependencies because its public schema/compiler contracts
+  expose those types.
+- `:modules:database` publishes only the Jakarta Persistence API required by its public Criteria helper. The Spring Boot
+  Data JPA starter remains an implementation/runtime concern instead of leaking Spring Data through the Database API
+  surface.
+- Executable applications continue to use `implementation` project dependencies because they are composition leaves,
+  not reusable libraries.
+
 ## Deferred graph decisions
 
 The following remain intentionally deferred to their tracked phases:
 
 - Whether specific persistence/external adapters deserve separate Gradle projects after the vertical migrations expose
   stable seams.
-- Final `api` versus `implementation` exposure tightening.
 - Removal of every transitional package and generic `spi` name.
 
 Those deferrals do not weaken Phase 1: new target packages are already mechanically constrained, while current business
