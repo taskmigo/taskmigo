@@ -17,6 +17,8 @@ import io.taskmigo.identity.provisioning.application.port.in.api.IdentityProvisi
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
+import io.taskmigo.migration.application.model.InstallationPlan;
+import io.taskmigo.migration.application.port.in.InstallationService;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -59,7 +61,7 @@ class MigrationIntegrationTest {
 
     private final Flyway flyway;
     private final JdbcRegisteredClientRepository clients;
-    private final MigrationRunner migration;
+    private final InstallationService migration;
     private final MigrationResourceLoader resources;
     private final PasswordEncoder passwordEncoder;
     private final UserService users;
@@ -75,7 +77,7 @@ class MigrationIntegrationTest {
     MigrationIntegrationTest(
         Flyway flyway,
         JdbcRegisteredClientRepository clients,
-        MigrationRunner migration,
+        InstallationService migration,
         MigrationResourceLoader resources,
         PasswordEncoder passwordEncoder,
         UserService users,
@@ -125,7 +127,7 @@ class MigrationIntegrationTest {
             .contains("basic-user");
 
         RegisteredClient browser = this.storedClient("browser");
-        assertThat(InternalClientMetadata.isManaged(browser)).isTrue();
+        assertThat(browser.getClientSettings().getSettings())\n            .containsEntry("taskmigo.oauth-client.ownership", "internal")\n            .containsEntry("taskmigo.internal-client.managed", "v1");
         assertThat(browser.getClientAuthenticationMethods()).containsExactly(
             ClientAuthenticationMethod.CLIENT_SECRET_BASIC
         );
@@ -153,13 +155,13 @@ class MigrationIntegrationTest {
      * Expect: the resolved native Client contains no implicit API scope.
      */
     @Test
-    @DisplayName("binds flat security YAML to native Spring OAuth client properties")
+    @DisplayName("maps flat security YAML to the migration OAuth client model")
     void shouldBindNativeClientPropertiesWhenSecurityYamlIsLoaded() {
-        Client browser = Objects.requireNonNull(this.resources.load().clients().get("browser"));
+        InstallationPlan.OAuthClient browser = Objects.requireNonNull(this.resources.load().clients().get("browser"));
 
-        assertThat(browser.getRegistration().getClientId()).isEqualTo("browser");
-        assertThat(browser.getRegistration().getClientSecret()).isEqualTo("browser-integration-secret");
-        assertThat(browser.getRegistration().getScopes()).containsExactlyInAnyOrder(
+        assertThat(browser.clientId()).isEqualTo("browser");
+        assertThat(browser.rawSecret()).isEqualTo("browser-integration-secret");
+        assertThat(browser.scopes()).containsExactlyInAnyOrder(
             OidcScopes.OPENID,
             OidcScopes.PROFILE
         );
@@ -179,7 +181,7 @@ class MigrationIntegrationTest {
         );
         String clientSecretHash = Objects.requireNonNull(this.storedClient("browser").getClientSecret());
 
-        this.migration.migrate();
+        this.migration.install(this.resources.load());
 
         assertThat(this.storedClient("browser").getId()).isEqualTo(browserId);
         assertThat(this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()).isEqualTo(
@@ -293,18 +295,18 @@ class MigrationIntegrationTest {
         String roleCode = "phase1-role-" + suffix;
         String groupCode = "phase1-group-" + suffix;
         String username = "phase1-user-" + suffix;
-        var statement = new MigrationResourceLoader.Statement(
+        var statement = new InstallationPlan.Statement(
             statementCode,
             null,
             "allow",
             "request",
-            new MigrationResourceLoader.Target(new MigrationResourceLoader.Api("GET", "/api/v0/users")),
+            new InstallationPlan.Target(new InstallationPlan.Api("GET", "/api/v0/users")),
             "return true;",
             false
         );
-        var role = new MigrationResourceLoader.Role(roleCode, "Phase 1 Role", null, List.of(statementCode), false);
-        var group = new MigrationResourceLoader.Group(groupCode, "Phase 1 Group", null, List.of(roleCode), false);
-        var user = new MigrationResourceLoader.User(
+        var role = new InstallationPlan.Role(roleCode, "Phase 1 Role", null, List.of(statementCode), false);
+        var group = new InstallationPlan.Group(groupCode, "Phase 1 Group", null, List.of(roleCode), false);
+        var user = new InstallationPlan.User(
             username,
             null,
             List.of(),
@@ -314,8 +316,8 @@ class MigrationIntegrationTest {
             List.of(groupCode),
             false
         );
-        this.migration.reconcile(
-            new MigrationResourceLoader.MigrationResources(
+        this.migration.install(
+            new InstallationPlan(
                 List.of(user),
                 List.of(role),
                 List.of(statement),
@@ -323,18 +325,18 @@ class MigrationIntegrationTest {
                 Map.of()
             )
         );
-        var absentStatement = new MigrationResourceLoader.Statement(
+        var absentStatement = new InstallationPlan.Statement(
             statementCode,
             null,
             "allow",
             "request",
-            new MigrationResourceLoader.Target(new MigrationResourceLoader.Api("GET", "/api/v0/users")),
+            new InstallationPlan.Target(new InstallationPlan.Api("GET", "/api/v0/users")),
             "return true;",
             true
         );
-        var absentRole = new MigrationResourceLoader.Role(roleCode, "Phase 1 Role", null, List.of(), true);
-        var absentGroup = new MigrationResourceLoader.Group(groupCode, "Phase 1 Group", null, List.of(), true);
-        var absentUser = new MigrationResourceLoader.User(
+        var absentRole = new InstallationPlan.Role(roleCode, "Phase 1 Role", null, List.of(), true);
+        var absentGroup = new InstallationPlan.Group(groupCode, "Phase 1 Group", null, List.of(), true);
+        var absentUser = new InstallationPlan.User(
             username,
             null,
             List.of(),
@@ -346,8 +348,8 @@ class MigrationIntegrationTest {
         );
 
         // Act
-        this.migration.reconcile(
-            new MigrationResourceLoader.MigrationResources(
+        this.migration.install(
+            new InstallationPlan(
                 List.of(absentUser),
                 List.of(absentRole),
                 List.of(absentStatement),
@@ -438,11 +440,11 @@ class MigrationIntegrationTest {
     void shouldRotateManagedClientSecretWhenConfiguredSecretChanges() {
         // Arrange
         String clientId = "rotation-" + UUID.randomUUID();
-        this.migration.reconcile(resources(Map.of("rotation", client(clientId, "initial-secret"))));
+        this.migration.install(resources(Map.of("rotation", client(clientId, "initial-secret"))));
         String initialHash = Objects.requireNonNull(this.storedClient(clientId).getClientSecret());
 
         // Act
-        this.migration.reconcile(resources(Map.of("rotation", client(clientId, "rotated-secret"))));
+        this.migration.install(resources(Map.of("rotation", client(clientId, "rotated-secret"))));
         String rotatedHash = Objects.requireNonNull(this.storedClient(clientId).getClientSecret());
 
         // Assert
@@ -463,8 +465,8 @@ class MigrationIntegrationTest {
         var configuredClients = Map.of("concurrent", client(clientId, "concurrent-secret"));
 
         try (var executor = Executors.newFixedThreadPool(2)) {
-            var first = executor.submit(() -> this.migration.reconcile(resources(configuredClients)));
-            var second = executor.submit(() -> this.migration.reconcile(resources(configuredClients)));
+            var first = executor.submit(() -> this.migration.install(resources(configuredClients)));
+            var second = executor.submit(() -> this.migration.install(resources(configuredClients)));
             first.get();
             second.get();
         }
@@ -487,9 +489,9 @@ class MigrationIntegrationTest {
         changedClient.getRegistration().setClientName("Changed logging client");
 
         // Act
-        this.migration.reconcile(resources(Map.of("logging", initialClient)));
-        this.migration.reconcile(resources(Map.of("logging", changedClient)));
-        this.migration.reconcile(resources(Map.of("logging", changedClient)));
+        this.migration.install(resources(Map.of("logging", initialClient)));
+        this.migration.install(resources(Map.of("logging", changedClient)));
+        this.migration.install(resources(Map.of("logging", changedClient)));
 
         // Assert
         var events = output
@@ -542,7 +544,7 @@ class MigrationIntegrationTest {
         );
 
         // Act
-        assertThatThrownBy(() -> this.migration.reconcile(resources(configuredClients))).hasMessageContaining(
+        assertThatThrownBy(() -> this.migration.install(resources(configuredClients))).hasMessageContaining(
             "Refusing to adopt unmanaged OAuth client"
         );
 
@@ -576,7 +578,7 @@ class MigrationIntegrationTest {
         );
 
         assertThatThrownBy(() ->
-            this.migration.reconcile(resources(Map.of("unmanaged", client(clientId, "secret"))))
+            this.migration.install(resources(Map.of("unmanaged", client(clientId, "secret"))))
         ).hasMessageContaining("Refusing to adopt unmanaged OAuth client");
     }
 
@@ -602,8 +604,14 @@ class MigrationIntegrationTest {
         );
     }
 
-    private static MigrationResourceLoader.MigrationResources resources(Map<String, Client> clients) {
-        return new MigrationResourceLoader.MigrationResources(List.of(), List.of(), List.of(), List.of(), clients);
+    private static InstallationPlan resources(Map<String, Client> clients) {
+        return new InstallationPlan(
+            List.of(),
+            List.of(),
+            List.of(),
+            List.of(),
+            MigrationResourceLoader.oauthClients(clients)
+        );
     }
 
     private RegisteredClient storedClient(String clientId) {

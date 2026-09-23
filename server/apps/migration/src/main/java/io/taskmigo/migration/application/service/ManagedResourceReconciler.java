@@ -1,4 +1,4 @@
-package io.taskmigo.migration.adapter.in.installation;
+package io.taskmigo.migration.application.service;
 
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningResult;
@@ -8,6 +8,9 @@ import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
 import io.taskmigo.identity.provisioning.application.port.in.api.GroupProvisioningService;
 import io.taskmigo.identity.provisioning.application.port.in.api.IdentityProvisioningService;
+import io.taskmigo.migration.application.model.InstallationChange;
+import io.taskmigo.migration.application.model.InstallationPlan;
+import io.taskmigo.migration.application.port.out.PasswordHasher;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,75 +19,59 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Component;
 
-/// Reconciles declarative authorization and identity resources in dependency order.
-@Component
+/// Reconciles declarative Identity and Access Control resources through provider-owned inbound ports.
 final class ManagedResourceReconciler {
 
     private final AuthorizationProvisioningService authorization;
     private final IdentityProvisioningService identity;
     private final GroupProvisioningService groups;
-    private final PasswordEncoder passwordEncoder;
+    private final PasswordHasher passwords;
 
     ManagedResourceReconciler(
         AuthorizationProvisioningService authorization,
         IdentityProvisioningService identity,
         GroupProvisioningService groups,
-        PasswordEncoder passwordEncoder
+        PasswordHasher passwords
     ) {
         this.authorization = authorization;
         this.identity = identity;
         this.groups = groups;
-        this.passwordEncoder = passwordEncoder;
+        this.passwords = passwords;
     }
 
-    void validate(MigrationResourceLoader.MigrationResources data) {
-        Map<String, MigrationResourceLoader.Statement> statements = unique(
+    void validate(InstallationPlan data) {
+        Map<String, InstallationPlan.Statement> statements = unique(
             data.statements(),
-            MigrationResourceLoader.Statement::code,
+            InstallationPlan.Statement::code,
             "Statement"
         );
-        Map<String, MigrationResourceLoader.Role> roles = unique(
-            data.roles(),
-            MigrationResourceLoader.Role::code,
-            "Role"
-        );
-        Map<String, MigrationResourceLoader.Group> groups = unique(
-            data.groups(),
-            MigrationResourceLoader.Group::code,
-            "Group"
-        );
-        unique(data.users(), MigrationResourceLoader.User::username, "User");
+        Map<String, InstallationPlan.Role> roles = unique(data.roles(), InstallationPlan.Role::code, "Role");
+        Map<String, InstallationPlan.Group> groups = unique(data.groups(), InstallationPlan.Group::code, "Group");
+        unique(data.users(), InstallationPlan.User::username, "User");
 
-        for (MigrationResourceLoader.Role role : data.roles()) {
+        for (InstallationPlan.Role role : data.roles()) {
             if (role.absent()) {
                 continue;
             }
-            requireActiveReferences(
-                role.statements(),
-                statements,
-                MigrationResourceLoader.Statement::absent,
-                "statement"
-            );
+            requireActiveReferences(role.statements(), statements, InstallationPlan.Statement::absent, "statement");
         }
-        for (MigrationResourceLoader.Group group : data.groups()) {
+        for (InstallationPlan.Group group : data.groups()) {
             if (group.absent()) {
                 continue;
             }
-            requireActiveReferences(group.roles(), roles, MigrationResourceLoader.Role::absent, "role");
+            requireActiveReferences(group.roles(), roles, InstallationPlan.Role::absent, "role");
         }
-        for (MigrationResourceLoader.User user : data.users()) {
+        for (InstallationPlan.User user : data.users()) {
             if (user.absent()) {
                 continue;
             }
-            requireActiveReferences(user.roles(), roles, MigrationResourceLoader.Role::absent, "role");
-            requireActiveReferences(user.groups(), groups, MigrationResourceLoader.Group::absent, "group");
+            requireActiveReferences(user.roles(), roles, InstallationPlan.Role::absent, "role");
+            requireActiveReferences(user.groups(), groups, InstallationPlan.Group::absent, "group");
         }
     }
 
-    void reconcile(MigrationResourceLoader.MigrationResources data, List<MigrationChange> changes) {
+    void reconcile(InstallationPlan data, List<InstallationChange> changes) {
         this.deleteAbsent(data, changes);
 
         Map<String, UUID> statementIds = this.reconcileStatements(data.statements(), changes);
@@ -93,47 +80,47 @@ final class ManagedResourceReconciler {
         this.reconcileUsers(data.users(), roleIds, groupIds, changes);
     }
 
-    private void deleteAbsent(MigrationResourceLoader.MigrationResources data, List<MigrationChange> changes) {
+    private void deleteAbsent(InstallationPlan data, List<InstallationChange> changes) {
         data.users()
             .stream()
-            .filter(MigrationResourceLoader.User::absent)
+            .filter(InstallationPlan.User::absent)
             .forEach(user -> {
                 if (this.identity.deleteUser(user.username())) {
-                    changes.add(change("user", user.username(), MigrationChange.Action.REMOVED));
+                    changes.add(change("user", user.username(), InstallationChange.Action.REMOVED));
                 }
             });
         data.groups()
             .stream()
-            .filter(MigrationResourceLoader.Group::absent)
+            .filter(InstallationPlan.Group::absent)
             .forEach(group -> {
                 if (this.groups.deleteGroup(group.code())) {
-                    changes.add(change("group", group.code(), MigrationChange.Action.REMOVED));
+                    changes.add(change("group", group.code(), InstallationChange.Action.REMOVED));
                 }
             });
         data.roles()
             .stream()
-            .filter(MigrationResourceLoader.Role::absent)
+            .filter(InstallationPlan.Role::absent)
             .forEach(role -> {
                 if (this.authorization.deleteRole(role.code())) {
-                    changes.add(change("role", role.code(), MigrationChange.Action.REMOVED));
+                    changes.add(change("role", role.code(), InstallationChange.Action.REMOVED));
                 }
             });
         data.statements()
             .stream()
-            .filter(MigrationResourceLoader.Statement::absent)
+            .filter(InstallationPlan.Statement::absent)
             .forEach(statement -> {
                 if (this.authorization.deleteStatement(statement.code())) {
-                    changes.add(change("statement", statement.code(), MigrationChange.Action.REMOVED));
+                    changes.add(change("statement", statement.code(), InstallationChange.Action.REMOVED));
                 }
             });
     }
 
     private Map<String, UUID> reconcileStatements(
-        List<MigrationResourceLoader.Statement> definitions,
-        List<MigrationChange> changes
+        List<InstallationPlan.Statement> definitions,
+        List<InstallationChange> changes
     ) {
         Map<String, UUID> result = new LinkedHashMap<>();
-        for (MigrationResourceLoader.Statement definition : definitions) {
+        for (InstallationPlan.Statement definition : definitions) {
             if (definition.absent()) {
                 continue;
             }
@@ -153,12 +140,12 @@ final class ManagedResourceReconciler {
     }
 
     private Map<String, UUID> reconcileRoles(
-        List<MigrationResourceLoader.Role> definitions,
+        List<InstallationPlan.Role> definitions,
         Map<String, UUID> statementIds,
-        List<MigrationChange> changes
+        List<InstallationChange> changes
     ) {
         Map<String, UUID> result = new LinkedHashMap<>();
-        for (MigrationResourceLoader.Role definition : definitions) {
+        for (InstallationPlan.Role definition : definitions) {
             if (definition.absent()) {
                 continue;
             }
@@ -176,12 +163,12 @@ final class ManagedResourceReconciler {
     }
 
     private Map<String, UUID> reconcileGroups(
-        List<MigrationResourceLoader.Group> definitions,
+        List<InstallationPlan.Group> definitions,
         Map<String, UUID> roleIds,
-        List<MigrationChange> changes
+        List<InstallationChange> changes
     ) {
         Map<String, UUID> result = new LinkedHashMap<>();
-        for (MigrationResourceLoader.Group definition : definitions) {
+        for (InstallationPlan.Group definition : definitions) {
             if (definition.absent()) {
                 continue;
             }
@@ -199,12 +186,12 @@ final class ManagedResourceReconciler {
     }
 
     private void reconcileUsers(
-        List<MigrationResourceLoader.User> definitions,
+        List<InstallationPlan.User> definitions,
         Map<String, UUID> roleIds,
         Map<String, UUID> groupIds,
-        List<MigrationChange> changes
+        List<InstallationChange> changes
     ) {
-        for (MigrationResourceLoader.User user : definitions) {
+        for (InstallationPlan.User user : definitions) {
             if (user.absent()) {
                 continue;
             }
@@ -224,26 +211,30 @@ final class ManagedResourceReconciler {
     }
 
     private @Nullable String initialPasswordHash(@Nullable String rawPassword) {
-        return rawPassword == null || rawPassword.isBlank() ? null : this.passwordEncoder.encode(rawPassword);
+        return rawPassword == null || rawPassword.isBlank() ? null : this.passwords.hash(rawPassword);
     }
 
-    private static MigrationChange change(String resourceType, String resourceKey, MigrationChange.Action action) {
-        return new MigrationChange(resourceType, resourceKey, action);
+    private static InstallationChange change(
+        String resourceType,
+        String resourceKey,
+        InstallationChange.Action action
+    ) {
+        return new InstallationChange(resourceType, resourceKey, action);
     }
 
-    private static MigrationChange.Action migrationAction(AuthorizationProvisioningResult.Change change) {
+    private static InstallationChange.Action migrationAction(AuthorizationProvisioningResult.Change change) {
         return switch (change) {
-            case CREATED -> MigrationChange.Action.ADDED;
-            case UPDATED -> MigrationChange.Action.UPDATED;
-            case UNCHANGED -> MigrationChange.Action.UNCHANGED;
+            case CREATED -> InstallationChange.Action.ADDED;
+            case UPDATED -> InstallationChange.Action.UPDATED;
+            case UNCHANGED -> InstallationChange.Action.UNCHANGED;
         };
     }
 
-    private static MigrationChange.Action migrationAction(IdentityProvisioningResult.Change change) {
+    private static InstallationChange.Action migrationAction(IdentityProvisioningResult.Change change) {
         return switch (change) {
-            case CREATED -> MigrationChange.Action.ADDED;
-            case UPDATED -> MigrationChange.Action.UPDATED;
-            case UNCHANGED -> MigrationChange.Action.UNCHANGED;
+            case CREATED -> InstallationChange.Action.ADDED;
+            case UPDATED -> InstallationChange.Action.UPDATED;
+            case UNCHANGED -> InstallationChange.Action.UNCHANGED;
         };
     }
 
