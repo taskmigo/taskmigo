@@ -15,9 +15,8 @@ class HexagonalOnionRulesTest {
     private static final Context CONTEXT = new Context(
         ROOT,
         List.of(ROOT + "..application.."),
-        List.of(ROOT + "..legacy.."),
         List.of(),
-        List.of(ROOT + "..legacy.."),
+        List.of(),
         List.of()
     );
     private static final JavaClasses CLASSES = new ClassFileImporter().importPackages(ROOT);
@@ -31,8 +30,8 @@ class HexagonalOnionRulesTest {
     }
 
     @Test
-    @DisplayName("rejects application dependencies on legacy adapters")
-    void shouldRejectAdapterDependencyWhenApplicationRuleIsChecked() {
+    @DisplayName("rejects application dependencies on driven adapters")
+    void shouldRejectDrivenAdapterDependencyWhenApplicationRuleIsChecked() {
         assertThatThrownBy(() -> HexagonalOnionRules.applicationRule(CONTEXT).check(CLASSES)).isInstanceOf(
             AssertionError.class
         );
