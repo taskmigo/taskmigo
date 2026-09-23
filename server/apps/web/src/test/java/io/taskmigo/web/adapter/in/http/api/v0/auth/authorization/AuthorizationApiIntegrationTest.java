@@ -95,7 +95,7 @@ class AuthorizationApiIntegrationTest extends ApiIntegrationTestSupport {
             "object-filter",
             "deny",
             "object",
-            "return object.username != " + quoted(visibleUsername) + ";"
+            "object.username != " + quoted(visibleUsername)
         );
         this.api().users().replaceStatements(systemUserId, List.of(deny));
 
@@ -111,6 +111,37 @@ class AuthorizationApiIntegrationTest extends ApiIntegrationTestSupport {
             assertThat(offset.path("totalPages").asInt()).isEqualTo(1);
             assertThat(response.path("data").size()).isEqualTo(1);
             assertThat(response.path("data").get(0).path("username").asString()).isEqualTo(visibleUsername);
+        } finally {
+            this.api().users().replaceStatements(systemUserId, List.of());
+        }
+    }
+
+    /**
+     * Verifies that statement-level conditional control flow in an Object policy fails closed before persistence binding.
+     *
+     * Given: the authenticated system principal has a direct Object Statement using an `if/else` program.
+     * Expect: GET /api/v0/users is rejected with HTTP 403 instead of reaching JPA translation as an HTTP 500.
+     */
+    @Test
+    @DisplayName("program control flow in object policy fails closed through HTTP")
+    void shouldFailClosedWhenObjectPolicyUsesProgramControlFlow() {
+        // Arrange
+        UUID systemUserId = this.systemUserId();
+        this.api().users().replaceStatements(systemUserId, List.of());
+        UUID conditional = this.createStatement(
+            "object-conditional",
+            "deny",
+            "object",
+            "if (object.username == \"system\") { return false; } else { return true; }"
+        );
+        this.api().users().replaceStatements(systemUserId, List.of(conditional));
+
+        try {
+            // Act
+            int status = this.api().getStatus("/api/v0/users?page=1&pageSize=100");
+
+            // Assert
+            assertThat(status).isEqualTo(403);
         } finally {
             this.api().users().replaceStatements(systemUserId, List.of());
         }

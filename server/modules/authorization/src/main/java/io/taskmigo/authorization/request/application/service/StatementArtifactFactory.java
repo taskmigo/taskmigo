@@ -9,6 +9,7 @@ import io.taskmigo.authorization.request.application.port.out.EffectiveStatement
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.authorization.statement.StatementInfo;
+import io.taskmigo.language.CompilationProfile;
 import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.EnvironmentSchema;
@@ -26,8 +27,6 @@ import java.util.regex.PatternSyntaxException;
 
 /// Builds executable Statement derivatives after authoritative Statement rows and revisions have been loaded.
 public final class StatementArtifactFactory {
-
-    private static final String POLICY_FINGERPRINT = AuthorizationCompilationProfile.policy().fingerprint();
 
     private final LanguageCompiler compiler;
     private final EnvironmentSchema objectSchema;
@@ -62,14 +61,15 @@ public final class StatementArtifactFactory {
             }
 
             EnvironmentSchema schema = this.schema(statement);
+            CompilationProfile profile = profile(statement);
             ArtifactIdentity identity = new ArtifactIdentity(
                 effective.updatedAt(),
                 schema.fingerprint(),
                 this.compiler.contractFingerprint(),
-                POLICY_FINGERPRINT,
+                profile.fingerprint(),
                 this.applicableSchemaIdentities(statement)
             );
-            DerivedArtifacts artifacts = this.derive(statement, schema, pathMatcher, identity);
+            DerivedArtifacts artifacts = this.derive(statement, schema, pathMatcher, profile, identity);
             result.add(new StatementExecutionArtifact(statement, artifacts.policy(), artifacts.pathMatcher()));
         }
         return List.copyOf(result);
@@ -79,6 +79,7 @@ public final class StatementArtifactFactory {
         StatementInfo statement,
         EnvironmentSchema schema,
         Pattern pathMatcher,
+        CompilationProfile profile,
         ArtifactIdentity identity
     ) {
         CachedArtifacts current = this.derived.get(statement.id());
@@ -86,7 +87,7 @@ public final class StatementArtifactFactory {
             return current.artifacts();
         }
 
-        DerivedArtifacts compiled = this.compile(statement, schema, pathMatcher);
+        DerivedArtifacts compiled = this.compile(statement, schema, pathMatcher, profile);
         CachedArtifacts candidate = new CachedArtifacts(identity, compiled);
         CachedArtifacts retained = Objects.requireNonNull(
             this.derived.compute(statement.id(), (ignored, latest) -> {
@@ -106,12 +107,21 @@ public final class StatementArtifactFactory {
         return statement.scope() == Scope.REQUEST ? AuthorizationEmbeddedLanguageSchemas.request() : this.objectSchema;
     }
 
-    private DerivedArtifacts compile(StatementInfo statement, EnvironmentSchema schema, Pattern pathMatcher) {
+    private static CompilationProfile profile(StatementInfo statement) {
+        return switch (statement.scope()) {
+            case REQUEST -> AuthorizationCompilationProfile.requestPolicy();
+            case OBJECT -> AuthorizationCompilationProfile.objectPolicy();
+        };
+    }
+
+    private DerivedArtifacts compile(
+        StatementInfo statement,
+        EnvironmentSchema schema,
+        Pattern pathMatcher,
+        CompilationProfile profile
+    ) {
         try {
-            return new DerivedArtifacts(
-                this.compiler.compile(statement.policy(), schema, AuthorizationCompilationProfile.policy()),
-                pathMatcher
-            );
+            return new DerivedArtifacts(this.compiler.compile(statement.policy(), schema, profile), pathMatcher);
         } catch (EmbeddedLanguageException exception) {
             throw new AuthorizationException("Invalid Statement policy: " + exception.getMessage());
         }

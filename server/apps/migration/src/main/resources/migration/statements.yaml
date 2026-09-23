@@ -18,7 +18,7 @@
     api:
       method: "*"
       path: /api/v0/.*
-  policy: return true;
+  policy: true
   absent: false
 
 - code: administrator_request_all
@@ -40,7 +40,7 @@
     api:
       method: "*"
       path: /api/v0/.*
-  policy: return true;
+  policy: true
   absent: false
 
 - code: administrator_hide_system_user
@@ -51,6 +51,5 @@
     api:
       method: "*"
       path: /api/v0/users
-  policy: |
-    return object.username == "system";
+  policy: object.username == "system"
   absent: false

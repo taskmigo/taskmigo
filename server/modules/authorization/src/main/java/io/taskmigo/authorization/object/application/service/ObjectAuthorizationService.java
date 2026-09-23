@@ -82,7 +82,7 @@ public final class ObjectAuthorizationService implements ObjectAuthorization {
             CompiledSource compiled = this.compiler.compile(
                 policy,
                 AuthorizationEmbeddedLanguageSchemas.object(schema),
-                AuthorizationCompilationProfile.policy()
+                AuthorizationCompilationProfile.objectPolicy()
             );
             ObjectAuthorizationExpressionValidator.validate(
                 compiled.map(LanguageObjectAuthorizationExpressionVisitor.INSTANCE),
