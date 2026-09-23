@@ -67,6 +67,15 @@ The goal is not to "watch CI." The goal is to extract the earliest actionable fa
    - Re-query CI only when the maintainer explicitly asks for independent verification, the PR head changed after the maintainer's update, existing evidence directly conflicts with the update, or exact run data is required for a different concrete task.
    - A maintainer update does not authorize inventing details such as run ids, timestamps, or per-job results. Record only the state they actually confirmed.
 
+10. **Document a root cause analysis for every bug fix.**
+   - Once the defect is understood and fixed, update the pull request with a detailed Root Cause Analysis before finalization.
+   - Base the analysis on direct evidence from the implementation, failing behavior, tests, logs, and issue or incident context. Do not infer the cause from commit messages or restate the symptom as the cause.
+   - Explain the precise technical root cause and failure mechanism: what condition, assumption, control flow, state, contract, or interaction made the bug possible, and how that cause produced the observed behavior.
+   - Explain the escape path: why the defect was introduced or remained undetected, including the concrete gap in tests, review assumptions, validation, static analysis, observability, specification, or other safeguards. Do not use "human error" as a sufficient explanation.
+   - Explain the solution and prevention: what the fix changes, why it addresses the root cause rather than only the symptom, and what regression test or guardrail prevents the same class of failure from recurring.
+   - If evidence is insufficient to establish part of the analysis, state what is unknown and what evidence is missing instead of speculating.
+   - Revisit the Root Cause Analysis after every material repair that changes the diagnosis so the PR never carries a stale explanation.
+
 ## Pre-CI preflight
 
 Before opening a PR or pushing a large refactor when no local build runner is available:

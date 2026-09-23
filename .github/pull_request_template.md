@@ -43,6 +43,27 @@ List meaningful architectural, functional, or structural modifications based str
 
 -->
 
+## Root Cause Analysis
+
+<!--
+
+Required for every pull request that fixes a bug, defect, or regression. For changes that do not fix a defect, write `N/A — this pull request does not fix a defect.`
+
+For bug fixes, provide a detailed evidence-based analysis that covers all of the following:
+- **Root cause:** Identify the precise technical or design condition that made the defect possible. Do not merely restate the observed symptom.
+- **Failure mechanism:** Explain how the root cause produces the reported behavior and under which conditions or execution path it occurs.
+- **Escape analysis:** Explain why the defect was introduced or remained unnoticed. Identify the concrete gap in tests, review assumptions, validation, static analysis, observability, specification, or other safeguards. `Human error` alone is not a sufficient explanation.
+- **Detection gap:** Explain why the existing automated or manual checks did not catch the defect before it reached the reported state.
+- **Solution and prevention:** Explain what the fix changes, why it addresses the root cause instead of only the symptom, and which regression test or guardrail prevents recurrence.
+
+Mandatory (AI):
+- Build the analysis from the actual code/diff, failing behavior, tests, logs, and issue or incident evidence.
+- Keep the analysis current when later fixes change the diagnosis.
+- State unknowns and missing evidence explicitly instead of speculating.
+- Do not copy commit messages or repeat the `Summary` / `Changes` sections as a substitute for analysis.
+
+-->
+
 ## Verification
 
 <!--
