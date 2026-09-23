@@ -85,7 +85,7 @@ class ObjectAuthorizationServiceTest {
     @DisplayName("returns an always true predicate for an unconditional allow")
     void shouldReturnAlwaysTrueWhenAllowPolicyIsUnconditional() {
         // Arrange
-        AuthorizationOperation operation = operation(statement(Effect.ALLOW, "return true;"));
+        AuthorizationOperation operation = operation(statement(Effect.ALLOW, "true"));
 
         // Act
         ObjectAuthorizationPredicate<TestObject> predicate = this.service.authorize(operation, this.schema);
@@ -105,7 +105,7 @@ class ObjectAuthorizationServiceTest {
     @DisplayName("returns an always false predicate for an unconditional deny")
     void shouldReturnAlwaysFalseWhenDenyPolicyIsUnconditional() {
         // Arrange
-        AuthorizationOperation operation = operation(statement(Effect.DENY, "return true;"));
+        AuthorizationOperation operation = operation(statement(Effect.DENY, "true"));
 
         // Act
         ObjectAuthorizationPredicate<TestObject> predicate = this.service.authorize(operation, this.schema);
@@ -125,7 +125,7 @@ class ObjectAuthorizationServiceTest {
     @DisplayName("keeps an object dependent policy as an opaque predicate")
     void shouldKeepPredicateOpaqueWhenPolicyReferencesObject() {
         // Arrange
-        AuthorizationOperation operation = operation(statement(Effect.ALLOW, "return object.name == \"alice\";"));
+        AuthorizationOperation operation = operation(statement(Effect.ALLOW, "object.name == \"alice\""));
 
         // Act
         ObjectAuthorizationPredicate<TestObject> predicate = this.service.authorize(operation, this.schema);
@@ -145,10 +145,28 @@ class ObjectAuthorizationServiceTest {
     @DisplayName("accepts a non-boolean object policy during activation")
     void shouldAcceptNonBooleanObjectPolicyWhenActivationInputsAreValid() {
         // Arrange
-        String policy = "return \"not-a-decision-yet\";";
+        String policy = "\"not-a-decision-yet\"";
 
         // Act + Assert
         assertThatCode(() -> this.service.validatePolicy(policy, "GET", "/api/v0/objects")).doesNotThrowAnyException();
+    }
+
+    /**
+     * Verifies that Object policy activation enforces the expression-only source contract.
+     *
+     * Given: a registered Object route and a policy using statement-level `if/else` control flow.
+     * Expect: activation rejects the policy during Language compilation before any persistence predicate exists.
+     */
+    @Test
+    @DisplayName("rejects program control flow during object policy activation")
+    void shouldRejectProgramControlFlowWhenObjectPolicyIsValidated() {
+        // Arrange
+        String policy = "if (object.name == \"alice\") { return true; } else { return false; }";
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.service.validatePolicy(policy, "GET", "/api/v0/objects")).isInstanceOf(
+            EmbeddedLanguageException.class
+        );
     }
 
     /**
@@ -161,7 +179,7 @@ class ObjectAuthorizationServiceTest {
     @DisplayName("fails closed for a concrete non-boolean object result")
     void shouldFailClosedWhenConcreteObjectPolicyResultIsNotBoolean() {
         // Arrange
-        AuthorizationOperation operation = operation(statement(Effect.ALLOW, "return 42;"));
+        AuthorizationOperation operation = operation(statement(Effect.ALLOW, "42"));
 
         // Act + Assert
         assertThatThrownBy(() -> this.service.authorize(operation, this.schema))
@@ -179,7 +197,7 @@ class ObjectAuthorizationServiceTest {
     @DisplayName("fails closed for a residual non-boolean object result")
     void shouldFailClosedWhenResidualObjectPolicyResultIsNotBoolean() {
         // Arrange
-        AuthorizationOperation operation = operation(statement(Effect.ALLOW, "return object.name;"));
+        AuthorizationOperation operation = operation(statement(Effect.ALLOW, "object.name"));
 
         // Act + Assert
         assertThatThrownBy(() -> this.service.authorize(operation, this.schema))
@@ -204,7 +222,7 @@ class ObjectAuthorizationServiceTest {
             new LanguageCompiler(),
             targetResolver
         );
-        String policy = "return object.name == \"alice\";";
+        String policy = "object.name == \"alice\"";
 
         // Act + Assert
         assertThatCode(() ->
@@ -236,7 +254,7 @@ class ObjectAuthorizationServiceTest {
             new TargetInfo(new ApiInfo("GET", "/api/v0/objects")),
             "return true;"
         );
-        StatementInfo objectStatement = statement(Effect.ALLOW, "return object.name == \"alice\";");
+        StatementInfo objectStatement = statement(Effect.ALLOW, "object.name == \"alice\"");
         Mockito.when(resolver.resolve(userId)).thenReturn(
             List.of(effective(requestStatement), effective(objectStatement))
         );
@@ -274,10 +292,10 @@ class ObjectAuthorizationServiceTest {
 
         // Act + Assert
         assertThatCode(() ->
-            apiService.validatePolicy("return object.target.api.path == \"/api/v0/users\";", "GET", "/api/v0/users")
+            apiService.validatePolicy("object.target.api.path == \"/api/v0/users\"", "GET", "/api/v0/users")
         ).doesNotThrowAnyException();
         assertThatThrownBy(() ->
-            apiService.validatePolicy("return object.path == \"/api/v0/users\";", "GET", "/api/v0/users")
+            apiService.validatePolicy("object.path == \"/api/v0/users\"", "GET", "/api/v0/users")
         ).isInstanceOf(EmbeddedLanguageException.class);
     }
 

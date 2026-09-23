@@ -12,7 +12,6 @@ public sealed interface ObjectAuthorizationExpression
         ObjectAuthorizationExpression.ListValue,
         ObjectAuthorizationExpression.Unary,
         ObjectAuthorizationExpression.Binary,
-        ObjectAuthorizationExpression.Conditional,
         ObjectAuthorizationExpression.Quantifier,
         ObjectAuthorizationExpression.Length
 {
@@ -50,18 +49,6 @@ public sealed interface ObjectAuthorizationExpression
             Objects.requireNonNull(operator);
             Objects.requireNonNull(left);
             Objects.requireNonNull(right);
-        }
-    }
-
-    record Conditional(
-        ObjectAuthorizationExpression condition,
-        ObjectAuthorizationExpression whenTrue,
-        ObjectAuthorizationExpression whenFalse
-    ) implements ObjectAuthorizationExpression {
-        public Conditional {
-            Objects.requireNonNull(condition);
-            Objects.requireNonNull(whenTrue);
-            Objects.requireNonNull(whenFalse);
         }
     }
 

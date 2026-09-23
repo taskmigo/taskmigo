@@ -13,6 +13,7 @@ import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.TargetInfo;
+import io.taskmigo.language.CompilationMode;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageContract;
 import java.time.Instant;
@@ -120,8 +121,66 @@ class StatementArtifactFactoryTest {
         assertThat(artifact.policy().sourceFingerprint()).hasSize(64);
         assertThat(artifact.policy().compilerFingerprint()).contains(LanguageContract.VERSION);
         assertThat(artifact.policy().profileFingerprint()).isEqualTo(
-            AuthorizationCompilationProfile.policy().fingerprint()
+            AuthorizationCompilationProfile.requestPolicy().fingerprint()
         );
+    }
+
+    /**
+     * Verifies that Object Statements use the expression entry mode required by persistence translation.
+     *
+     * Given: one matching Object Statement containing the Boolean expression `true`.
+     * Expect: the compiled artifact records expression mode and the Object Authorization profile fingerprint.
+     */
+    @Test
+    @DisplayName("compiles object statements with the object expression profile")
+    void shouldUseObjectExpressionProfileWhenObjectStatementIsCompiled() {
+        // Arrange
+        StatementInfo statement = new StatementInfo(
+            UUID.randomUUID(),
+            "object_policy",
+            null,
+            Effect.ALLOW,
+            Scope.OBJECT,
+            new TargetInfo(new ApiInfo("GET", "/api/v0/users")),
+            "true"
+        );
+        EffectiveStatement effective = effective(statement, Instant.EPOCH);
+
+        // Act
+        StatementExecutionArtifact artifact = this.factory.build(List.of(effective), "GET", "/api/v0/users").getFirst();
+
+        // Assert
+        assertThat(artifact.policy().mode()).isEqualTo(CompilationMode.EXPRESSION);
+        assertThat(artifact.policy().profileFingerprint()).isEqualTo(
+            AuthorizationCompilationProfile.objectPolicy().fingerprint()
+        );
+    }
+
+    /**
+     * Verifies that statement-level conditional control flow cannot survive into Object Authorization persistence binding.
+     *
+     * Given: a matching Object Statement using an `if/else` program whose condition depends on `object.name`.
+     * Expect: artifact compilation fails closed because Object policies accept expression source only.
+     */
+    @Test
+    @DisplayName("rejects program control flow in object statements")
+    void shouldRejectProgramControlFlowWhenObjectStatementUsesExpressionMode() {
+        // Arrange
+        StatementInfo invalid = new StatementInfo(
+            UUID.randomUUID(),
+            "object_conditional",
+            null,
+            Effect.ALLOW,
+            Scope.OBJECT,
+            new TargetInfo(new ApiInfo("GET", "/api/v0/users")),
+            "if (object.name == \"system\") { return false; } else { return true; }"
+        );
+        EffectiveStatement effective = effective(invalid, Instant.EPOCH);
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.factory.build(List.of(effective), "GET", "/api/v0/users"))
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("Invalid Statement policy");
     }
 
     /**

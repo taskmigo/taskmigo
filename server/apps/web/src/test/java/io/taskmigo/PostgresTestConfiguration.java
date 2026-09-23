@@ -100,7 +100,7 @@ public class PostgresTestConfiguration {
                 Scope.OBJECT,
                 "GET",
                 path,
-                "return true;"
+                "true"
             )
             .id();
     }

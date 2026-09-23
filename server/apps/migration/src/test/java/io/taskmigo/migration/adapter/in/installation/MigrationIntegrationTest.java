@@ -214,7 +214,7 @@ class MigrationIntegrationTest {
     /**
      * Verifies: embedded policies and scopes survive YAML provisioning.
      * Given: every built-in statement in statements.yaml.
-     * Expect: each statement has its declared scope and a non-empty executable policy.
+     * Expect: each statement keeps its declared scope and uses program syntax for Request or expression syntax for Object.
      */
     @Test
     @DisplayName("persists Embedded Language policies for every built-in statement")
@@ -239,8 +239,16 @@ class MigrationIntegrationTest {
             .hasSize(builtInScopes.size())
             .allSatisfy(statement -> {
                 assertThat(statement.scope()).isEqualTo(builtInScopes.get(statement.code()));
-                assertThat(statement.policy()).isNotBlank().startsWith("return");
+                assertThat(statement.policy()).isNotBlank();
             });
+        assertThat(persistedStatements)
+            .filteredOn(statement -> builtInScopes.containsKey(statement.code()))
+            .filteredOn(statement -> statement.scope() == Scope.REQUEST)
+            .allSatisfy(statement -> assertThat(statement.policy()).startsWith("return"));
+        assertThat(persistedStatements)
+            .filteredOn(statement -> builtInScopes.containsKey(statement.code()))
+            .filteredOn(statement -> statement.scope() == Scope.OBJECT)
+            .allSatisfy(statement -> assertThat(statement.policy()).doesNotStartWith("return"));
     }
 
     /**
