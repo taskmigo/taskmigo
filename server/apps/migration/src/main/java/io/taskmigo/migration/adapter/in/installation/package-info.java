@@ -1,5 +1,4 @@
-/// Adapts one-shot installation inputs into Identity and Access Control provisioning ports while preserving migration
-/// ordering, retry, credential, and post-commit change-log semantics.
+/// Adapts the one-shot startup trigger and declarative resource files into the installation inbound port.
 @NullMarked
 package io.taskmigo.migration.adapter.in.installation;
 

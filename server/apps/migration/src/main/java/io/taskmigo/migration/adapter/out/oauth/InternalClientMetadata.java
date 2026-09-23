@@ -1,13 +1,13 @@
-package io.taskmigo.migration.adapter.in.installation;
+package io.taskmigo.migration.adapter.out.oauth;
 
+import io.taskmigo.migration.application.model.ManagedOAuthClient;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
-import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties.Client;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 
-/// Identifies OAuth clients managed by the migration application.
+/// Maps Taskmigo ownership metadata to Spring Authorization Server client settings.
 final class InternalClientMetadata {
 
     private static final String MANAGED = "taskmigo.internal-client.managed";
@@ -15,21 +15,19 @@ final class InternalClientMetadata {
 
     private InternalClientMetadata() {}
 
-    static ClientSettings settings(Client client) {
+    static ClientSettings settings(ManagedOAuthClient client) {
         ClientSettings.Builder settings = ClientSettings.builder()
-            .requireProofKey(client.isRequireProofKey())
-            .requireAuthorizationConsent(client.isRequireAuthorizationConsent())
+            .requireProofKey(client.requireProofKey())
+            .requireAuthorizationConsent(client.requireAuthorizationConsent())
             .setting(OWNERSHIP, "internal")
             .setting(MANAGED, "v1");
-        if (client.getJwkSetUri() != null) {
-            settings.jwkSetUrl(client.getJwkSetUri());
+        if (client.jwkSetUri() != null) {
+            settings.jwkSetUrl(client.jwkSetUri());
         }
-        if (client.getTokenEndpointAuthenticationSigningAlgorithm() != null) {
+        if (client.tokenEndpointAuthenticationSigningAlgorithm() != null) {
             settings.tokenEndpointAuthenticationSigningAlgorithm(
                 Objects.requireNonNull(
-                    SignatureAlgorithm.from(
-                        Objects.requireNonNull(client.getTokenEndpointAuthenticationSigningAlgorithm())
-                    ),
+                    SignatureAlgorithm.from(client.tokenEndpointAuthenticationSigningAlgorithm()),
                     "Unsupported client token endpoint signing algorithm"
                 )
             );

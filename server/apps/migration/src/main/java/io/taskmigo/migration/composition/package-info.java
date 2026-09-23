@@ -1,4 +1,4 @@
-/// Wires framework-specific collaborators used by the migration executable's adapters.
+/// Wires the migration application service to provider-owned inbound ports and framework-backed outbound adapters.
 @NullMarked
 package io.taskmigo.migration.composition;
 

@@ -2,10 +2,10 @@ package io.taskmigo.migration.adapter.in.installation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.taskmigo.migration.application.model.InstallationPlan;
 import java.util.Objects;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties.Client;
 import org.springframework.mock.env.MockEnvironment;
 
 class MigrationResourceLoaderTest {
@@ -28,16 +28,16 @@ class MigrationResourceLoaderTest {
 
         // Act
         var resources = loader.load();
-        Client browser = Objects.requireNonNull(resources.clients().get("browser"));
+        InstallationPlan.OAuthClient browser = Objects.requireNonNull(resources.clients().get("browser"));
 
         // Assert
         assertThat(resources.users())
             .filteredOn(user -> user.username().equals("system"))
-            .extracting(MigrationResourceLoader.User::password)
+            .extracting(InstallationPlan.User::password)
             .containsExactly("raw:#\"system-password");
-        assertThat(browser.getRegistration().getClientSecret()).isEqualTo("raw:#\"browser-secret");
-        assertThat(browser.getRegistration().getRedirectUris()).containsExactly("http://localhost/api/auth/callback");
-        assertThat(browser.getRegistration().getPostLogoutRedirectUris()).containsExactly("http://localhost/");
+        assertThat(browser.rawSecret()).isEqualTo("raw:#\"browser-secret");
+        assertThat(browser.redirectUris()).containsExactly("http://localhost/api/auth/callback");
+        assertThat(browser.postLogoutRedirectUris()).containsExactly("http://localhost/");
     }
 
     /**
@@ -60,6 +60,6 @@ class MigrationResourceLoaderTest {
 
         // Assert
         assertThat(resources.clients()).isEmpty();
-        assertThat(resources.users()).extracting(MigrationResourceLoader.User::username).contains("system");
+        assertThat(resources.users()).extracting(InstallationPlan.User::username).contains("system");
     }
 }

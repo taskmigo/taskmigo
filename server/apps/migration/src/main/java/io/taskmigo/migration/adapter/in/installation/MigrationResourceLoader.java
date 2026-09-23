@@ -1,10 +1,12 @@
 package io.taskmigo.migration.adapter.in.installation;
 
+import io.taskmigo.migration.application.model.InstallationPlan;
 import java.io.IOException;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import org.jspecify.annotations.Nullable;
 import org.springframework.boot.context.properties.bind.BindHandler;
 import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
@@ -22,7 +24,7 @@ import org.springframework.stereotype.Component;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.dataformat.yaml.YAMLMapper;
 
-/// Loads the flat declarative resources used by the one-shot migration application.
+/// Loads flat declarative installation resources and maps framework configuration into the application model.
 @Component
 final class MigrationResourceLoader {
 
@@ -36,13 +38,16 @@ final class MigrationResourceLoader {
         this.environment = environment;
     }
 
-    MigrationResources load() {
+    InstallationPlan load() {
         try {
-            List<User> users = this.readList("users.yaml", new TypeReference<List<User>>() {})
+            List<InstallationPlan.User> users = this.readList(
+                "users.yaml",
+                new TypeReference<List<InstallationPlan.User>>() {}
+            )
                 .stream()
                 .map(this::resolveUser)
                 .toList();
-            return new MigrationResources(
+            return new InstallationPlan(
                 users,
                 this.readList("roles.yaml", new TypeReference<>() {}),
                 this.readList("statements.yaml", new TypeReference<>() {}),
@@ -58,10 +63,10 @@ final class MigrationResourceLoader {
         return List.copyOf(this.yaml.readValue(this.read(filename), type));
     }
 
-    private User resolveUser(User user) {
+    private InstallationPlan.User resolveUser(InstallationPlan.User user) {
         String password =
             user.password() == null ? null : this.environment.resolveRequiredPlaceholders(user.password());
-        return new User(
+        return new InstallationPlan.User(
             user.username(),
             password,
             user.emails(),
@@ -73,7 +78,7 @@ final class MigrationResourceLoader {
         );
     }
 
-    private Map<String, Client> readClients() throws IOException {
+    private Map<String, InstallationPlan.OAuthClient> readClients() throws IOException {
         if (!this.environment.getProperty("TM_BROWSER_AUTHENTICATION_ENABLED", Boolean.class, true)) {
             return Map.of();
         }
@@ -89,14 +94,52 @@ final class MigrationResourceLoader {
             ConfigurationPropertySources.from(sources),
             new PropertySourcesPlaceholdersResolver(this.environment)
         );
-        return Map.copyOf(
-            binder
-                .bind(
-                    "clients",
-                    Bindable.mapOf(String.class, Client.class),
-                    new NoUnboundElementsBindHandler(BindHandler.DEFAULT)
-                )
-                .orElseGet(Map::of)
+        Map<String, Client> clients = binder
+            .bind(
+                "clients",
+                Bindable.mapOf(String.class, Client.class),
+                new NoUnboundElementsBindHandler(BindHandler.DEFAULT)
+            )
+            .orElseGet(Map::of);
+        return oauthClients(clients);
+    }
+
+    static Map<String, InstallationPlan.OAuthClient> oauthClients(Map<String, Client> clients) {
+        Map<String, InstallationPlan.OAuthClient> result = new LinkedHashMap<>();
+        clients.forEach((registrationId, client) -> result.put(registrationId, oauthClient(client)));
+        return Map.copyOf(result);
+    }
+
+    private static InstallationPlan.OAuthClient oauthClient(Client client) {
+        var registration = client.getRegistration();
+        var token = client.getToken();
+        String clientId = Objects.requireNonNull(registration.getClientId(), "Client id is required");
+        if (registration.getClientAuthenticationMethods().isEmpty()) {
+            throw new IllegalStateException("Client authentication methods are required: " + clientId);
+        }
+        if (registration.getAuthorizationGrantTypes().isEmpty()) {
+            throw new IllegalStateException("Authorization grant types are required: " + clientId);
+        }
+        return new InstallationPlan.OAuthClient(
+            clientId,
+            Objects.requireNonNull(registration.getClientSecret(), "Client secret is required"),
+            registration.getClientName() == null ? clientId : registration.getClientName(),
+            registration.getClientAuthenticationMethods(),
+            registration.getAuthorizationGrantTypes(),
+            registration.getRedirectUris(),
+            registration.getPostLogoutRedirectUris(),
+            registration.getScopes(),
+            client.isRequireProofKey(),
+            client.isRequireAuthorizationConsent(),
+            client.getJwkSetUri(),
+            client.getTokenEndpointAuthenticationSigningAlgorithm(),
+            Objects.requireNonNull(token.getAuthorizationCodeTimeToLive()),
+            Objects.requireNonNull(token.getAccessTokenTimeToLive()),
+            Objects.requireNonNull(token.getAccessTokenFormat()),
+            Objects.requireNonNull(token.getDeviceCodeTimeToLive()),
+            token.isReuseRefreshTokens(),
+            Objects.requireNonNull(token.getRefreshTokenTimeToLive()),
+            Objects.requireNonNull(token.getIdTokenSignatureAlgorithm(), "ID token signature algorithm is required")
         );
     }
 
@@ -105,66 +148,5 @@ final class MigrationResourceLoader {
         try (var input = resource.getInputStream()) {
             return input.readAllBytes();
         }
-    }
-
-    record MigrationResources(
-        List<User> users,
-        List<Role> roles,
-        List<Statement> statements,
-        List<Group> groups,
-        Map<String, Client> clients
-    ) {}
-
-    record User(
-        String username,
-        @Nullable String password,
-        List<String> emails,
-        String firstName,
-        String lastName,
-        List<String> roles,
-        List<String> groups,
-        boolean absent
-    ) {
-        User {
-            emails = values(emails);
-            roles = values(roles);
-            groups = values(groups);
-        }
-    }
-
-    record Role(
-        String code,
-        String displayName,
-        @Nullable String description,
-        List<String> statements,
-        boolean absent
-    ) {
-        Role {
-            statements = values(statements);
-        }
-    }
-
-    record Statement(
-        String code,
-        @Nullable String description,
-        String effect,
-        String scope,
-        Target target,
-        String policy,
-        boolean absent
-    ) {}
-
-    record Target(Api api) {}
-
-    record Api(String method, String path) {}
-
-    record Group(String code, String displayName, @Nullable String description, List<String> roles, boolean absent) {
-        Group {
-            roles = values(roles);
-        }
-    }
-
-    private static <T> List<T> values(@Nullable List<T> values) {
-        return values == null ? List.of() : List.copyOf(values);
     }
 }

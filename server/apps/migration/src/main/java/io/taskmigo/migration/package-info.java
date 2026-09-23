@@ -1,4 +1,4 @@
-/// Hosts the migration executable's installation driving adapters, migration-specific driven adapters, and composition.
+/// Hosts the migration installation application ports/services, startup driving adapters, framework-backed driven adapters, and composition.
 @ApplicationModule(
     allowedDependencies = {
         "foundation",
