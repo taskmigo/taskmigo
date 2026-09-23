@@ -83,7 +83,6 @@ The goal is not to "watch CI." The goal is to extract the earliest actionable fa
     - If evidence is insufficient to establish part of the analysis, state what is unknown and what evidence is missing instead of speculating.
     - Revisit the Root Cause Analysis after every material repair that changes the diagnosis, the failure path, or cited code so the PR never carries a stale explanation or stale permalink.
 
-
 11. **Preserve machine-actionable PR metadata across title/body rewrites.**
     - Before replacing or substantially rebuilding an existing PR body, read the current PR body and capture machine-actionable directives that are still semantically valid.
     - Treat metadata preservation separately from content generation: Summary, Changes, RCA, and other prose must still be rebuilt from the actual diff/evidence when required, but the old body remains authoritative for existing GitHub directives that would otherwise be lost.
