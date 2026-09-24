@@ -2,9 +2,6 @@ package io.taskmigo.web.adapter.in.http.api.v0.auth.authorization;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.Parameters;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
@@ -25,6 +22,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -64,22 +62,8 @@ class RoleController {
 
     @GetMapping("/roles")
     @Operation(summary = "List roles")
-    @Parameters({
-        @Parameter(
-            name = "page",
-            in = ParameterIn.QUERY,
-            description = "Page number to retrieve (1-based index)",
-            schema = @Schema(type = "integer", format = "int32", defaultValue = "1", minimum = "1")
-        ),
-        @Parameter(
-            name = "pageSize",
-            in = ParameterIn.QUERY,
-            description = "Number of items per page",
-            schema = @Schema(type = "integer", format = "int32", defaultValue = "20", minimum = "1", maximum = "100")
-        ),
-    })
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
-        @Parameter(hidden = true) @Valid OffsetPageRequest pagination,
+        @ParameterObject @Valid OffsetPageRequest pagination,
         FilteredQuery<RoleInfo> filter,
         ObjectAuthorizationPredicate<RoleInfo> authorization
     ) {

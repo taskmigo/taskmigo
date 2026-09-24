@@ -33,7 +33,7 @@ dependencies {
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.oauth2.authorization.server)
     implementation(libs.spring.boot.starter.oauth2.resource.server)
-    implementation(libs.swagger.annotations.jakarta)
+    compileOnly(libs.springdoc.openapi.starter.common)
     implementation(libs.scalar.webmvc)
 
     testImplementation(libs.springdoc.openapi.starter.webmvc.api)
