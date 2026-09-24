@@ -6,13 +6,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.swagger.v3.core.util.Yaml;
-import io.swagger.v3.oas.annotations.OpenAPIDefinition;
-import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
-import io.swagger.v3.oas.annotations.security.OAuthFlow;
-import io.swagger.v3.oas.annotations.security.OAuthFlows;
-import io.swagger.v3.oas.annotations.security.OAuthScope;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.models.info.Info;
 import io.taskmigo.PostgresTestConfiguration;
 import java.io.IOException;
@@ -120,21 +113,6 @@ class OpenApiGenerationIntegrationTest {
     }
 
     @TestConfiguration(proxyBeanMethods = false)
-    @OpenAPIDefinition(security = @SecurityRequirement(name = "taskmigoOAuth"))
-    @SecurityScheme(
-        name = "taskmigoOAuth",
-        type = SecuritySchemeType.OAUTH2,
-        flows = @OAuthFlows(
-            authorizationCode = @OAuthFlow(
-                authorizationUrl = "/oauth2/authorize",
-                tokenUrl = "/oauth2/token",
-                scopes = {
-                    @OAuthScope(name = "openid", description = "OpenID Connect scope"),
-                    @OAuthScope(name = "profile", description = "Access the user's profile information"),
-                }
-            )
-        )
-    )
     static class OpenApiGenerationConfiguration {
 
         @Bean
