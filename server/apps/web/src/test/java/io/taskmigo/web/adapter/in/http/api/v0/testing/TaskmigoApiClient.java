@@ -89,6 +89,28 @@ public final class TaskmigoApiClient {
         );
     }
 
+    /// Sends an authenticated POST request with caller-supplied JSON.
+    ///
+    /// Typed request records intentionally model valid inputs. This helper lets HTTP integration tests exercise
+    /// malformed-but-valid JSON against the production transport validation boundary.
+    ///
+    /// @param path the absolute API path
+    /// @param json the raw JSON request body
+    public void postJson(String path, String json) {
+        this.client.post().uri(path).contentType(MediaType.APPLICATION_JSON).body(json).retrieve().toBodilessEntity();
+    }
+
+    /// Sends an authenticated PATCH request with caller-supplied JSON.
+    ///
+    /// Typed request records intentionally model valid inputs. This helper lets HTTP integration tests exercise
+    /// malformed-but-valid JSON against the production transport validation boundary.
+    ///
+    /// @param path the absolute API path
+    /// @param json the raw JSON request body
+    public void patchJson(String path, String json) {
+        this.client.patch().uri(path).contentType(MediaType.APPLICATION_JSON).body(json).retrieve().toBodilessEntity();
+    }
+
     private UUID create(String path, Object request) {
         return Objects.requireNonNull(
             this.client

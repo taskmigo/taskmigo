@@ -14,6 +14,7 @@ import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponseFactory;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -104,7 +105,7 @@ class GroupController {
         @NotBlank @Nullable String code,
         @NotBlank @Nullable String displayName,
         @Nullable String description,
-        @Nullable Set<UUID> groupIds,
-        @Nullable Set<UUID> roleIds
+        @Nullable Set<@NotNull UUID> groupIds,
+        @Nullable Set<@NotNull UUID> roleIds
     ) {}
 }

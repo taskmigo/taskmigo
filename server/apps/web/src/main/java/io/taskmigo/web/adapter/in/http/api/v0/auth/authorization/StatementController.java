@@ -17,6 +17,7 @@ import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponseFactor
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -116,9 +117,9 @@ class StatementController {
     record Request(
         @NotBlank @Nullable String code,
         @Nullable String description,
-        @NotBlank String effect,
-        @NotBlank String scope,
-        @NotNull Target target,
+        @NotBlank @Pattern(regexp = "allow|deny", message = "must be exactly allow or deny") String effect,
+        @NotBlank @Pattern(regexp = "request|object", message = "must be exactly request or object") String scope,
+        @Valid @NotNull Target target,
         @NotBlank String policy
     ) {}
 
