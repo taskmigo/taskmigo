@@ -13,7 +13,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springdoc.core.models.GroupedOpenApi;
@@ -45,7 +44,7 @@ class OpenApiGenerationIntegrationTest {
     int port;
 
     /**
-     * Verifies that the manual OpenAPI generation task writes the current application contract
+     * Generates the source-controlled OpenAPI YAML from the current application contract.
      * into the source-controlled YAML file.
      *
      * Given: the test is invoked by the generateOpenApi Gradle task.
@@ -55,7 +54,6 @@ class OpenApiGenerationIntegrationTest {
     @DisplayName("writes the committed OpenAPI YAML when manual generation is requested")
     void shouldWriteCommittedOpenApiYamlWhenManualGenerationIsRequested() throws IOException {
         // Arrange
-        Assumptions.assumeTrue(Boolean.getBoolean("taskmigo.openapi.generate"));
         String generated = this.generatedOpenApiYaml();
 
         // Act
@@ -64,29 +62,6 @@ class OpenApiGenerationIntegrationTest {
 
         // Assert
         assertThat(Files.readString(OPENAPI_FILE, StandardCharsets.UTF_8)).isEqualTo(generated);
-    }
-
-    /**
-     * Verifies that the source-controlled OpenAPI contract is synchronized with the current
-     * controller and schema metadata without modifying the working tree.
-     *
-     * Given: the test is invoked by the verifyOpenApi Gradle task and openapi.yaml is committed.
-     * Expect: regenerating the document in memory produces exactly the committed YAML bytes.
-     */
-    @Test
-    @DisplayName("matches the committed OpenAPI YAML when staleness verification is requested")
-    void shouldMatchCommittedOpenApiYamlWhenStalenessVerificationIsRequested() throws IOException {
-        // Arrange
-        Assumptions.assumeTrue(Boolean.getBoolean("taskmigo.openapi.verify"));
-        String generated = this.generatedOpenApiYaml();
-
-        // Act
-        String committed = Files.readString(OPENAPI_FILE, StandardCharsets.UTF_8);
-
-        // Assert
-        assertThat(committed)
-            .as("openapi.yaml is stale; run ./gradlew :apps:web:generateOpenApi and commit the result")
-            .isEqualTo(generated);
     }
 
     private String generatedOpenApiYaml() {

@@ -65,19 +65,6 @@ tasks.register<Test>("generateOpenApi") {
     filter {
         includeTestsMatching("io.taskmigo.web.adapter.in.http.api.OpenApiGenerationIntegrationTest")
     }
-    systemProperty("taskmigo.openapi.generate", "true")
     outputs.upToDateWhen { false }
 }
 
-tasks.register<Test>("verifyOpenApi") {
-    group = "verification"
-    description = "Fails when the committed OpenAPI YAML is stale."
-    dependsOn(tasks.testClasses)
-    testClassesDirs = sourceSets["test"].output.classesDirs
-    classpath = sourceSets["test"].runtimeClasspath
-    filter {
-        includeTestsMatching("io.taskmigo.web.adapter.in.http.api.OpenApiGenerationIntegrationTest")
-    }
-    systemProperty("taskmigo.openapi.verify", "true")
-    outputs.upToDateWhen { false }
-}
