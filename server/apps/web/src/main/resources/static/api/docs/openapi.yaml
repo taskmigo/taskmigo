@@ -1,0 +1,925 @@
+---
+openapi: 3.1.0
+info:
+  title: Taskmigo API
+  description: Taskmigo API
+  version: v0
+security:
+- taskmigoOAuth: []
+paths:
+  /api/v0/users:
+    get:
+      tags:
+      - User
+      summary: List users
+      operationId: list
+      parameters:
+      - name: filter
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/FilteredQueryUserInfo"
+      - name: authorization
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/ObjectAuthorizationPredicateUserInfo"
+      - name: page
+        in: query
+        description: Page number to retrieve (1-based index)
+        schema:
+          type: integer
+          format: int32
+          default: 1
+          minimum: 1
+      - name: pageSize
+        in: query
+        description: Number of items per page
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseListUserInfoOffsetMeta"
+    post:
+      tags:
+      - User
+      summary: Create a new user
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
+  /api/v0/statements:
+    get:
+      tags:
+      - Statement
+      summary: List authorization statements
+      operationId: list_1
+      parameters:
+      - name: filter
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/FilteredQueryStatementInfo"
+      - name: authorization
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/ObjectAuthorizationPredicateStatementInfo"
+      - name: page
+        in: query
+        description: Page number to retrieve (1-based index)
+        schema:
+          type: integer
+          format: int32
+          default: 1
+          minimum: 1
+      - name: pageSize
+        in: query
+        description: Number of items per page
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseListStatementInfoOffsetMeta"
+    post:
+      tags:
+      - Statement
+      summary: Create an authorization statement
+      operationId: create_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStatementRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
+  /api/v0/roles:
+    get:
+      tags:
+      - Role
+      summary: List roles
+      operationId: list_2
+      parameters:
+      - name: filter
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/FilteredQueryRoleInfo"
+      - name: authorization
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/ObjectAuthorizationPredicateRoleInfo"
+      - name: page
+        in: query
+        description: Page number to retrieve (1-based index)
+        schema:
+          type: integer
+          format: int32
+          default: 1
+          minimum: 1
+      - name: pageSize
+        in: query
+        description: Number of items per page
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseListRoleInfoOffsetMeta"
+    post:
+      tags:
+      - Role
+      summary: Create a role
+      operationId: createRole
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoleRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
+  /api/v0/groups:
+    get:
+      tags:
+      - Group
+      summary: List groups
+      operationId: list_3
+      parameters:
+      - name: filter
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/FilteredQueryGroupInfo"
+      - name: authorization
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/ObjectAuthorizationPredicateGroupInfo"
+      - name: page
+        in: query
+        description: Page number to retrieve (1-based index)
+        schema:
+          type: integer
+          format: int32
+          default: 1
+          minimum: 1
+      - name: pageSize
+        in: query
+        description: Number of items per page
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseListGroupInfoOffsetMeta"
+    post:
+      tags:
+      - Group
+      summary: Create a group
+      operationId: create_2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGroupRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
+  /api/v0/users/{userId}/statements:
+    patch:
+      tags:
+      - User
+      summary: Replace a user's direct statements
+      operationId: setStatements
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplaceUserStatementsRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+  /api/v0/roles/{roleId}/statements:
+    patch:
+      tags:
+      - Role
+      summary: Replace a role's direct statements
+      operationId: setStatements_1
+      parameters:
+      - name: roleId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplaceRoleStatementsRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+components:
+  schemas:
+    CreateUserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+        emails:
+          type: array
+          items:
+            type: string
+            format: email
+            minLength: 1
+          uniqueItems: true
+        firstName:
+          type: string
+          minLength: 1
+        lastName:
+          type: string
+          minLength: 1
+        roleIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          uniqueItems: true
+        groupIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          uniqueItems: true
+      required:
+      - firstName
+      - lastName
+      - username
+    ApiResponseMapStringUUIDBasicMeta:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the request completed successfully
+        statusCode:
+          type: integer
+          format: int32
+          description: HTTP status code of the response
+        message:
+          $ref: "#/components/schemas/Message"
+          description: Machine-readable and human-readable outcome message
+        error:
+          type: "null"
+          $ref: "#/components/schemas/Error"
+          description: Error details when the request fails
+        meta:
+          $ref: "#/components/schemas/BasicMeta"
+          description: Execution and pagination metadata
+        data:
+          type:
+          - object
+          - "null"
+          additionalProperties:
+            type: string
+            format: uuid
+          description: Response payload
+      required:
+      - data
+      - error
+      - message
+      - meta
+      - statusCode
+      - success
+    BasicMeta:
+      type: object
+      description: Response metadata for an operation that does not paginate its data
+      properties:
+        execution:
+          $ref: "#/components/schemas/Execution"
+          description: Timing information for processing the request
+      required:
+      - execution
+    Error:
+      type: object
+      properties:
+        code:
+          type:
+          - string
+          - "null"
+          description: Stable code identifying the error
+        message:
+          type:
+          - string
+          - "null"
+          description: Human-readable description of the error
+        formErrors:
+          type:
+          - object
+          - "null"
+          additionalProperties:
+            type: string
+          description: Validation errors keyed by request field name
+    Execution:
+      type: object
+      properties:
+        startedAt:
+          type: string
+          format: date-time
+          description: Time at which server processing began
+        duration:
+          type: integer
+          format: int64
+          description: Server processing time in milliseconds
+          minimum: 0
+      required:
+      - duration
+      - startedAt
+    Message:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Stable code for the response outcome
+        text:
+          type: string
+          description: Human-readable description of the response outcome
+      required:
+      - code
+      - text
+    ApiInfo:
+      type: object
+      properties:
+        method:
+          type: string
+        path:
+          type: string
+    CreateStatementRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        effect:
+          type: string
+          minLength: 1
+          pattern: allow|deny
+        scope:
+          type: string
+          minLength: 1
+          pattern: request|object
+        target:
+          $ref: "#/components/schemas/Target"
+        policy:
+          type: string
+          minLength: 1
+      required:
+      - code
+      - effect
+      - policy
+      - scope
+      - target
+    Target:
+      type: object
+      properties:
+        api:
+          $ref: "#/components/schemas/ApiInfo"
+      required:
+      - api
+    CreateRoleRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+        displayName:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        roleIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          uniqueItems: true
+      required:
+      - code
+      - displayName
+    CreateGroupRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+        displayName:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        groupIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          uniqueItems: true
+        roleIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          uniqueItems: true
+      required:
+      - code
+      - displayName
+    ReplaceUserStatementsRequest:
+      type: object
+      properties:
+        statementIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          uniqueItems: true
+    ApiResponseVoidBasicMeta:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the request completed successfully
+        statusCode:
+          type: integer
+          format: int32
+          description: HTTP status code of the response
+        message:
+          $ref: "#/components/schemas/Message"
+          description: Machine-readable and human-readable outcome message
+        error:
+          type: "null"
+          $ref: "#/components/schemas/Error"
+          description: Error details when the request fails
+        meta:
+          $ref: "#/components/schemas/BasicMeta"
+          description: Execution and pagination metadata
+        data:
+          type: "null"
+          description: Response payload
+      required:
+      - data
+      - error
+      - message
+      - meta
+      - statusCode
+      - success
+    ReplaceRoleStatementsRequest:
+      type: object
+      properties:
+        statementIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+          uniqueItems: true
+    FilteredQueryUserInfo:
+      type: object
+      properties:
+        predicate:
+          $ref: "#/components/schemas/QueryPredicateUserInfo"
+    QueryPredicateUserInfo:
+      type: object
+      properties:
+        alwaysTrue:
+          type: boolean
+        alwaysFalse:
+          type: boolean
+    ObjectAuthorizationPredicateUserInfo:
+      type: object
+      properties:
+        alwaysTrue:
+          type: boolean
+        alwaysFalse:
+          type: boolean
+    ApiResponseListUserInfoOffsetMeta:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the request completed successfully
+        statusCode:
+          type: integer
+          format: int32
+          description: HTTP status code of the response
+        message:
+          $ref: "#/components/schemas/Message"
+          description: Machine-readable and human-readable outcome message
+        error:
+          type: "null"
+          $ref: "#/components/schemas/Error"
+          description: Error details when the request fails
+        meta:
+          $ref: "#/components/schemas/OffsetMeta"
+          description: Execution and pagination metadata
+        data:
+          type:
+          - array
+          - "null"
+          description: Response payload
+          items:
+            $ref: "#/components/schemas/UserInfo"
+      required:
+      - data
+      - error
+      - message
+      - meta
+      - statusCode
+      - success
+    Offset:
+      type: object
+      properties:
+        currentPage:
+          type: integer
+          format: int32
+          description: One-based index of the current page
+          minimum: 1
+        pageSize:
+          type: integer
+          format: int32
+          description: Maximum number of items in each page
+          minimum: 1
+        totalItems:
+          type: integer
+          format: int64
+          description: Total number of items matching the request
+          minimum: 0
+        totalPages:
+          type: integer
+          format: int64
+          description: Total number of available pages
+          minimum: 0
+      required:
+      - currentPage
+      - pageSize
+      - totalItems
+      - totalPages
+    OffsetMeta:
+      type: object
+      description: Response metadata for an operation using offset pagination
+      properties:
+        execution:
+          $ref: "#/components/schemas/Execution"
+          description: Timing information for processing the request
+        pagination:
+          $ref: "#/components/schemas/OffsetPagination"
+          description: Offset pagination state for this response
+      required:
+      - execution
+      - pagination
+    OffsetPagination:
+      type: object
+      description: Offset pagination metadata
+      properties:
+        type:
+          type: string
+          description: Pagination strategy
+          enum:
+          - offset
+        offset:
+          $ref: "#/components/schemas/Offset"
+          description: Offset pagination values
+      required:
+      - offset
+      - type
+    UserInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        emails:
+          type: array
+          items:
+            type: string
+          uniqueItems: true
+        displayName:
+          type: string
+    FilteredQueryStatementInfo:
+      type: object
+      properties:
+        predicate:
+          $ref: "#/components/schemas/QueryPredicateStatementInfo"
+    QueryPredicateStatementInfo:
+      type: object
+      properties:
+        alwaysTrue:
+          type: boolean
+        alwaysFalse:
+          type: boolean
+    ObjectAuthorizationPredicateStatementInfo:
+      type: object
+      properties:
+        alwaysTrue:
+          type: boolean
+        alwaysFalse:
+          type: boolean
+    ApiResponseData:
+      type: object
+      properties:
+        method:
+          type: string
+        path:
+          type: string
+    ApiResponseListStatementInfoOffsetMeta:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the request completed successfully
+        statusCode:
+          type: integer
+          format: int32
+          description: HTTP status code of the response
+        message:
+          $ref: "#/components/schemas/Message"
+          description: Machine-readable and human-readable outcome message
+        error:
+          type: "null"
+          $ref: "#/components/schemas/Error"
+          description: Error details when the request fails
+        meta:
+          $ref: "#/components/schemas/OffsetMeta"
+          description: Execution and pagination metadata
+        data:
+          type:
+          - array
+          - "null"
+          description: Response payload
+          items:
+            $ref: "#/components/schemas/StatementInfo"
+      required:
+      - data
+      - error
+      - message
+      - meta
+      - statusCode
+      - success
+    StatementInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        description:
+          type: string
+        effect:
+          type: string
+          enum:
+          - ALLOW
+          - DENY
+        scope:
+          type: string
+          enum:
+          - OBJECT
+          - REQUEST
+        target:
+          $ref: "#/components/schemas/TargetResponse"
+        policy:
+          type: string
+    TargetResponse:
+      type: object
+      properties:
+        api:
+          $ref: "#/components/schemas/ApiResponseData"
+    FilteredQueryRoleInfo:
+      type: object
+      properties:
+        predicate:
+          $ref: "#/components/schemas/QueryPredicateRoleInfo"
+    QueryPredicateRoleInfo:
+      type: object
+      properties:
+        alwaysTrue:
+          type: boolean
+        alwaysFalse:
+          type: boolean
+    ObjectAuthorizationPredicateRoleInfo:
+      type: object
+      properties:
+        alwaysTrue:
+          type: boolean
+        alwaysFalse:
+          type: boolean
+    ApiResponseListRoleInfoOffsetMeta:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the request completed successfully
+        statusCode:
+          type: integer
+          format: int32
+          description: HTTP status code of the response
+        message:
+          $ref: "#/components/schemas/Message"
+          description: Machine-readable and human-readable outcome message
+        error:
+          type: "null"
+          $ref: "#/components/schemas/Error"
+          description: Error details when the request fails
+        meta:
+          $ref: "#/components/schemas/OffsetMeta"
+          description: Execution and pagination metadata
+        data:
+          type:
+          - array
+          - "null"
+          description: Response payload
+          items:
+            $ref: "#/components/schemas/RoleInfo"
+      required:
+      - data
+      - error
+      - message
+      - meta
+      - statusCode
+      - success
+    RoleInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        displayName:
+          type: string
+        description:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleInfo"
+    FilteredQueryGroupInfo:
+      type: object
+      properties:
+        predicate:
+          $ref: "#/components/schemas/QueryPredicateGroupInfo"
+    QueryPredicateGroupInfo:
+      type: object
+      properties:
+        alwaysTrue:
+          type: boolean
+        alwaysFalse:
+          type: boolean
+    ObjectAuthorizationPredicateGroupInfo:
+      type: object
+      properties:
+        alwaysTrue:
+          type: boolean
+        alwaysFalse:
+          type: boolean
+    ApiResponseListGroupInfoOffsetMeta:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the request completed successfully
+        statusCode:
+          type: integer
+          format: int32
+          description: HTTP status code of the response
+        message:
+          $ref: "#/components/schemas/Message"
+          description: Machine-readable and human-readable outcome message
+        error:
+          type: "null"
+          $ref: "#/components/schemas/Error"
+          description: Error details when the request fails
+        meta:
+          $ref: "#/components/schemas/OffsetMeta"
+          description: Execution and pagination metadata
+        data:
+          type:
+          - array
+          - "null"
+          description: Response payload
+          items:
+            $ref: "#/components/schemas/GroupInfo"
+      required:
+      - data
+      - error
+      - message
+      - meta
+      - statusCode
+      - success
+    GroupInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        displayName:
+          type: string
+        description:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/GroupInfo"
+  securitySchemes:
+    taskmigoOAuth:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: /oauth2/authorize
+          tokenUrl: /oauth2/token
+          scopes:
+            openid: OpenID Connect scope
+            profile: Access the user's profile information

@@ -8,3 +8,4 @@
 **/pnpm-lock.yaml
 .agents/skills/**
 helm/**/templates/**/*.yaml
+server/apps/web/src/main/resources/static/api/docs/openapi.yaml

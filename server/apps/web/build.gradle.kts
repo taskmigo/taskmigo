@@ -1,4 +1,5 @@
 import org.gradle.api.tasks.compile.JavaCompile
+import org.gradle.api.tasks.testing.Test
 
 plugins {
     java
@@ -32,8 +33,10 @@ dependencies {
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.oauth2.authorization.server)
     implementation(libs.spring.boot.starter.oauth2.resource.server)
-    implementation(libs.springdoc.openapi.starter.webmvc.scalar)
+    implementation(libs.swagger.annotations.jakarta)
+    implementation(libs.scalar.webmvc)
 
+    testImplementation(libs.springdoc.openapi.starter.webmvc.api)
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.spring.boot.testcontainers)
     testImplementation(libs.spring.boot.starter.data.jpa)
@@ -45,4 +48,36 @@ dependencies {
 
 tasks.withType<JavaCompile>().configureEach {
     options.compilerArgs.add("-parameters")
+}
+
+tasks.named<Test>("test") {
+    filter {
+        excludeTestsMatching("io.taskmigo.web.adapter.in.http.api.OpenApiGenerationIntegrationTest")
+    }
+}
+
+tasks.register<Test>("generateOpenApi") {
+    group = "documentation"
+    description = "Generates the committed OpenAPI YAML from the application contract."
+    dependsOn(tasks.testClasses)
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    filter {
+        includeTestsMatching("io.taskmigo.web.adapter.in.http.api.OpenApiGenerationIntegrationTest")
+    }
+    systemProperty("taskmigo.openapi.generate", "true")
+    outputs.upToDateWhen { false }
+}
+
+tasks.register<Test>("verifyOpenApi") {
+    group = "verification"
+    description = "Fails when the committed OpenAPI YAML is stale."
+    dependsOn(tasks.testClasses)
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    filter {
+        includeTestsMatching("io.taskmigo.web.adapter.in.http.api.OpenApiGenerationIntegrationTest")
+    }
+    systemProperty("taskmigo.openapi.verify", "true")
+    outputs.upToDateWhen { false }
 }
