@@ -6,15 +6,10 @@ spring:
   config:
     import: classpath:application-database.yaml
 
-springdoc:
-  api-docs:
-    path: /api/docs/openapi.json
-    version: openapi-3-1
-
 scalar:
   enabled: true
   sources:
-    - url: /api/docs/openapi.json/v0
+    - url: /api/docs/openapi.yaml
       title: Taskmigo API v0
       slug: v0
       default: true

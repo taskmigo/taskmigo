@@ -49,6 +49,11 @@ jobs:
           set -o pipefail
           ./gradlew --no-daemon --console=plain --continue build 2>&1 | tee "$RUNNER_TEMP/server-build.log"
 
+      - name: Verify OpenAPI snapshot
+        run: |
+          ./gradlew --no-daemon --console=plain :apps:web:generateOpenApi
+          git diff --exit-code -- apps/web/src/main/resources/static/api/docs/openapi.yaml
+
       - name: Agent failure summary
         if: ${{ failure() }}
         run: |

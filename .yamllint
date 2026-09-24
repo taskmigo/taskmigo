@@ -7,6 +7,7 @@ yaml-files:
 ignore: |
   client/pnpm-lock.yaml
   helm/taskmigo/templates/*.yaml
+  server/apps/web/src/main/resources/static/api/docs/openapi.yaml
   Taskfile.yml
 
 rules:
