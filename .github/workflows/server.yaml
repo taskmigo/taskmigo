@@ -54,6 +54,13 @@ jobs:
           ./gradlew --no-daemon --console=plain :apps:web:generateOpenApi
           git diff --exit-code -- apps/web/src/main/resources/static/api/docs/openapi.yaml
 
+      - name: Upload generated OpenAPI snapshot
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: generated-openapi
+          path: server/apps/web/src/main/resources/static/api/docs/openapi.yaml
+
       - name: Agent failure summary
         if: ${{ failure() }}
         run: |
