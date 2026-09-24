@@ -104,8 +104,12 @@ Mandatory (AI):
 <!--
 
 Provide concrete validation evidence.
-- IF COVERED BY CI: Write "Covered by automated CI suite."
-- IF MANUAL TESTED: Describe exact manual scenarios executed, edge cases checked, or attach screenshots/logs.
+- IF FULLY COVERED BY AUTOMATED CI: Write exactly `Covered by automated CI.` and nothing else in this section.
+  - Do NOT mention whether CI is pending, running, passed, failed, or waiting.
+  - Do NOT list individual CI jobs, checks, workflows, or their statuses.
+- IF NOT FULLY COVERED BY AUTOMATED CI: Describe only the validation that CI cannot cover, including the exact manual scenarios, operational checks, edge cases, screenshots, or logs needed to verify the remaining behavior.
+  - Explain briefly why those checks cannot be automated when that is not obvious.
+  - Do NOT restate checks already covered by CI.
 - IF NOT APPLICABLE: Use `N/A`.
 - FORBIDDEN (AI): Do NOT output single-word vague status like "None", "Nil", "OK", or "Done".
 - FORBIDDEN (AI): Do NOT invent or hallucinate test results/metrics that were not explicitly provided in the diff or logs.
