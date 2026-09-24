@@ -15,6 +15,7 @@ import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponseFactor
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -123,10 +124,10 @@ class UserController {
         @Nullable Set<@Email @NotBlank String> emails,
         @NotBlank @Nullable String firstName,
         @NotBlank @Nullable String lastName,
-        @Nullable Set<UUID> roleIds,
-        @Nullable Set<UUID> groupIds
+        @Nullable Set<@NotNull UUID> roleIds,
+        @Nullable Set<@NotNull UUID> groupIds
     ) {}
 
     @Schema(name = "ReplaceUserStatementsRequest")
-    record StatementAssignmentRequest(@Nullable Set<UUID> statementIds) {}
+    record StatementAssignmentRequest(@Nullable Set<@NotNull UUID> statementIds) {}
 }
