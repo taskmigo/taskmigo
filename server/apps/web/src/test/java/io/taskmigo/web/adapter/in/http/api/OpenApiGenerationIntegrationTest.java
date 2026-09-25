@@ -86,7 +86,7 @@ class OpenApiGenerationIntegrationTest {
                     .properties()
                     .forEach(operation -> {
                         if (operation.getValue().path("responses") instanceof ObjectNode responses) {
-                            var sorted = responses.properties().sorted(Map.Entry.comparingByKey()).toList();
+                            var sorted = responses.properties().stream().sorted(Map.Entry.comparingByKey()).toList();
                             responses.removeAll();
                             sorted.forEach(entry -> responses.set(entry.getKey(), entry.getValue()));
                         }
