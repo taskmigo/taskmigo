@@ -49,7 +49,7 @@ paths:
         "200":
           description: OK
           content:
-            '*/*':
+            application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListUserInfoOffsetMeta"
     post:
@@ -67,7 +67,7 @@ paths:
         "200":
           description: OK
           content:
-            '*/*':
+            application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
   /api/v0/statements:
@@ -112,7 +112,7 @@ paths:
         "200":
           description: OK
           content:
-            '*/*':
+            application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListStatementInfoOffsetMeta"
     post:
@@ -130,7 +130,7 @@ paths:
         "200":
           description: OK
           content:
-            '*/*':
+            application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
   /api/v0/roles:
@@ -175,7 +175,7 @@ paths:
         "200":
           description: OK
           content:
-            '*/*':
+            application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListRoleInfoOffsetMeta"
     post:
@@ -193,7 +193,7 @@ paths:
         "200":
           description: OK
           content:
-            '*/*':
+            application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
   /api/v0/groups:
@@ -238,7 +238,7 @@ paths:
         "200":
           description: OK
           content:
-            '*/*':
+            application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListGroupInfoOffsetMeta"
     post:
@@ -256,7 +256,7 @@ paths:
         "200":
           description: OK
           content:
-            '*/*':
+            application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
   /api/v0/users/{userId}/statements:
@@ -282,7 +282,7 @@ paths:
         "200":
           description: OK
           content:
-            '*/*':
+            application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
   /api/v0/roles/{roleId}/statements:
@@ -308,7 +308,7 @@ paths:
         "200":
           description: OK
           content:
-            '*/*':
+            application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
 components:
