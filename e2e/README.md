@@ -4,6 +4,20 @@ This folder owns the black-box Playwright suite for a deployed Taskmigo environm
 
 Tests are organized by product feature under `tests/<feature>/`. Every feature group has a Playwright tag so it can be selected independently. The authentication suite currently uses `@auth`, with the narrower `@login`, `@session`, and `@smoke` tags.
 
+## BDD contract
+
+Business acceptance scenarios are defined under [`docs/bdd/features/`](../docs/bdd/features/). Those scenarios are the repository-local acceptance contract that this E2E suite implements.
+
+When adding or changing a business E2E flow:
+
+1. Locate the corresponding BDD scenario.
+2. If the scenario does not exist, add or update the BDD contract before, or in the same pull request as, the E2E implementation.
+3. Include the scenario's stable `BDD-<DOMAIN>-<NNN>` identifier in the Playwright test title.
+4. Keep E2E assertions consistent with the BDD outcome. E2E tests may add technical setup and diagnostics, but they must not redefine business behavior independently.
+5. Update the BDD scenario and its E2E implementation together when the expected business behavior changes.
+
+Helpers, fixtures, deployment checks, and other test infrastructure are not business scenarios and therefore do not require BDD identifiers.
+
 The current suite verifies the browser authentication path end to end:
 
 1. Open the protected `/account` page without a session.
