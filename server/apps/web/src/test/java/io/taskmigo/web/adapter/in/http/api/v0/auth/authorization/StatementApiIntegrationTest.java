@@ -132,6 +132,26 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     /**
+     * Verifies that duplicate runtime Statement codes remain a stable client failure through the public API.
+     *
+     * Given: a Statement has already been created through the public API with a generated code.
+     * Expect: creating another Statement with the same code returns HTTP 400 with the duplicate-code message.
+     */
+    @Test
+    @DisplayName("rejects duplicate statement codes as a client failure")
+    void shouldReturnBadRequestWhenStatementCodeAlreadyExists() {
+        // Arrange
+        CreateStatementRequest request = this.request("duplicate-" + UUID.randomUUID());
+        this.api().statements().create(request);
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.api().statements().create(request)).isInstanceOfSatisfying(
+            HttpClientErrorException.BadRequest.class,
+            exception -> assertThat(exception.getResponseBodyAsString()).contains("Statement code already exists")
+        );
+    }
+
+    /**
      * Verifies that the Statement collection uses the shared offset pagination contract.
      *
      * Given: two newly created Statements and a request for page 2 with one item per page.

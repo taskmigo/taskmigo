@@ -1,26 +1,24 @@
-package io.taskmigo.identity.group;
+package io.taskmigo.authorization.statement;
 
 import io.taskmigo.foundation.DomainException;
 import io.taskmigo.foundation.DomainFailureType;
 import java.io.Serial;
 
-/// Reports a group-domain failure with a semantic failure category.
-public final class GroupException extends DomainException {
+/// Reports a Statement-domain failure with a semantic failure category.
+public final class StatementException extends DomainException {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
     public enum Type {
-        INVALID_INPUT,
-        NOT_FOUND,
         CONFLICT,
     }
 
-    public GroupException(Type type, String message) {
+    public StatementException(Type type, String message) {
         super(DomainFailureType.valueOf(type.name()), message);
     }
 
-    public GroupException(Type type, String message, Throwable cause) {
+    public StatementException(Type type, String message, Throwable cause) {
         super(DomainFailureType.valueOf(type.name()), message, cause);
     }
 }

@@ -84,6 +84,27 @@ class GroupApiIntegrationTest extends ApiIntegrationTestSupport {
         assertThat(this.effectiveRoles.effectiveRoles(IdentitySubjects.group(created))).isEmpty();
     }
 
+    /**
+     * Verifies that duplicate runtime Group codes are reported as a stable conflict instead of a persistence failure.
+     *
+     * Given: a Group has already been created through the public API with a generated code.
+     * Expect: creating another Group with the same code returns HTTP 409 and a domain conflict message.
+     */
+    @Test
+    @DisplayName("rejects duplicate group codes with a conflict")
+    void shouldReturnConflictWhenGroupCodeAlreadyExists() {
+        // Arrange
+        String code = uniqueGroupCode("Duplicate");
+        CreateGroupRequest request = new CreateGroupRequest(code, null, null, null);
+        this.api().groups().create(request);
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.api().groups().create(request)).isInstanceOfSatisfying(
+            HttpClientErrorException.Conflict.class,
+            exception -> assertThat(exception.getResponseBodyAsString()).contains("Group code already exists")
+        );
+    }
+
     @Test
     @DisplayName("lists groups with their children using offset pagination")
     void shouldListGroupsWithChildrenWhenOffsetPaginationIsRequested() {
