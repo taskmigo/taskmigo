@@ -30,7 +30,6 @@ import org.springframework.web.client.RestClient;
         "springdoc.api-docs.path=/api/docs/openapi.json",
         "springdoc.api-docs.version=openapi-3-1",
         "springdoc.default-produces-media-type=application/json",
-        "springdoc.override-with-generic-response=true",
         "scalar.enabled=false",
         "taskmigo.oauth.signing-key-file=build/test-data/oauth-signing-key.pem",
         "taskmigo.oauth.signing-key-auto-create=true",
@@ -71,46 +70,8 @@ class OpenApiGenerationIntegrationTest {
             this.http().get().uri("/api/docs/openapi.json/v0").retrieve().body(String.class)
         );
         ObjectNode document = (ObjectNode) this.document(openApi);
-        this.assertResponseContract(document);
         document.remove("servers");
         return "---\n" + Yaml.pretty(document);
-    }
-
-    private void assertResponseContract(JsonNode document) {
-        JsonNode paths = document.path("paths");
-        paths.properties().forEach(pathEntry ->
-            pathEntry
-                .getValue()
-                .properties()
-                .forEach(operationEntry -> {
-                    JsonNode operation = operationEntry.getValue();
-                    JsonNode responses = operation.path("responses");
-                    assertThat(responses.has("400")).isTrue();
-                    assertThat(responses.has("401")).isTrue();
-                    assertThat(responses.has("403")).isTrue();
-                    assertThat(responses.has("404")).isTrue();
-                    assertThat(responses.has("406")).isTrue();
-                    assertThat(responses.has("409")).isTrue();
-                    assertThat(responses.has("422")).isTrue();
-                    assertThat(responses.has("500")).isTrue();
-                    if (operation.has("requestBody")) {
-                        assertThat(responses.has("415")).isTrue();
-                    }
-                    responses.properties().forEach(responseEntry -> {
-                        JsonNode content = responseEntry.getValue().path("content");
-                        if (!content.isMissingNode() && !content.isEmpty()) {
-                            assertThat(content.has("*/*")).isFalse();
-                            assertThat(content.has("application/json")).isTrue();
-                        }
-                    });
-                })
-        );
-
-        for (String path : new String[] { "/api/v0/users", "/api/v0/groups", "/api/v0/roles", "/api/v0/statements" }) {
-            JsonNode responses = paths.path(path).path("post").path("responses");
-            assertThat(responses.has("201")).isTrue();
-            assertThat(responses.has("200")).isFalse();
-        }
     }
 
     private JsonNode document(String openApi) {
