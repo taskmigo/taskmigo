@@ -15,14 +15,30 @@ public final class ApiV0Responses {
 
     private ApiV0Responses() {}
 
-    /// Documents responses that every current version 0 operation can return.
+    /// Documents common error responses that every current version 0 operation can return.
     @Documented
     @Target(ElementType.TYPE)
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponses({
         @ApiResponse(
+            responseCode = "400",
+            description = "Bad Request",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(ref = "#/components/schemas/ApiResponseVoidBasicMeta")
+            )
+        ),
+        @ApiResponse(
             responseCode = "401",
             description = "Unauthorized",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(ref = "#/components/schemas/ApiResponseVoidBasicMeta")
+            )
+        ),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Forbidden",
             content = @Content(
                 mediaType = "application/json",
                 schema = @Schema(ref = "#/components/schemas/ApiResponseVoidBasicMeta")
@@ -32,6 +48,14 @@ public final class ApiV0Responses {
         @ApiResponse(
             responseCode = "422",
             description = "Unprocessable Content",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(ref = "#/components/schemas/ApiResponseVoidBasicMeta")
+            )
+        ),
+        @ApiResponse(
+            responseCode = "500",
+            description = "Internal Server Error",
             content = @Content(
                 mediaType = "application/json",
                 schema = @Schema(ref = "#/components/schemas/ApiResponseVoidBasicMeta")
