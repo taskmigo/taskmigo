@@ -55,6 +55,12 @@ class OpenApiConfiguration {
             operation
                 .getResponses()
                 .putIfAbsent("409", new ApiResponse().description("Domain conflict").content(badRequest.getContent()));
+            operation
+                .getResponses()
+                .putIfAbsent(
+                    "422",
+                    new ApiResponse().description("Validation failed").content(badRequest.getContent())
+                );
         }
         operation.getResponses().putIfAbsent("406", new ApiResponse().description("Not Acceptable"));
         if (operation.getRequestBody() != null) {
