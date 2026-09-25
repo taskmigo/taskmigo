@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Objects;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,7 +31,6 @@ import org.springframework.web.client.RestClient;
         "springdoc.api-docs.path=/api/docs/openapi.json",
         "springdoc.api-docs.version=openapi-3-1",
         "springdoc.default-produces-media-type=application/json",
-        "springdoc.writer-with-order-by-keys=true",
         "scalar.enabled=false",
         "taskmigo.oauth.signing-key-file=build/test-data/oauth-signing-key.pem",
         "taskmigo.oauth.signing-key-auto-create=true",
@@ -72,7 +72,20 @@ class OpenApiGenerationIntegrationTest {
         );
         ObjectNode document = (ObjectNode) this.document(openApi);
         document.remove("servers");
+        this.sortResponseCodes(document);
         return "---\n" + Yaml.pretty(document);
+    }
+
+    private void sortResponseCodes(ObjectNode document) {
+        document.path("paths").properties().forEach(path ->
+            path.getValue().properties().forEach(operation -> {
+                if (operation.getValue().path("responses") instanceof ObjectNode responses) {
+                    var sorted = responses.properties().sorted(Map.Entry.comparingByKey()).toList();
+                    responses.removeAll();
+                    sorted.forEach(entry -> responses.set(entry.getKey(), entry.getValue()));
+                }
+            })
+        );
     }
 
     private JsonNode document(String openApi) {
