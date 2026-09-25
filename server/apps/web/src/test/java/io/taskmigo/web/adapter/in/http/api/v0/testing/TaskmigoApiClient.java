@@ -89,6 +89,38 @@ public final class TaskmigoApiClient {
         );
     }
 
+    /// Returns the HTTP status for an authenticated GET request with an explicit accepted media type.
+    ///
+    /// @param path the absolute API path and optional query string
+    /// @param accept the response media type accepted by the caller
+    /// @return the HTTP status code
+    public int getStatus(String path, MediaType accept) {
+        return Objects.requireNonNull(
+            this.client
+                .get()
+                .uri(path)
+                .accept(accept)
+                .exchange((request, response) -> response.getStatusCode().value())
+        );
+    }
+
+    /// Returns the HTTP status for an authenticated POST request with an explicit request media type.
+    ///
+    /// @param path the absolute API path
+    /// @param contentType the media type describing the request body
+    /// @param body the raw request body
+    /// @return the HTTP status code
+    public int postStatus(String path, MediaType contentType, String body) {
+        return Objects.requireNonNull(
+            this.client
+                .post()
+                .uri(path)
+                .contentType(contentType)
+                .body(body)
+                .exchange((request, response) -> response.getStatusCode().value())
+        );
+    }
+
     /// Sends an authenticated POST request with caller-supplied JSON.
     ///
     /// Typed request records intentionally model valid inputs. This helper lets HTTP integration tests exercise
