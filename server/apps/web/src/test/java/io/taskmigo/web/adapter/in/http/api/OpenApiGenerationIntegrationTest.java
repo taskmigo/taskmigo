@@ -85,14 +85,24 @@ class OpenApiGenerationIntegrationTest {
                 .forEach(operationEntry -> {
                     JsonNode operation = operationEntry.getValue();
                     JsonNode responses = operation.path("responses");
+                    assertThat(responses.has("400")).isTrue();
                     assertThat(responses.has("401")).isTrue();
                     assertThat(responses.has("403")).isTrue();
+                    assertThat(responses.has("404")).isTrue();
                     assertThat(responses.has("406")).isTrue();
+                    assertThat(responses.has("409")).isTrue();
+                    assertThat(responses.has("422")).isTrue();
                     assertThat(responses.has("500")).isTrue();
                     if (operation.has("requestBody")) {
                         assertThat(responses.has("415")).isTrue();
-                        assertThat(responses.has("422")).isTrue();
                     }
+                    responses.properties().forEach(responseEntry -> {
+                        JsonNode content = responseEntry.getValue().path("content");
+                        if (!content.isMissingNode() && !content.isEmpty()) {
+                            assertThat(content.has("*/*")).isFalse();
+                            assertThat(content.has("application/json")).isTrue();
+                        }
+                    });
                 })
         );
 
