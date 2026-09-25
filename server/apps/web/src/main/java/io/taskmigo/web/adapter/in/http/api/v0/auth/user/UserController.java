@@ -12,10 +12,10 @@ import io.taskmigo.query.FilteredQuery;
 import io.taskmigo.web.adapter.in.http.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponseFactory;
-import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.Common;
-import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.Conflict;
-import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.NotFound;
-import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.UnsupportedMediaType;
+import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.CommonOpenApiErrorResponses;
+import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.ConflictOpenApiResponse;
+import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.NotFoundOpenApiResponse;
+import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.UnsupportedMediaTypeOpenApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -41,7 +41,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(version = "0", produces = MediaType.APPLICATION_JSON_VALUE)
-@Common
+@CommonOpenApiErrorResponses
 @Tag(name = "User")
 class UserController {
 
@@ -79,8 +79,8 @@ class UserController {
 
     @PatchMapping(value = "/users/{userId}/statements", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Replace a user's direct statements")
-    @NotFound
-    @UnsupportedMediaType
+    @NotFoundOpenApiResponse
+    @UnsupportedMediaTypeOpenApiResponse
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setStatements(
         @PathVariable UUID userId,
@@ -92,8 +92,8 @@ class UserController {
 
     @PostMapping(value = "/users", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Create a new user")
-    @Conflict
-    @UnsupportedMediaType
+    @ConflictOpenApiResponse
+    @UnsupportedMediaTypeOpenApiResponse
     @ResponseStatus(HttpStatus.CREATED)
     ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(@Valid @RequestBody Request request) {
         UUID id = this.registrations.register(
