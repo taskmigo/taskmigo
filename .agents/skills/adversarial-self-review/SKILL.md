@@ -1,6 +1,6 @@
 ---
 name: adversarial-self-review
-description: "Use adversarial self-review to find the strongest solution with the least necessary implementation surface and catch mistakes before finalizing work. Trigger whenever reviewing code or a pull request, reviewing your own implementation or output, comparing non-trivial design or implementation alternatives, or deciding whether a proposed fix is actually the best fit for the stated constraints. Uses bounded proposer/challenger/synthesizer passes, requires evidence for findings, actively searches for counterexamples, false positives, and behavior-equivalent smaller implementations, and reports only the synthesized rationale rather than hidden chain-of-thought."
+description: "Use adversarial self-review to find the strongest solution with the least necessary implementation surface and catch mistakes before finalizing work. Trigger whenever reviewing code or a pull request, reviewing your own implementation or output, comparing non-trivial design or implementation alternatives, or deciding whether a proposed fix is actually the best fit for the stated constraints. Uses bounded proposer/challenger/synthesizer passes, requires semantic-boundary proof before implementation, resets when evidence contradicts a premise, actively searches for counterexamples, false positives, and behavior-equivalent smaller implementations, and reports only the synthesized rationale rather than hidden chain-of-thought."
 ---
 
 # Adversarial Self-Review
@@ -33,6 +33,7 @@ Do not force a debate around trivial mechanical work that has no meaningful alte
 7. **Optimize for the actual objective.** "Best" means best under the stated constraints, not universally best.
 8. **Minimize implementation surface, not readability.** After correctness is established, challenge whether the same behavior can be delivered with less new code, fewer branches, fewer abstractions, fewer changed files, or more reuse of existing primitives. Never trade away clarity, tests, validation, or required behavior merely to reduce line count.
 9. **Keep the loop bounded.** More debate is not automatically better.
+10. **Prove the runtime boundary before editing.** A framework capability or similarly named concept is not proof that the application boundary accepts it. Verify the exact artifact, owner, transport, scope, and consumer before mutating code.
 
 ## Debate roles
 
@@ -78,7 +79,44 @@ Write down internally:
 
 For a code review, also identify the behavior the code is trying to preserve or introduce and the invariants that should hold.
 
-### 3. Produce the first candidate
+### 3. Prove semantic boundaries before implementation
+
+Before changing code for a non-trivial design that crosses components, protocols, processes, framework layers, or runtime ownership boundaries, build a compact evidence map for the path being changed.
+
+For each relevant hop, establish:
+
+- **Producer:** which component creates the value or state.
+- **Artifact:** its exact representation, not a generic label such as "session", "auth", "context", or "request".
+- **Transport:** how it moves to the next component.
+- **Scope and lifetime:** origin/domain/path/process/request/transaction/worker scope where relevant.
+- **Consumer:** which component actually interprets it.
+- **Accepted mechanism:** what that consumer is configured to accept.
+- **Transformation:** any proxy, adapter, decoder, exchange, serialization, or credential conversion between producer and consumer.
+
+Verify application facts from source, configuration, executable behavior, or contracts. Verify framework behavior from the repository's pinned version or authoritative documentation when that behavior is material.
+
+Do not substitute a framework capability for application proof. Examples:
+
+- "Playwright shares cookies between a BrowserContext and its request client" does not prove the target API authenticates the cookie that happens to be present.
+- "The browser is logged in" does not prove a different server process or security filter accepts the browser's session state.
+- "The same host is used" does not prove two layers share the same session implementation.
+- "The parser returns a document" does not prove the returned version/type matches the contract the application generated.
+
+For authentication and session work, explicitly distinguish at least the relevant items among:
+
+- browser/BFF session cookies;
+- server HTTP-session cookies;
+- OAuth/OIDC authorization transactions;
+- access tokens;
+- refresh tokens;
+- ID tokens;
+- application session handles.
+
+Never use the word "session" alone as evidence that two components share authentication state.
+
+Resolve every **decision-blocking unknown** before repository mutation. If a decisive boundary cannot be proven, stop at a decision record describing the missing evidence rather than implementing a speculative bridge, proxy, adapter, or authentication flow.
+
+### 4. Produce the first candidate
 
 Create the best initial answer from the evidence.
 
@@ -88,7 +126,7 @@ For review work, this is the initial set of findings and the current assessment 
 
 Do not finalize it yet.
 
-### 4. Run the adversarial challenge
+### 5. Run the adversarial challenge
 
 Challenge the candidate independently.
 
@@ -112,7 +150,7 @@ Ask the relevant questions rather than mechanically applying every category:
 
 For every potential review finding, attempt to construct a plausible disproof before reporting it.
 
-### 5. Generate credible alternatives
+### 6. Generate credible alternatives
 
 For a non-trivial decision, identify at least one strong alternative.
 
@@ -128,7 +166,7 @@ Other credible alternatives include moving validation or ownership to a better b
 
 Do not add alternatives solely to satisfy this step. They must be technically credible. Do not count compressed syntax, removed tests, weakened validation, or hidden complexity as a smaller implementation.
 
-### 6. Compare using explicit criteria
+### 7. Compare using explicit criteria
 
 Compare the candidate and credible alternatives against the decision criteria that actually matter.
 
@@ -151,7 +189,7 @@ Avoid fake precision. Numerical scores are unnecessary unless the problem genuin
 
 If one option is strictly worse on the material criteria, discard it. If the trade-off depends on an unresolved product or architectural preference, state that uncertainty instead of manufacturing certainty.
 
-### 7. Synthesize the final direction
+### 8. Synthesize the final direction
 
 The Synthesizer must explicitly decide internally whether to:
 
@@ -164,7 +202,7 @@ The final recommendation should be traceable to decisive evidence and constraint
 
 For code review findings, report only findings that survive the challenge pass.
 
-### 8. Verify the synthesized result
+### 9. Verify the synthesized result
 
 Before considering the review or implementation complete, challenge the synthesized result one more time with emphasis on regression risk:
 
@@ -179,6 +217,28 @@ Before considering the review or implementation complete, challenge the synthesi
 - Re-run the minimization challenge against the final diff: every new helper, abstraction, branch, layer, and configuration point should justify why a smaller behavior-equivalent implementation is worse.
 
 If this second pass discovers a material issue or a materially smaller equally robust implementation, revise once and repeat the verification.
+
+## Contradiction reset and implementation-churn guard
+
+Treat new evidence that invalidates a material premise differently from an ordinary review finding.
+
+When source code, runtime evidence, authoritative documentation, or a user correction contradicts a premise that the current design depends on:
+
+1. **Stop editing immediately.** Do not patch around the contradiction.
+2. **Invalidate downstream conclusions.** Any design choice derived from the false premise must be reconsidered, even if parts of the implementation still compile.
+3. **Return to ground truth and semantic-boundary proof.** Re-run Workflow steps 1–3 for the affected path.
+4. **Remove superseded scaffolding before adding the replacement design.** Do not layer token flow, cookie flow, proxy flow, adapters, or wrappers on top of one another merely because earlier code already exists.
+5. **Select one coherent design before resuming repository mutation.** State the decisive evidence internally and identify what was rejected.
+6. **Preflight the complete change before pushing.** Re-read changed files, check references, and apply deterministic formatter/compiler feedback when available. Do not intentionally push transient compile-invalid or semantically contradictory states unless the user explicitly requested an exploratory prototype.
+
+If two material design pivots occur in the same task, perform a mandatory full reset before a third attempt:
+
+- reconstruct the end-to-end evidence map from source;
+- list the premises that failed;
+- identify the smallest remaining solution surface;
+- verify that the new design does not depend on either rejected premise.
+
+A user correction is evidence, not merely a requested syntax change. Revisit the assumption that produced the rejected implementation instead of only changing the visible code shape.
 
 ## Loop limit
 
@@ -232,6 +292,9 @@ Re-evaluate from the perspective of a new reviewer:
 7. Are comments, documentation, generated files, and PR metadata still accurate?
 8. Can the same behavior, invariants, and test coverage be preserved with less code or a smaller diff after seeing the complete implementation?
 9. Does every new helper, abstraction, branch, layer, or configuration point earn its complexity compared with reusing or deleting code?
+10. Can every cross-component assumption in the final design be traced to direct evidence about the exact artifact and consumer, rather than a framework feature or a similarly named concept?
+11. Did any user correction or new evidence invalidate an earlier premise? If so, was all dependent implementation reconsidered rather than incrementally patched?
+12. Is the branch free of superseded scaffolding from rejected designs and transient states that no longer serve the selected direction?
 
 Apply the same evidence standard to your own implementation as to someone else's.
 
