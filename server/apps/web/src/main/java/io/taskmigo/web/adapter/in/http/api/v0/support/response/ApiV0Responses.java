@@ -62,14 +62,14 @@ public final class ApiV0Responses {
             )
         ),
     })
-    public @interface CommonOpenApiErrorResponses {}
+    public @interface OpenApiCommonErrors {}
 
     /// Documents rejection of a request body whose media type is not JSON-compatible.
     @Documented
     @Target(ElementType.METHOD)
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponse(responseCode = "415", description = "Unsupported Media Type", content = @Content)
-    public @interface UnsupportedMediaTypeOpenApiResponse {}
+    public @interface OpenApiUnsupportedMediaType {}
 
     /// Documents an operation-specific missing-resource response.
     @Documented
@@ -83,7 +83,7 @@ public final class ApiV0Responses {
             schema = @Schema(ref = "#/components/schemas/ApiResponseVoidBasicMeta")
         )
     )
-    public @interface NotFoundOpenApiResponse {}
+    public @interface OpenApiNotFound {}
 
     /// Documents an operation-specific resource-state conflict.
     @Documented
@@ -97,5 +97,5 @@ public final class ApiV0Responses {
             schema = @Schema(ref = "#/components/schemas/ApiResponseVoidBasicMeta")
         )
     )
-    public @interface ConflictOpenApiResponse {}
+    public @interface OpenApiConflict {}
 }
