@@ -1,6 +1,6 @@
 ---
 name: github-pr-ci-workflow
-description: "Drive GitHub pull requests and CI to completion efficiently. Use whenever an agent creates or updates a PR, checks GitHub Actions/pipeline status, investigates failed checks, pushes CI fixes, or is asked to continue until CI is healthy. Enforces SHA-anchored, fail-fast CI triage; hard anti-stall budgets; bounded GitHub connector batches; batched fixes; non-blocking status checks; and preservation of machine-actionable PR metadata during body rewrites. Avoids stale workflow runs, repeated polling, oversized tool batches, repeated full-PR/log fetches, busy waiting, unnecessary reruns, retrying unavailable local Git/network paths, and accidentally dropping issue-closing directives."
+description: "Drive GitHub bug fixes, pull requests, and CI to completion efficiently. Use whenever an agent fixes a reported defect, creates or updates a PR, checks GitHub Actions/pipeline status, investigates failed checks, pushes CI fixes, or is asked to continue until CI is healthy. Enforces latest-base bug reproduction before production fixes, SHA-anchored fail-fast CI triage, hard anti-stall budgets, bounded GitHub connector batches, batched fixes, non-blocking status checks, and preservation of machine-actionable PR metadata during body rewrites. Avoids redundant fixes for already-resolved bugs, stale workflow runs, repeated polling, oversized tool batches, repeated full-PR/log fetches, busy waiting, unnecessary reruns, retrying unavailable local Git/network paths, and accidentally dropping issue-closing directives."
 ---
 
 # GitHub PR and CI Workflow
@@ -8,6 +8,33 @@ description: "Drive GitHub pull requests and CI to completion efficiently. Use w
 Use this workflow for PR implementation, CI triage, and final verification.
 
 The goal is not to "watch CI." The goal is to extract the earliest actionable failure, fix all currently known failures together, and minimize expensive or redundant GitHub operations.
+
+## Bug-fix reproduction gate
+
+Before changing production code for a reported bug, establish whether the defect still exists on the latest target base branch.
+
+1. **Re-anchor to the latest base revision.**
+   - Read the current target branch (normally `next`) and record its exact SHA.
+   - Treat the issue's original reviewed/reported SHA as historical evidence only.
+   - Do not start from an old feature branch or stale issue snapshot when deciding whether a fix is still required.
+
+2. **Reproduce before fixing.**
+   - Reproduce the reported behavior against the exact latest-base SHA before making production changes.
+   - Prefer an automated regression test, existing executable test, request, benchmark, or deterministic log/trace that exercises the real failure boundary.
+   - When the issue already describes a measurable invariant (for example query count, status code, race behavior, or persistence state), encode that invariant directly in the reproduction.
+   - Reading suspicious code is useful evidence but is not, by itself, a completed reproduction when the behavior can be executed.
+   - When the reproduction test is a valid long-term regression test, keep it in the final fix rather than treating it as disposable scaffolding.
+
+3. **Branch based on the reproduction result.**
+   - **If the bug reproduces:** capture the failing evidence first, then investigate root cause and modify production code. The regression test should fail before the fix and pass after it.
+   - **If the bug does not reproduce:** do not add a speculative or redundant production fix. Compare the issue's reviewed/reported SHA with the latest base, inspect the commits and pull requests that changed the affected behavior, and identify the PR that resolved the defect when evidence supports one.
+   - If a prior PR already fixed the bug, update or close the issue with the reproducer result and the fixing PR reference instead of opening another implementation PR.
+   - If the bug no longer reproduces but the fixing PR cannot be identified confidently, report that uncertainty explicitly; do not invent attribution.
+
+4. **Preserve evidence in the bug-fix record.**
+   - State the exact latest-base SHA used for reproduction in the issue/PR RCA when it materially helps reviewers.
+   - For already-fixed bugs, link the fixing PR/commit and explain which changed invariant makes the old reproducer pass.
+   - For still-reproducible bugs, keep the pre-fix failure evidence distinct from post-fix verification so a green final pipeline is not mistaken for proof that the original defect was reproduced.
 
 ## Core rules
 
