@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -33,7 +34,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping(version = "0")
+@RequestMapping(version = "0", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "User")
 class UserController {
 
@@ -68,7 +69,7 @@ class UserController {
         );
     }
 
-    @PatchMapping("/users/{userId}/statements")
+    @PatchMapping(value = "/users/{userId}/statements", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Replace a user's direct statements")
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setStatements(
         @PathVariable UUID userId,
@@ -78,7 +79,7 @@ class UserController {
         return this.responses.ok("resource.user.statements.updated", "User statements updated");
     }
 
-    @PostMapping("/users")
+    @PostMapping(value = "/users", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Create a new user")
     ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(@Valid @RequestBody Request request) {
         UUID id = this.registrations.register(

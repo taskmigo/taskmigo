@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -33,7 +34,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping(version = "0")
+@RequestMapping(version = "0", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Role")
 class RoleController {
 
@@ -47,7 +48,7 @@ class RoleController {
         this.responses = responses;
     }
 
-    @PatchMapping("/roles/{roleId}/statements")
+    @PatchMapping(value = "/roles/{roleId}/statements", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Replace a role's direct statements")
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setStatements(
         @PathVariable UUID roleId,
@@ -81,7 +82,7 @@ class RoleController {
         );
     }
 
-    @PostMapping("/roles")
+    @PostMapping(value = "/roles", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Create a role")
     ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> createRole(
         @Valid @RequestBody Request request
