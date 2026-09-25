@@ -46,12 +46,58 @@ paths:
         schema:
           $ref: "#/components/schemas/ObjectAuthorizationPredicateUserInfo"
       responses:
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - io.taskmigo.query.FilterByException
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - org.springframework.security.access.AccessDeniedException
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - java.lang.Exception
         "200":
           description: OK
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListUserInfoOffsetMeta"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Domain resource not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "409":
+          description: Domain conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
     post:
       tags:
       - User
@@ -64,12 +110,60 @@ paths:
               $ref: "#/components/schemas/CreateUserRequest"
         required: true
       responses:
-        "200":
-          description: OK
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - io.taskmigo.query.FilterByException
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - org.springframework.security.access.AccessDeniedException
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - java.lang.Exception
+        "201":
+          description: Created
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Domain resource not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "409":
+          description: Domain conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
   /api/v0/statements:
     get:
       tags:
@@ -109,12 +203,58 @@ paths:
         schema:
           $ref: "#/components/schemas/ObjectAuthorizationPredicateStatementInfo"
       responses:
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - io.taskmigo.query.FilterByException
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - org.springframework.security.access.AccessDeniedException
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - java.lang.Exception
         "200":
           description: OK
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListStatementInfoOffsetMeta"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Domain resource not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "409":
+          description: Domain conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
     post:
       tags:
       - Statement
@@ -127,12 +267,60 @@ paths:
               $ref: "#/components/schemas/CreateStatementRequest"
         required: true
       responses:
-        "200":
-          description: OK
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - io.taskmigo.query.FilterByException
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - org.springframework.security.access.AccessDeniedException
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - java.lang.Exception
+        "201":
+          description: Created
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Domain resource not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "409":
+          description: Domain conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
   /api/v0/roles:
     get:
       tags:
@@ -172,12 +360,58 @@ paths:
         schema:
           $ref: "#/components/schemas/ObjectAuthorizationPredicateRoleInfo"
       responses:
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - io.taskmigo.query.FilterByException
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - org.springframework.security.access.AccessDeniedException
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - java.lang.Exception
         "200":
           description: OK
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListRoleInfoOffsetMeta"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Domain resource not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "409":
+          description: Domain conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
     post:
       tags:
       - Role
@@ -190,12 +424,60 @@ paths:
               $ref: "#/components/schemas/CreateRoleRequest"
         required: true
       responses:
-        "200":
-          description: OK
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - io.taskmigo.query.FilterByException
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - org.springframework.security.access.AccessDeniedException
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - java.lang.Exception
+        "201":
+          description: Created
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Domain resource not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "409":
+          description: Domain conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
   /api/v0/groups:
     get:
       tags:
@@ -235,12 +517,58 @@ paths:
         schema:
           $ref: "#/components/schemas/ObjectAuthorizationPredicateGroupInfo"
       responses:
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - io.taskmigo.query.FilterByException
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - org.springframework.security.access.AccessDeniedException
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - java.lang.Exception
         "200":
           description: OK
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseListGroupInfoOffsetMeta"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Domain resource not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "409":
+          description: Domain conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
     post:
       tags:
       - Group
@@ -253,12 +581,60 @@ paths:
               $ref: "#/components/schemas/CreateGroupRequest"
         required: true
       responses:
-        "200":
-          description: OK
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - io.taskmigo.query.FilterByException
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - org.springframework.security.access.AccessDeniedException
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - java.lang.Exception
+        "201":
+          description: Created
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Domain resource not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "409":
+          description: Domain conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
   /api/v0/users/{userId}/statements:
     patch:
       tags:
@@ -279,12 +655,60 @@ paths:
               $ref: "#/components/schemas/ReplaceUserStatementsRequest"
         required: true
       responses:
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - io.taskmigo.query.FilterByException
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - org.springframework.security.access.AccessDeniedException
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - java.lang.Exception
         "200":
           description: OK
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Domain resource not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "409":
+          description: Domain conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
   /api/v0/roles/{roleId}/statements:
     patch:
       tags:
@@ -305,14 +729,148 @@ paths:
               $ref: "#/components/schemas/ReplaceRoleStatementsRequest"
         required: true
       responses:
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - io.taskmigo.query.FilterByException
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - org.springframework.security.access.AccessDeniedException
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+          x-exception-class:
+          - java.lang.Exception
         "200":
           description: OK
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+        "404":
+          description: Domain resource not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "409":
+          description: Domain conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "422":
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
 components:
   schemas:
+    ApiResponseVoidBasicMeta:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the request completed successfully
+        statusCode:
+          type: integer
+          format: int32
+          description: HTTP status code of the response
+        message:
+          $ref: "#/components/schemas/Message"
+          description: Machine-readable and human-readable outcome message
+        error:
+          type: "null"
+          $ref: "#/components/schemas/Error"
+          description: Error details when the request fails
+        meta:
+          $ref: "#/components/schemas/BasicMeta"
+          description: Execution and pagination metadata
+        data:
+          type: "null"
+          description: Response payload
+      required:
+      - data
+      - error
+      - message
+      - meta
+      - statusCode
+      - success
+    BasicMeta:
+      type: object
+      description: Response metadata for an operation that does not paginate its data
+      properties:
+        execution:
+          $ref: "#/components/schemas/Execution"
+          description: Timing information for processing the request
+      required:
+      - execution
+    Error:
+      type: object
+      properties:
+        code:
+          type:
+          - string
+          - "null"
+          description: Stable code identifying the error
+        message:
+          type:
+          - string
+          - "null"
+          description: Human-readable description of the error
+        formErrors:
+          type:
+          - object
+          - "null"
+          additionalProperties:
+            type: string
+          description: Validation errors keyed by request field name
+    Execution:
+      type: object
+      properties:
+        startedAt:
+          type: string
+          format: date-time
+          description: Time at which server processing began
+        duration:
+          type: integer
+          format: int64
+          description: Server processing time in milliseconds
+          minimum: 0
+      required:
+      - duration
+      - startedAt
+    Message:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Stable code for the response outcome
+        text:
+          type: string
+          description: Human-readable description of the response outcome
+      required:
+      - code
+      - text
     CreateUserRequest:
       type: object
       properties:
@@ -383,62 +941,6 @@ components:
       - meta
       - statusCode
       - success
-    BasicMeta:
-      type: object
-      description: Response metadata for an operation that does not paginate its data
-      properties:
-        execution:
-          $ref: "#/components/schemas/Execution"
-          description: Timing information for processing the request
-      required:
-      - execution
-    Error:
-      type: object
-      properties:
-        code:
-          type:
-          - string
-          - "null"
-          description: Stable code identifying the error
-        message:
-          type:
-          - string
-          - "null"
-          description: Human-readable description of the error
-        formErrors:
-          type:
-          - object
-          - "null"
-          additionalProperties:
-            type: string
-          description: Validation errors keyed by request field name
-    Execution:
-      type: object
-      properties:
-        startedAt:
-          type: string
-          format: date-time
-          description: Time at which server processing began
-        duration:
-          type: integer
-          format: int64
-          description: Server processing time in milliseconds
-          minimum: 0
-      required:
-      - duration
-      - startedAt
-    Message:
-      type: object
-      properties:
-        code:
-          type: string
-          description: Stable code for the response outcome
-        text:
-          type: string
-          description: Human-readable description of the response outcome
-      required:
-      - code
-      - text
     ApiInfo:
       type: object
       properties:
@@ -535,36 +1037,6 @@ components:
             type: string
             format: uuid
           uniqueItems: true
-    ApiResponseVoidBasicMeta:
-      type: object
-      properties:
-        success:
-          type: boolean
-          description: Whether the request completed successfully
-        statusCode:
-          type: integer
-          format: int32
-          description: HTTP status code of the response
-        message:
-          $ref: "#/components/schemas/Message"
-          description: Machine-readable and human-readable outcome message
-        error:
-          type: "null"
-          $ref: "#/components/schemas/Error"
-          description: Error details when the request fails
-        meta:
-          $ref: "#/components/schemas/BasicMeta"
-          description: Execution and pagination metadata
-        data:
-          type: "null"
-          description: Response payload
-      required:
-      - data
-      - error
-      - message
-      - meta
-      - statusCode
-      - success
     ReplaceRoleStatementsRequest:
       type: object
       properties:
