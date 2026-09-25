@@ -13,6 +13,7 @@ import io.taskmigo.query.FilteredQuery;
 import io.taskmigo.web.adapter.in.http.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponseFactory;
+import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -37,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(version = "0", produces = MediaType.APPLICATION_JSON_VALUE)
+@ApiV0Responses.Common
 @Tag(name = "Role")
 class RoleController {
 
@@ -52,6 +54,7 @@ class RoleController {
 
     @PatchMapping(value = "/roles/{roleId}/statements", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Replace a role's direct statements")
+    @ApiV0Responses.RequestBody
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setStatements(
         @PathVariable UUID roleId,
         @Valid @RequestBody StatementAssignmentRequest request
@@ -86,6 +89,7 @@ class RoleController {
 
     @PostMapping(value = "/roles", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Create a role")
+    @ApiV0Responses.RequestBody
     @ResponseStatus(HttpStatus.CREATED)
     ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> createRole(
         @Valid @RequestBody Request request

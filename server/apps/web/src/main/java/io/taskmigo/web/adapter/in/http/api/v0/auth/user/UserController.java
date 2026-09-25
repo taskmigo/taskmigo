@@ -12,6 +12,7 @@ import io.taskmigo.query.FilteredQuery;
 import io.taskmigo.web.adapter.in.http.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponseFactory;
+import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -37,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(version = "0", produces = MediaType.APPLICATION_JSON_VALUE)
+@ApiV0Responses.Common
 @Tag(name = "User")
 class UserController {
 
@@ -73,6 +75,8 @@ class UserController {
 
     @PatchMapping(value = "/users/{userId}/statements", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Replace a user's direct statements")
+    @ApiV0Responses.NotFound
+    @ApiV0Responses.RequestBody
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setStatements(
         @PathVariable UUID userId,
         @Valid @RequestBody StatementAssignmentRequest request
@@ -83,6 +87,8 @@ class UserController {
 
     @PostMapping(value = "/users", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Create a new user")
+    @ApiV0Responses.Conflict
+    @ApiV0Responses.RequestBody
     @ResponseStatus(HttpStatus.CREATED)
     ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(@Valid @RequestBody Request request) {
         UUID id = this.registrations.register(

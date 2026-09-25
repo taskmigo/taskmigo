@@ -12,6 +12,7 @@ import io.taskmigo.query.FilteredQuery;
 import io.taskmigo.web.adapter.in.http.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponseFactory;
+import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -34,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(version = "0", produces = MediaType.APPLICATION_JSON_VALUE)
+@ApiV0Responses.Common
 @Tag(name = "Group")
 class GroupController {
 
@@ -68,6 +70,7 @@ class GroupController {
 
     @PostMapping(value = "/groups", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Create a group")
+    @ApiV0Responses.RequestBody
     @ResponseStatus(HttpStatus.CREATED)
     ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(@Valid @RequestBody Request request) {
         UUID id = this.groups.create(
