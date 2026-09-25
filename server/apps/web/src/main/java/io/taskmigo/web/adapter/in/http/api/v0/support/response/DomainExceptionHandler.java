@@ -1,7 +1,7 @@
 package io.taskmigo.web.adapter.in.http.api.v0.support.response;
 
-import io.taskmigo.foundation.DomainException;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.taskmigo.foundation.DomainException;
 import io.taskmigo.foundation.DomainFailureType;
 import org.jspecify.annotations.Nullable;
 import org.springframework.core.Ordered;
