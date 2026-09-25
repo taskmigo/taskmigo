@@ -30,6 +30,7 @@ import org.springframework.web.client.RestClient;
         "springdoc.api-docs.path=/api/docs/openapi.json",
         "springdoc.api-docs.version=openapi-3-1",
         "springdoc.default-produces-media-type=application/json",
+        "springdoc.writer-with-order-by-keys=true",
         "scalar.enabled=false",
         "taskmigo.oauth.signing-key-file=build/test-data/oauth-signing-key.pem",
         "taskmigo.oauth.signing-key-auto-create=true",
