@@ -46,8 +46,20 @@ paths:
         schema:
           $ref: "#/components/schemas/ObjectAuthorizationPredicateUserInfo"
       responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListUserInfoOffsetMeta"
         "400":
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -58,18 +70,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "500":
           description: Internal Server Error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseListUserInfoOffsetMeta"
     post:
       tags:
       - User
@@ -82,8 +96,20 @@ paths:
               $ref: "#/components/schemas/CreateUserRequest"
         required: true
       responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
         "400":
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -94,18 +120,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "415":
+          description: Unsupported Media Type
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "500":
           description: Internal Server Error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
-        "201":
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
   /api/v0/statements:
     get:
       tags:
@@ -145,8 +181,20 @@ paths:
         schema:
           $ref: "#/components/schemas/ObjectAuthorizationPredicateStatementInfo"
       responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListStatementInfoOffsetMeta"
         "400":
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -157,18 +205,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "500":
           description: Internal Server Error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseListStatementInfoOffsetMeta"
     post:
       tags:
       - Statement
@@ -181,8 +231,20 @@ paths:
               $ref: "#/components/schemas/CreateStatementRequest"
         required: true
       responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
         "400":
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -193,18 +255,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "500":
           description: Internal Server Error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
-        "201":
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
   /api/v0/roles:
     get:
       tags:
@@ -244,8 +310,20 @@ paths:
         schema:
           $ref: "#/components/schemas/ObjectAuthorizationPredicateRoleInfo"
       responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListRoleInfoOffsetMeta"
         "400":
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -256,18 +334,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "500":
           description: Internal Server Error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseListRoleInfoOffsetMeta"
     post:
       tags:
       - Role
@@ -280,8 +360,20 @@ paths:
               $ref: "#/components/schemas/CreateRoleRequest"
         required: true
       responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
         "400":
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -292,18 +384,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "500":
           description: Internal Server Error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
-        "201":
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
   /api/v0/groups:
     get:
       tags:
@@ -343,8 +439,20 @@ paths:
         schema:
           $ref: "#/components/schemas/ObjectAuthorizationPredicateGroupInfo"
       responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListGroupInfoOffsetMeta"
         "400":
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -355,18 +463,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "500":
           description: Internal Server Error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseListGroupInfoOffsetMeta"
     post:
       tags:
       - Group
@@ -379,8 +489,20 @@ paths:
               $ref: "#/components/schemas/CreateGroupRequest"
         required: true
       responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
         "400":
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -391,18 +513,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "500":
           description: Internal Server Error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
-        "201":
-          description: Created
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
   /api/v0/users/{userId}/statements:
     patch:
       tags:
@@ -423,8 +549,20 @@ paths:
               $ref: "#/components/schemas/ReplaceUserStatementsRequest"
         required: true
       responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "400":
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -435,14 +573,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
-        "500":
-          description: Internal Server Error
+        "404":
+          description: Not Found
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
-        "200":
-          description: OK
+        "406":
+          description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
           content:
             application/json:
               schema:
@@ -467,8 +615,20 @@ paths:
               $ref: "#/components/schemas/ReplaceRoleStatementsRequest"
         required: true
       responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "400":
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -479,14 +639,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
-        "500":
-          description: Internal Server Error
+        "406":
+          description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
+        "422":
+          description: Unprocessable Content
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
-        "200":
-          description: OK
+        "500":
+          description: Internal Server Error
           content:
             application/json:
               schema:

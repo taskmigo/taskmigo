@@ -12,6 +12,8 @@ import io.taskmigo.query.FilteredQuery;
 import io.taskmigo.web.adapter.in.http.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponseFactory;
+import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.OpenApiCommonErrors;
+import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.OpenApiUnsupportedMediaType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -34,6 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(version = "0", produces = MediaType.APPLICATION_JSON_VALUE)
+@OpenApiCommonErrors
 @Tag(name = "Group")
 class GroupController {
 
@@ -47,6 +50,7 @@ class GroupController {
 
     @GetMapping("/groups")
     @Operation(summary = "List groups")
+    @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         FilteredQuery<GroupInfo> filter,
@@ -68,6 +72,7 @@ class GroupController {
 
     @PostMapping(value = "/groups", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Create a group")
+    @OpenApiUnsupportedMediaType
     @ResponseStatus(HttpStatus.CREATED)
     ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(@Valid @RequestBody Request request) {
         UUID id = this.groups.create(

@@ -12,6 +12,10 @@ import io.taskmigo.query.FilteredQuery;
 import io.taskmigo.web.adapter.in.http.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponseFactory;
+import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.OpenApiCommonErrors;
+import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.OpenApiConflict;
+import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.OpenApiNotFound;
+import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.OpenApiUnsupportedMediaType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -37,6 +41,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping(version = "0", produces = MediaType.APPLICATION_JSON_VALUE)
+@OpenApiCommonErrors
 @Tag(name = "User")
 class UserController {
 
@@ -52,6 +57,7 @@ class UserController {
 
     @GetMapping("/users")
     @Operation(summary = "List users")
+    @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         FilteredQuery<UserInfo> filter,
@@ -73,6 +79,9 @@ class UserController {
 
     @PatchMapping(value = "/users/{userId}/statements", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Replace a user's direct statements")
+    @OpenApiNotFound
+    @OpenApiUnsupportedMediaType
+    @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setStatements(
         @PathVariable UUID userId,
         @Valid @RequestBody StatementAssignmentRequest request
@@ -83,6 +92,8 @@ class UserController {
 
     @PostMapping(value = "/users", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Create a new user")
+    @OpenApiConflict
+    @OpenApiUnsupportedMediaType
     @ResponseStatus(HttpStatus.CREATED)
     ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(@Valid @RequestBody Request request) {
         UUID id = this.registrations.register(
