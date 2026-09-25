@@ -64,6 +64,27 @@ class RoleApiIntegrationTest extends ApiIntegrationTestSupport {
         assertThat(this.access.descendantRoles(created)).isEmpty();
     }
 
+    /**
+     * Verifies that duplicate runtime Role codes are reported as a stable conflict instead of a persistence failure.
+     *
+     * Given: a Role has already been created through the public API with a generated code.
+     * Expect: creating another Role with the same code returns HTTP 409 and a domain conflict message.
+     */
+    @Test
+    @DisplayName("rejects duplicate role codes with a conflict")
+    void shouldReturnConflictWhenRoleCodeAlreadyExists() {
+        // Arrange
+        String code = uniqueRoleName("DuplicateRole");
+        CreateRoleRequest request = new CreateRoleRequest(code, null, null);
+        this.api().roles().create(request);
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.api().roles().create(request)).isInstanceOfSatisfying(
+            HttpClientErrorException.Conflict.class,
+            exception -> assertThat(exception.getResponseBodyAsString()).contains("Role code already exists")
+        );
+    }
+
     @Test
     @DisplayName("rejects a role with an unknown child without persisting it")
     void shouldRollBackRoleCreationWhenChildRoleIsUnknown() {

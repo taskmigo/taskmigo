@@ -12,9 +12,14 @@ public final class RoleException extends DomainException {
 
     public enum Type {
         INVALID_INPUT,
+        CONFLICT,
     }
 
     public RoleException(Type type, String message) {
         super(DomainFailureType.valueOf(type.name()), message);
+    }
+
+    public RoleException(Type type, String message, Throwable cause) {
+        super(DomainFailureType.valueOf(type.name()), message, cause);
     }
 }

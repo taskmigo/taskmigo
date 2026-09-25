@@ -257,6 +257,12 @@ paths:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "406":
           description: Not Acceptable
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "415":
           description: Unsupported Media Type
         "422":
@@ -386,6 +392,12 @@ paths:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "406":
           description: Not Acceptable
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "415":
           description: Unsupported Media Type
         "422":
@@ -515,6 +527,12 @@ paths:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "406":
           description: Not Acceptable
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "415":
           description: Unsupported Media Type
         "422":

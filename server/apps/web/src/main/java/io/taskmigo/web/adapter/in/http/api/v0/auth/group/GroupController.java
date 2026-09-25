@@ -13,6 +13,7 @@ import io.taskmigo.web.adapter.in.http.api.v0.support.pagination.OffsetPageReque
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponseFactory;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.OpenApiCommonErrors;
+import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.OpenApiConflict;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.OpenApiUnsupportedMediaType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -72,6 +73,7 @@ class GroupController {
 
     @PostMapping(value = "/groups", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Create a group")
+    @OpenApiConflict
     @OpenApiUnsupportedMediaType
     @ResponseStatus(HttpStatus.CREATED)
     ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(@Valid @RequestBody Request request) {

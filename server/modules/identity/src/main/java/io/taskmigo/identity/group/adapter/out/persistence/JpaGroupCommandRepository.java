@@ -1,9 +1,11 @@
 package io.taskmigo.identity.group.adapter.out.persistence;
 
+import io.taskmigo.identity.group.GroupException;
 import io.taskmigo.identity.group.application.port.out.GroupCommandRepository;
 import io.taskmigo.identity.group.domain.Group;
 import io.taskmigo.identity.group.domain.GroupCode;
 import java.util.Optional;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
 /// Adapts canonical Group aggregate persistence to JPA without owning hierarchy or membership state.
@@ -25,7 +27,11 @@ public class JpaGroupCommandRepository implements GroupCommandRepository {
     public void save(Group group) {
         GroupEntity existing = this.groups.findById(group.id()).orElse(null);
         if (existing == null) {
-            this.groups.saveAndFlush(GroupEntity.from(group));
+            try {
+                this.groups.saveAndFlush(GroupEntity.from(group));
+            } catch (DataIntegrityViolationException exception) {
+                throw new GroupException(GroupException.Type.CONFLICT, "Group code already exists", exception);
+            }
             return;
         }
         existing.updateProfile(group.profile().displayName(), group.profile().description());

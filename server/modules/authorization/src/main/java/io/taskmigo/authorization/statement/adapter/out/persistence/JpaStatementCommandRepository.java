@@ -1,9 +1,11 @@
 package io.taskmigo.authorization.statement.adapter.out.persistence;
 
+import io.taskmigo.authorization.statement.StatementException;
 import io.taskmigo.authorization.statement.application.port.out.StatementCommandRepository;
 import io.taskmigo.authorization.statement.domain.Statement;
 import io.taskmigo.authorization.statement.domain.StatementCode;
 import java.util.Optional;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
 /// Adapts canonical Statement aggregate persistence to JPA without exposing revision metadata to the domain.
@@ -25,7 +27,15 @@ public class JpaStatementCommandRepository implements StatementCommandRepository
     public void save(Statement statement) {
         StatementEntity existing = this.statements.findById(statement.id()).orElse(null);
         if (existing == null) {
-            this.statements.saveAndFlush(StatementEntity.from(statement));
+            try {
+                this.statements.saveAndFlush(StatementEntity.from(statement));
+            } catch (DataIntegrityViolationException exception) {
+                throw new StatementException(
+                    StatementException.Type.CONFLICT,
+                    "Statement code already exists",
+                    exception
+                );
+            }
             return;
         }
         existing.update(statement);

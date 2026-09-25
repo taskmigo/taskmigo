@@ -15,6 +15,7 @@ import io.taskmigo.web.adapter.in.http.api.v0.support.pagination.OffsetPageReque
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponseFactory;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.OpenApiCommonErrors;
+import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.OpenApiConflict;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiV0Responses.OpenApiUnsupportedMediaType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -52,6 +53,7 @@ class StatementController {
 
     @PostMapping(value = "/statements", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Create an authorization statement")
+    @OpenApiConflict
     @OpenApiUnsupportedMediaType
     @ResponseStatus(HttpStatus.CREATED)
     ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(@Valid @RequestBody Request request) {
