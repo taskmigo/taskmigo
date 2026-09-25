@@ -29,7 +29,7 @@ public final class ApiV0Responses {
     @Target(ElementType.METHOD)
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponse(responseCode = "415", description = "Unsupported Media Type")
-    public @interface RequestBody {}
+    public @interface UnsupportedMediaType {}
 
     /// Documents an operation-specific missing-resource response.
     @Documented
