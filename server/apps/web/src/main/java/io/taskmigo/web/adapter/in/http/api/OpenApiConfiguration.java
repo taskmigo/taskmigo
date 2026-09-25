@@ -43,7 +43,19 @@ class OpenApiConfiguration {
     }
 
     private static void addTransportResponses(Operation operation) {
+        ApiResponse badRequest = operation.getResponses().get("400");
         operation.getResponses().putIfAbsent("401", new ApiResponse().description("Unauthorized"));
+        if (badRequest != null) {
+            operation
+                .getResponses()
+                .putIfAbsent(
+                    "404",
+                    new ApiResponse().description("Domain resource not found").content(badRequest.getContent())
+                );
+            operation
+                .getResponses()
+                .putIfAbsent("409", new ApiResponse().description("Domain conflict").content(badRequest.getContent()));
+        }
         operation.getResponses().putIfAbsent("406", new ApiResponse().description("Not Acceptable"));
         if (operation.getRequestBody() != null) {
             operation.getResponses().putIfAbsent("415", new ApiResponse().description("Unsupported Media Type"));

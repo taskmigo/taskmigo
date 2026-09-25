@@ -1,6 +1,5 @@
 package io.taskmigo.web.adapter.in.http.api.v0.support.response;
 
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.taskmigo.foundation.DomainException;
 import io.taskmigo.foundation.DomainFailureType;
 import org.jspecify.annotations.Nullable;
@@ -23,23 +22,6 @@ final class DomainExceptionHandler {
     }
 
     @ExceptionHandler(DomainException.class)
-    @ApiResponses({
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "400",
-            description = "Domain input rejected",
-            useReturnTypeSchema = true
-        ),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "404",
-            description = "Domain resource not found",
-            useReturnTypeSchema = true
-        ),
-        @io.swagger.v3.oas.annotations.responses.ApiResponse(
-            responseCode = "409",
-            description = "Domain conflict",
-            useReturnTypeSchema = true
-        ),
-    })
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> domain(DomainException exception) {
         return this.failure(exception.type(), exception.getMessage());
     }
