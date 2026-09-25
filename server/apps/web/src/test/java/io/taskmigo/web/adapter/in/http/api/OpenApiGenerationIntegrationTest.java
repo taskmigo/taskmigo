@@ -77,15 +77,21 @@ class OpenApiGenerationIntegrationTest {
     }
 
     private void sortResponseCodes(ObjectNode document) {
-        document.path("paths").properties().forEach(path ->
-            path.getValue().properties().forEach(operation -> {
-                if (operation.getValue().path("responses") instanceof ObjectNode responses) {
-                    var sorted = responses.properties().sorted(Map.Entry.comparingByKey()).toList();
-                    responses.removeAll();
-                    sorted.forEach(entry -> responses.set(entry.getKey(), entry.getValue()));
-                }
-            })
-        );
+        document
+            .path("paths")
+            .properties()
+            .forEach(path ->
+                path
+                    .getValue()
+                    .properties()
+                    .forEach(operation -> {
+                        if (operation.getValue().path("responses") instanceof ObjectNode responses) {
+                            var sorted = responses.properties().sorted(Map.Entry.comparingByKey()).toList();
+                            responses.removeAll();
+                            sorted.forEach(entry -> responses.set(entry.getKey(), entry.getValue()));
+                        }
+                    })
+            );
     }
 
     private JsonNode document(String openApi) {
