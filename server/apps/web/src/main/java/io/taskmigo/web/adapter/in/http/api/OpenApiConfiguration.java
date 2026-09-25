@@ -34,27 +34,19 @@ class OpenApiConfiguration {
     @Bean
     GlobalOpenApiCustomizer v0TransportResponses() {
         return openApi ->
-            openApi
-                .getPaths()
-                .forEach((path, pathItem) -> {
-                    if (!path.startsWith("/api/v0/")) {
-                        return;
-                    }
-                    pathItem.readOperations().forEach(OpenApiConfiguration::addTransportResponses);
-                });
+            openApi.getPaths().forEach((path, pathItem) -> {
+                if (!path.startsWith("/api/v0/")) {
+                    return;
+                }
+                pathItem.readOperations().forEach(OpenApiConfiguration::addTransportResponses);
+            });
     }
 
     private static void addTransportResponses(Operation operation) {
-        operation
-            .getResponses()
-            .putIfAbsent("401", new ApiResponse().description("Unauthorized"));
-        operation
-            .getResponses()
-            .putIfAbsent("406", new ApiResponse().description("Not Acceptable"));
+        operation.getResponses().putIfAbsent("401", new ApiResponse().description("Unauthorized"));
+        operation.getResponses().putIfAbsent("406", new ApiResponse().description("Not Acceptable"));
         if (operation.getRequestBody() != null) {
-            operation
-                .getResponses()
-                .putIfAbsent("415", new ApiResponse().description("Unsupported Media Type"));
+            operation.getResponses().putIfAbsent("415", new ApiResponse().description("Unsupported Media Type"));
         }
     }
 }
