@@ -86,8 +86,9 @@ class ApiV0ResponseContractTest {
                 .getProducesCondition()
                 .getProducibleMediaTypes()
                 .equals(Set.of(MediaType.APPLICATION_JSON));
-            boolean hasRequestBody = Arrays.stream(handler.getMethodParameters())
-                .anyMatch(parameter -> parameter.hasParameterAnnotation(RequestBody.class));
+            boolean hasRequestBody = Arrays.stream(handler.getMethodParameters()).anyMatch(parameter ->
+                parameter.hasParameterAnnotation(RequestBody.class)
+            );
             boolean consumesJsonOnly =
                 !hasRequestBody ||
                 mapping.getConsumesCondition().getConsumableMediaTypes().equals(Set.of(MediaType.APPLICATION_JSON));
