@@ -50,6 +50,7 @@ class GroupController {
 
     @GetMapping("/groups")
     @Operation(summary = "List groups")
+    @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         FilteredQuery<GroupInfo> filter,

@@ -1,5 +1,7 @@
 package io.taskmigo.web.adapter.in.http.api.v0.support.response;
 
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import java.lang.annotation.Documented;
@@ -18,9 +20,23 @@ public final class ApiV0Responses {
     @Target(ElementType.TYPE)
     @Retention(RetentionPolicy.RUNTIME)
     @ApiResponses({
-        @ApiResponse(responseCode = "401", description = "Unauthorized"),
-        @ApiResponse(responseCode = "406", description = "Not Acceptable"),
-        @ApiResponse(responseCode = "422", description = "Unprocessable Content"),
+        @ApiResponse(
+            responseCode = "401",
+            description = "Unauthorized",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(ref = "#/components/schemas/ApiResponseVoidBasicMeta")
+            )
+        ),
+        @ApiResponse(responseCode = "406", description = "Not Acceptable", content = @Content),
+        @ApiResponse(
+            responseCode = "422",
+            description = "Unprocessable Content",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(ref = "#/components/schemas/ApiResponseVoidBasicMeta")
+            )
+        ),
     })
     public @interface Common {}
 
@@ -28,20 +44,34 @@ public final class ApiV0Responses {
     @Documented
     @Target(ElementType.METHOD)
     @Retention(RetentionPolicy.RUNTIME)
-    @ApiResponse(responseCode = "415", description = "Unsupported Media Type")
+    @ApiResponse(responseCode = "415", description = "Unsupported Media Type", content = @Content)
     public @interface UnsupportedMediaType {}
 
     /// Documents an operation-specific missing-resource response.
     @Documented
     @Target(ElementType.METHOD)
     @Retention(RetentionPolicy.RUNTIME)
-    @ApiResponse(responseCode = "404", description = "Not Found")
+    @ApiResponse(
+        responseCode = "404",
+        description = "Not Found",
+        content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(ref = "#/components/schemas/ApiResponseVoidBasicMeta")
+        )
+    )
     public @interface NotFound {}
 
     /// Documents an operation-specific resource-state conflict.
     @Documented
     @Target(ElementType.METHOD)
     @Retention(RetentionPolicy.RUNTIME)
-    @ApiResponse(responseCode = "409", description = "Conflict")
+    @ApiResponse(
+        responseCode = "409",
+        description = "Conflict",
+        content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(ref = "#/components/schemas/ApiResponseVoidBasicMeta")
+        )
+    )
     public @interface Conflict {}
 }

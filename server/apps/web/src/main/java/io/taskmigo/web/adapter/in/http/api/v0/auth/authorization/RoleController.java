@@ -56,6 +56,7 @@ class RoleController {
     @PatchMapping(value = "/roles/{roleId}/statements", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Replace a role's direct statements")
     @UnsupportedMediaType
+    @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setStatements(
         @PathVariable UUID roleId,
         @Valid @RequestBody StatementAssignmentRequest request
@@ -69,6 +70,7 @@ class RoleController {
 
     @GetMapping("/roles")
     @Operation(summary = "List roles")
+    @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         FilteredQuery<RoleInfo> filter,

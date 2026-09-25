@@ -57,6 +57,7 @@ class UserController {
 
     @GetMapping("/users")
     @Operation(summary = "List users")
+    @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         FilteredQuery<UserInfo> filter,
@@ -80,6 +81,7 @@ class UserController {
     @Operation(summary = "Replace a user's direct statements")
     @NotFound
     @UnsupportedMediaType
+    @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setStatements(
         @PathVariable UUID userId,
         @Valid @RequestBody StatementAssignmentRequest request

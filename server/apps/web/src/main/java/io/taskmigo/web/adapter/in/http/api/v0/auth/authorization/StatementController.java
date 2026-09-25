@@ -74,6 +74,7 @@ class StatementController {
 
     @GetMapping("/statements")
     @Operation(summary = "List authorization statements")
+    @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         FilteredQuery<StatementInfo> filter,
