@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
 @RestControllerAdvice(annotations = RequestMapping.class)
 final class ApiV0ExceptionHandler {
@@ -22,6 +23,7 @@ final class ApiV0ExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_CONTENT)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleValidation(
         MethodArgumentNotValidException exception
     ) {
@@ -43,6 +45,7 @@ final class ApiV0ExceptionHandler {
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleUnreadableRequest() {
         String message = "Request body is malformed or unreadable";
         return this.responses.failure(
@@ -54,6 +57,7 @@ final class ApiV0ExceptionHandler {
     }
 
     @ExceptionHandler(FilterByException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleFilterBy(FilterByException exception) {
         String message = exception.getMessage() == null ? "filterBy is invalid" : exception.getMessage();
         return this.responses.failure(
@@ -65,6 +69,7 @@ final class ApiV0ExceptionHandler {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleAccessDenied() {
         String message = "Access is denied";
         return this.responses.failure(
@@ -76,6 +81,7 @@ final class ApiV0ExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleUnexpected() {
         String message = "An unexpected error occurred";
         return this.responses.failure(
