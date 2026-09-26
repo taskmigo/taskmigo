@@ -1,7 +1,7 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import * as z from "zod";
 
-import { extension, openApi } from "../annotations.js";
+import { Extension, OpenApi } from "../annotations.js";
 import { basicMetaSchema, offsetMetaSchema, successApiResponseSchema } from "./types.js";
 
 export interface CreateUserRequest {
@@ -51,7 +51,7 @@ export class UsersApi {
     this.browserOrigin = new URL(browserApiBaseUrl).origin;
   }
 
-  @openApi
+  @OpenApi
   async create(body: CreateUserRequest): Promise<CreateUserResponse> {
     return test.step("POST /api/v0/users", async () => {
       const response = await this.request.post(this.usersUrl, {
@@ -64,7 +64,7 @@ export class UsersApi {
     });
   }
 
-  @openApi
+  @OpenApi
   async list(query?: ListUsersRequest): Promise<ListUsersResponse> {
     const params = new URLSearchParams();
     if (query?.page !== undefined) params.set("page", String(query.page));
@@ -81,7 +81,7 @@ export class UsersApi {
     });
   }
 
-  @extension
+  @Extension
   async createMany(bodies: readonly CreateUserRequest[]): Promise<CreateUserResponse[]> {
     return test.step(`Create ${bodies.length} users`, async () => {
       const responses: CreateUserResponse[] = [];

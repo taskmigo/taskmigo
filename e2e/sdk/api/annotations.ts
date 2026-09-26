@@ -3,7 +3,7 @@
  *
  * The method name must match the operation's `operationId`.
  */
-export function openApi<This, Args extends unknown[], Return>(
+export function OpenApi<This, Args extends unknown[], Return>(
   _method: (this: This, ...args: Args) => Return,
   _context: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>,
 ): void {
@@ -13,7 +13,7 @@ export function openApi<This, Args extends unknown[], Return>(
 /**
  * Marks an SDK API convenience method that is not defined by an OpenAPI operation.
  */
-export function extension<This, Args extends unknown[], Return>(
+export function Extension<This, Args extends unknown[], Return>(
   _method: (this: This, ...args: Args) => Return,
   _context: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => Return>,
 ): void {
