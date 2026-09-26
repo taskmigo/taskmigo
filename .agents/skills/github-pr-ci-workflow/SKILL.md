@@ -63,6 +63,9 @@ Before changing production code for a reported bug, establish whether the defect
    - A single GitHub Issue may describe multiple independent problems. When those problems can be reviewed and understood independently, preserve them as separate final commits even though one PR closes one ticket.
    - Preserve a one-to-one final-history boundary: **one problem = one final commit, and one final commit = one problem**.
    - Keep implementation, regression tests, formatting, and CI/review repairs for the same problem together in that problem's final commit.
+   - **Rewrite the owning problem commit when CI exposes a defect in it.** Do not append a standalone `fix pipeline`, `fix CI`, `format`, or similar repair commit when the failure was caused by an existing problem commit. Amend/recreate that problem commit with the repair included; if it is not the tip commit, replay its descendant problem commits unchanged on top of the corrected commit.
+   - The final review history must not preserve both a known-broken problem commit and a later commit whose only purpose is to repair that breakage. Reviewers should see the corrected problem commit as if it had been implemented correctly in the first place.
+   - A standalone pipeline/CI commit is appropriate only when the pipeline infrastructure itself is the independent problem being intentionally changed, not when CI merely detects a defect in product/test code owned by another problem.
    - Never combine independent problems into one commit merely because they were reported in the same GitHub Issue or fixed in the same PR.
    - Never split one coherent problem into artificial commits such as "production code", "tests", "formatting", or "review fixes"; those pieces are not independently meaningful repairs.
    - If a change cannot be assigned cleanly to one problem, do not hide that ambiguity in a broad commit; first identify the actual repair boundary.
@@ -288,6 +291,8 @@ Address all supported new Qodana problems in the same batch. Do not weaken stati
 
 ## After a fix is pushed
 
+Before pushing a CI-driven repair, assign the failure to its owning problem commit. Rewrite that commit and replay later problem commits when necessary; do not add a repair-only commit to final history unless CI infrastructure itself is the problem.
+
 1. Re-read the PR and capture the **new head SHA**.
 2. Forget old run ids as authoritative state.
 3. Do not query old in-progress runs again just to see how they finish.
@@ -399,6 +404,7 @@ Do **not**:
 - Run a full adversarial self-review after every repository mutation or CI status change.
 - Push a new SHA for each internally discovered cleanup or code-quality idea.
 - Squash distinct problem commits together. Clean temporary/mechanical history only within each owning problem, preserving one final reviewable commit per independently reviewable problem.
+- Leave a known-broken problem commit in final history and append a later `fix pipeline`/format/checkstyle/CI-repair commit. Rewrite the owning problem commit instead, replaying later problem commits if necessary.
 - Rewrite immutable RCA permalinks after every intermediate commit instead of waiting for a stable fixed SHA.
 - Use PR-triggered CI as an interactive implementation loop when one preflight can expose the same direct consumers or integration gaps.
 
