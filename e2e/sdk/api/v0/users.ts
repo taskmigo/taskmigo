@@ -38,41 +38,40 @@ export type UserInfo = z.infer<typeof userInfoSchema>;
 export type CreateUserResponse = z.infer<typeof createUserResponseSchema>;
 export type ListUsersResponse = z.infer<typeof listUsersResponseSchema>;
 
-interface UsersApiTransport {
-  readonly request: APIRequestContext;
-  readonly usersUrl: string;
-  readonly browserOrigin: string;
-}
+const executeCreateUser = async (
+  request: APIRequestContext,
+  browserApiBaseUrl: string,
+  body: CreateUserRequest,
+): Promise<CreateUserResponse> => {
+  const usersUrl = new URL("v0/users", browserApiBaseUrl).href;
+  const browserOrigin = new URL(browserApiBaseUrl).origin;
 
-const createUsersApiTransport = (request: APIRequestContext, browserApiBaseUrl: string): UsersApiTransport => ({
-  request,
-  usersUrl: new URL("v0/users", browserApiBaseUrl).href,
-  browserOrigin: new URL(browserApiBaseUrl).origin,
-});
-
-const executeCreateUser = async (transport: UsersApiTransport, body: CreateUserRequest): Promise<CreateUserResponse> =>
-  test.step("POST /api/v0/users", async () => {
-    const response = await transport.request.post(transport.usersUrl, {
-      headers: { Origin: transport.browserOrigin },
+  return test.step("POST /api/v0/users", async () => {
+    const response = await request.post(usersUrl, {
+      headers: { Origin: browserOrigin },
       data: body,
       failOnStatusCode: true,
     });
     expect(response.status()).toBe(201);
     return createUserResponseSchema.parse(await response.json());
   });
+};
 
 export class UsersApi {
   readonly extensions: UsersApiExtensions;
 
-  private readonly transport: UsersApiTransport;
+  private readonly usersUrl: string;
 
-  constructor(request: APIRequestContext, browserApiBaseUrl: string) {
-    this.transport = createUsersApiTransport(request, browserApiBaseUrl);
-    this.extensions = new UsersApiExtensions(this.transport);
+  constructor(
+    private readonly request: APIRequestContext,
+    private readonly browserApiBaseUrl: string,
+  ) {
+    this.usersUrl = new URL("v0/users", browserApiBaseUrl).href;
+    this.extensions = new UsersApiExtensions(request, browserApiBaseUrl);
   }
 
   async create(body: CreateUserRequest): Promise<CreateUserResponse> {
-    return executeCreateUser(this.transport, body);
+    return executeCreateUser(this.request, this.browserApiBaseUrl, body);
   }
 
   async list(query?: ListUsersRequest): Promise<ListUsersResponse> {
@@ -82,7 +81,7 @@ export class UsersApi {
 
     const suffix = params.size === 0 ? "" : `?${params.toString()}`;
     return test.step(`GET /api/v0/users${suffix}`, async () => {
-      const response = await this.transport.request.get(this.transport.usersUrl, {
+      const response = await this.request.get(this.usersUrl, {
         params,
         failOnStatusCode: true,
       });
@@ -93,13 +92,16 @@ export class UsersApi {
 }
 
 export class UsersApiExtensions {
-  constructor(private readonly transport: UsersApiTransport) {}
+  constructor(
+    private readonly request: APIRequestContext,
+    private readonly browserApiBaseUrl: string,
+  ) {}
 
   async createMany(bodies: readonly CreateUserRequest[]): Promise<CreateUserResponse[]> {
     return test.step(`Create ${bodies.length} users`, async () => {
       const responses: CreateUserResponse[] = [];
       for (const body of bodies) {
-        responses.push(await executeCreateUser(this.transport, body));
+        responses.push(await executeCreateUser(this.request, this.browserApiBaseUrl, body));
       }
       return responses;
     });
