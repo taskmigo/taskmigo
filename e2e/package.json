@@ -10,7 +10,8 @@
     "test": "playwright test",
     "test:auth": "playwright test --grep @auth",
     "test:smoke": "playwright test --grep @smoke",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:bff": "playwright test --grep @bff"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",

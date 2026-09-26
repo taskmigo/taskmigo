@@ -26,10 +26,15 @@ async function endAuthorization() {
   return new URL("https://auth.example/logout");
 }
 
+function getAccessToken() {
+  return "access-token";
+}
+
 class StubAuthorizationClient implements AuthorizationClient {
   readonly begin = vi.fn(beginAuthorization);
   readonly complete = vi.fn(completeAuthorization);
   readonly renew = vi.fn(renewAuthorization);
+  readonly getAccessToken = vi.fn(getAccessToken);
   readonly end = vi.fn(endAuthorization);
 }
 
@@ -146,6 +151,20 @@ describe("DefaultAuthManager", () => {
 
     await expect(auth.renew(current)).resolves.toBe(renewed);
     expect(client.renew).toHaveBeenCalledWith(current);
+  });
+
+  test("authorizes with the access token from the renewed session", async () => {
+    const { client, manager: auth } = manager();
+    const current = { ...activeSession, expiresAt: now };
+    const renewed = { ...activeSession, expiresAt: now + 2 * 60_000, authorizationState: "renewed" };
+    client.renew.mockResolvedValueOnce(renewed);
+    client.getAccessToken.mockReturnValueOnce("renewed-access");
+
+    await expect(auth.authorize(current)).resolves.toEqual({
+      session: renewed,
+      accessToken: "renewed-access",
+    });
+    expect(client.getAccessToken).toHaveBeenCalledWith(renewed);
   });
 
   test("rejects subject changes during renewal with a stable error message", async () => {

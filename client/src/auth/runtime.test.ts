@@ -35,6 +35,7 @@ vi.mock("@taskmigo/auth", () => ({
 
 const config = {
   appUrl: new URL("https://app.example"),
+  apiInternalUrl: new URL("http://taskmigo-web:8080"),
   auth: {
     issuer: new URL("https://auth.example"),
     clientId: "client",
