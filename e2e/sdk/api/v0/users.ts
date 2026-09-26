@@ -1,7 +1,6 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import * as z from "zod";
 
-import { Extension, OpenApi } from "../annotations.js";
 import { basicMetaSchema, offsetMetaSchema, successApiResponseSchema } from "./types.js";
 
 export interface CreateUserRequest {
@@ -51,7 +50,6 @@ export class UsersApi {
     this.browserOrigin = new URL(browserApiBaseUrl).origin;
   }
 
-  @OpenApi
   async create(body: CreateUserRequest): Promise<CreateUserResponse> {
     return test.step("POST /api/v0/users", async () => {
       const response = await this.request.post(this.usersUrl, {
@@ -81,14 +79,4 @@ export class UsersApi {
     });
   }
 
-  @Extension
-  async createMany(bodies: readonly CreateUserRequest[]): Promise<CreateUserResponse[]> {
-    return test.step(`Create ${bodies.length} users`, async () => {
-      const responses: CreateUserResponse[] = [];
-      for (const body of bodies) {
-        responses.push(await this.create(body));
-      }
-      return responses;
-    });
-  }
 }
