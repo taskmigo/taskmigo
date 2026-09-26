@@ -106,9 +106,17 @@ Browser API traffic uses the client BFF namespace `/backend/v0/*`. Because that 
 route, it reaches the Next.js client through the normal client route and is forwarded internally to Spring as
 `/api/v0/*` with the server-held OAuth access token. The client defaults `client.backend.url` to the in-cluster web
 Service URL; override it only with a trusted HTTP(S) backend origin. Do not point it at the public Gateway URL, which
-would add an unnecessary public hop and can create proxy-routing loops. Responses produced by Spring pass through the
-BFF unchanged apart from proxy/security headers and backend-location rewriting; failures owned by the BFF itself use
-RFC Problem Details (`application/problem+json`) so they remain distinct from the versioned backend API envelope.
+would add an unnecessary public hop and can create proxy-routing loops.
+
+The BFF behaves as a reverse proxy for this namespace: end-to-end request headers are forwarded by default, hop-by-hop
+headers and browser-supplied authentication/forwarding headers are removed, and the BFF injects its server-held Bearer
+token plus canonical `Forwarded`, `Via`, and `X-Forwarded-*` metadata derived from the configured public client URL.
+Responses produced by Spring pass through unchanged apart from hop-by-hop/security headers and backend-location
+rewriting; failures owned by the BFF itself use RFC Problem Details (`application/problem+json`) so they remain
+distinct from the versioned backend API envelope.
+
+Multi-pod refresh-token rotation is intentionally not solved in the reverse-proxy layer. The Authorization Server
+rotation/reuse-window design is tracked separately in taskmigo/taskmigo#198.
 
 To use an existing Gateway, disable Gateway creation and identify the Gateway and listener section names:
 

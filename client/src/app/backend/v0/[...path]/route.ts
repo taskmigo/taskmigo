@@ -8,39 +8,38 @@ export const runtime = "nodejs";
 
 const UPSTREAM_API_PREFIX = "/api/v0";
 const BFF_API_PREFIX = "/backend/v0";
+const BFF_PROXY_NAME = "taskmigo-bff";
 const SAFE_METHODS = new Set(["GET", "HEAD"]);
 const ALLOWED_FETCH_SITES = new Set(["same-origin", "none"]);
 const UNSAFE_PATH_SEGMENTS = new Set(["", ".", ".."]);
-const FORWARDED_REQUEST_HEADERS = new Set([
-  "accept",
-  "accept-language",
-  "baggage",
-  "content-encoding",
-  "content-language",
-  "content-type",
-  "idempotency-key",
-  "if-match",
-  "if-modified-since",
-  "if-none-match",
-  "if-range",
-  "if-unmodified-since",
-  "prefer",
-  "range",
-  "traceparent",
-  "tracestate",
-]);
-const BLOCKED_RESPONSE_HEADERS = new Set([
+const HOP_BY_HOP_HEADERS = new Set([
   "connection",
-  "content-encoding",
-  "content-length",
   "keep-alive",
   "proxy-authenticate",
   "proxy-authorization",
-  "set-cookie",
   "te",
   "trailer",
   "transfer-encoding",
   "upgrade",
+]);
+const OWNED_REQUEST_HEADERS = new Set([
+  "authorization",
+  "content-length",
+  "cookie",
+  "forwarded",
+  "host",
+  "via",
+  "x-forwarded-for",
+  "x-forwarded-host",
+  "x-forwarded-port",
+  "x-forwarded-prefix",
+  "x-forwarded-proto",
+]);
+const BLOCKED_RESPONSE_HEADERS = new Set([
+  ...HOP_BY_HOP_HEADERS,
+  "content-encoding",
+  "content-length",
+  "set-cookie",
 ]);
 
 interface RouteContext {
@@ -85,13 +84,40 @@ function upstreamUrl(backendUrl: URL, path: string[], search: string): URL {
   return target;
 }
 
-function upstreamHeaders(source: Headers, accessToken: string): Headers {
+function connectionHeaderNames(headers: Headers): Set<string> {
+  return new Set(
+    (headers.get("connection") ?? "")
+      .split(",")
+      .map((name) => name.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+function copyEndToEndHeaders(source: Headers, blocked: Set<string>): Headers {
+  const connectionHeaders = connectionHeaderNames(source);
   const headers = new Headers();
   source.forEach((value, name) => {
-    if (FORWARDED_REQUEST_HEADERS.has(name)) headers.append(name, value);
+    const normalized = name.toLowerCase();
+    if (!blocked.has(normalized) && !connectionHeaders.has(normalized)) headers.append(name, value);
   });
+  return headers;
+}
+
+function publicPort(appUrl: URL): string {
+  if (appUrl.port) return appUrl.port;
+  return appUrl.protocol === "https:" ? "443" : "80";
+}
+
+function upstreamHeaders(source: Headers, accessToken: string, appUrl: URL): Headers {
+  const headers = copyEndToEndHeaders(source, new Set([...HOP_BY_HOP_HEADERS, ...OWNED_REQUEST_HEADERS]));
   headers.set("Authorization", `Bearer ${accessToken}`);
   headers.set("Accept-Encoding", "identity");
+  headers.set("Forwarded", `by=_${BFF_PROXY_NAME};host=${JSON.stringify(appUrl.host)};proto=${appUrl.protocol.slice(0, -1)}`);
+  headers.set("Via", `1.1 ${BFF_PROXY_NAME}`);
+  headers.set("X-Forwarded-Host", appUrl.host);
+  headers.set("X-Forwarded-Port", publicPort(appUrl));
+  headers.set("X-Forwarded-Prefix", BFF_API_PREFIX);
+  headers.set("X-Forwarded-Proto", appUrl.protocol.slice(0, -1));
   return headers;
 }
 
@@ -113,19 +139,18 @@ function rewriteBackendLocation(value: string, requestUrl: URL, backendUrl: URL)
 }
 
 function downstreamHeaders(source: Headers, requestUrl: URL, backendUrl: URL): Headers {
-  const headers = new Headers();
-  source.forEach((value, name) => {
-    const normalized = name.toLowerCase();
-    if (!BLOCKED_RESPONSE_HEADERS.has(normalized) && !normalized.startsWith("access-control-")) {
-      headers.append(name, value);
-    }
-  });
+  const headers = copyEndToEndHeaders(source, BLOCKED_RESPONSE_HEADERS);
+  for (const name of [...headers.keys()]) {
+    if (name.toLowerCase().startsWith("access-control-")) headers.delete(name);
+  }
 
   for (const name of ["location", "content-location"]) {
     const value = headers.get(name);
     if (value !== null) headers.set(name, rewriteBackendLocation(value, requestUrl, backendUrl));
   }
 
+  const upstreamVia = headers.get("via");
+  headers.set("Via", upstreamVia === null ? `1.1 ${BFF_PROXY_NAME}` : `${upstreamVia}, 1.1 ${BFF_PROXY_NAME}`);
   headers.set("Cache-Control", "no-store");
   headers.set("Cross-Origin-Resource-Policy", "same-origin");
   return headers;
@@ -157,7 +182,7 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<NextR
   const target = upstreamUrl(config.backend.url, path, request.nextUrl.search);
   const initialRequest = new Request(target, request);
   const upstreamRequest = new Request(initialRequest, {
-    headers: upstreamHeaders(initialRequest.headers, credential.accessToken),
+    headers: upstreamHeaders(initialRequest.headers, credential.accessToken, config.appUrl),
   });
   const timeoutSignal = AbortSignal.timeout(config.backend.timeoutMilliseconds);
 
@@ -190,3 +215,4 @@ export const POST = proxy;
 export const PUT = proxy;
 export const PATCH = proxy;
 export const DELETE = proxy;
+export const OPTIONS = proxy;

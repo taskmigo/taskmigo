@@ -21,7 +21,7 @@ vi.mock("@/auth", () => ({ getAuth: auth.getAuth }));
 vi.mock("@taskmigo/config/server", () => ({ getConfig: () => configuration }));
 vi.stubGlobal("fetch", upstreamFetch);
 
-import { GET, POST } from "./route";
+import { GET, OPTIONS, POST } from "./route";
 
 const session = {
   user: { id: "developer" },
@@ -44,6 +44,7 @@ beforeEach(() => {
   for (const mock of [auth.getAuth, auth.manager.getAccessToken, auth.sessions.read, auth.sessions.write, auth.sessions.clear, upstreamFetch]) {
     mock.mockReset();
   }
+  configuration.appUrl = new URL("https://app.example");
   auth.getAuth.mockReturnValue({ manager: auth.manager, sessions: auth.sessions });
   auth.manager.getAccessToken.mockResolvedValue({ session, accessToken: "access-token" });
 });
@@ -106,7 +107,7 @@ describe("backend BFF route", () => {
     expect(upstreamFetch).not.toHaveBeenCalled();
   });
 
-  test("forwards path, query, body, and allowed headers with a server-owned bearer token", async () => {
+  test("acts as a reverse proxy with canonical forwarding headers and a server-owned bearer token", async () => {
     auth.sessions.read.mockReturnValue(session);
     upstreamFetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const upstream = input as Request;
@@ -116,8 +117,15 @@ describe("backend BFF route", () => {
       expect(upstream.headers.get("accept")).toBe("application/json");
       expect(upstream.headers.get("content-type")).toBe("application/json");
       expect(upstream.headers.get("idempotency-key")).toBe("request-1");
+      expect(upstream.headers.get("x-custom-end-to-end")).toBe("preserved");
       expect(upstream.headers.get("cookie")).toBeNull();
-      expect(upstream.headers.get("x-forwarded-host")).toBeNull();
+      expect(upstream.headers.get("x-forwarded-for")).toBeNull();
+      expect(upstream.headers.get("forwarded")).toBe('by=_taskmigo-bff;host="app.example";proto=https');
+      expect(upstream.headers.get("x-forwarded-host")).toBe("app.example");
+      expect(upstream.headers.get("x-forwarded-port")).toBe("443");
+      expect(upstream.headers.get("x-forwarded-prefix")).toBe("/backend/v0");
+      expect(upstream.headers.get("x-forwarded-proto")).toBe("https");
+      expect(upstream.headers.get("via")).toBe("1.1 taskmigo-bff");
       expect(upstream.headers.get("accept-encoding")).toBe("identity");
       expect(init?.redirect).toBe("manual");
       expect(await upstream.text()).toBe('{"name":"Developer"}');
@@ -133,9 +141,16 @@ describe("backend BFF route", () => {
           Accept: "application/json",
           Authorization: "Bearer attacker-controlled",
           Cookie: "stolen=value",
+          Forwarded: 'for=192.0.2.10;host="attacker.example";proto=http',
+          Via: "1.0 attacker",
           "Content-Type": "application/json",
           "Idempotency-Key": "request-1",
+          "X-Custom-End-To-End": "preserved",
+          "X-Forwarded-For": "192.0.2.10",
           "X-Forwarded-Host": "attacker.example",
+          "X-Forwarded-Port": "81",
+          "X-Forwarded-Prefix": "/attacker",
+          "X-Forwarded-Proto": "http",
         },
         body: '{"name":"Developer"}',
       }),
@@ -146,17 +161,79 @@ describe("backend BFF route", () => {
     await expect(response.json()).resolves.toEqual({ ok: true });
   });
 
-  test("streams the upstream response, strips backend-only headers, and rewrites API locations", async () => {
+  test("strips connection-specific request headers named by Connection", async () => {
+    auth.sessions.read.mockReturnValue(session);
+    upstreamFetch.mockImplementation(async (input: RequestInfo | URL) => {
+      const upstream = input as Request;
+      expect(upstream.headers.get("x-remove-me")).toBeNull();
+      expect(upstream.headers.get("connection")).toBeNull();
+      return new Response(null, { status: 204 });
+    });
+
+    const response = await POST(
+      request("/backend/v0/users", {
+        method: "POST",
+        headers: {
+          Origin: "https://app.example",
+          Connection: "X-Remove-Me",
+          "X-Remove-Me": "hop-by-hop",
+        },
+        body: "{}",
+      }),
+      context("users"),
+    );
+
+    expect(response.status).toBe(204);
+  });
+
+  test("uses the configured public port in forwarding metadata", async () => {
+    configuration.appUrl = new URL("http://app.example:3000");
+    auth.sessions.read.mockReturnValue(session);
+    upstreamFetch.mockImplementation(async (input: RequestInfo | URL) => {
+      const upstream = input as Request;
+      expect(upstream.headers.get("forwarded")).toBe('by=_taskmigo-bff;host="app.example:3000";proto=http');
+      expect(upstream.headers.get("x-forwarded-port")).toBe("3000");
+      expect(upstream.headers.get("x-forwarded-proto")).toBe("http");
+      return new Response(null, { status: 204 });
+    });
+
+    const response = await GET(request("/backend/v0/users"), context("users"));
+
+    expect(response.status).toBe(204);
+  });
+
+  test("forwards OPTIONS instead of using an implicit route-handler response", async () => {
+    auth.sessions.read.mockReturnValue(session);
+    upstreamFetch.mockImplementation(async (input: RequestInfo | URL) => {
+      expect((input as Request).method).toBe("OPTIONS");
+      return new Response(null, { status: 204 });
+    });
+
+    const response = await OPTIONS(
+      request("/backend/v0/users", {
+        method: "OPTIONS",
+        headers: { Origin: "https://app.example" },
+      }),
+      context("users"),
+    );
+
+    expect(response.status).toBe(204);
+  });
+
+  test("streams the upstream response, strips proxy-only headers, and rewrites API locations", async () => {
     auth.sessions.read.mockReturnValue(session);
     upstreamFetch.mockResolvedValue(
       new Response("created", {
         status: 201,
         headers: {
           "Access-Control-Allow-Origin": "*",
+          Connection: "X-Remove-Me",
           "Content-Location": "http://taskmigo-web:8080/api/v0",
           Location: "/api/v0/users/42?view=full",
           "Set-Cookie": "backend=session",
+          Via: "1.1 upstream-proxy",
           "X-Backend": "preserved",
+          "X-Remove-Me": "hop-by-hop",
         },
       }),
     );
@@ -168,9 +245,20 @@ describe("backend BFF route", () => {
     expect(response.headers.get("content-location")).toBe("/backend/v0");
     expect(response.headers.get("set-cookie")).toBeNull();
     expect(response.headers.get("access-control-allow-origin")).toBeNull();
+    expect(response.headers.get("x-remove-me")).toBeNull();
     expect(response.headers.get("x-backend")).toBe("preserved");
+    expect(response.headers.get("via")).toBe("1.1 upstream-proxy, 1.1 taskmigo-bff");
     expect(response.headers.get("cache-control")).toBe("no-store");
     await expect(response.text()).resolves.toBe("created");
+  });
+
+  test("adds its Via header when the upstream response has no intermediary metadata", async () => {
+    auth.sessions.read.mockReturnValue(session);
+    upstreamFetch.mockResolvedValue(new Response(null, { status: 204 }));
+
+    const response = await GET(request("/backend/v0/users"), context("users"));
+
+    expect(response.headers.get("via")).toBe("1.1 taskmigo-bff");
   });
 
   test("removes the internal origin from non-API backend locations and preserves external locations", async () => {
