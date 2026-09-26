@@ -53,8 +53,18 @@ function protectedResponse(response: NextResponse): NextResponse {
   return response;
 }
 
-function errorResponse(status: number, error: string): NextResponse {
-  return protectedResponse(NextResponse.json({ error }, { status }));
+function problemResponse(status: number, title: string, detail: string): NextResponse {
+  const response = NextResponse.json(
+    {
+      type: "about:blank",
+      title,
+      status,
+      detail,
+    },
+    { status },
+  );
+  response.headers.set("Content-Type", "application/problem+json");
+  return protectedResponse(response);
 }
 
 function isTrustedBrowserRequest(request: NextRequest, appUrl: URL): boolean {
@@ -125,21 +135,21 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<NextR
   const config = getConfig();
 
   if (!isTrustedBrowserRequest(request, config.appUrl)) {
-    return errorResponse(403, "Cross-origin backend requests are not allowed");
+    return problemResponse(403, "Forbidden", "Cross-origin backend requests are not allowed");
   }
 
   const { path } = await context.params;
-  if (hasUnsafePathSegment(path)) return errorResponse(400, "Invalid backend path");
+  if (hasUnsafePathSegment(path)) return problemResponse(400, "Bad Request", "Invalid backend path");
 
   const { manager, sessions } = getAuth();
   const session = sessions.read(request.cookies);
-  if (!session) return errorResponse(401, "Unauthorized");
+  if (!session) return problemResponse(401, "Unauthorized", "Authentication is required");
 
   let credential;
   try {
     credential = await manager.getAccessToken(session);
   } catch {
-    const response = errorResponse(401, "Unauthorized");
+    const response = problemResponse(401, "Unauthorized", "Authentication is required");
     sessions.clear(response.cookies);
     return response;
   }
@@ -158,10 +168,9 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<NextR
       signal: AbortSignal.any([request.signal, timeoutSignal]),
     });
   } catch {
-    const response = errorResponse(
-      timeoutSignal.aborted ? 504 : 502,
-      timeoutSignal.aborted ? "Backend timed out" : "Backend unavailable",
-    );
+    const response = timeoutSignal.aborted
+      ? problemResponse(504, "Gateway Timeout", "Backend timed out")
+      : problemResponse(502, "Bad Gateway", "Backend unavailable");
     if (credential.session !== session) sessions.write(response.cookies, credential.session);
     return response;
   }

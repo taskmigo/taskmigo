@@ -85,7 +85,13 @@ describe("backend BFF route", () => {
     const response = await GET(request("/backend/v0/users"), context("users"));
 
     expect(response.status).toBe(401);
-    await expect(response.json()).resolves.toEqual({ error: "Unauthorized" });
+    expect(response.headers.get("content-type")).toBe("application/problem+json");
+    await expect(response.json()).resolves.toEqual({
+      type: "about:blank",
+      title: "Unauthorized",
+      status: 401,
+      detail: "Authentication is required",
+    });
     expect(auth.manager.getAccessToken).not.toHaveBeenCalled();
   });
 
@@ -219,7 +225,12 @@ describe("backend BFF route", () => {
     expect(failure.status).toBe(502);
     expect(auth.sessions.write).toHaveBeenNthCalledWith(1, success.cookies, renewed);
     expect(auth.sessions.write).toHaveBeenNthCalledWith(2, failure.cookies, renewed);
-    await expect(failure.json()).resolves.toEqual({ error: "Backend unavailable" });
+    await expect(failure.json()).resolves.toEqual({
+      type: "about:blank",
+      title: "Bad Gateway",
+      status: 502,
+      detail: "Backend unavailable",
+    });
   });
 
   test("returns gateway timeout when the upstream deadline expires", async () => {
@@ -232,7 +243,12 @@ describe("backend BFF route", () => {
       const response = await GET(request("/backend/v0/users"), context("users"));
 
       expect(response.status).toBe(504);
-      await expect(response.json()).resolves.toEqual({ error: "Backend timed out" });
+      await expect(response.json()).resolves.toEqual({
+        type: "about:blank",
+        title: "Gateway Timeout",
+        status: 504,
+        detail: "Backend timed out",
+      });
     } finally {
       timeoutSpy.mockRestore();
     }

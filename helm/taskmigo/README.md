@@ -106,7 +106,9 @@ Browser API traffic uses the client BFF namespace `/backend/v0/*`. Because that 
 route, it reaches the Next.js client through the normal client route and is forwarded internally to Spring as
 `/api/v0/*` with the server-held OAuth access token. The client defaults `client.backend.url` to the in-cluster web
 Service URL; override it only with a trusted HTTP(S) backend origin. Do not point it at the public Gateway URL, which
-would add an unnecessary public hop and can create proxy-routing loops.
+would add an unnecessary public hop and can create proxy-routing loops. Responses produced by Spring pass through the
+BFF unchanged apart from proxy/security headers and backend-location rewriting; failures owned by the BFF itself use
+RFC Problem Details (`application/problem+json`) so they remain distinct from the versioned backend API envelope.
 
 To use an existing Gateway, disable Gateway creation and identify the Gateway and listener section names:
 
