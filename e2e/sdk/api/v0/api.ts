@@ -1,11 +1,20 @@
 import type { APIRequestContext } from "@playwright/test";
 
-import { UsersApi } from "./users.js";
+import { UsersApi, UsersApiExtensions } from "./users.js";
 
-export class TaskmigoV0Api {
-  readonly users: UsersApi;
+class UsersResource extends UsersApi {
+  readonly extensions: UsersApiExtensions;
 
   constructor(request: APIRequestContext, browserApiBaseUrl: string) {
-    this.users = new UsersApi(request, browserApiBaseUrl);
+    super(request, browserApiBaseUrl);
+    this.extensions = new UsersApiExtensions(this);
+  }
+}
+
+export class TaskmigoV0Api {
+  readonly users: UsersResource;
+
+  constructor(request: APIRequestContext, browserApiBaseUrl: string) {
+    this.users = new UsersResource(request, browserApiBaseUrl);
   }
 }

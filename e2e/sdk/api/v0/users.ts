@@ -38,14 +38,7 @@ export type UserInfo = z.infer<typeof userInfoSchema>;
 export type CreateUserResponse = z.infer<typeof createUserResponseSchema>;
 export type ListUsersResponse = z.infer<typeof listUsersResponseSchema>;
 
-interface UsersApiOperations {
-  create(body: CreateUserRequest): Promise<CreateUserResponse>;
-  list(query?: ListUsersRequest): Promise<ListUsersResponse>;
-}
-
-export class UsersApi implements UsersApiOperations {
-  readonly extensions: UsersApiExtensions;
-
+export class UsersApi {
   private readonly usersUrl: string;
   private readonly browserOrigin: string;
 
@@ -55,7 +48,6 @@ export class UsersApi implements UsersApiOperations {
   ) {
     this.usersUrl = new URL("v0/users", browserApiBaseUrl).href;
     this.browserOrigin = new URL(browserApiBaseUrl).origin;
-    this.extensions = new UsersApiExtensions(this);
   }
 
   async create(body: CreateUserRequest): Promise<CreateUserResponse> {
@@ -88,7 +80,7 @@ export class UsersApi implements UsersApiOperations {
 }
 
 export class UsersApiExtensions {
-  constructor(private readonly users: UsersApiOperations) {}
+  constructor(private readonly users: UsersApi) {}
 
   async createMany(bodies: readonly CreateUserRequest[]): Promise<CreateUserResponse[]> {
     return test.step(`Create ${bodies.length} users`, async () => {
