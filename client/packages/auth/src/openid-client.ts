@@ -1,11 +1,9 @@
 import "server-only";
 
-import { randomUUID } from "node:crypto";
-
 import * as client from "openid-client";
 import { z } from "zod";
 
-import { SessionRenewalRejectedError, type AuthorizationClient, type Session, type User } from "./core";
+import type { AuthorizationClient, Session, User } from "./core";
 
 type AuthorizationState = { version: string; state: string; nonce: string; codeVerifier: string };
 type SessionState = { version: string; accessToken: string; refreshToken: string; idToken: string };
@@ -93,7 +91,6 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
     if (!subject) throw new Error("Authorization server returned no subject claim");
 
     return this.#createSession(tokens, {
-      id: randomUUID(),
       user: OpenIdAuthorizationClient.#user(subject, OpenIdAuthorizationClient.#claimString(claims, "name")),
       refreshToken: tokens.refresh_token,
       idToken: tokens.id_token,
@@ -102,19 +99,10 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
 
   async renew(session: Session): Promise<Session> {
     const previous = OpenIdAuthorizationClient.#decode(session.authorizationState, this.#sessionStateSchema);
-    let tokens: Tokens;
-    try {
-      tokens = await client.refreshTokenGrant(await this.#configuration(), previous.refreshToken);
-    } catch (error) {
-      if (error instanceof client.ResponseBodyError && error.error === "invalid_grant") {
-        throw new SessionRenewalRejectedError("Authorization server rejected the refresh token", { cause: error });
-      }
-      throw error;
-    }
+    const tokens = await client.refreshTokenGrant(await this.#configuration(), previous.refreshToken);
     const claims = tokens.claims();
 
     return this.#createSession(tokens, {
-      id: session.id,
       user: OpenIdAuthorizationClient.#user(
         OpenIdAuthorizationClient.#claimString(claims, "sub") ?? session.user.id,
         OpenIdAuthorizationClient.#claimString(claims, "name") ?? session.user.name,
@@ -138,10 +126,9 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
 
   #createSession(
     tokens: Tokens,
-    { id, user, refreshToken, idToken }: { id: string; user: User; refreshToken: string; idToken: string },
+    { user, refreshToken, idToken }: { user: User; refreshToken: string; idToken: string },
   ): Session {
     return {
-      id,
       user,
       expiresAt: OpenIdAuthorizationClient.#tokenExpiresAt(tokens),
       authorizationState: OpenIdAuthorizationClient.#encode({

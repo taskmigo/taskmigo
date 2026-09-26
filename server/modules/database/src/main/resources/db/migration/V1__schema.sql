@@ -184,18 +184,3 @@ CREATE TABLE oauth2_authorization_consent (
     authorities varchar(1000) NOT NULL,
     PRIMARY KEY (registered_client_id, principal_name)
 );
-
-
-CREATE TABLE bff_sessions (
-    session_id UUID PRIMARY KEY,
-    payload TEXT NOT NULL,
-    token_expires_at BIGINT NOT NULL,
-    generation BIGINT NOT NULL,
-    refresh_owner UUID,
-    refresh_lease_expires_at timestamptz,
-    expires_at timestamptz NOT NULL,
-    CONSTRAINT ck_bff_sessions_payload_nonblank CHECK (btrim(payload) <> ''),
-    CONSTRAINT ck_bff_sessions_token_expires_at_nonnegative CHECK (token_expires_at >= 0),
-    CONSTRAINT ck_bff_sessions_generation_nonnegative CHECK (generation >= 0)
-);
-CREATE INDEX ix_bff_sessions_expires_at ON bff_sessions(expires_at);

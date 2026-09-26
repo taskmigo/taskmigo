@@ -29,7 +29,6 @@ dependencies {
     implementation(project(":modules:identity"))
     runtimeOnly(libs.jspecify)
     implementation(libs.spring.boot.starter.jdbc)
-    implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.oauth2.authorization.server)

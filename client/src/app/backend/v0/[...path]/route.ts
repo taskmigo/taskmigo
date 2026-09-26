@@ -1,10 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-import { SessionRenewalRejectedError } from "@taskmigo/auth";
 import { getConfig } from "@taskmigo/config/server";
 
 import { getAuth } from "@/auth";
-import { SessionReplicationMissingError } from "@/auth/refresh-coordinator";
 
 export const runtime = "nodejs";
 
@@ -143,20 +141,17 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<NextR
   const { path } = await context.params;
   if (hasUnsafePathSegment(path)) return problemResponse(400, "Bad Request", "Invalid backend path");
 
-  const { manager, sessions, refreshCoordinator } = getAuth();
+  const { manager, sessions } = getAuth();
   const session = sessions.read(request.cookies);
   if (!session) return problemResponse(401, "Unauthorized", "Authentication is required");
 
   let credential;
   try {
-    credential = await refreshCoordinator.authorize(session, manager, request.signal);
-  } catch (error) {
-    if (error instanceof SessionRenewalRejectedError || error instanceof SessionReplicationMissingError) {
-      const response = problemResponse(401, "Unauthorized", "Authentication is required");
-      sessions.clear(response.cookies);
-      return response;
-    }
-    return problemResponse(503, "Service Unavailable", "Authentication refresh is temporarily unavailable");
+    credential = await manager.getAccessToken(session);
+  } catch {
+    const response = problemResponse(401, "Unauthorized", "Authentication is required");
+    sessions.clear(response.cookies);
+    return response;
   }
 
   const target = upstreamUrl(config.backend.url, path, request.nextUrl.search);
