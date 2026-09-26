@@ -1,7 +1,6 @@
 import { expect, test } from "#taskmigo-sdk";
 
-const usersUrl = (browserApiBaseUrl: string): string =>
-  new URL("v0/users?page=1&pageSize=1", browserApiBaseUrl).href;
+const usersUrl = (browserApiBaseUrl: string): string => new URL("v0/users?page=1&pageSize=1", browserApiBaseUrl).href;
 
 test.describe("Browser API BFF", { tag: "@bff" }, () => {
   test("requires an authenticated browser session", async ({ taskmigo }) => {
