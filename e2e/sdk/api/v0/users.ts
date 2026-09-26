@@ -50,7 +50,7 @@ export class UsersApi {
   ) {
     this.usersUrl = new URL("v0/users", browserApiBaseUrl).href;
     this.browserOrigin = new URL(browserApiBaseUrl).origin;
-    this.extensions = new UsersApiExtensions(this);
+    this.extensions = new UsersApiExtensions((body) => this.create(body));
   }
 
   async create(body: CreateUserRequest): Promise<CreateUserResponse> {
@@ -83,13 +83,13 @@ export class UsersApi {
 }
 
 export class UsersApiExtensions {
-  constructor(private readonly users: UsersApi) {}
+  constructor(private readonly createUser: (body: CreateUserRequest) => Promise<CreateUserResponse>) {}
 
   async createMany(bodies: readonly CreateUserRequest[]): Promise<CreateUserResponse[]> {
     return test.step(`Create ${bodies.length} users`, async () => {
       const responses: CreateUserResponse[] = [];
       for (const body of bodies) {
-        responses.push(await this.users.create(body));
+        responses.push(await this.createUser(body));
       }
       return responses;
     });
