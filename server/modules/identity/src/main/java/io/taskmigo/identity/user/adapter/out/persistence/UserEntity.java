@@ -14,6 +14,7 @@ import jakarta.persistence.Table;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import org.hibernate.annotations.BatchSize;
 import org.jspecify.annotations.Nullable;
 
 @Entity
@@ -34,6 +35,7 @@ public class UserEntity {
     String lastName;
 
     @ElementCollection
+    @BatchSize(size = 100)
     @CollectionTable(name = "user_emails", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "normalized_email", nullable = false, length = 320)
     Set<String> emails = new HashSet<>();
