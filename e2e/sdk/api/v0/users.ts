@@ -38,6 +38,23 @@ export type UserInfo = z.infer<typeof userInfoSchema>;
 export type CreateUserResponse = z.infer<typeof createUserResponseSchema>;
 export type ListUsersResponse = z.infer<typeof listUsersResponseSchema>;
 
+
+const executeCreateUser = async (
+  request: APIRequestContext,
+  usersUrl: string,
+  browserOrigin: string,
+  body: CreateUserRequest,
+): Promise<CreateUserResponse> =>
+  test.step("POST /api/v0/users", async () => {
+    const response = await request.post(usersUrl, {
+      headers: { Origin: browserOrigin },
+      data: body,
+      failOnStatusCode: true,
+    });
+    expect(response.status()).toBe(201);
+    return createUserResponseSchema.parse(await response.json());
+  });
+
 export class UsersApi {
   readonly extensions: UsersApiExtensions;
 
@@ -50,19 +67,11 @@ export class UsersApi {
   ) {
     this.usersUrl = new URL("v0/users", browserApiBaseUrl).href;
     this.browserOrigin = new URL(browserApiBaseUrl).origin;
-    this.extensions = new UsersApiExtensions((body) => this.create(body));
+    this.extensions = new UsersApiExtensions(request, this.usersUrl, this.browserOrigin);
   }
 
   async create(body: CreateUserRequest): Promise<CreateUserResponse> {
-    return test.step("POST /api/v0/users", async () => {
-      const response = await this.request.post(this.usersUrl, {
-        headers: { Origin: this.browserOrigin },
-        data: body,
-        failOnStatusCode: true,
-      });
-      expect(response.status()).toBe(201);
-      return createUserResponseSchema.parse(await response.json());
-    });
+    return executeCreateUser(this.request, this.usersUrl, this.browserOrigin, body);
   }
 
   async list(query?: ListUsersRequest): Promise<ListUsersResponse> {
@@ -83,13 +92,17 @@ export class UsersApi {
 }
 
 export class UsersApiExtensions {
-  constructor(private readonly createUser: (body: CreateUserRequest) => Promise<CreateUserResponse>) {}
+  constructor(
+    private readonly request: APIRequestContext,
+    private readonly usersUrl: string,
+    private readonly browserOrigin: string,
+  ) {}
 
   async createMany(bodies: readonly CreateUserRequest[]): Promise<CreateUserResponse[]> {
     return test.step(`Create ${bodies.length} users`, async () => {
       const responses: CreateUserResponse[] = [];
       for (const body of bodies) {
-        responses.push(await this.createUser(body));
+        responses.push(await executeCreateUser(this.request, this.usersUrl, this.browserOrigin, body));
       }
       return responses;
     });
