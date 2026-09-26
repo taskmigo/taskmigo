@@ -29,10 +29,7 @@ const session = {
   authorizationState: "opaque",
 };
 
-function request(
-  path: string,
-  options: { method?: string; headers?: HeadersInit; body?: BodyInit } = {},
-): NextRequest {
+function request(path: string, options: { method?: string; headers?: HeadersInit; body?: BodyInit } = {}): NextRequest {
   return new NextRequest(new URL(path, "https://app.example"), options);
 }
 
@@ -41,7 +38,14 @@ function context(...path: string[]) {
 }
 
 beforeEach(() => {
-  for (const mock of [auth.getAuth, auth.manager.getAccessToken, auth.sessions.read, auth.sessions.write, auth.sessions.clear, upstreamFetch]) {
+  for (const mock of [
+    auth.getAuth,
+    auth.manager.getAccessToken,
+    auth.sessions.read,
+    auth.sessions.write,
+    auth.sessions.clear,
+    upstreamFetch,
+  ]) {
     mock.mockReset();
   }
   configuration.appUrl = new URL("https://app.example");

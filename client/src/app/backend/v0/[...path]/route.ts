@@ -35,12 +35,7 @@ const OWNED_REQUEST_HEADERS = new Set([
   "x-forwarded-prefix",
   "x-forwarded-proto",
 ]);
-const BLOCKED_RESPONSE_HEADERS = new Set([
-  ...HOP_BY_HOP_HEADERS,
-  "content-encoding",
-  "content-length",
-  "set-cookie",
-]);
+const BLOCKED_RESPONSE_HEADERS = new Set([...HOP_BY_HOP_HEADERS, "content-encoding", "content-length", "set-cookie"]);
 
 interface RouteContext {
   params: Promise<{ path: string[] }>;
@@ -112,7 +107,10 @@ function upstreamHeaders(source: Headers, accessToken: string, appUrl: URL): Hea
   const headers = copyEndToEndHeaders(source, new Set([...HOP_BY_HOP_HEADERS, ...OWNED_REQUEST_HEADERS]));
   headers.set("Authorization", `Bearer ${accessToken}`);
   headers.set("Accept-Encoding", "identity");
-  headers.set("Forwarded", `by=_${BFF_PROXY_NAME};host=${JSON.stringify(appUrl.host)};proto=${appUrl.protocol.slice(0, -1)}`);
+  headers.set(
+    "Forwarded",
+    `by=_${BFF_PROXY_NAME};host=${JSON.stringify(appUrl.host)};proto=${appUrl.protocol.slice(0, -1)}`,
+  );
   headers.set("Via", `1.1 ${BFF_PROXY_NAME}`);
   headers.set("X-Forwarded-Host", appUrl.host);
   headers.set("X-Forwarded-Port", publicPort(appUrl));
