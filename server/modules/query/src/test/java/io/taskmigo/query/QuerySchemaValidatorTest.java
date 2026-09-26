@@ -11,7 +11,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 class QuerySchemaValidatorTest {
@@ -50,6 +52,42 @@ class QuerySchemaValidatorTest {
 
         // Act + Assert
         assertThatCode(() -> QuerySchemaValidator.validate(testCase.expression(), schema)).doesNotThrowAnyException();
+    }
+
+    /**
+     * Verifies that each unary expression is attributed to its matching field operator.
+     *
+     * Given: a field allow-list containing exactly the operator corresponding to NOT, PLUS, or MINUS.
+     * Expect: validation accepts the unary expression without substituting another unary operator.
+     */
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(QueryExpression.UnaryOperator.class)
+    @DisplayName("should accept a unary expression when its matching operator is allowed")
+    void shouldAcceptUnaryExpressionWhenMatchingOperatorIsAllowed(QueryExpression.UnaryOperator expressionOperator) {
+        // Arrange
+        QueryOperator allowedOperator = QueryOperator.valueOf(expressionOperator.name());
+        QuerySchema<TestQuery> schema = schema("amount", Integer.class, Set.of(allowedOperator));
+        QueryExpression expression = new QueryExpression.Unary(expressionOperator, reference("amount"));
+
+        // Act + Assert
+        assertThatCode(() -> QuerySchemaValidator.validate(expression, schema)).doesNotThrowAnyException();
+    }
+
+    /**
+     * Verifies that unary PLUS cannot borrow permission from unary NOT.
+     *
+     * Given: an amount field that allows NOT but does not allow PLUS.
+     * Expect: validation rejects a unary PLUS expression over that field.
+     */
+    @Test
+    @DisplayName("should reject unary plus when only logical not is allowed")
+    void shouldRejectUnaryPlusWhenOnlyLogicalNotIsAllowed() {
+        // Arrange
+        QuerySchema<TestQuery> schema = schema("amount", Integer.class, Set.of(QueryOperator.NOT));
+        QueryExpression expression = new QueryExpression.Unary(QueryExpression.UnaryOperator.PLUS, reference("amount"));
+
+        // Act + Assert
+        assertRejected(expression, schema);
     }
 
     private static Stream<ValidationCase> nestedOperatorCases() {

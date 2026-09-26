@@ -5,6 +5,8 @@ public enum ObjectAuthorizationOperator {
     AND,
     OR,
     NOT,
+    PLUS,
+    MINUS,
     EQ,
     NE,
     GT,
