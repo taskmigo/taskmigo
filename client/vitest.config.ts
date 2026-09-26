@@ -18,6 +18,7 @@ export default defineConfig({
         "packages/foundation/src/**/*.ts",
         "src/auth/**/*.ts",
         "src/app/api/auth/**/route.ts",
+        "src/app/backend/**/route.ts",
       ],
       exclude: ["**/*.test.ts", "**/*.test.tsx"],
       reporter: ["text"],

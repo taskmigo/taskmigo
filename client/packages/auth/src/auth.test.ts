@@ -30,6 +30,7 @@ class StubAuthorizationClient implements AuthorizationClient {
   readonly begin = vi.fn(beginAuthorization);
   readonly complete = vi.fn(completeAuthorization);
   readonly renew = vi.fn(renewAuthorization);
+  readonly accessToken = vi.fn(() => "access-token");
   readonly end = vi.fn(endAuthorization);
 }
 
@@ -146,6 +147,30 @@ describe("DefaultAuthManager", () => {
 
     await expect(auth.renew(current)).resolves.toBe(renewed);
     expect(client.renew).toHaveBeenCalledWith(current);
+  });
+
+  test("returns the current access token without exposing provider session state", async () => {
+    const { client, manager: auth } = manager();
+
+    await expect(auth.getAccessToken(activeSession)).resolves.toEqual({
+      session: activeSession,
+      accessToken: "access-token",
+    });
+    expect(client.accessToken).toHaveBeenCalledWith(activeSession);
+  });
+
+  test("returns the renewed access token when the session enters the refresh window", async () => {
+    const { client, manager: auth } = manager();
+    const current = { ...activeSession, expiresAt: now };
+    const renewed = { ...activeSession, expiresAt: now + 60_000, authorizationState: "renewed" };
+    client.renew.mockResolvedValueOnce(renewed);
+    client.accessToken.mockReturnValueOnce("renewed-access-token");
+
+    await expect(auth.getAccessToken(current)).resolves.toEqual({
+      session: renewed,
+      accessToken: "renewed-access-token",
+    });
+    expect(client.accessToken).toHaveBeenCalledWith(renewed);
   });
 
   test("rejects subject changes during renewal with a stable error message", async () => {

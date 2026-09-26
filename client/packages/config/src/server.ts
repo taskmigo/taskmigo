@@ -3,12 +3,27 @@ import "server-only";
 import { z } from "zod";
 
 const url = z.url().transform((value) => new URL(value));
+const httpOrigin = z
+  .url()
+  .transform((value) => new URL(value))
+  .refine((value) => value.protocol === "http:" || value.protocol === "https:", "Expected an HTTP(S) URL")
+  .refine(
+    (value) =>
+      value.username === "" &&
+      value.password === "" &&
+      value.pathname === "/" &&
+      value.search === "" &&
+      value.hash === "",
+    "Expected an HTTP(S) origin without credentials, path, query, or fragment",
+  );
 const nonNegativeInteger = z.coerce.number().int().nonnegative();
 const positiveInteger = z.coerce.number().int().positive();
 
 const configSchema = z
   .object({
     TM_BROWSER_HOST_NAME: url,
+    TASKMIGO_BACKEND_URL: httpOrigin,
+    TASKMIGO_BACKEND_TIMEOUT_MILLISECONDS: positiveInteger,
     TASKMIGO_AUTH_ISSUER: url,
     TASKMIGO_AUTH_CLIENT_ID: z.string().min(1),
     TASKMIGO_AUTH_CLIENT_SECRET: z.string().min(1),
@@ -43,6 +58,10 @@ const configSchema = z
 
     return Object.freeze({
       appUrl: environment.TM_BROWSER_HOST_NAME,
+      backend: Object.freeze({
+        url: environment.TASKMIGO_BACKEND_URL,
+        timeoutMilliseconds: environment.TASKMIGO_BACKEND_TIMEOUT_MILLISECONDS,
+      }),
       auth: Object.freeze({
         issuer: environment.TASKMIGO_AUTH_ISSUER,
         clientId: environment.TASKMIGO_AUTH_CLIENT_ID,

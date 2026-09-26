@@ -5,6 +5,8 @@ import { getConfig, parseConfig } from "./server";
 
 const validEnvironment = {
   TM_BROWSER_HOST_NAME: "https://app.example",
+  TASKMIGO_BACKEND_URL: "https://backend.example",
+  TASKMIGO_BACKEND_TIMEOUT_MILLISECONDS: "30000",
   TASKMIGO_AUTH_ISSUER: "https://auth.example",
   TASKMIGO_AUTH_CLIENT_ID: "browser-client",
   TASKMIGO_AUTH_CLIENT_SECRET: "client-secret",
@@ -36,6 +38,10 @@ describe("server configuration", () => {
 
     expect(config).toEqual({
       appUrl: new URL("https://app.example"),
+      backend: {
+        url: new URL("https://backend.example"),
+        timeoutMilliseconds: 30_000,
+      },
       auth: {
         issuer: new URL("https://auth.example"),
         clientId: "browser-client",
@@ -62,6 +68,7 @@ describe("server configuration", () => {
       },
     });
     expect(Object.isFrozen(config)).toBe(true);
+    expect(Object.isFrozen(config.backend)).toBe(true);
     expect(Object.isFrozen(config.auth)).toBe(true);
     expect(Object.isFrozen(config.auth.cookie)).toBe(true);
     expect(Object.isFrozen(config.auth.cookie.attributes)).toBe(true);
@@ -84,6 +91,10 @@ describe("server configuration", () => {
 
   test.each([
     ["TM_BROWSER_HOST_NAME", "not-a-url"],
+    ["TASKMIGO_BACKEND_URL", "not-a-url"],
+    ["TASKMIGO_BACKEND_URL", "ftp://backend.example"],
+    ["TASKMIGO_BACKEND_URL", "https://backend.example/api"],
+    ["TASKMIGO_BACKEND_TIMEOUT_MILLISECONDS", "0"],
     ["TASKMIGO_AUTH_ISSUER", "not-a-url"],
     ["TASKMIGO_AUTH_ALLOW_INSECURE_REQUESTS", "maybe"],
     ["TASKMIGO_AUTH_COOKIE_HTTP_ONLY", "maybe"],
