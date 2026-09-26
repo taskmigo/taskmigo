@@ -175,7 +175,9 @@ final class JpaQueryExpressionBinder {
                 case ADD, SUBTRACT, MULTIPLY, DIVIDE -> true;
                 default -> false;
             };
-            case QueryExpression.Unary unary -> unary.operator() == QueryExpression.UnaryOperator.MINUS;
+            case QueryExpression.Unary unary ->
+                unary.operator() == QueryExpression.UnaryOperator.PLUS ||
+                unary.operator() == QueryExpression.UnaryOperator.MINUS;
             default -> false;
         };
     }
@@ -232,6 +234,9 @@ final class JpaQueryExpressionBinder {
                 numeric(binary.left(), root, builder, paths, types),
                 numeric(binary.right(), root, builder, paths, types)
             );
+            case QueryExpression.Unary unary when (
+                unary.operator() == QueryExpression.UnaryOperator.PLUS
+            ) -> value(unary.operand(), root, builder, paths, types);
             case QueryExpression.Unary unary when (
                 unary.operator() == QueryExpression.UnaryOperator.MINUS
             ) -> builder.neg(numeric(unary.operand(), root, builder, paths, types));
