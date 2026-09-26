@@ -5,6 +5,8 @@ public enum QueryOperator {
     AND,
     OR,
     NOT,
+    PLUS,
+    MINUS,
     EQ,
     NE,
     GT,
