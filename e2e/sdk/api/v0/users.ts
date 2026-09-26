@@ -62,7 +62,6 @@ export class UsersApi {
     });
   }
 
-  @OpenApi
   async list(query?: ListUsersRequest): Promise<ListUsersResponse> {
     const params = new URLSearchParams();
     if (query?.page !== undefined) params.set("page", String(query.page));
@@ -78,5 +77,4 @@ export class UsersApi {
       return listUsersResponseSchema.parse(await response.json());
     });
   }
-
 }
