@@ -50,10 +50,7 @@ const createUsersApiTransport = (request: APIRequestContext, browserApiBaseUrl: 
   browserOrigin: new URL(browserApiBaseUrl).origin,
 });
 
-const executeCreateUser = async (
-  transport: UsersApiTransport,
-  body: CreateUserRequest,
-): Promise<CreateUserResponse> =>
+const executeCreateUser = async (transport: UsersApiTransport, body: CreateUserRequest): Promise<CreateUserResponse> =>
   test.step("POST /api/v0/users", async () => {
     const response = await transport.request.post(transport.usersUrl, {
       headers: { Origin: transport.browserOrigin },
