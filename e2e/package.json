@@ -3,19 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "imports": {
+    "#taskmigo-sdk": "./sdk/index.ts"
+  },
   "engines": {
     "node": "26.7.0"
   },
   "scripts": {
     "test": "playwright test",
     "test:auth": "playwright test --grep @auth",
+    "test:bff": "playwright test --grep @bff",
+    "test:performance": "playwright test --grep @performance",
     "test:smoke": "playwright test --grep @smoke",
-    "typecheck": "tsc --noEmit",
-    "test:bff": "playwright test --grep @bff"
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",
     "@types/node": "24.3.0",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "zod": "4.6.5"
   }
 }

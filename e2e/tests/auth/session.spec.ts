@@ -1,14 +1,11 @@
-import { expect, test } from "@playwright/test";
-
-import { signIn } from "./sign-in.js";
+import { test } from "#taskmigo-sdk";
 
 test.describe("Browser session", { tag: ["@auth", "@session"] }, () => {
-  test("authenticated session survives a page reload", async ({ page }) => {
-    const username = await signIn(page);
+  test("authenticated session survives a page reload", async ({ taskmigo }) => {
+    const username = await taskmigo.signIn();
 
-    await page.reload();
+    await taskmigo.web.account.reload();
 
-    await expect(page.getByRole("heading", { name: "Account" })).toBeVisible();
-    await expect(page.getByText(`Signed in as ${username}`)).toBeVisible();
+    await taskmigo.web.account.expectSignedIn(username);
   });
 });
