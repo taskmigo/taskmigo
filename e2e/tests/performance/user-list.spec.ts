@@ -1,6 +1,6 @@
-import { expect, test } from "#taskmigo-sdk";
+import { randomUUID } from "node:crypto";
 
-import { createUsers } from "../support/users.js";
+import { expect, test } from "#taskmigo-sdk";
 
 const MAXIMUM_PAGE_SIZE = 100;
 const SAMPLE_COUNT = 7;
@@ -17,7 +17,17 @@ test.describe("User list performance", { tag: ["@performance", "@users"] }, () =
     test.slow();
     await taskmigo.signIn();
 
-    await createUsers(taskmigo, MAXIMUM_PAGE_SIZE + 2);
+    await taskmigo.api.v0.users.createMany(
+      Array.from({ length: MAXIMUM_PAGE_SIZE + 2 }, (_, index) => {
+        const suffix = `${index}-${randomUUID()}`;
+        return {
+          username: `e2e-user-${suffix}`,
+          emails: [`e2e-user-${suffix}@example.com`],
+          firstName: "E2E",
+          lastName: "User",
+        };
+      }),
+    );
 
     await test.step("Warm up request shapes", async () => {
       await taskmigo.api.v0.users.list({ pageSize: 1 });

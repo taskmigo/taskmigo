@@ -16,7 +16,18 @@ Taskmigo production code is the source of truth for HTTP behavior. The SDK does 
 
 Endpoint resources are versioned by the production HTTP API namespace. The current contract lives under `sdk/api/v0/`, is exposed at `taskmigo.api.v0`, and validates responses with strict Zod schemas before returning them to tests. TypeScript response types are inferred from those same schemas.
 
-Test-only scenario helpers such as bulk data creation belong under `tests/support/`, not on the SDK API.
+Methods that map one-to-one to OpenAPI operations use the exact `operationId` and remain undecorated. Any additional convenience method under `taskmigo.api.*` must use `@extension` so reviewers and SDK users can immediately distinguish Taskmigo-authored helpers from the OpenAPI contract. The decorator is a marker only and does not change runtime behavior.
+
+For example, `users.create()` and `users.list()` map directly to OpenAPI operations, while the bulk helper is explicitly marked:
+
+```ts
+@extension
+async createMany(bodies: readonly CreateUserRequest[]) {
+  // Composes the official create() operation.
+}
+```
+
+Scenario-specific behavior that is not generally useful as an API convenience still belongs under `tests/support/`.
 
 ## Playwright owns transport and lifecycle
 
