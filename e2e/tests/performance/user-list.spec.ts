@@ -17,7 +17,7 @@ test.describe("User list performance", { tag: ["@performance", "@users"] }, () =
     test.slow();
     await taskmigo.signIn();
 
-    await taskmigo.api.v0.extensions.users.createMany(
+    await taskmigo.api.v0.users.extensions.createMany(
       Array.from({ length: MAXIMUM_PAGE_SIZE + 2 }, (_, index) => {
         const suffix = `${index}-${randomUUID()}`;
         return {

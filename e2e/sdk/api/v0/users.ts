@@ -1,6 +1,7 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import * as z from "zod";
 
+import { UsersApiExtensions } from "./extensions/users.js";
 import { basicMetaSchema, offsetMetaSchema, successApiResponseSchema } from "./types.js";
 
 export interface CreateUserRequest {
@@ -39,6 +40,8 @@ export type CreateUserResponse = z.infer<typeof createUserResponseSchema>;
 export type ListUsersResponse = z.infer<typeof listUsersResponseSchema>;
 
 export class UsersApi {
+  readonly extensions: UsersApiExtensions;
+
   private readonly usersUrl: string;
   private readonly browserOrigin: string;
 
@@ -48,6 +51,7 @@ export class UsersApi {
   ) {
     this.usersUrl = new URL("v0/users", browserApiBaseUrl).href;
     this.browserOrigin = new URL(browserApiBaseUrl).origin;
+    this.extensions = new UsersApiExtensions(this);
   }
 
   async create(body: CreateUserRequest): Promise<CreateUserResponse> {

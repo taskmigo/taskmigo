@@ -16,13 +16,13 @@ Taskmigo production code is the source of truth for HTTP behavior. The SDK does 
 
 Endpoint resources are versioned by the production HTTP API namespace. The current contract lives under `sdk/api/v0/`, is exposed at `taskmigo.api.v0`, and validates responses with strict Zod schemas before returning them to tests. TypeScript response types are inferred from those same schemas.
 
-The SDK separates OpenAPI operations from SDK-only convenience APIs structurally rather than with annotations. Resource classes such as `UsersApi` contain only methods that map one-to-one to OpenAPI operations and use the exact `operationId`. Extension classes such as `UsersApiExtensions` contain convenience methods implemented by the SDK.
+The SDK separates OpenAPI operations from SDK-only convenience APIs structurally rather than with annotations. Resource classes such as `UsersApi` contain methods that map one-to-one to OpenAPI operations and use the exact `operationId`. Each resource exposes its SDK-only helpers through an `extensions` property backed by a separate extension class such as `UsersApiExtensions`.
 
-That boundary is also visible at the call site:
+That boundary is visible at the resource call site:
 
 ```ts
 await taskmigo.api.v0.users.create(body);
-await taskmigo.api.v0.extensions.users.createMany(bodies);
+await taskmigo.api.v0.users.extensions.createMany(bodies);
 ```
 
 The first call maps directly to the OpenAPI `create` operation. The second is an SDK extension that composes the official operation.
