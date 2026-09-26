@@ -21,5 +21,12 @@ test.describe("OAuth login", { tag: ["@auth", "@login"] }, () => {
     const sessionCookie = (await context.cookies()).find(({ name }) => name === "taskmigo_session");
     expect(sessionCookie).toBeDefined();
     expect(sessionCookie?.httpOnly).toBe(true);
+
+    const backend = await context.request.get("/backend/v0/users?page=1&pageSize=1", {
+      headers: { Accept: "application/json" },
+    });
+    expect(backend.status()).toBe(200);
+    const payload = (await backend.json()) as { data?: unknown };
+    expect(Array.isArray(payload.data)).toBe(true);
   });
 });

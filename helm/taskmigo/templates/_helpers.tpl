@@ -36,8 +36,16 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- default "default" .Values.serviceAccountName }}
 {{- end }}
 
+{{- define "taskmigo.webServiceUrl" -}}
+{{- printf "http://%s-web:%v" (include "taskmigo.fullname" .) .Values.web.service.port }}
+{{- end }}
+
 {{- define "taskmigo.webUrl" -}}
-{{- default (printf "http://%s-web:%v" (include "taskmigo.fullname" .) .Values.web.service.port) .Values.web.publicUrl }}
+{{- default (include "taskmigo.webServiceUrl" .) .Values.web.publicUrl }}
+{{- end }}
+
+{{- define "taskmigo.clientBackendUrl" -}}
+{{- default (include "taskmigo.webServiceUrl" .) .Values.client.backend.url }}
 {{- end }}
 
 {{- define "taskmigo.clientUrl" -}}

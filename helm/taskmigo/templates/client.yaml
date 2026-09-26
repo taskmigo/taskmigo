@@ -49,6 +49,10 @@ spec:
           env:
             - name: TM_BROWSER_HOST_NAME
               value: {{ include "taskmigo.clientUrl" . | quote }}
+            - name: TASKMIGO_BACKEND_URL
+              value: {{ include "taskmigo.clientBackendUrl" . | quote }}
+            - name: TASKMIGO_BACKEND_TIMEOUT_MILLISECONDS
+              value: {{ .Values.client.backend.timeoutMilliseconds | quote }}
             - name: TASKMIGO_AUTH_ISSUER
               value: {{ include "taskmigo.clientIssuer" . | quote }}
             - name: TASKMIGO_AUTH_CLIENT_ID

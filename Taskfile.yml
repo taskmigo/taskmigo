@@ -289,6 +289,10 @@ tasks:
           --output /dev/null --write-out '%{http_code}' \
           "http://{{.PUBLIC_HOST}}/api/v0/permissions")"
         test "$api_status" = 401
+        bff_status="$(curl --noproxy '*' --resolve "$resolve" --silent --show-error \
+          --output /dev/null --write-out '%{http_code}' \
+          "http://{{.PUBLIC_HOST}}/backend/v0/users?page=1&pageSize=1")"
+        test "$bff_status" = 401
 
   kubernetes:info:
     desc: Print local endpoints and migration credentials

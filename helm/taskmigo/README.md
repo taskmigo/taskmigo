@@ -102,6 +102,12 @@ BFF; `/api`, `/.well-known`, `/oauth2`, `/login`, `/connect`, `/logout`, and `/e
 other path routes to the browser client. The longest `PathPrefix` match keeps `/api/auth` on the client ahead of `/api`.
 The client listener settings provide TLS for this shared-host mode. Distinct host values retain the two-listener behavior.
 
+Browser API traffic uses the client BFF namespace `/backend/v0/*`. Because that prefix is not owned by the public web
+route, it reaches the Next.js client through the normal client route and is forwarded internally to Spring as
+`/api/v0/*` with the server-held OAuth access token. The client defaults `client.backend.url` to the in-cluster web
+Service URL; override it only with a trusted HTTP(S) backend origin. Do not point it at the public Gateway URL, which
+would add an unnecessary public hop and can create proxy-routing loops.
+
 To use an existing Gateway, disable Gateway creation and identify the Gateway and listener section names:
 
 ```yaml

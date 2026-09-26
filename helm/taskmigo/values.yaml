@@ -87,6 +87,9 @@ client:
   service:
     type: ClusterIP
     port: 3000
+  backend:
+    url: ""
+    timeoutMilliseconds: 30000
   auth:
     issuer: ""
     clientId: browser
