@@ -1,6 +1,6 @@
 ---
 name: github-pr-ci-workflow
-description: "Drive GitHub bug fixes, pull requests, and CI to completion efficiently. Use whenever an agent fixes a reported defect, creates or updates a PR, checks GitHub Actions/pipeline status, investigates failed checks, pushes CI fixes, or is asked to continue until CI is healthy. Enforces latest-base bug reproduction, issue-scoped reviewable commit history, one coherent implementation before the final CI cycle, SHA-anchored fail-fast CI triage, hard anti-stall and mutation budgets, bounded GitHub connector batches, batched fixes, non-blocking status checks, and preservation of machine-actionable PR metadata during body rewrites. Avoids cross-issue squash commits, repeated self-review pushes, redundant fixes, stale workflow runs, repeated polling, oversized tool batches, repeated full-PR/log fetches, busy waiting, unnecessary reruns, retrying unavailable local Git/network paths, and accidentally dropping issue-closing directives."
+description: "Drive GitHub bug fixes, pull requests, and CI to completion efficiently. Use whenever an agent fixes a reported defect, creates or updates a PR, checks GitHub Actions/pipeline status, investigates failed checks, pushes CI fixes, or is asked to continue until CI is healthy. Enforces latest-base bug reproduction, problem-scoped reviewable commit history, one coherent implementation before the final CI cycle, SHA-anchored fail-fast CI triage, hard anti-stall and mutation budgets, bounded GitHub connector batches, batched fixes, non-blocking status checks, and preservation of machine-actionable PR metadata during body rewrites. Avoids cross-problem squash commits, repeated self-review pushes, redundant fixes, stale workflow runs, repeated polling, oversized tool batches, repeated full-PR/log fetches, busy waiting, unnecessary reruns, retrying unavailable local Git/network paths, and accidentally dropping issue-closing directives."
 ---
 
 # GitHub PR and CI Workflow
@@ -56,19 +56,20 @@ Before changing production code for a reported bug, establish whether the defect
    - Investigate all completed failures visible in the same snapshot before editing code.
    - Do not wait for Kubernetes/E2E/performance jobs to finish before fixing an already-failed formatting, compilation, static-analysis, or unit-test job.
 
-4. **Batch fixes and implementation discoveries without crossing issue boundaries.**
+4. **Batch fixes and implementation discoveries without crossing problem boundaries.**
    - Collect every currently known failure from the same head SHA.
    - Before pushing, also complete the bounded self-review and direct-consumer/adapter impact scan for the selected change.
-   - Fix all blockers and required integration gaps for the **same issue** in one coherent change when possible.
-   - For issue-driven work, preserve a one-to-one final-history boundary: **one issue = one final commit, and one final commit = one issue**.
-   - A pull request may fix multiple issues, but each issue must remain in its own reviewable commit. Never combine independent issue fixes into one commit merely because they share a PR.
-   - Fold temporary, mechanical, review-fix, formatting, and CI-repair commits back into the final commit for their owning issue once that issue's implementation is stable.
-   - Never squash final commits for different issues together. A repository or hosting-platform squash option does not override this reviewability requirement for the branch history being prepared by the agent.
-   - If a change cannot be assigned cleanly to one issue, do not hide that ambiguity in a cross-issue commit; split the scope or establish the missing issue boundary first.
-   - Defer adjacent improvements that are not required to close the issue or prevent a regression introduced by the fix.
+   - Here, **problem** means one independently reviewable defect, finding, behavioral gap, or coherent repair concern. It does **not** mean a GitHub Issue ticket.
+   - A single GitHub Issue may describe multiple independent problems. When those problems can be reviewed and understood independently, preserve them as separate final commits even though one PR closes one ticket.
+   - Preserve a one-to-one final-history boundary: **one problem = one final commit, and one final commit = one problem**.
+   - Keep implementation, regression tests, formatting, and CI/review repairs for the same problem together in that problem's final commit.
+   - Never combine independent problems into one commit merely because they were reported in the same GitHub Issue or fixed in the same PR.
+   - Never split one coherent problem into artificial commits such as "production code", "tests", "formatting", or "review fixes"; those pieces are not independently meaningful repairs.
+   - If a change cannot be assigned cleanly to one problem, do not hide that ambiguity in a broad commit; first identify the actual repair boundary.
+   - Defer adjacent improvements that are not required to solve the current problem or prevent a regression introduced by its fix.
    - Run the smallest relevant local checks when a local workspace is available.
-   - Push once per coherent issue update, then start a fresh SHA-anchored CI cycle.
-   - Avoid one-failure/one-commit loops and one-self-review-finding/one-push loops inside the same issue unless later failures were genuinely hidden by earlier execution evidence.
+   - Push once per coherent problem update, then start a fresh SHA-anchored CI cycle.
+   - Avoid one-failure/one-commit loops and one-self-review-finding/one-push loops inside the same problem unless later failures were genuinely hidden by earlier execution evidence.
 
 5. **Never busy-wait for CI.**
    - Do not use long blocking wait/sleep operations.
@@ -91,7 +92,7 @@ Before changing production code for a reported bug, establish whether the defect
 8. **Bound GitHub connector mutation batches.**
    - Never create one GitHub blob per file in an unbounded loop for a multi-file change.
    - Prefer one `create_tree` operation with inline file content for a focused multi-file edit.
-   - If the payload is too large, chain a small number of tree updates and create one final commit for the current issue or non-issue change unit.
+   - If the payload is too large, chain a small number of tree updates and create one final commit for the current problem/change unit.
    - Keep a single Code Mode orchestration block to roughly 10 awaited GitHub connector calls or fewer. If more operations are genuinely needed, split them into intentional batches with a checkpoint between batches.
    - Do not print raw large API payloads into context. Parse and project only the fields or error window needed for the next decision.
 
@@ -397,7 +398,7 @@ Do **not**:
 - Rebuild an existing PR body from the template without preserving and verifying still-valid issue-closing directives.
 - Run a full adversarial self-review after every repository mutation or CI status change.
 - Push a new SHA for each internally discovered cleanup or code-quality idea.
-- Squash distinct issue commits together. Clean temporary/mechanical history only within each owning issue, preserving one final reviewable commit per issue.
+- Squash distinct problem commits together. Clean temporary/mechanical history only within each owning problem, preserving one final reviewable commit per independently reviewable problem.
 - Rewrite immutable RCA permalinks after every intermediate commit instead of waiting for a stable fixed SHA.
 - Use PR-triggered CI as an interactive implementation loop when one preflight can expose the same direct consumers or integration gaps.
 
