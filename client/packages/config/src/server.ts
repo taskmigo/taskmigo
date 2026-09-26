@@ -6,14 +6,9 @@ const url = z.url().transform((value) => new URL(value));
 const httpOrigin = z
   .url()
   .transform((value) => new URL(value))
-  .refine((value) => value.protocol === "http:" || value.protocol === "https:", "Expected an HTTP(S) URL")
+  .refine((value) => ["http:", "https:"].includes(value.protocol), "Expected an HTTP(S) URL")
   .refine(
-    (value) =>
-      value.username === "" &&
-      value.password === "" &&
-      value.pathname === "/" &&
-      value.search === "" &&
-      value.hash === "",
+    (value) => value.href === `${value.origin}/`,
     "Expected an HTTP(S) origin without credentials, path, query, or fragment",
   );
 const nonNegativeInteger = z.coerce.number().int().nonnegative();

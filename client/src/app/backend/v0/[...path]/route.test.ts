@@ -123,6 +123,7 @@ describe("backend BFF route", () => {
         method: "POST",
         headers: {
           Origin: "https://app.example",
+          "Sec-Fetch-Site": "same-origin",
           Accept: "application/json",
           Authorization: "Bearer attacker-controlled",
           Cookie: "stolen=value",
@@ -146,7 +147,7 @@ describe("backend BFF route", () => {
         status: 201,
         headers: {
           "Access-Control-Allow-Origin": "*",
-          "Content-Location": "http://taskmigo-web:8080/api/v0/users/42",
+          "Content-Location": "http://taskmigo-web:8080/api/v0",
           Location: "/api/v0/users/42?view=full",
           "Set-Cookie": "backend=session",
           "X-Backend": "preserved",
@@ -158,7 +159,7 @@ describe("backend BFF route", () => {
 
     expect(response.status).toBe(201);
     expect(response.headers.get("location")).toBe("/backend/v0/users/42?view=full");
-    expect(response.headers.get("content-location")).toBe("/backend/v0/users/42");
+    expect(response.headers.get("content-location")).toBe("/backend/v0");
     expect(response.headers.get("set-cookie")).toBeNull();
     expect(response.headers.get("access-control-allow-origin")).toBeNull();
     expect(response.headers.get("x-backend")).toBe("preserved");

@@ -9,6 +9,8 @@ export const runtime = "nodejs";
 const UPSTREAM_API_PREFIX = "/api/v0";
 const BFF_API_PREFIX = "/backend/v0";
 const SAFE_METHODS = new Set(["GET", "HEAD"]);
+const ALLOWED_FETCH_SITES = new Set(["same-origin", "none"]);
+const UNSAFE_PATH_SEGMENTS = new Set(["", ".", ".."]);
 const FORWARDED_REQUEST_HEADERS = new Set([
   "accept",
   "accept-language",
@@ -57,13 +59,13 @@ function errorResponse(status: number, error: string): NextResponse {
 
 function isTrustedBrowserRequest(request: NextRequest, appUrl: URL): boolean {
   const fetchSite = request.headers.get("sec-fetch-site");
-  if (fetchSite !== null && fetchSite !== "same-origin" && fetchSite !== "none") return false;
+  if (fetchSite !== null && !ALLOWED_FETCH_SITES.has(fetchSite)) return false;
   if (SAFE_METHODS.has(request.method)) return true;
   return request.headers.get("origin") === appUrl.origin;
 }
 
 function hasUnsafePathSegment(path: string[]): boolean {
-  return path.some((segment) => segment.length === 0 || segment === "." || segment === "..");
+  return path.some((segment) => UNSAFE_PATH_SEGMENTS.has(segment));
 }
 
 function upstreamUrl(backendUrl: URL, path: string[], search: string): URL {
@@ -156,7 +158,10 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<NextR
       signal: AbortSignal.any([request.signal, timeoutSignal]),
     });
   } catch {
-    const response = errorResponse(timeoutSignal.aborted ? 504 : 502, timeoutSignal.aborted ? "Backend timed out" : "Backend unavailable");
+    const response = errorResponse(
+      timeoutSignal.aborted ? 504 : 502,
+      timeoutSignal.aborted ? "Backend timed out" : "Backend unavailable",
+    );
     if (credential.session !== session) sessions.write(response.cookies, credential.session);
     return response;
   }
