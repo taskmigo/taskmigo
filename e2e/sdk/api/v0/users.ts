@@ -38,11 +38,12 @@ export type UserInfo = z.infer<typeof userInfoSchema>;
 export type CreateUserResponse = z.infer<typeof createUserResponseSchema>;
 export type ListUsersResponse = z.infer<typeof listUsersResponseSchema>;
 
-interface CreateUserOperation {
+interface UsersApiOperations {
   create(body: CreateUserRequest): Promise<CreateUserResponse>;
+  list(query?: ListUsersRequest): Promise<ListUsersResponse>;
 }
 
-export class UsersApi implements CreateUserOperation {
+export class UsersApi implements UsersApiOperations {
   readonly extensions: UsersApiExtensions;
 
   private readonly usersUrl: string;
@@ -87,13 +88,13 @@ export class UsersApi implements CreateUserOperation {
 }
 
 export class UsersApiExtensions {
-  constructor(private readonly createUser: CreateUserOperation) {}
+  constructor(private readonly users: UsersApiOperations) {}
 
   async createMany(bodies: readonly CreateUserRequest[]): Promise<CreateUserResponse[]> {
     return test.step(`Create ${bodies.length} users`, async () => {
       const responses: CreateUserResponse[] = [];
       for (const body of bodies) {
-        responses.push(await this.createUser.create(body));
+        responses.push(await this.users.create(body));
       }
       return responses;
     });
