@@ -202,6 +202,20 @@ describe("backend BFF route", () => {
     expect(response.status).toBe(204);
   });
 
+  test("uses the default HTTP port in forwarding metadata", async () => {
+    configuration.appUrl = new URL("http://app.example");
+    auth.sessions.read.mockReturnValue(session);
+    upstreamFetch.mockImplementation(async (input: RequestInfo | URL) => {
+      const upstream = input as Request;
+      expect(upstream.headers.get("x-forwarded-port")).toBe("80");
+      return new Response(null, { status: 204 });
+    });
+
+    const response = await GET(request("/backend/v0/users"), context("users"));
+
+    expect(response.status).toBe(204);
+  });
+
   test("forwards OPTIONS instead of using an implicit route-handler response", async () => {
     auth.sessions.read.mockReturnValue(session);
     upstreamFetch.mockImplementation(async (input: RequestInfo | URL) => {
