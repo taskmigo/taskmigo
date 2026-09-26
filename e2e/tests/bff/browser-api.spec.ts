@@ -1,13 +1,10 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "#taskmigo-sdk";
 
-import { signIn } from "../auth/sign-in.js";
-import { e2eEnvironment } from "../support/environment.js";
-
-const browserApiUrl = (path: string): string => new URL(path, e2eEnvironment().baseUrl).href;
+const usersUrl = (browserApiBaseUrl: string): string => new URL("v0/users?page=1&pageSize=1", browserApiBaseUrl).href;
 
 test.describe("Browser API BFF", { tag: "@bff" }, () => {
-  test("requires an authenticated browser session", async ({ context }) => {
-    const response = await context.request.get(browserApiUrl("/api/bff/v0/users?page=1&pageSize=1"), {
+  test("requires an authenticated browser session", async ({ taskmigo }) => {
+    const response = await taskmigo.api.request.get(usersUrl(taskmigo.api.browserApiBaseUrl), {
       headers: { Accept: "application/json" },
     });
 
@@ -15,28 +12,23 @@ test.describe("Browser API BFF", { tag: "@bff" }, () => {
     await expect(response.json()).resolves.toEqual({ error: "Authentication required" });
   });
 
-  test("forwards an authenticated browser request to the protected API", async ({ page }) => {
-    await signIn(page);
+  test("forwards an authenticated browser request to the protected API", async ({ taskmigo }) => {
+    await taskmigo.signIn();
 
-    const response = await page.evaluate(async () => {
-      const result = await fetch("/api/bff/v0/users?page=1&pageSize=1", {
-        headers: { Accept: "application/json" },
-      });
-      return { status: result.status, body: await result.text() };
-    });
+    const response = await taskmigo.api.v0.users.list({ page: 1, pageSize: 1 });
 
-    expect(response.status, response.body).toBe(200);
+    expect(response.statusCode).toBe(200);
   });
 
-  test("rejects cross-origin mutations with the authenticated browser cookie jar", async ({ page, context }) => {
-    await signIn(page);
+  test("rejects cross-origin mutations with the authenticated browser cookie jar", async ({ taskmigo }) => {
+    await taskmigo.signIn();
 
-    const authenticated = await context.request.get(browserApiUrl("/api/bff/v0/users?page=1&pageSize=1"), {
+    const authenticated = await taskmigo.api.request.get(usersUrl(taskmigo.api.browserApiBaseUrl), {
       headers: { Accept: "application/json" },
     });
     expect(authenticated.status()).toBe(200);
 
-    const response = await context.request.post(browserApiUrl("/api/bff/v0/users"), {
+    const response = await taskmigo.api.request.post(new URL("v0/users", taskmigo.api.browserApiBaseUrl).href, {
       headers: {
         Origin: "https://attacker.example",
         "Content-Type": "application/json",

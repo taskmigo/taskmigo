@@ -1,33 +1,62 @@
 # Taskmigo E2E
 
-This folder owns the black-box Playwright suite for a deployed Taskmigo environment. The suite does not create the environment and does not depend on the repository Taskfile; it only requires reachable public endpoints and test credentials through environment variables.
+`e2e/` is one Node/TypeScript package. Reusable automation lives under `sdk/`; Playwright specs and scenario support live under `tests/`.
 
-Tests are organized by product feature under `tests/<feature>/`. Every feature group has a Playwright tag so it can be selected independently. The authentication suite uses `@auth`, with the narrower `@login`, `@session`, and `@smoke` tags. The browser API BFF suite uses `@bff`.
+Tests import only the public SDK boundary:
 
-The current suite verifies the browser authentication path end to end:
+```ts
+import { expect, test } from "#taskmigo-sdk";
+```
 
-1. Open the protected `/account` page without a session.
-2. Follow the redirect to the deployed Spring Authorization Server.
-3. Sign in with the migration-managed `system` user.
-4. Complete the OAuth Authorization Code + PKCE callback through the Next.js BFF.
-5. Verify the authenticated account page, BFF session API, HttpOnly session cookie, and session persistence after reload.\n\nThe BFF suite separately verifies unauthenticated rejection, authenticated forwarding to a protected Spring API, and cross-origin mutation rejection while sharing the authenticated browser cookie jar.
+The suite covers browser authentication, browser API BFF behavior, and deployment-level performance regressions. Feature tags include `@auth`, `@bff`, `@performance`, and `@smoke`.
+
+## Source of truth
+
+Taskmigo production code is the source of truth for HTTP behavior. The SDK does not depend on generated `openapi.yaml`; OpenAPI remains a derived documentation and review artifact.
+
+Endpoint resources are versioned by the production HTTP API namespace. The current contract lives under `sdk/api/v0/`, is exposed at `taskmigo.api.v0`, and validates responses with strict Zod schemas before returning them to tests. TypeScript response types are inferred from those same schemas.
+
+The SDK separates OpenAPI operations from SDK-only convenience APIs structurally rather than with annotations. Resource classes such as `UsersApi` contain methods that map one-to-one to OpenAPI operations and use the exact `operationId`. Each resource exposes its SDK-only helpers through an `extensions` property backed by a separate extension class such as `UsersApiExtensions`.
+
+That boundary is visible at the resource call site:
+
+```ts
+await taskmigo.api.v0.users.create(body);
+await taskmigo.api.v0.users.extensions.createMany(bodies);
+```
+
+The first call maps directly to the OpenAPI `create` operation. The second is an SDK extension that composes the official operation.
+
+Scenario-specific behavior that is not generally useful as an API convenience still belongs under `tests/support/`.
+
+## Playwright owns transport and lifecycle
+
+- `test` extends Playwright with one `taskmigo` fixture.
+- `Taskmigo` receives Playwright's existing `Page` and `BrowserContext`.
+- Browser automation uses Page Objects over native Playwright primitives.
+- API automation reuses `BrowserContext.request` so it shares the browser cookie jar.
+- Browser-authenticated API calls go through the production `/api/bff/**` route. The BFF validates the browser session and forwards a Bearer token to the protected Spring API.
+- Mutating SDK requests send the application origin required by the BFF same-origin policy.
+- Playwright continues to own cookies, tracing, screenshots, video, assertions, fixture lifecycle, retries, and reports.
+
+The SDK does not implement its own HTTP engine, cookie store, locator abstraction, assertion library, or test lifecycle.
+
+## Authentication
+
+`taskmigo.signIn()` performs the real browser OAuth Authorization Code + PKCE flow. After login, SDK API calls reuse the authenticated BrowserContext and traverse the same BFF boundary used by browser code.
 
 ## Environment
-
-The suite requires:
 
 - `E2E_BASE_URL`: browser-visible Taskmigo client origin.
 - `E2E_AUTH_ORIGIN`: browser-visible authorization-server origin.
 - `E2E_USERNAME`: interactive username.
 - `E2E_PASSWORD`: interactive password.
 
-GitHub Actions deploys the Kubernetes environment first, resolves the Minikube Gateway hostnames and migration credential, and then invokes this suite directly from `e2e/`. That workflow integration is glue only; Playwright setup and execution are not Taskfile responsibilities.
-
-On CI, Playwright's built-in GitHub reporter adds failure annotations and its built-in HTML reporter captures the detailed results, traces, screenshots, and videos. The workflow uploads that report and updates one pull-request comment with the overall result and workflow link. Re-running the workflow updates the same bot comment instead of creating another one.
+GitHub Actions deploys the Kubernetes environment first, resolves the Minikube Gateway hostnames and migration credential, and then invokes this suite from `e2e/`.
 
 ## Run
 
-Against any already deployed and reachable environment:
+Against an already deployed and reachable environment:
 
 ```bash
 npm install --no-audit --no-fund --package-lock=false
@@ -40,10 +69,11 @@ E2E_PASSWORD='replace-me' \
 npm test
 ```
 
-Run a tagged subset with the provided scripts:
+Run a tagged subset with:
 
 ```bash
 npm run test:auth
 npm run test:bff
+npm run test:performance
 npm run test:smoke
 ```
