@@ -6,7 +6,9 @@ export const dynamic = "force-dynamic";
 
 export default async function AccountPage() {
   const session = await getSession();
-  if (!session) redirect("/api/auth/login?returnTo=/account");
+  if (!session) {
+    redirect("/api/auth/login?returnTo=/account");
+  }
 
   return (
     <main>

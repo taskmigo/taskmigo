@@ -75,16 +75,22 @@ export class DefaultAuthManager implements AuthManager {
   }
 
   async renew(session: Session): Promise<Session> {
-    if (session.expiresAt > this.#clock() + this.#refreshSkewMilliseconds) return session;
+    if (session.expiresAt > this.#clock() + this.#refreshSkewMilliseconds) {
+      return session;
+    }
 
     const renewed = await this.#client.renew(session);
-    if (renewed.user.id !== session.user.id) throw new Error("Authorization subject changed during renewal");
+    if (renewed.user.id !== session.user.id) {
+      throw new Error("Authorization subject changed during renewal");
+    }
     return renewed;
   }
 
   async signOut(session?: Session): Promise<URL> {
     const redirectUrl = this.#navigation.postLogoutRedirectUrl;
-    if (!session) return redirectUrl;
+    if (!session) {
+      return redirectUrl;
+    }
     return this.#client.end(session, redirectUrl).catch(() => redirectUrl);
   }
 }

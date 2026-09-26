@@ -38,13 +38,17 @@ export class AuthNavigation {
 
   #requireLocalTarget(candidate: string, name: string): string {
     const target = this.#scope.path(candidate);
-    if (!target) throw new Error(`${name} must resolve to the application origin`);
+    if (!target) {
+      throw new Error(`${name} must resolve to the application origin`);
+    }
     return target;
   }
 
   #requireSameOriginUrl(candidate: URL, name: string): URL {
     const resolved = this.#scope.resolve(candidate);
-    if (!resolved) throw new Error(`${name} must resolve to the application origin`);
+    if (!resolved) {
+      throw new Error(`${name} must resolve to the application origin`);
+    }
     return resolved;
   }
 }

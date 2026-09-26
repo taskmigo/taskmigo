@@ -14,7 +14,9 @@ const singletonKey = Symbol.for("taskmigo.foundation.test.singleton");
 type Subject = { subject: string };
 
 function parseSubject(value: unknown): Subject | undefined {
-  if (typeof value !== "object" || value === null) return;
+  if (typeof value !== "object" || value === null) {
+    return;
+  }
   const subject = (value as Record<string, unknown>).subject;
   return typeof subject === "string" ? { subject } : undefined;
 }

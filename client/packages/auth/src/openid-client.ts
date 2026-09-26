@@ -83,12 +83,17 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
       idTokenExpected: true,
     });
     const claims = tokens.claims();
-    if (!claims) throw new Error("Authorization server returned no ID token claims");
-    if (!tokens.refresh_token || !tokens.id_token)
+    if (!claims) {
+      throw new Error("Authorization server returned no ID token claims");
+    }
+    if (!tokens.refresh_token || !tokens.id_token) {
       throw new Error("Authorization server returned a non-renewable session");
+    }
 
     const subject = OpenIdAuthorizationClient.#claimString(claims, "sub");
-    if (!subject) throw new Error("Authorization server returned no subject claim");
+    if (!subject) {
+      throw new Error("Authorization server returned no subject claim");
+    }
 
     return this.#createSession(tokens, {
       user: OpenIdAuthorizationClient.#user(subject, OpenIdAuthorizationClient.#claimString(claims, "name")),
@@ -165,12 +170,16 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
 
   static #tokenExpiresAt(tokens: Tokens): number {
     const expiresIn = tokens.expiresIn();
-    if (!expiresIn || expiresIn < 0) throw new Error("Authorization server returned an invalid token lifetime");
+    if (!expiresIn || expiresIn < 0) {
+      throw new Error("Authorization server returned an invalid token lifetime");
+    }
     return Date.now() + expiresIn * 1000;
   }
 
   static #claimString(claims: unknown, name: "sub" | "name"): string | undefined {
-    if (typeof claims !== "object" || claims === null || !Object.hasOwn(claims, name)) return;
+    if (typeof claims !== "object" || claims === null || !Object.hasOwn(claims, name)) {
+      return;
+    }
     const value = (claims as Record<string, unknown>)[name];
     return typeof value === "string" && value.length > 0 ? value : undefined;
   }

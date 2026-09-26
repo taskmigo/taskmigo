@@ -67,7 +67,9 @@ const runtimeKey = Symbol.for("taskmigo.auth.runtime");
 
 beforeEach(() => {
   calls.config.mockReturnValue(config);
-  for (const mock of Object.values(calls)) mock.mockClear();
+  for (const mock of Object.values(calls)) {
+    mock.mockClear();
+  }
   Reflect.deleteProperty(globalThis, runtimeKey);
 });
 
