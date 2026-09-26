@@ -5,7 +5,7 @@ import { getAuth } from "@/auth";
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  const { manager, sessions, transactions } = getAuth();
+  const { manager, sessions, transactions, refreshCoordinator } = getAuth();
   const transaction = transactions.read(request.cookies);
 
   if (!transaction) {
@@ -16,6 +16,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   try {
     const { redirectTo, session } = await manager.completeSignIn(new URL(request.url), transaction);
+    await refreshCoordinator.register(session, request.signal);
     const response = NextResponse.redirect(redirectTo);
     sessions.write(response.cookies, session);
     transactions.clear(response.cookies);

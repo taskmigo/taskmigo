@@ -16,6 +16,8 @@ export interface Session {
   authorizationState: string;
 }
 
+export class SessionRenewalRejectedError extends Error {}
+
 export interface AuthorizationTransaction {
   state: string;
   returnTo: string;

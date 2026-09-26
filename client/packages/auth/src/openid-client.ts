@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import * as client from "openid-client";
 import { z } from "zod";
 
-import type { AuthorizationClient, Session, User } from "./core";
+import { SessionRenewalRejectedError, type AuthorizationClient, type Session, type User } from "./core";
 
 type AuthorizationState = { version: string; state: string; nonce: string; codeVerifier: string };
 type SessionState = { version: string; accessToken: string; refreshToken: string; idToken: string };
@@ -102,7 +102,15 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
 
   async renew(session: Session): Promise<Session> {
     const previous = OpenIdAuthorizationClient.#decode(session.authorizationState, this.#sessionStateSchema);
-    const tokens = await client.refreshTokenGrant(await this.#configuration(), previous.refreshToken);
+    let tokens: Tokens;
+    try {
+      tokens = await client.refreshTokenGrant(await this.#configuration(), previous.refreshToken);
+    } catch (error) {
+      if (error instanceof client.ResponseBodyError && error.error === "invalid_grant") {
+        throw new SessionRenewalRejectedError("Authorization server rejected the refresh token", { cause: error });
+      }
+      throw error;
+    }
     const claims = tokens.claims();
 
     return this.#createSession(tokens, {
