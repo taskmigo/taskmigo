@@ -30,12 +30,7 @@ final class ObjectAuthorizationExpressionValidator {
                 }
             }
             case ObjectAuthorizationExpression.Length length -> {
-                if (
-                    length.operand() instanceof ObjectAuthorizationExpression.Reference reference &&
-                    reference.root().equals("object")
-                ) {
-                    requireOperator(reference, ObjectAuthorizationOperator.LENGTH, schema);
-                }
+                requireOperator(length.operand(), ObjectAuthorizationOperator.LENGTH, schema);
                 validate(length.operand(), schema);
             }
             case ObjectAuthorizationExpression.Binary binary -> {
@@ -74,13 +69,30 @@ final class ObjectAuthorizationExpressionValidator {
         ObjectAuthorizationOperator operator,
         ObjectAuthorizationSchema<Q> schema
     ) {
-        if (
-            expression instanceof ObjectAuthorizationExpression.Reference reference && reference.root().equals("object")
-        ) {
-            if (operator == ObjectAuthorizationOperator.AND || operator == ObjectAuthorizationOperator.OR) {
-                return;
+        if (operator == ObjectAuthorizationOperator.AND || operator == ObjectAuthorizationOperator.OR) {
+            return;
+        }
+        switch (expression) {
+            case ObjectAuthorizationExpression.Literal _ -> {
             }
-            requireOperator(reference, operator, schema);
+            case ObjectAuthorizationExpression.Reference reference -> {
+                if (reference.root().equals("object")) {
+                    requireOperator(reference, operator, schema);
+                }
+            }
+            case ObjectAuthorizationExpression.ListValue list -> list.values().forEach(value ->
+                requireOperator(value, operator, schema)
+            );
+            case ObjectAuthorizationExpression.Unary unary -> requireOperator(unary.operand(), operator, schema);
+            case ObjectAuthorizationExpression.Length length -> requireOperator(length.operand(), operator, schema);
+            case ObjectAuthorizationExpression.Binary binary -> {
+                requireOperator(binary.left(), operator, schema);
+                requireOperator(binary.right(), operator, schema);
+            }
+            case ObjectAuthorizationExpression.Quantifier quantifier -> {
+                requireOperator(quantifier.collection(), operator, schema);
+                requireOperator(quantifier.predicate(), operator, schema);
+            }
         }
     }
 

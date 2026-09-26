@@ -50,16 +50,48 @@ final class QuerySchemaValidator {
     }
 
     private static <Q> void requireOperator(QueryExpression expression, QueryOperator operator, QuerySchema<Q> schema) {
-        if (expression instanceof QueryExpression.Reference reference && reference.root().equals("object")) {
-            if (operator == QueryOperator.AND || operator == QueryOperator.OR) {
-                return;
+        if (operator == QueryOperator.AND || operator == QueryOperator.OR) {
+            return;
+        }
+        switch (expression) {
+            case QueryExpression.Literal _ -> {
             }
-            QueryField field = schema
-                .field(new QueryPath(reference.path()))
-                .orElseThrow(() -> invalid("unknown query path"));
-            if (!field.operators().contains(operator)) {
-                throw invalid("operator is not supported for query path " + field.path().text());
+            case QueryExpression.Reference reference -> {
+                if (reference.root().equals("object")) {
+                    requireOperator(reference, operator, schema);
+                }
             }
+            case QueryExpression.ListValue list -> list.values().forEach(value ->
+                requireOperator(value, operator, schema)
+            );
+            case QueryExpression.Unary unary -> requireOperator(unary.operand(), operator, schema);
+            case QueryExpression.Length length -> requireOperator(length.operand(), operator, schema);
+            case QueryExpression.Binary binary -> {
+                requireOperator(binary.left(), operator, schema);
+                requireOperator(binary.right(), operator, schema);
+            }
+            case QueryExpression.Conditional conditional -> {
+                requireOperator(conditional.condition(), operator, schema);
+                requireOperator(conditional.whenTrue(), operator, schema);
+                requireOperator(conditional.whenFalse(), operator, schema);
+            }
+            case QueryExpression.Quantifier quantifier -> {
+                requireOperator(quantifier.collection(), operator, schema);
+                requireOperator(quantifier.predicate(), operator, schema);
+            }
+        }
+    }
+
+    private static <Q> void requireOperator(
+        QueryExpression.Reference reference,
+        QueryOperator operator,
+        QuerySchema<Q> schema
+    ) {
+        QueryField field = schema
+            .field(new QueryPath(reference.path()))
+            .orElseThrow(() -> invalid("unknown query path"));
+        if (!field.operators().contains(operator)) {
+            throw invalid("operator is not supported for query path " + field.path().text());
         }
     }
 
