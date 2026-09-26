@@ -36,6 +36,7 @@ Do not force a debate around trivial mechanical work that has no meaningful alte
 10. **Prove the runtime boundary before editing.** A framework capability or similarly named concept is not proof that the application boundary accepts it. Verify the exact artifact, owner, transport, scope, and consumer before mutating code.
 11. **Freeze scope after synthesis.** Once the selected direction satisfies the stated acceptance criteria and hard constraints, treat adjacent discoveries as out of scope unless they block correctness, safety, compatibility, or the completeness of the selected fix.
 12. **Review at checkpoints, not continuously.** Do not restart a full adversarial review after every edit, formatter change, test refactor, PR-body update, or CI status change. Review once before implementation and once after the coherent implementation is complete.
+13. **Prefer seamless repairs over patches.** Functional correctness is necessary but not sufficient. A good fix should fit the surrounding architecture, naming, abstractions, dependency direction, and local idioms so naturally that the repaired code looks intentionally designed rather than visibly patched. If the smallest local change would leave duplicated branches, awkward exceptions, special-case plumbing, misplaced ownership, or a one-off abstraction that makes the codebase visibly uglier, reconsider the repair boundary before accepting it.
 
 ## Debate roles
 
@@ -199,7 +200,23 @@ Avoid fake precision. Numerical scores are unnecessary unless the problem genuin
 
 If one option is strictly worse on the material criteria, discard it. If the trade-off depends on an unresolved product or architectural preference, state that uncertainty instead of manufacturing certainty.
 
-### 8. Synthesize and freeze the final direction
+### 8. Apply the seamless-repair test
+
+Before freezing the direction, evaluate the candidate as if the defect had never existed and the code were being designed correctly today.
+
+Ask:
+
+- Would this solution still be the natural design if there were no historical bug to patch around?
+- Does the fix live at the invariant-owning boundary, or is it compensating elsewhere because that was easier to edit?
+- Does it reuse the codebase's existing abstractions and dependency direction, or introduce a one-off path that future maintainers must remember?
+- Does the resulting code read uniformly with its neighbors, without "except for this bug" branches, duplicated policy, adapter-specific workarounds, or unexplained asymmetry?
+- If the changed code were shown without the issue history, would a reviewer reasonably believe it had been designed this way from the beginning?
+
+A repair may be larger than the absolute minimum diff when the extra change is required to restore a coherent invariant and remove visible patchwork. Conversely, do not broaden the task merely to beautify unrelated pre-existing code. The target is the **smallest coherent repair**, not the fewest changed lines and not a general cleanup.
+
+Use the tailoring metaphor internally: after repair, the "fabric" should look whole and purpose-made. If the functionality works but the repair leaves obvious seams, mismatched pieces, or accumulated patches in the affected design surface, the solution is not finished yet.
+
+### 9. Synthesize and freeze the final direction
 
 The Synthesizer must explicitly decide internally whether to:
 
@@ -214,7 +231,7 @@ For implementation work, this decision is the **scope freeze**. Record the selec
 
 For code review findings, report only findings that survive the challenge pass.
 
-### 9. Verify the synthesized result
+### 10. Verify the synthesized result
 
 Before considering the review or implementation complete, challenge the synthesized result one more time with emphasis on regression risk:
 
@@ -227,6 +244,7 @@ Before considering the review or implementation complete, challenge the synthesi
 - Check pull-request title, description, issue linkage, and checklist when repository instructions require them.
 - Check for unrelated scope drift introduced while fixing review findings.
 - Re-run the minimization challenge against the final diff: every new helper, abstraction, branch, layer, and configuration point should justify why a smaller behavior-equivalent implementation is worse.
+- Run the seamless-repair test on the final diff: verify that the affected design surface has no new special-case seams, duplicated policy, ownership leaks, asymmetric handling, or workaround-shaped abstractions that exist only because of the bug.
 
 Classify every finding from this post-implementation pass before changing code:
 
@@ -248,7 +266,7 @@ After synthesis:
 3. **Batch required changes before CI.** Prefer one coherent implementation and one preflight over a sequence of speculative pushes.
 4. **Triage later discoveries.** Fix only blockers and required integration gaps. Defer adjacent cleanup and unrelated pre-existing defects.
 5. **Do not reopen a settled design for code minimization alone.** Once correctness is established, minimization may simplify the current diff but must not introduce a new architecture, abstraction family, or dependency direction.
-6. **Stop when the acceptance criteria are satisfied.** A self-review is successful when it proves the solution is sufficient, not when it exhausts every possible improvement.
+6. **Stop when the acceptance criteria are satisfied and the affected surface is coherent.** A self-review is successful when it proves the requested behavior is correct and the repair integrates cleanly into the affected design surface, not when it exhausts every possible improvement elsewhere.
 
 Examples of discoveries that normally stay out of scope after the freeze:
 
@@ -351,6 +369,9 @@ Re-evaluate from the perspective of a new reviewer:
 13. Has every new discovery been classified as blocker, required integration gap, adjacent improvement, or style/minimization only?
 14. Am I about to expand scope because the new idea is better in general, or because the current task is actually incomplete without it?
 15. Have I completed one full execution-surface scan so I do not discover obvious consumers only after starting CI?
+16. Does the final code look like a coherent design, or like a sequence of patches accumulated around the defect?
+17. If I removed the issue history, would the chosen ownership, abstractions, naming, and control flow still make sense on their own?
+18. Did I choose the smallest coherent repair rather than either the smallest possible diff or an unnecessarily broad cleanup?
 
 Apply the same evidence standard to your own implementation as to someone else's.
 
