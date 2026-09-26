@@ -5,6 +5,7 @@ import { getConfig, parseConfig } from "./server";
 
 const validEnvironment = {
   TM_BROWSER_HOST_NAME: "https://app.example",
+  TASKMIGO_API_INTERNAL_URL: "http://taskmigo-web:8080",
   TASKMIGO_AUTH_ISSUER: "https://auth.example",
   TASKMIGO_AUTH_CLIENT_ID: "browser-client",
   TASKMIGO_AUTH_CLIENT_SECRET: "client-secret",
@@ -36,6 +37,7 @@ describe("server configuration", () => {
 
     expect(config).toEqual({
       appUrl: new URL("https://app.example"),
+      apiInternalUrl: new URL("http://taskmigo-web:8080"),
       auth: {
         issuer: new URL("https://auth.example"),
         clientId: "browser-client",
@@ -84,6 +86,7 @@ describe("server configuration", () => {
 
   test.each([
     ["TM_BROWSER_HOST_NAME", "not-a-url"],
+    ["TASKMIGO_API_INTERNAL_URL", "not-a-url"],
     ["TASKMIGO_AUTH_ISSUER", "not-a-url"],
     ["TASKMIGO_AUTH_ALLOW_INSECURE_REQUESTS", "maybe"],
     ["TASKMIGO_AUTH_COOKIE_HTTP_ONLY", "maybe"],

@@ -2,7 +2,7 @@
 
 This folder owns the black-box Playwright suite for a deployed Taskmigo environment. The suite does not create the environment and does not depend on the repository Taskfile; it only requires reachable public endpoints and test credentials through environment variables.
 
-Tests are organized by product feature under `tests/<feature>/`. Every feature group has a Playwright tag so it can be selected independently. The authentication suite currently uses `@auth`, with the narrower `@login`, `@session`, and `@smoke` tags.
+Tests are organized by product feature under `tests/<feature>/`. Every feature group has a Playwright tag so it can be selected independently. The authentication suite uses `@auth`, with the narrower `@login`, `@session`, and `@smoke` tags. The browser API BFF suite uses `@bff`.
 
 The current suite verifies the browser authentication path end to end:
 
@@ -10,7 +10,7 @@ The current suite verifies the browser authentication path end to end:
 2. Follow the redirect to the deployed Spring Authorization Server.
 3. Sign in with the migration-managed `system` user.
 4. Complete the OAuth Authorization Code + PKCE callback through the Next.js BFF.
-5. Verify the authenticated account page, BFF session API, HttpOnly session cookie, and session persistence after reload.
+5. Verify the authenticated account page, BFF session API, HttpOnly session cookie, and session persistence after reload.\n\nThe BFF suite separately verifies unauthenticated rejection, authenticated forwarding to a protected Spring API, and cross-origin mutation rejection while sharing the authenticated browser cookie jar.
 
 ## Environment
 
@@ -44,5 +44,6 @@ Run a tagged subset with the provided scripts:
 
 ```bash
 npm run test:auth
+npm run test:bff
 npm run test:smoke
 ```

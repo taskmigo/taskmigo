@@ -144,6 +144,13 @@ describe("OpenIdAuthorizationClient", () => {
     });
   });
 
+  test("reads the access token from opaque session state", async () => {
+    const instance = await createClient();
+    const session = await createSession(instance, { access_token: "browser-access" });
+
+    expect(instance.getAccessToken(session)).toBe("browser-access");
+  });
+
   test("preserves an absent optional user name as property absence", async () => {
     const instance = await createClient();
     const result = await createSession(instance, { claims: { sub: "developer" } });
@@ -269,6 +276,7 @@ describe("OpenIdAuthorizationClient", () => {
       ).toString("base64url"),
     };
 
+    expect(() => instance.getAccessToken(current)).toThrow();
     await expect(instance.renew(current)).rejects.toThrow();
     await expect(instance.end(current, new URL("https://app.example/signed-out"))).rejects.toThrow();
     expect(oidc.refreshTokenGrant).not.toHaveBeenCalled();

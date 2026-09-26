@@ -49,6 +49,8 @@ spec:
           env:
             - name: TM_BROWSER_HOST_NAME
               value: {{ include "taskmigo.clientUrl" . | quote }}
+            - name: TASKMIGO_API_INTERNAL_URL
+              value: {{ printf "http://%s-web:%v" (include "taskmigo.fullname" .) .Values.web.service.port | quote }}
             - name: TASKMIGO_AUTH_ISSUER
               value: {{ include "taskmigo.clientIssuer" . | quote }}
             - name: TASKMIGO_AUTH_CLIENT_ID

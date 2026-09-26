@@ -9,6 +9,7 @@ const positiveInteger = z.coerce.number().int().positive();
 const configSchema = z
   .object({
     TM_BROWSER_HOST_NAME: url,
+    TASKMIGO_API_INTERNAL_URL: url,
     TASKMIGO_AUTH_ISSUER: url,
     TASKMIGO_AUTH_CLIENT_ID: z.string().min(1),
     TASKMIGO_AUTH_CLIENT_SECRET: z.string().min(1),
@@ -43,6 +44,7 @@ const configSchema = z
 
     return Object.freeze({
       appUrl: environment.TM_BROWSER_HOST_NAME,
+      apiInternalUrl: environment.TASKMIGO_API_INTERNAL_URL,
       auth: Object.freeze({
         issuer: environment.TASKMIGO_AUTH_ISSUER,
         clientId: environment.TASKMIGO_AUTH_CLIENT_ID,

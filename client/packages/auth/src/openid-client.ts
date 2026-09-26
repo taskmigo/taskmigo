@@ -117,6 +117,10 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
     });
   }
 
+  getAccessToken(session: Session): string {
+    return OpenIdAuthorizationClient.#decode(session.authorizationState, this.#sessionStateSchema).accessToken;
+  }
+
   async end(session: Session, postLogoutRedirectUri: URL): Promise<URL> {
     const { idToken } = OpenIdAuthorizationClient.#decode(session.authorizationState, this.#sessionStateSchema);
     return client.buildEndSessionUrl(await this.#configuration(), {

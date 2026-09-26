@@ -15,6 +15,11 @@ export interface Session {
   authorizationState: string;
 }
 
+export interface AuthorizedSession {
+  session: Session;
+  accessToken: string;
+}
+
 export interface AuthorizationTransaction {
   state: string;
   returnTo: string;
@@ -24,6 +29,7 @@ export interface AuthorizationClient {
   begin(redirectUri: URL): Promise<{ redirectTo: URL; state: string }>;
   complete(callbackUrl: URL, state: string): Promise<Session>;
   renew(session: Session): Promise<Session>;
+  getAccessToken(session: Session): string;
   end(session: Session, postLogoutRedirectUri: URL): Promise<URL>;
 }
 
@@ -34,6 +40,7 @@ export interface AuthManager {
     transaction: AuthorizationTransaction,
   ): Promise<{ redirectTo: URL; session: Session }>;
   renew(session: Session): Promise<Session>;
+  authorize(session: Session): Promise<AuthorizedSession>;
   signOut(session?: Session): Promise<URL>;
 }
 
@@ -84,6 +91,11 @@ export class DefaultAuthManager implements AuthManager {
       throw new Error("Authorization subject changed during renewal");
     }
     return renewed;
+  }
+
+  async authorize(session: Session): Promise<AuthorizedSession> {
+    const current = await this.renew(session);
+    return { session: current, accessToken: this.#client.getAccessToken(current) };
   }
 
   async signOut(session?: Session): Promise<URL> {
