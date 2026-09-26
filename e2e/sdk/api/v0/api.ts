@@ -1,11 +1,14 @@
 import type { APIRequestContext } from "@playwright/test";
 
-import { UsersApi } from "./users.js";
+import { UsersApi, UsersApiExtensions } from "./users.js";
 
 export class TaskmigoV0Api {
-  readonly users: UsersApi;
+  readonly users: UsersApi & { readonly extensions: UsersApiExtensions };
 
   constructor(request: APIRequestContext, browserApiBaseUrl: string) {
-    this.users = new UsersApi(request, browserApiBaseUrl);
+    const users = new UsersApi(request, browserApiBaseUrl);
+    this.users = Object.assign(users, {
+      extensions: new UsersApiExtensions(users),
+    });
   }
 }
