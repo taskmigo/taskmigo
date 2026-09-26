@@ -14,13 +14,16 @@
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --coverage"
+    "test": "vitest run --coverage",
+    "formatter:check": "prettier --check .",
+    "formatter:fix": "prettier --write ."
   },
   "dependencies": {
     "@taskmigo/auth": "workspace:*",
     "@taskmigo/config": "workspace:*",
     "@taskmigo/foundation": "workspace:*",
     "next": "16.3.3",
+    "prettier": "3.9.9",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "server-only": "0.0.1",
