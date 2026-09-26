@@ -26,11 +26,15 @@ async function endAuthorization() {
   return new URL("https://auth.example/logout");
 }
 
+function accessToken() {
+  return "access-token";
+}
+
 class StubAuthorizationClient implements AuthorizationClient {
   readonly begin = vi.fn(beginAuthorization);
   readonly complete = vi.fn(completeAuthorization);
   readonly renew = vi.fn(renewAuthorization);
-  readonly accessToken = vi.fn(() => "access-token");
+  readonly accessToken = vi.fn(accessToken);
   readonly end = vi.fn(endAuthorization);
 }
 

@@ -36,7 +36,14 @@ interface EncryptedCookieOptions {
   attributes: CookieAttributes;
 }
 
+export interface BackendProxyRuntime {
+  readonly publicUrl: URL;
+  readonly upstreamUrl: URL;
+  readonly timeoutMilliseconds: number;
+}
+
 export interface AuthContext {
+  readonly backendProxy: BackendProxyRuntime;
   readonly manager: AuthManager;
   readonly returnToParameter: string;
   readonly sessions: CookieState<Session>;
@@ -60,7 +67,7 @@ function encryptedCookie<T>(options: EncryptedCookieOptions, schema: z.ZodType<T
 }
 
 export function createAuth(config: Config): AuthContext {
-  const { appUrl, auth } = config;
+  const { appUrl, auth, backend } = config;
   const authorizationClient = new OpenIdAuthorizationClient({
     issuer: auth.issuer,
     clientId: auth.clientId,
@@ -82,6 +89,11 @@ export function createAuth(config: Config): AuthContext {
   const cookieAttributes = auth.cookie.attributes;
 
   return Object.freeze({
+    backendProxy: Object.freeze({
+      publicUrl: new URL(appUrl),
+      upstreamUrl: new URL(backend.url),
+      timeoutMilliseconds: backend.timeoutMilliseconds,
+    }),
     manager,
     returnToParameter: auth.returnToParameter,
     sessions: encryptedCookie(

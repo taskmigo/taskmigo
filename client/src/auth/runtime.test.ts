@@ -35,6 +35,10 @@ vi.mock("@taskmigo/auth", () => ({
 
 const config = {
   appUrl: new URL("https://app.example"),
+  backend: {
+    url: new URL("http://backend.example"),
+    timeoutMilliseconds: 30_000,
+  },
   auth: {
     issuer: new URL("https://auth.example"),
     clientId: "client",
@@ -80,6 +84,12 @@ describe("auth runtime", () => {
     const { createAuth } = await import("./runtime");
     const auth = createAuth(config);
 
+    expect(auth.backendProxy).toEqual({
+      publicUrl: new URL("https://app.example"),
+      upstreamUrl: new URL("http://backend.example"),
+      timeoutMilliseconds: 30_000,
+    });
+    expect(Object.isFrozen(auth.backendProxy)).toBe(true);
     expect(auth.returnToParameter).toBe("next");
     expect(auth.sessions.name).toBe("session");
     expect(auth.sessions.attributes).toEqual({

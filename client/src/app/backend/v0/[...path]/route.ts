@@ -1,7 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-import { getConfig } from "@taskmigo/config/server";
-
 import { getAuth } from "@/auth";
 
 export const runtime = "nodejs";
@@ -91,10 +89,10 @@ function connectionHeaderNames(headers: Headers): Set<string> {
 function copyEndToEndHeaders(source: Headers, blocked: Set<string>): Headers {
   const connectionHeaders = connectionHeaderNames(source);
   const headers = new Headers();
-  source.forEach((value, name) => {
+  for (const [name, value] of source) {
     const normalized = name.toLowerCase();
     if (!blocked.has(normalized) && !connectionHeaders.has(normalized)) headers.append(name, value);
-  });
+  }
   return headers;
 }
 
@@ -138,9 +136,11 @@ function rewriteBackendLocation(value: string, requestUrl: URL, backendUrl: URL)
 
 function downstreamHeaders(source: Headers, requestUrl: URL, backendUrl: URL): Headers {
   const headers = copyEndToEndHeaders(source, BLOCKED_RESPONSE_HEADERS);
-  for (const name of [...headers.keys()]) {
-    if (name.toLowerCase().startsWith("access-control-")) headers.delete(name);
+  const corsHeaders: string[] = [];
+  for (const name of headers.keys()) {
+    if (name.toLowerCase().startsWith("access-control-")) corsHeaders.push(name);
   }
+  for (const name of corsHeaders) headers.delete(name);
 
   for (const name of ["location", "content-location"]) {
     const value = headers.get(name);
@@ -155,16 +155,15 @@ function downstreamHeaders(source: Headers, requestUrl: URL, backendUrl: URL): H
 }
 
 async function proxy(request: NextRequest, context: RouteContext): Promise<NextResponse> {
-  const config = getConfig();
+  const { backendProxy, manager, sessions } = getAuth();
 
-  if (!isTrustedBrowserRequest(request, config.appUrl)) {
+  if (!isTrustedBrowserRequest(request, backendProxy.publicUrl)) {
     return problemResponse(403, "Forbidden", "Cross-origin backend requests are not allowed");
   }
 
   const { path } = await context.params;
   if (hasUnsafePathSegment(path)) return problemResponse(400, "Bad Request", "Invalid backend path");
 
-  const { manager, sessions } = getAuth();
   const session = sessions.read(request.cookies);
   if (!session) return problemResponse(401, "Unauthorized", "Authentication is required");
 
@@ -177,12 +176,12 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<NextR
     return response;
   }
 
-  const target = upstreamUrl(config.backend.url, path, request.nextUrl.search);
+  const target = upstreamUrl(backendProxy.upstreamUrl, path, request.nextUrl.search);
   const initialRequest = new Request(target, request);
   const upstreamRequest = new Request(initialRequest, {
-    headers: upstreamHeaders(initialRequest.headers, credential.accessToken, config.appUrl),
+    headers: upstreamHeaders(initialRequest.headers, credential.accessToken, backendProxy.publicUrl),
   });
-  const timeoutSignal = AbortSignal.timeout(config.backend.timeoutMilliseconds);
+  const timeoutSignal = AbortSignal.timeout(backendProxy.timeoutMilliseconds);
 
   let upstream: Response;
   try {
@@ -201,7 +200,7 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<NextR
   const response = new NextResponse(upstream.body, {
     status: upstream.status,
     statusText: upstream.statusText,
-    headers: downstreamHeaders(upstream.headers, target, config.backend.url),
+    headers: downstreamHeaders(upstream.headers, target, backendProxy.upstreamUrl),
   });
   if (credential.session !== session) sessions.write(response.cookies, credential.session);
   return response;

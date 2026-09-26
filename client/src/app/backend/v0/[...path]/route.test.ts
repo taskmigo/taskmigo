@@ -4,21 +4,22 @@ import { NextRequest } from "next/server";
 const auth = vi.hoisted(() => {
   const manager = { getAccessToken: vi.fn() };
   const sessions = { read: vi.fn(), write: vi.fn(), clear: vi.fn() };
-  return { manager, sessions, getAuth: vi.fn(() => ({ manager, sessions })) };
-});
-
-const configuration = vi.hoisted(() => ({
-  appUrl: new URL("https://app.example"),
-  backend: {
-    url: new URL("http://taskmigo-web:8080"),
+  const backendProxy = {
+    publicUrl: new URL("https://app.example"),
+    upstreamUrl: new URL("http://taskmigo-web:8080"),
     timeoutMilliseconds: 30_000,
-  },
-}));
+  };
+  return {
+    backendProxy,
+    manager,
+    sessions,
+    getAuth: vi.fn(() => ({ backendProxy, manager, sessions })),
+  };
+});
 
 const upstreamFetch = vi.hoisted(() => vi.fn());
 
 vi.mock("@/auth", () => ({ getAuth: auth.getAuth }));
-vi.mock("@taskmigo/config/server", () => ({ getConfig: () => configuration }));
 vi.stubGlobal("fetch", upstreamFetch);
 
 import { GET, OPTIONS, POST } from "./route";
@@ -48,8 +49,12 @@ beforeEach(() => {
   ]) {
     mock.mockReset();
   }
-  configuration.appUrl = new URL("https://app.example");
-  auth.getAuth.mockReturnValue({ manager: auth.manager, sessions: auth.sessions });
+  auth.backendProxy.publicUrl = new URL("https://app.example");
+  auth.getAuth.mockReturnValue({
+    backendProxy: auth.backendProxy,
+    manager: auth.manager,
+    sessions: auth.sessions,
+  });
   auth.manager.getAccessToken.mockResolvedValue({ session, accessToken: "access-token" });
 });
 
@@ -171,7 +176,7 @@ describe("backend BFF route", () => {
       const upstream = input as Request;
       expect(upstream.headers.get("x-remove-me")).toBeNull();
       expect(upstream.headers.get("connection")).toBeNull();
-      return new Response(null, { status: 204 });
+      return new Response(undefined, { status: 204 });
     });
 
     const response = await POST(
@@ -191,14 +196,14 @@ describe("backend BFF route", () => {
   });
 
   test("uses the configured public port in forwarding metadata", async () => {
-    configuration.appUrl = new URL("http://app.example:3000");
+    auth.backendProxy.publicUrl = new URL("http://app.example:3000");
     auth.sessions.read.mockReturnValue(session);
     upstreamFetch.mockImplementation(async (input: RequestInfo | URL) => {
       const upstream = input as Request;
       expect(upstream.headers.get("forwarded")).toBe('by=_taskmigo-bff;host="app.example:3000";proto=http');
       expect(upstream.headers.get("x-forwarded-port")).toBe("3000");
       expect(upstream.headers.get("x-forwarded-proto")).toBe("http");
-      return new Response(null, { status: 204 });
+      return new Response(undefined, { status: 204 });
     });
 
     const response = await GET(request("/backend/v0/users"), context("users"));
@@ -207,12 +212,12 @@ describe("backend BFF route", () => {
   });
 
   test("uses the default HTTP port in forwarding metadata", async () => {
-    configuration.appUrl = new URL("http://app.example");
+    auth.backendProxy.publicUrl = new URL("http://app.example");
     auth.sessions.read.mockReturnValue(session);
     upstreamFetch.mockImplementation(async (input: RequestInfo | URL) => {
       const upstream = input as Request;
       expect(upstream.headers.get("x-forwarded-port")).toBe("80");
-      return new Response(null, { status: 204 });
+      return new Response(undefined, { status: 204 });
     });
 
     const response = await GET(request("/backend/v0/users"), context("users"));
@@ -224,7 +229,7 @@ describe("backend BFF route", () => {
     auth.sessions.read.mockReturnValue(session);
     upstreamFetch.mockImplementation(async (input: RequestInfo | URL) => {
       expect((input as Request).method).toBe("OPTIONS");
-      return new Response(null, { status: 204 });
+      return new Response(undefined, { status: 204 });
     });
 
     const response = await OPTIONS(
@@ -272,7 +277,7 @@ describe("backend BFF route", () => {
 
   test("adds its Via header when the upstream response has no intermediary metadata", async () => {
     auth.sessions.read.mockReturnValue(session);
-    upstreamFetch.mockResolvedValue(new Response(null, { status: 204 }));
+    upstreamFetch.mockResolvedValue(new Response(undefined, { status: 204 }));
 
     const response = await GET(request("/backend/v0/users"), context("users"));
 
@@ -283,13 +288,13 @@ describe("backend BFF route", () => {
     auth.sessions.read.mockReturnValue(session);
     upstreamFetch
       .mockResolvedValueOnce(
-        new Response(null, {
+        new Response(undefined, {
           status: 302,
           headers: { Location: "http://taskmigo-web:8080/login?continue=1" },
         }),
       )
       .mockResolvedValueOnce(
-        new Response(null, {
+        new Response(undefined, {
           status: 302,
           headers: { Location: "https://identity.example/login" },
         }),
@@ -305,7 +310,7 @@ describe("backend BFF route", () => {
   test("preserves an invalid Location value instead of failing the response", async () => {
     auth.sessions.read.mockReturnValue(session);
     upstreamFetch.mockResolvedValue(
-      new Response(null, {
+      new Response(undefined, {
         status: 201,
         headers: { Location: "http://[invalid" },
       }),
@@ -321,7 +326,7 @@ describe("backend BFF route", () => {
     auth.sessions.read.mockReturnValue(session);
     auth.manager.getAccessToken.mockResolvedValue({ session: renewed, accessToken: "renewed-token" });
     upstreamFetch
-      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(new Response(undefined, { status: 204 }))
       .mockRejectedValueOnce(new Error("network unavailable"));
 
     const success = await GET(request("/backend/v0/users"), context("users"));
