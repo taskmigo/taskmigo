@@ -1,6 +1,6 @@
 ---
 name: github-pr-ci-workflow
-description: "Drive GitHub bug fixes, pull requests, and CI to completion efficiently. Use whenever an agent fixes a reported defect, creates or updates a PR, checks GitHub Actions/pipeline status, investigates failed checks, pushes CI fixes, or is asked to continue until CI is healthy. Enforces latest-base bug reproduction before production fixes, SHA-anchored fail-fast CI triage, hard anti-stall budgets, bounded GitHub connector batches, batched fixes, non-blocking status checks, and preservation of machine-actionable PR metadata during body rewrites. Avoids redundant fixes for already-resolved bugs, stale workflow runs, repeated polling, oversized tool batches, repeated full-PR/log fetches, busy waiting, unnecessary reruns, retrying unavailable local Git/network paths, and accidentally dropping issue-closing directives."
+description: "Drive GitHub bug fixes, pull requests, and CI to completion efficiently. Use whenever an agent fixes a reported defect, creates or updates a PR, checks GitHub Actions/pipeline status, investigates failed checks, pushes CI fixes, or is asked to continue until CI is healthy. Enforces latest-base bug reproduction, one coherent implementation before the final CI cycle, SHA-anchored fail-fast CI triage, hard anti-stall and mutation budgets, bounded GitHub connector batches, batched fixes, non-blocking status checks, and preservation of machine-actionable PR metadata during body rewrites. Avoids repeated self-review pushes, redundant fixes, stale workflow runs, repeated polling, oversized tool batches, repeated full-PR/log fetches, busy waiting, unnecessary reruns, retrying unavailable local Git/network paths, and accidentally dropping issue-closing directives."
 ---
 
 # GitHub PR and CI Workflow
@@ -24,6 +24,7 @@ Before changing production code for a reported bug, establish whether the defect
    - When the issue already describes a measurable invariant (for example query count, status code, race behavior, or persistence state), encode that invariant directly in the reproduction.
    - Reading suspicious code is useful evidence but is not, by itself, a completed reproduction when the behavior can be executed.
    - When the reproduction test is a valid long-term regression test, keep it in the final fix rather than treating it as disposable scaffolding.
+   - If local execution is unavailable and PR-triggered CI is the only practical way to execute the reproducer, one temporary draft/reproducer push is acceptable. Capture the failure evidence, then complete root-cause analysis, impact scanning, implementation, self-review, and preflight **before the next push**. Do not use remote CI as an interactive test runner for every implementation idea.
 
 3. **Branch based on the reproduction result.**
    - **If the bug reproduces:** capture the failing evidence first, then investigate root cause and modify production code. The regression test should fail before the fix and pass after it.
@@ -55,12 +56,14 @@ Before changing production code for a reported bug, establish whether the defect
    - Investigate all completed failures visible in the same snapshot before editing code.
    - Do not wait for Kubernetes/E2E/performance jobs to finish before fixing an already-failed formatting, compilation, static-analysis, or unit-test job.
 
-4. **Batch fixes.**
+4. **Batch fixes and implementation discoveries.**
    - Collect every currently known failure from the same head SHA.
-   - Fix them in one coherent change when possible.
+   - Before pushing, also complete the bounded self-review and direct-consumer/adapter impact scan for the selected change.
+   - Fix all blockers and required integration gaps in one coherent change when possible.
+   - Defer adjacent improvements that are not required to close the issue or prevent a regression introduced by the fix.
    - Run the smallest relevant local checks when a local workspace is available.
    - Push once, then start a fresh SHA-anchored CI cycle.
-   - Avoid one-failure/one-commit loops unless later failures were genuinely hidden by an earlier failure.
+   - Avoid one-failure/one-commit loops and one-self-review-finding/one-push loops unless later failures were genuinely hidden by earlier execution evidence.
 
 5. **Never busy-wait for CI.**
    - Do not use long blocking wait/sleep operations.
@@ -120,15 +123,27 @@ Before changing production code for a reported bug, establish whether the defect
     - Do not treat a plain cross-reference, linked/connected issue relationship, or mention such as `#123` as equivalent to a closing directive. A PR merged into the repository default branch only auto-closes the issue when GitHub receives a valid closing keyword relationship (or the issue is closed separately).
     - For cross-repository issues, preserve the fully qualified `owner/repository#number` form when that was the original relationship.
 
+12. **Use a change freeze before the final CI cycle.**
+    - After the implementation is functionally complete, perform one bounded self-review and one complete direct-impact scan before the final implementation push.
+    - Search for consumers of changed public contracts: enums, interfaces, DTOs, schemas, adapters, persistence binders, serializers, switch statements, generated artifacts, and tests.
+    - Classify discoveries as blockers/required integration gaps versus adjacent improvements. Only the first category belongs in the current PR after the freeze.
+    - Apply deterministic formatting before the push when possible.
+    - Rewrite/finalize the PR body after the implementation has stabilized, not after every intermediate mutation.
+    - Once the final CI cycle starts, do not expand scope because of a new internal code-quality idea. Change the head only for a concrete CI failure, a discovered blocker/required integration gap, a maintainer request, or material new external evidence.
+
 ## Pre-CI preflight
 
-Before opening a PR or pushing a large refactor when no local build runner is available:
+Before opening a PR or starting the final implementation CI cycle when no local build runner is available:
 
-1. Search for references to removed or renamed classes, packages, methods, and persistence adapters.
-2. Inspect compile-sensitive call sites changed by the refactor, especially method references, generic functional interfaces, Spring Data derived-query names, constructor injection, and moved package imports.
-3. Confirm that new application/domain packages do not violate the repository architecture rules already visible in tests or `AGENTS.md`.
-4. For multi-file connector edits, verify the final branch tree/ref points to the intended commit before creating the PR.
-5. Do not claim local validation when only static inspection was possible; CI remains the execution evidence.
+1. Search for references to removed, renamed, or extended classes, packages, methods, enums, interfaces, schema contracts, and persistence adapters.
+2. For a changed public or cross-module contract, inspect every direct consumer category that can make the change incomplete: switch statements, serializers, persistence binders, translators/visitors, generated artifacts, API documentation, and tests.
+3. Inspect compile-sensitive call sites changed by the refactor, especially method references, generic functional interfaces, Spring Data derived-query names, constructor injection, and moved package imports.
+4. Confirm that new application/domain packages do not violate the repository architecture rules already visible in tests or `AGENTS.md`.
+5. Run the bounded post-implementation self-review now. Resolve blockers and required integration gaps in one batch; defer adjacent improvements.
+6. Apply deterministic formatter output when available before the push rather than using CI as the formatter.
+7. For multi-file connector edits, verify the final branch tree/ref points to the intended commit before creating or updating the PR.
+8. Finalize or substantially rewrite the PR body only after the implementation and cited fixed SHA have stabilized.
+9. Do not claim local validation when only static inspection was possible; CI remains the execution evidence.
 
 This preflight does not replace CI. Its purpose is to eliminate obvious compile/reference mistakes before starting an expensive workflow cycle.
 
@@ -273,6 +288,7 @@ Address all supported new Qodana problems in the same batch. Do not weaken stati
 4. Fetch workflow runs for the new SHA once they exist.
 5. Apply the same fail-fast triage.
 6. If the new SHA has only pending runs and there is no useful non-polling work left, report the pending state and stop.
+7. Do not use the pending interval to reopen design exploration that already passed the change freeze. Useful work is limited to evidence/documentation already required by the current change, not discovering optional new scope.
 
 A new commit invalidates every previous current-state conclusion. Old completed diagnostics are historical evidence only.
 
@@ -374,13 +390,19 @@ Do **not**:
 - Ignore a maintainer interruption and finish an already-started polling loop before processing the new status.
 - Assume an API mutation option is valid for both same-repository and fork PRs.
 - Rebuild an existing PR body from the template without preserving and verifying still-valid issue-closing directives.
+- Run a full adversarial self-review after every repository mutation or CI status change.
+- Push a new SHA for each internally discovered cleanup or code-quality idea.
+- Repeatedly force-squash the branch during implementation just to keep history pretty; clean history once after the coherent change is stable if repository policy requires it.
+- Rewrite immutable RCA permalinks after every intermediate commit instead of waiting for a stable fixed SHA.
+- Use PR-triggered CI as an interactive implementation loop when one preflight can expose the same direct consumers or integration gaps.
 
 ## Decision loop
 
 Use this loop until the current interaction has no further actionable work:
 
 ```text
-current PR head SHA
+scope frozen + coherent implementation pushed
+    -> current PR head SHA
     -> maintainer explicitly confirms all required checks passed?
         yes -> stop polling -> finalize supported PR/tracking bookkeeping -> report state
         no  -> compact workflow-run snapshot
