@@ -35,10 +35,14 @@ export class SealedValue<T> implements StringCodec<T> {
   }
 
   decode(value: string | undefined): T | undefined {
-    if (!value) return;
+    if (!value) {
+      return;
+    }
 
     const plaintext = this.#open(value);
-    if (plaintext === undefined) return;
+    if (plaintext === undefined) {
+      return;
+    }
 
     try {
       return this.#parse(JSON.parse(plaintext) as unknown);
@@ -49,11 +53,15 @@ export class SealedValue<T> implements StringCodec<T> {
 
   #open(value: string): string | undefined {
     const [version, encoded] = value.split(".", 2);
-    if (version !== this.#version || !encoded) return;
+    if (version !== this.#version || !encoded) {
+      return;
+    }
 
     try {
       const payload = Buffer.from(encoded, "base64url");
-      if (payload.length <= SealedValue.#IV_LENGTH + SealedValue.#TAG_LENGTH) return;
+      if (payload.length <= SealedValue.#IV_LENGTH + SealedValue.#TAG_LENGTH) {
+        return;
+      }
 
       const tagEnd = SealedValue.#IV_LENGTH + SealedValue.#TAG_LENGTH;
       const decipher = createDecipheriv("aes-256-gcm", this.#key, payload.subarray(0, SealedValue.#IV_LENGTH));

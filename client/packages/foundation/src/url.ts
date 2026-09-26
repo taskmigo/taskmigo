@@ -22,7 +22,9 @@ export class OriginScope {
   }
 
   path(candidate: string): string | undefined {
-    if (!candidate.startsWith("/")) return;
+    if (!candidate.startsWith("/")) {
+      return;
+    }
 
     const resolved = this.resolve(candidate);
     return resolved ? `${resolved.pathname}${resolved.search}${resolved.hash}` : undefined;

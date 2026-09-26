@@ -16,6 +16,7 @@ export default defineConfig([
     },
     rules: {
       "@typescript-eslint/no-deprecated": "error",
+      curly: ["error", "all"],
       "no-restricted-syntax": [
         "error",
         {
