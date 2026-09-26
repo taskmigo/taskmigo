@@ -16,11 +16,16 @@ Taskmigo production code is the source of truth for HTTP behavior. The SDK does 
 
 Endpoint resources are versioned by the production HTTP API namespace. The current contract lives under `sdk/api/v0/`, is exposed at `taskmigo.api.v0`, and validates responses with strict Zod schemas before returning them to tests. TypeScript response types are inferred from those same schemas.
 
-Methods that map one-to-one to OpenAPI operations use the exact `operationId` and remain undecorated. Any additional convenience method under `taskmigo.api.*` must use `@extension` so reviewers and SDK users can immediately distinguish Taskmigo-authored helpers from the OpenAPI contract. The decorator is a marker only and does not change runtime behavior.
+Every API method under `taskmigo.api.*` is explicitly classified. Methods that map one-to-one to OpenAPI operations use `@openApi` and the exact `operationId`; additional convenience methods use `@extension`. Both decorators are marker-only and do not change runtime behavior.
 
-For example, `users.create()` and `users.list()` map directly to OpenAPI operations, while the bulk helper is explicitly marked:
+For example, `users.create()` maps directly to the OpenAPI `create` operation, while the bulk helper is an SDK extension:
 
 ```ts
+@openApi
+async create(body: CreateUserRequest) {
+  // Maps one-to-one to operationId: create.
+}
+
 @extension
 async createMany(bodies: readonly CreateUserRequest[]) {
   // Composes the official create() operation.
