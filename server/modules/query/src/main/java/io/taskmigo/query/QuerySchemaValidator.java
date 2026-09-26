@@ -13,7 +13,10 @@ final class QuerySchemaValidator {
             }
             case QueryExpression.Reference reference -> validateReference(reference, schema);
             case QueryExpression.ListValue list -> list.values().forEach(value -> validate(value, schema));
-            case QueryExpression.Unary unary -> validate(unary.operand(), schema);
+            case QueryExpression.Unary unary -> {
+                requireOperator(unary.operand(), operator(unary.operator()), schema);
+                validate(unary.operand(), schema);
+            }
             case QueryExpression.Length length -> {
                 requireOperator(length.operand(), QueryOperator.LENGTH, schema);
                 validate(length.operand(), schema);
@@ -93,6 +96,14 @@ final class QuerySchemaValidator {
         if (!field.operators().contains(operator)) {
             throw invalid("operator is not supported for query path " + field.path().text());
         }
+    }
+
+    private static QueryOperator operator(QueryExpression.UnaryOperator operator) {
+        return switch (operator) {
+            case NOT -> QueryOperator.NOT;
+            case PLUS -> QueryOperator.PLUS;
+            case MINUS -> QueryOperator.MINUS;
+        };
     }
 
     private static QueryOperator operator(QueryExpression.BinaryOperator operator) {
