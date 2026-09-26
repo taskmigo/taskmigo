@@ -83,7 +83,7 @@ export class UsersApi {
 }
 
 export class UsersApiExtensions {
-  constructor(private readonly users: Pick<UsersApi, "create">>) {}
+  constructor(private readonly users: UsersApi) {}
 
   async createMany(bodies: readonly CreateUserRequest[]): Promise<CreateUserResponse[]> {
     return test.step(`Create ${bodies.length} users`, async () => {
