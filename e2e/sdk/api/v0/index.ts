@@ -1,6 +1,5 @@
 export { TaskmigoV0Api } from "./api.js";
-export { UsersApiExtensions } from "./extensions/users.js";
-export { createUserResponseSchema, listUsersResponseSchema, userInfoSchema, UsersApi } from "./users.js";
+export { createUserResponseSchema, listUsersResponseSchema, userInfoSchema, UsersApi, UsersApiExtensions } from "./users.js";
 export {
   apiErrorSchema,
   basicMetaSchema,

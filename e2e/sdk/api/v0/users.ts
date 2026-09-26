@@ -1,7 +1,6 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import * as z from "zod";
 
-import { UsersApiExtensions } from "./extensions/users.js";
 import { basicMetaSchema, offsetMetaSchema, successApiResponseSchema } from "./types.js";
 
 export interface CreateUserRequest {
@@ -79,6 +78,20 @@ export class UsersApi {
       });
       expect(response.status()).toBe(200);
       return listUsersResponseSchema.parse(await response.json());
+    });
+  }
+}
+
+export class UsersApiExtensions {
+  constructor(private readonly users: Pick<UsersApi, "create">>) {}
+
+  async createMany(bodies: readonly CreateUserRequest[]): Promise<CreateUserResponse[]> {
+    return test.step(`Create ${bodies.length} users`, async () => {
+      const responses: CreateUserResponse[] = [];
+      for (const body of bodies) {
+        responses.push(await this.users.create(body));
+      }
+      return responses;
     });
   }
 }
