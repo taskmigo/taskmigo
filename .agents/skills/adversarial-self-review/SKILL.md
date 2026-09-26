@@ -1,6 +1,6 @@
 ---
 name: adversarial-self-review
-description: "Use adversarial self-review to find the strongest solution with the least necessary implementation surface and catch mistakes before finalizing work. Trigger whenever reviewing code or a pull request, reviewing your own implementation or output, comparing non-trivial design or implementation alternatives, or deciding whether a proposed fix is actually the best fit for the stated constraints. Uses bounded proposer/challenger/synthesizer passes, requires semantic-boundary proof before implementation, resets when evidence contradicts a premise, actively searches for counterexamples, false positives, and behavior-equivalent smaller implementations, and reports only the synthesized rationale rather than hidden chain-of-thought."
+description: "Use adversarial self-review to find the strongest solution with the least necessary implementation surface and catch mistakes before finalizing work. Trigger whenever reviewing code or a pull request, reviewing your own implementation or output, comparing non-trivial design or implementation alternatives, or deciding whether a proposed fix is actually the best fit for the stated constraints. Uses one bounded pre-implementation challenge and one bounded post-implementation review, requires semantic-boundary proof before implementation, freezes scope after synthesis, resets only when material evidence contradicts a premise, actively searches for counterexamples, false positives, and behavior-equivalent smaller implementations, and reports only the synthesized rationale rather than hidden chain-of-thought."
 ---
 
 # Adversarial Self-Review
@@ -34,6 +34,8 @@ Do not force a debate around trivial mechanical work that has no meaningful alte
 8. **Minimize implementation surface, not readability.** After correctness is established, challenge whether the same behavior can be delivered with less new code, fewer branches, fewer abstractions, fewer changed files, or more reuse of existing primitives. Never trade away clarity, tests, validation, or required behavior merely to reduce line count.
 9. **Keep the loop bounded.** More debate is not automatically better.
 10. **Prove the runtime boundary before editing.** A framework capability or similarly named concept is not proof that the application boundary accepts it. Verify the exact artifact, owner, transport, scope, and consumer before mutating code.
+11. **Freeze scope after synthesis.** Once the selected direction satisfies the stated acceptance criteria and hard constraints, treat adjacent discoveries as out of scope unless they block correctness, safety, compatibility, or the completeness of the selected fix.
+12. **Review at checkpoints, not continuously.** Do not restart a full adversarial review after every edit, formatter change, test refactor, PR-body update, or CI status change. Review once before implementation and once after the coherent implementation is complete.
 
 ## Debate roles
 
@@ -78,6 +80,14 @@ Write down internally:
 - What must remain unchanged.
 
 For a code review, also identify the behavior the code is trying to preserve or introduce and the invariants that should hold.
+
+Create a compact internal scope ledger before implementation:
+
+- **Must fix:** behavior required by the user, issue acceptance criteria, specification, or a blocker introduced by the selected change.
+- **Must preserve:** existing behavior, compatibility, architecture, security, or operational constraints that cannot regress.
+- **Not in scope:** adjacent cleanup, speculative improvements, unrelated refactors, and pre-existing defects that are not required to make the requested change complete.
+
+Do not add an item to **Must fix** merely because it was discovered during self-review. It must be necessary to satisfy the requested outcome or prevent a regression introduced by the change.
 
 ### 3. Prove semantic boundaries before implementation
 
@@ -128,7 +138,7 @@ Do not finalize it yet.
 
 ### 5. Run the adversarial challenge
 
-Challenge the candidate independently.
+Run this challenge once before implementation for a non-trivial change. Challenge the candidate independently. Do not repeat the full challenge after each repository mutation; collect implementation evidence and use the designated post-implementation review in step 9.
 
 Ask the relevant questions rather than mechanically applying every category:
 
@@ -189,7 +199,7 @@ Avoid fake precision. Numerical scores are unnecessary unless the problem genuin
 
 If one option is strictly worse on the material criteria, discard it. If the trade-off depends on an unresolved product or architectural preference, state that uncertainty instead of manufacturing certainty.
 
-### 8. Synthesize the final direction
+### 8. Synthesize and freeze the final direction
 
 The Synthesizer must explicitly decide internally whether to:
 
@@ -199,6 +209,8 @@ The Synthesizer must explicitly decide internally whether to:
 - Report that the evidence is insufficient for a confident decision.
 
 The final recommendation should be traceable to decisive evidence and constraints.
+
+For implementation work, this decision is the **scope freeze**. Record the selected invariant, the files or boundaries expected to change, and the acceptance criteria that will prove completion. From this point onward, do not reopen architecture exploration because of an interesting adjacent improvement.
 
 For code review findings, report only findings that survive the challenge pass.
 
@@ -216,7 +228,42 @@ Before considering the review or implementation complete, challenge the synthesi
 - Check for unrelated scope drift introduced while fixing review findings.
 - Re-run the minimization challenge against the final diff: every new helper, abstraction, branch, layer, and configuration point should justify why a smaller behavior-equivalent implementation is worse.
 
-If this second pass discovers a material issue or a materially smaller equally robust implementation, revise once and repeat the verification.
+Classify every finding from this post-implementation pass before changing code:
+
+- **Blocker:** the requested behavior is still wrong, unsafe, incompatible, incomplete, or the current change introduced a regression. Fix it in one batch.
+- **Required integration gap:** the selected change cannot work end to end without the adjacent change. Fix it in the same batch, then verify once more.
+- **Adjacent improvement:** useful but not necessary for the requested outcome. Do not expand the current implementation; record it for follow-up when appropriate.
+- **Style/minimization only:** apply it only if it is deterministic, low-risk, and does not trigger a new design/CI cycle.
+
+After fixing blockers or required integration gaps, perform one targeted verification of the affected invariant. Do not restart the full proposer/challenger/synthesizer workflow unless new external evidence invalidates a material premise.
+
+## Scope triage and freeze point
+
+The most common self-review failure mode is turning discovery into scope expansion. Prevent it explicitly.
+
+After synthesis:
+
+1. **Freeze the problem statement.** The current task is defined by the user's request, issue acceptance criteria, specification, and regressions introduced by the chosen fix.
+2. **Scan the complete execution surface once.** Before the first implementation push, inspect direct consumers, adapters, serializers, switch statements, persistence binders, generated artifacts, and tests that must understand the changed contract. This is where required integration gaps should be found.
+3. **Batch required changes before CI.** Prefer one coherent implementation and one preflight over a sequence of speculative pushes.
+4. **Triage later discoveries.** Fix only blockers and required integration gaps. Defer adjacent cleanup and unrelated pre-existing defects.
+5. **Do not reopen a settled design for code minimization alone.** Once correctness is established, minimization may simplify the current diff but must not introduce a new architecture, abstraction family, or dependency direction.
+6. **Stop when the acceptance criteria are satisfied.** A self-review is successful when it proves the solution is sufficient, not when it exhausts every possible improvement.
+
+Examples of discoveries that normally stay out of scope after the freeze:
+
+- a nearby class that could be renamed more cleanly;
+- a pre-existing duplicated helper unrelated to the invariant;
+- a broader abstraction that could unify several modules;
+- an optional performance optimization without evidence of a regression;
+- another issue found while reading adjacent code that is independently actionable.
+
+Examples that break the freeze and must be fixed:
+
+- the new public enum value cannot be consumed by an existing required adapter;
+- the fix passes the validator but fails at the persistence or transport boundary it is supposed to reach;
+- the implementation violates a specification or architecture rule;
+- a regression test reveals the original bug still exists through another required path.
 
 ## Contradiction reset and implementation-churn guard
 
@@ -242,7 +289,13 @@ A user correction is evidence, not merely a requested syntax change. Revisit the
 
 ## Loop limit
 
-Use at most two full challenge/synthesis rounds unless new external evidence appears.
+Default budget for implementation work:
+
+- one pre-implementation challenge/synthesis round;
+- one post-implementation self-review;
+- at most one targeted repair/verification pass for blockers or required integration gaps.
+
+A second full challenge/synthesis round is allowed only when **new external evidence** invalidates a material premise: a user correction, failing runtime evidence, authoritative specification/documentation, or a concrete CI/test result. An internally discovered adjacent improvement is not sufficient reason to restart the full debate.
 
 Stop when:
 
@@ -295,6 +348,9 @@ Re-evaluate from the perspective of a new reviewer:
 10. Can every cross-component assumption in the final design be traced to direct evidence about the exact artifact and consumer, rather than a framework feature or a similarly named concept?
 11. Did any user correction or new evidence invalidate an earlier premise? If so, was all dependent implementation reconsidered rather than incrementally patched?
 12. Is the branch free of superseded scaffolding from rejected designs and transient states that no longer serve the selected direction?
+13. Has every new discovery been classified as blocker, required integration gap, adjacent improvement, or style/minimization only?
+14. Am I about to expand scope because the new idea is better in general, or because the current task is actually incomplete without it?
+15. Have I completed one full execution-surface scan so I do not discover obvious consumers only after starting CI?
 
 Apply the same evidence standard to your own implementation as to someone else's.
 
