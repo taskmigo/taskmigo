@@ -12,9 +12,11 @@ import { OpenIdAuthorizationClient } from "@taskmigo/auth/openid-client";
 import { getConfig, type Config } from "@taskmigo/config/server";
 import { SealedValue } from "@taskmigo/foundation/node/sealed-value";
 import { globalSingleton } from "@taskmigo/foundation/runtime";
-import { CookieState, type CookieAttributes } from "@taskmigo/foundation/state";
+import { CookieState, type CookieAttributes, type StringCodec } from "@taskmigo/foundation/state";
 import { cookies } from "next/headers";
 import { z } from "zod";
+
+import { RefreshCoordinator } from "./refresh-coordinator";
 
 const AUTH_RUNTIME = Symbol.for("taskmigo.auth.runtime");
 
@@ -23,6 +25,7 @@ const USER_SCHEMA = z
   .object({ id: z.string().min(1), name: z.string().min(1).optional() })
   .transform(({ id, name }): User => (name === undefined ? { id } : { id, name }));
 const SESSION_SCHEMA = z.object({
+  id: z.uuid(),
   user: USER_SCHEMA,
   expiresAt: z.number(),
   authorizationState: z.string().min(1),
@@ -40,27 +43,32 @@ export interface AuthContext {
   readonly manager: AuthManager;
   readonly returnToParameter: string;
   readonly sessions: CookieState<Session>;
+  readonly refreshCoordinator: RefreshCoordinator;
   readonly transactions: CookieState<AuthorizationTransaction>;
+}
+
+function encryptedCodec<T>(options: Omit<EncryptedCookieOptions, "name" | "attributes">, schema: z.ZodType<T>): StringCodec<T> {
+  return new SealedValue({
+    secret: options.secret,
+    version: options.version,
+    context: options.additionalAuthenticatedData,
+    parse: (value) => {
+      const parsed = schema.safeParse(value);
+      return parsed.success ? parsed.data : undefined;
+    },
+  });
 }
 
 function encryptedCookie<T>(options: EncryptedCookieOptions, schema: z.ZodType<T>): CookieState<T> {
   return new CookieState({
     name: options.name,
-    codec: new SealedValue({
-      secret: options.secret,
-      version: options.version,
-      context: options.additionalAuthenticatedData,
-      parse: (value) => {
-        const parsed = schema.safeParse(value);
-        return parsed.success ? parsed.data : undefined;
-      },
-    }),
+    codec: encryptedCodec(options, schema),
     attributes: options.attributes,
   });
 }
 
 export function createAuth(config: Config): AuthContext {
-  const { appUrl, auth } = config;
+  const { appUrl, auth, backend } = config;
   const authorizationClient = new OpenIdAuthorizationClient({
     issuer: auth.issuer,
     clientId: auth.clientId,
@@ -80,20 +88,33 @@ export function createAuth(config: Config): AuthContext {
     { refreshSkewMilliseconds: auth.refreshSkewMilliseconds },
   );
   const cookieAttributes = auth.cookie.attributes;
+  const sessionCodec = encryptedCodec(
+    {
+      secret: auth.sessionSecret,
+      version: auth.cookie.version,
+      additionalAuthenticatedData: auth.sessionCookie.additionalAuthenticatedData,
+    },
+    SESSION_SCHEMA,
+  );
+  const sessions = new CookieState({
+    name: auth.sessionCookie.name,
+    codec: sessionCodec,
+    attributes: { ...cookieAttributes, maxAge: auth.sessionCookie.maxAge },
+  });
 
   return Object.freeze({
     manager,
     returnToParameter: auth.returnToParameter,
-    sessions: encryptedCookie(
-      {
-        name: auth.sessionCookie.name,
-        secret: auth.sessionSecret,
-        version: auth.cookie.version,
-        additionalAuthenticatedData: auth.sessionCookie.additionalAuthenticatedData,
-        attributes: { ...cookieAttributes, maxAge: auth.sessionCookie.maxAge },
-      },
-      SESSION_SCHEMA,
-    ),
+    sessions,
+    refreshCoordinator: new RefreshCoordinator({
+      backendUrl: backend.url,
+      internalSecret: backend.internalSecret,
+      sessionCodec,
+      sessionMaxAgeSeconds: auth.sessionCookie.maxAge,
+      refreshSkewMilliseconds: auth.refreshSkewMilliseconds,
+      refreshWaitMilliseconds: backend.refreshWaitMilliseconds,
+      requestTimeoutMilliseconds: backend.timeoutMilliseconds,
+    }),
     transactions: encryptedCookie(
       {
         name: auth.transactionCookie.name,

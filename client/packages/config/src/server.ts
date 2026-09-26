@@ -19,6 +19,8 @@ const configSchema = z
     TM_BROWSER_HOST_NAME: url,
     TASKMIGO_BACKEND_URL: httpOrigin,
     TASKMIGO_BACKEND_TIMEOUT_MILLISECONDS: positiveInteger,
+    TASKMIGO_BFF_INTERNAL_SECRET: z.string().min(32),
+    TASKMIGO_BFF_REFRESH_WAIT_MILLISECONDS: positiveInteger,
     TASKMIGO_AUTH_ISSUER: url,
     TASKMIGO_AUTH_CLIENT_ID: z.string().min(1),
     TASKMIGO_AUTH_CLIENT_SECRET: z.string().min(1),
@@ -56,6 +58,8 @@ const configSchema = z
       backend: Object.freeze({
         url: environment.TASKMIGO_BACKEND_URL,
         timeoutMilliseconds: environment.TASKMIGO_BACKEND_TIMEOUT_MILLISECONDS,
+        internalSecret: environment.TASKMIGO_BFF_INTERNAL_SECRET,
+        refreshWaitMilliseconds: environment.TASKMIGO_BFF_REFRESH_WAIT_MILLISECONDS,
       }),
       auth: Object.freeze({
         issuer: environment.TASKMIGO_AUTH_ISSUER,

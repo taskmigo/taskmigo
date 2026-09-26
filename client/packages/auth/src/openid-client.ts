@@ -1,5 +1,7 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
 import * as client from "openid-client";
 import { z } from "zod";
 
@@ -91,6 +93,7 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
     if (!subject) throw new Error("Authorization server returned no subject claim");
 
     return this.#createSession(tokens, {
+      id: randomUUID(),
       user: OpenIdAuthorizationClient.#user(subject, OpenIdAuthorizationClient.#claimString(claims, "name")),
       refreshToken: tokens.refresh_token,
       idToken: tokens.id_token,
@@ -103,6 +106,7 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
     const claims = tokens.claims();
 
     return this.#createSession(tokens, {
+      id: session.id,
       user: OpenIdAuthorizationClient.#user(
         OpenIdAuthorizationClient.#claimString(claims, "sub") ?? session.user.id,
         OpenIdAuthorizationClient.#claimString(claims, "name") ?? session.user.name,
@@ -126,9 +130,10 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
 
   #createSession(
     tokens: Tokens,
-    { user, refreshToken, idToken }: { user: User; refreshToken: string; idToken: string },
+    { id, user, refreshToken, idToken }: { id: string; user: User; refreshToken: string; idToken: string },
   ): Session {
     return {
+      id,
       user,
       expiresAt: OpenIdAuthorizationClient.#tokenExpiresAt(tokens),
       authorizationState: OpenIdAuthorizationClient.#encode({

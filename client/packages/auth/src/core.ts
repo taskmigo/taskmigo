@@ -10,6 +10,7 @@ export interface User {
 }
 
 export interface Session {
+  id: string;
   user: User;
   expiresAt: number;
   authorizationState: string;
@@ -28,11 +29,6 @@ export interface AuthorizationClient {
   end(session: Session, postLogoutRedirectUri: URL): Promise<URL>;
 }
 
-export interface AccessTokenSession {
-  session: Session;
-  accessToken: string;
-}
-
 export interface AuthManager {
   beginSignIn(returnTo?: string | null): Promise<{ redirectTo: URL; transaction: AuthorizationTransaction }>;
   completeSignIn(
@@ -40,7 +36,7 @@ export interface AuthManager {
     transaction: AuthorizationTransaction,
   ): Promise<{ redirectTo: URL; session: Session }>;
   renew(session: Session): Promise<Session>;
-  getAccessToken(session: Session): Promise<AccessTokenSession>;
+  accessToken(session: Session): string;
   signOut(session?: Session): Promise<URL>;
 }
 
@@ -89,9 +85,8 @@ export class DefaultAuthManager implements AuthManager {
     return renewed;
   }
 
-  async getAccessToken(session: Session): Promise<AccessTokenSession> {
-    const current = await this.renew(session);
-    return { session: current, accessToken: this.#client.accessToken(current) };
+  accessToken(session: Session): string {
+    return this.#client.accessToken(session);
   }
 
   async signOut(session?: Session): Promise<URL> {
