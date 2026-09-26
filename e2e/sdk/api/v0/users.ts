@@ -38,6 +38,10 @@ export type UserInfo = z.infer<typeof userInfoSchema>;
 export type CreateUserResponse = z.infer<typeof createUserResponseSchema>;
 export type ListUsersResponse = z.infer<typeof listUsersResponseSchema>;
 
+const resolveUsersEndpoint = (browserApiBaseUrl: string) => ({
+  usersUrl: new URL("v0/users", browserApiBaseUrl).href,
+  browserOrigin: new URL(browserApiBaseUrl).origin,
+});
 
 const executeCreateUser = async (
   request: APIRequestContext,
@@ -65,9 +69,10 @@ export class UsersApi {
     private readonly request: APIRequestContext,
     browserApiBaseUrl: string,
   ) {
-    this.usersUrl = new URL("v0/users", browserApiBaseUrl).href;
-    this.browserOrigin = new URL(browserApiBaseUrl).origin;
-    this.extensions = new UsersApiExtensions(request, this.usersUrl, this.browserOrigin);
+    const endpoint = resolveUsersEndpoint(browserApiBaseUrl);
+    this.usersUrl = endpoint.usersUrl;
+    this.browserOrigin = endpoint.browserOrigin;
+    this.extensions = new UsersApiExtensions(request, browserApiBaseUrl);
   }
 
   async create(body: CreateUserRequest): Promise<CreateUserResponse> {
@@ -92,11 +97,14 @@ export class UsersApi {
 }
 
 export class UsersApiExtensions {
-  constructor(
-    private readonly request: APIRequestContext,
-    private readonly usersUrl: string,
-    private readonly browserOrigin: string,
-  ) {}
+  private readonly usersUrl: string;
+  private readonly browserOrigin: string;
+
+  constructor(private readonly request: APIRequestContext, browserApiBaseUrl: string) {
+    const endpoint = resolveUsersEndpoint(browserApiBaseUrl);
+    this.usersUrl = endpoint.usersUrl;
+    this.browserOrigin = endpoint.browserOrigin;
+  }
 
   async createMany(bodies: readonly CreateUserRequest[]): Promise<CreateUserResponse[]> {
     return test.step(`Create ${bodies.length} users`, async () => {
