@@ -182,8 +182,9 @@ final class JpaObjectAuthorizationExpressionBinder {
                 case ADD, SUBTRACT, MULTIPLY, DIVIDE -> true;
                 default -> false;
             };
-            case ObjectAuthorizationExpression.Unary unary -> unary.operator() ==
-                ObjectAuthorizationExpression.UnaryOperator.MINUS;
+            case ObjectAuthorizationExpression.Unary unary ->
+                unary.operator() == ObjectAuthorizationExpression.UnaryOperator.PLUS ||
+                unary.operator() == ObjectAuthorizationExpression.UnaryOperator.MINUS;
             default -> false;
         };
     }
@@ -240,6 +241,9 @@ final class JpaObjectAuthorizationExpressionBinder {
                 numeric(binary.left(), root, builder, paths, types),
                 numeric(binary.right(), root, builder, paths, types)
             );
+            case ObjectAuthorizationExpression.Unary unary when (
+                unary.operator() == ObjectAuthorizationExpression.UnaryOperator.PLUS
+            ) -> value(unary.operand(), root, builder, paths, types);
             case ObjectAuthorizationExpression.Unary unary when (
                 unary.operator() == ObjectAuthorizationExpression.UnaryOperator.MINUS
             ) -> builder.neg(numeric(unary.operand(), root, builder, paths, types));
