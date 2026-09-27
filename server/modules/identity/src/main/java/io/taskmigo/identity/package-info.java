@@ -1,6 +1,7 @@
 /// Owns Identity resources and their trusted persistence integrations.
 @ApplicationModule(
     allowedDependencies = {
+        "audit",
         "foundation",
         "database :: criteria",
         "query",

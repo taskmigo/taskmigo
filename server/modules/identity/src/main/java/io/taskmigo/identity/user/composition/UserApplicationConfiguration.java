@@ -1,5 +1,6 @@
 package io.taskmigo.identity.user.composition;
 
+import io.taskmigo.audit.AuditPublisher;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantQueryService;
 import io.taskmigo.identity.application.port.out.TransactionRunner;
@@ -20,8 +21,8 @@ import org.springframework.context.annotation.Configuration;
 class UserApplicationConfiguration {
 
     @Bean
-    UserCommandService defaultUserCommandService(UserCommandRepository users) {
-        return new DefaultUserCommandService(users);
+    UserCommandService defaultUserCommandService(UserCommandRepository users, AuditPublisher audit) {
+        return new DefaultUserCommandService(users, audit);
     }
 
     @Bean

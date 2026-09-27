@@ -184,3 +184,83 @@ CREATE TABLE oauth2_authorization_consent (
     authorities varchar(1000) NOT NULL,
     PRIMARY KEY (registered_client_id, principal_name)
 );
+
+-- Spring Modulith / Namastack durable audit outbox.
+CREATE TABLE IF NOT EXISTS outbox_record
+(
+    id             VARCHAR(255)             NOT NULL,
+    status         VARCHAR(20)              NOT NULL,
+    record_key     VARCHAR(255)             NOT NULL,
+    record_type    VARCHAR(255)             NOT NULL,
+    payload        TEXT                     NOT NULL,
+    context        TEXT,
+    created_at     TIMESTAMP WITH TIME ZONE NOT NULL,
+    completed_at   TIMESTAMP WITH TIME ZONE,
+    failure_count  INT                      NOT NULL,
+    failure_reason VARCHAR(1000),
+    next_retry_at  TIMESTAMP WITH TIME ZONE NOT NULL,
+    partition_no   INTEGER                  NOT NULL,
+    handler_id     VARCHAR(1000)            NOT NULL,
+    PRIMARY KEY (id)
+);
+
+CREATE TABLE IF NOT EXISTS outbox_instance
+(
+    instance_id    VARCHAR(255) PRIMARY KEY,
+    hostname       VARCHAR(255)             NOT NULL,
+    port           INTEGER                  NOT NULL,
+    status         VARCHAR(50)              NOT NULL,
+    started_at     TIMESTAMP WITH TIME ZONE NOT NULL,
+    last_heartbeat TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at     TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at     TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS outbox_partition
+(
+    partition_number INTEGER PRIMARY KEY,
+    instance_id      VARCHAR(255),
+    version          BIGINT                   NOT NULL DEFAULT 0,
+    updated_at       TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_outbox_record_record_key_created ON outbox_record (record_key, created_at);
+CREATE INDEX IF NOT EXISTS idx_outbox_record_partition_status_retry ON outbox_record (partition_no, status, next_retry_at);
+CREATE INDEX IF NOT EXISTS idx_outbox_record_status_retry ON outbox_record (status, next_retry_at);
+CREATE INDEX IF NOT EXISTS idx_outbox_record_status ON outbox_record (status);
+CREATE INDEX IF NOT EXISTS idx_outbox_record_record_key_completed_created ON outbox_record (record_key, completed_at, created_at);
+CREATE INDEX IF NOT EXISTS idx_outbox_instance_status_heartbeat ON outbox_instance (status, last_heartbeat);
+CREATE INDEX IF NOT EXISTS idx_outbox_instance_last_heartbeat ON outbox_instance (last_heartbeat);
+CREATE INDEX IF NOT EXISTS idx_outbox_instance_status ON outbox_instance (status);
+CREATE INDEX IF NOT EXISTS idx_outbox_partition_instance_id ON outbox_partition (instance_id);
+
+CREATE TABLE audit_logs
+(
+    id                 UUID                     NOT NULL,
+    source_event_id    UUID                     NOT NULL,
+    entity_type        VARCHAR(100)             NOT NULL,
+    entity_id          UUID                     NOT NULL,
+    actor_id           VARCHAR(255)             NOT NULL,
+    actor_display_name VARCHAR(255)             NOT NULL,
+    occurred_at        TIMESTAMP WITH TIME ZONE NOT NULL,
+    CONSTRAINT pk_audit_logs PRIMARY KEY (id),
+    CONSTRAINT uq_audit_logs_source_event UNIQUE (source_event_id)
+);
+
+CREATE TABLE audit_log_changes
+(
+    id           UUID         NOT NULL,
+    audit_log_id UUID         NOT NULL,
+    position     INTEGER      NOT NULL,
+    field_name   VARCHAR(255) NOT NULL,
+    sensitive    BOOLEAN      NOT NULL,
+    before_value JSONB,
+    after_value  JSONB,
+    CONSTRAINT pk_audit_log_changes PRIMARY KEY (id),
+    CONSTRAINT fk_audit_log_changes_log FOREIGN KEY (audit_log_id) REFERENCES audit_logs (id) ON DELETE CASCADE,
+    CONSTRAINT uq_audit_log_changes_position UNIQUE (audit_log_id, position),
+    CONSTRAINT ck_audit_log_changes_sensitive_values
+        CHECK (NOT sensitive OR (before_value IS NULL AND after_value IS NULL))
+);
+
+CREATE INDEX idx_audit_logs_entity_type_occurred ON audit_logs (entity_type, occurred_at DESC, id DESC);

@@ -1,6 +1,7 @@
 /// Hosts the web executable application's driving adapters, framework-specific driven adapters, and composition.
 @ApplicationModule(
     allowedDependencies = {
+        "audit",
         "foundation",
         "query",
         "authorization :: object",

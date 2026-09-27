@@ -33,7 +33,7 @@ class DefaultUserCommandServiceTest {
         // Arrange
         UserCommandRepository users = mock(UserCommandRepository.class);
         when(users.findByUsername(Username.of("alice"))).thenReturn(Optional.empty());
-        var service = new DefaultUserCommandService(users);
+        var service = new DefaultUserCommandService(users, event -> {});
         ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
 
         // Act
@@ -76,7 +76,7 @@ class DefaultUserCommandServiceTest {
             "{bcrypt}existing"
         );
         when(users.findByUsername(Username.of("alice"))).thenReturn(Optional.of(existing));
-        var service = new DefaultUserCommandService(users);
+        var service = new DefaultUserCommandService(users, event -> {});
 
         // Act
         UserMutationResult result = service.reconcileManaged(
@@ -106,7 +106,7 @@ class DefaultUserCommandServiceTest {
         UserCommandRepository users = mock(UserCommandRepository.class);
         User existing = User.restore(UUID.randomUUID(), "alice", Set.of(), "Alice", "User", UserStatus.ACTIVE, null);
         when(users.findByUsername(Username.of("alice"))).thenReturn(Optional.of(existing));
-        var service = new DefaultUserCommandService(users);
+        var service = new DefaultUserCommandService(users, event -> {});
 
         // Act
         UserMutationResult result = service.reconcileManaged("alice", "{bcrypt}initial", Set.of(), "Alice", "User");

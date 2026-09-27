@@ -14,6 +14,7 @@ jmh-gradle-plugin = "0.7.3"
 guava = "33.7.1-jre"
 antlr = "4.13.2"
 re2j = "1.8"
+namastack-outbox = "1.7.3"
 
 [libraries]
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
@@ -31,6 +32,10 @@ jackson-dataformat-yaml = { module = "tools.jackson.dataformat:jackson-dataforma
 jakarta-persistence-api = { module = "jakarta.persistence:jakarta.persistence-api" }
 spring-modulith-starter-core = { module = "org.springframework.modulith:spring-modulith-starter-core" }
 spring-modulith-starter-test = { module = "org.springframework.modulith:spring-modulith-starter-test" }
+spring-modulith-events-api = { module = "org.springframework.modulith:spring-modulith-events-api" }
+spring-modulith-starter-namastack = { module = "org.springframework.modulith:spring-modulith-starter-namastack" }
+namastack-outbox-api = { module = "io.namastack:namastack-outbox-api", version.ref = "namastack-outbox" }
+namastack-outbox-core = { module = "io.namastack:namastack-outbox-core", version.ref = "namastack-outbox" }
 springdoc-openapi-starter-common = { module = "org.springdoc:springdoc-openapi-starter-common", version.ref = "springdoc-openapi" }
 springdoc-openapi-starter-webmvc-api = { module = "org.springdoc:springdoc-openapi-starter-webmvc-api", version.ref = "springdoc-openapi" }
 scalar-webmvc = { module = "com.scalar.maven:scalar-webmvc", version.ref = "scalar" }

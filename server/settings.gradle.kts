@@ -13,6 +13,7 @@ include(
     ":modules:language",
     ":modules:query",
     ":modules:access-control",
+    ":modules:audit",
     ":modules:database",
     ":modules:identity",
     ":benchmarks:authorization",

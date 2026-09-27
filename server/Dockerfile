@@ -12,6 +12,7 @@ COPY modules/foundation/spring/build.gradle.kts modules/foundation/spring/build.
 COPY modules/language/build.gradle.kts modules/language/build.gradle.kts
 COPY modules/query/build.gradle.kts modules/query/build.gradle.kts
 COPY modules/authorization/build.gradle.kts modules/authorization/build.gradle.kts
+COPY modules/audit/build.gradle.kts modules/audit/build.gradle.kts
 COPY modules/database/build.gradle.kts modules/database/build.gradle.kts
 COPY modules/identity/build.gradle.kts modules/identity/build.gradle.kts
 COPY benchmarks/authorization/build.gradle.kts benchmarks/authorization/build.gradle.kts
