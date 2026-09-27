@@ -1002,16 +1002,16 @@ components:
     QueryPredicateUserInfo:
       type: object
       properties:
-        alwaysFalse:
-          type: boolean
         alwaysTrue:
+          type: boolean
+        alwaysFalse:
           type: boolean
     ObjectAuthorizationPredicateUserInfo:
       type: object
       properties:
-        alwaysFalse:
-          type: boolean
         alwaysTrue:
+          type: boolean
+        alwaysFalse:
           type: boolean
     ApiResponseListUserInfoOffsetMeta:
       type: object
@@ -1130,16 +1130,16 @@ components:
     QueryPredicateStatementInfo:
       type: object
       properties:
-        alwaysFalse:
-          type: boolean
         alwaysTrue:
+          type: boolean
+        alwaysFalse:
           type: boolean
     ObjectAuthorizationPredicateStatementInfo:
       type: object
       properties:
-        alwaysFalse:
-          type: boolean
         alwaysTrue:
+          type: boolean
+        alwaysFalse:
           type: boolean
     ApiResponseData:
       type: object
@@ -1219,16 +1219,16 @@ components:
     QueryPredicateRoleInfo:
       type: object
       properties:
-        alwaysFalse:
-          type: boolean
         alwaysTrue:
+          type: boolean
+        alwaysFalse:
           type: boolean
     ObjectAuthorizationPredicateRoleInfo:
       type: object
       properties:
-        alwaysFalse:
-          type: boolean
         alwaysTrue:
+          type: boolean
+        alwaysFalse:
           type: boolean
     ApiResponseListRoleInfoOffsetMeta:
       type: object
@@ -1288,16 +1288,16 @@ components:
     QueryPredicateGroupInfo:
       type: object
       properties:
-        alwaysFalse:
-          type: boolean
         alwaysTrue:
+          type: boolean
+        alwaysFalse:
           type: boolean
     ObjectAuthorizationPredicateGroupInfo:
       type: object
       properties:
-        alwaysFalse:
-          type: boolean
         alwaysTrue:
+          type: boolean
+        alwaysFalse:
           type: boolean
     ApiResponseListGroupInfoOffsetMeta:
       type: object
