@@ -3,6 +3,7 @@ package io.taskmigo.authorization.request.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.github.benmanes.caffeine.cache.Ticker;
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfile;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
@@ -16,9 +17,11 @@ import io.taskmigo.authorization.statement.TargetInfo;
 import io.taskmigo.language.CompilationMode;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageContract;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -96,6 +99,40 @@ class StatementArtifactFactoryTest {
         assertThat(stale.pathMatcher()).isNotSameAs(first.pathMatcher());
         assertThat(latest.policy()).isSameAs(second.policy());
         assertThat(latest.pathMatcher()).isSameAs(second.pathMatcher());
+    }
+
+    /** Verifies inactive derivatives expire while frequently accessed derivatives remain retained. */
+    @Test
+    @DisplayName("expires only statement artifacts that remain idle")
+    void shouldExpireOnlyIdleStatementArtifacts() {
+        // Arrange
+        AtomicLong nanos = new AtomicLong();
+        Ticker ticker = nanos::get;
+        StatementArtifactFactory expiringFactory = new StatementArtifactFactory(
+            new LanguageCompiler(),
+            List.of(),
+            ObjectAuthorizationTargetResolver.all(List.of()),
+            StatementArtifactCache.expireAfterAccess(Duration.ofMinutes(5), ticker),
+            StatementArtifactCache.expireAfterAccess(Duration.ofMinutes(5), ticker)
+        );
+        EffectiveStatement hot = effective(statement(UUID.randomUUID(), Effect.ALLOW, "/api/v0/users"), Instant.EPOCH);
+        EffectiveStatement idle = effective(statement(UUID.randomUUID(), Effect.ALLOW, "/api/v0/users"), Instant.EPOCH);
+        StatementExecutionArtifact hotFirst = expiringFactory.build(List.of(hot), "GET", "/api/v0/users").getFirst();
+        StatementExecutionArtifact idleFirst = expiringFactory.build(List.of(idle), "GET", "/api/v0/users").getFirst();
+
+        // Act
+        nanos.addAndGet(Duration.ofMinutes(4).toNanos());
+        StatementExecutionArtifact hotSecond = expiringFactory.build(List.of(hot), "GET", "/api/v0/users").getFirst();
+        nanos.addAndGet(Duration.ofMinutes(2).toNanos());
+        StatementExecutionArtifact hotThird = expiringFactory.build(List.of(hot), "GET", "/api/v0/users").getFirst();
+        StatementExecutionArtifact idleAfterTtl = expiringFactory
+            .build(List.of(idle), "GET", "/api/v0/users")
+            .getFirst();
+
+        // Assert
+        assertThat(hotSecond.policy()).isSameAs(hotFirst.policy());
+        assertThat(hotThird.policy()).isSameAs(hotFirst.policy());
+        assertThat(idleAfterTtl.policy()).isNotSameAs(idleFirst.policy());
     }
 
     /**
