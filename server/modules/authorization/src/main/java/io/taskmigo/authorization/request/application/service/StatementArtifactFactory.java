@@ -30,6 +30,7 @@ public final class StatementArtifactFactory {
     private final LanguageCompiler compiler;
     private final EnvironmentSchema objectSchema;
     private final ObjectAuthorizationTargetResolver targetResolver;
+    private final ConcurrentMap<UUID, CachedTargetMatcher> targetMatchers = new ConcurrentHashMap<>();
     private final ConcurrentMap<UUID, CachedArtifacts> derived = new ConcurrentHashMap<>();
 
     public StatementArtifactFactory(
@@ -54,9 +55,7 @@ public final class StatementArtifactFactory {
             if (!methodMatches(statement, requestMethod)) {
                 continue;
             }
-            StatementTargetPathMatcher pathMatcher = StatementTargetPathMatcher.compile(
-                statement.target().api().path()
-            );
+            StatementTargetPathMatcher pathMatcher = this.targetMatcher(effective);
             if (!pathMatcher.matches(requestPath)) {
                 continue;
             }
@@ -74,6 +73,33 @@ public final class StatementArtifactFactory {
             result.add(new StatementExecutionArtifact(statement, artifacts.policy(), artifacts.pathMatcher()));
         }
         return List.copyOf(result);
+    }
+
+    private StatementTargetPathMatcher targetMatcher(EffectiveStatement effective) {
+        StatementInfo statement = effective.statement();
+        TargetMatcherIdentity identity = new TargetMatcherIdentity(
+            effective.updatedAt(),
+            statement.target().api().path()
+        );
+        CachedTargetMatcher current = this.targetMatchers.get(statement.id());
+        if (current != null && current.identity().equals(identity)) {
+            return current.matcher();
+        }
+
+        CachedTargetMatcher retained = Objects.requireNonNull(
+            this.targetMatchers.compute(statement.id(), (ignored, latest) -> {
+                if (latest != null && latest.identity().equals(identity)) {
+                    return latest;
+                }
+                if (latest != null && latest.identity().updatedAt().isAfter(identity.updatedAt())) {
+                    return latest;
+                }
+                return new CachedTargetMatcher(identity, StatementTargetPathMatcher.compile(identity.expression()));
+            })
+        );
+        return retained.identity().equals(identity)
+            ? retained.matcher()
+            : StatementTargetPathMatcher.compile(identity.expression());
     }
 
     private DerivedArtifacts derive(
@@ -143,6 +169,10 @@ public final class StatementArtifactFactory {
             .sorted()
             .toList();
     }
+
+    private record TargetMatcherIdentity(Instant updatedAt, String expression) {}
+
+    private record CachedTargetMatcher(TargetMatcherIdentity identity, StatementTargetPathMatcher matcher) {}
 
     private record ArtifactIdentity(
         Instant updatedAt,
