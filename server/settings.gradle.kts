@@ -8,7 +8,8 @@ pluginManagement {
 rootProject.name = "taskmigo"
 
 include(
-    ":modules:foundation",
+    ":modules:foundation:core",
+    ":modules:foundation:spring",
     ":modules:language",
     ":modules:query",
     ":modules:access-control",

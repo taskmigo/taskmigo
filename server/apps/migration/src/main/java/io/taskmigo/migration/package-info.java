@@ -1,4 +1,4 @@
-/// Hosts the migration installation application ports/services, startup driving adapters, framework-backed driven adapters, and composition.
+/// Runs Taskmigo's one-shot installation and database migration workflow.
 @ApplicationModule(
     allowedDependencies = {
         "foundation",
