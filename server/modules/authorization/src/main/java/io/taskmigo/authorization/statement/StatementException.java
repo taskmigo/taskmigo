@@ -11,6 +11,7 @@ public final class StatementException extends DomainException {
     private static final long serialVersionUID = 1L;
 
     public enum Type {
+        NOT_FOUND,
         CONFLICT,
     }
 

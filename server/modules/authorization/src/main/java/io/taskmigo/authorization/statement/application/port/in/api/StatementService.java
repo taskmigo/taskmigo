@@ -21,6 +21,7 @@ public interface StatementService {
         @Nullable String path,
         @Nullable String policy
     );
+    void deleteStatement(UUID id);
     OffsetPage<StatementInfo> list(int page, int perPage);
     OffsetPage<StatementInfo> list(
         int page,

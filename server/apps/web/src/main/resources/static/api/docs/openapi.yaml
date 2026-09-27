@@ -673,6 +673,64 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+  /api/v0/statements/{statementId}:
+    delete:
+      tags:
+      - Statement
+      summary: Delete an authorization statement
+      operationId: delete
+      parameters:
+      - name: statementId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
 components:
   schemas:
     ApiResponseVoidBasicMeta:
@@ -944,16 +1002,16 @@ components:
     QueryPredicateUserInfo:
       type: object
       properties:
-        alwaysTrue:
-          type: boolean
         alwaysFalse:
+          type: boolean
+        alwaysTrue:
           type: boolean
     ObjectAuthorizationPredicateUserInfo:
       type: object
       properties:
-        alwaysTrue:
-          type: boolean
         alwaysFalse:
+          type: boolean
+        alwaysTrue:
           type: boolean
     ApiResponseListUserInfoOffsetMeta:
       type: object
@@ -1072,16 +1130,16 @@ components:
     QueryPredicateStatementInfo:
       type: object
       properties:
-        alwaysTrue:
-          type: boolean
         alwaysFalse:
+          type: boolean
+        alwaysTrue:
           type: boolean
     ObjectAuthorizationPredicateStatementInfo:
       type: object
       properties:
-        alwaysTrue:
-          type: boolean
         alwaysFalse:
+          type: boolean
+        alwaysTrue:
           type: boolean
     ApiResponseData:
       type: object
@@ -1161,16 +1219,16 @@ components:
     QueryPredicateRoleInfo:
       type: object
       properties:
-        alwaysTrue:
-          type: boolean
         alwaysFalse:
+          type: boolean
+        alwaysTrue:
           type: boolean
     ObjectAuthorizationPredicateRoleInfo:
       type: object
       properties:
-        alwaysTrue:
-          type: boolean
         alwaysFalse:
+          type: boolean
+        alwaysTrue:
           type: boolean
     ApiResponseListRoleInfoOffsetMeta:
       type: object
@@ -1230,16 +1288,16 @@ components:
     QueryPredicateGroupInfo:
       type: object
       properties:
-        alwaysTrue:
-          type: boolean
         alwaysFalse:
+          type: boolean
+        alwaysTrue:
           type: boolean
     ObjectAuthorizationPredicateGroupInfo:
       type: object
       properties:
-        alwaysTrue:
-          type: boolean
         alwaysFalse:
+          type: boolean
+        alwaysTrue:
           type: boolean
     ApiResponseListGroupInfoOffsetMeta:
       type: object

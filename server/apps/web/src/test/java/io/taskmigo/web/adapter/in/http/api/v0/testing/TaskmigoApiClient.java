@@ -66,7 +66,7 @@ public final class TaskmigoApiClient {
         return this.users;
     }
 
-    /// Returns the typed client for Statement creation.
+    /// Returns the typed client for Statement management.
     public Statements statements() {
         return this.statements;
     }
@@ -165,6 +165,10 @@ public final class TaskmigoApiClient {
             .body(request)
             .retrieve()
             .toBodilessEntity();
+    }
+
+    private void delete(String path) {
+        this.client.delete().uri(path).retrieve().toBodilessEntity();
     }
 
     /// OAuth client credentials used by the integration-test server.
@@ -287,7 +291,7 @@ public final class TaskmigoApiClient {
         }
     }
 
-    /// Creates Statements through the public HTTP API.
+    /// Manages Statements through the public HTTP API.
     public final class Statements {
 
         private Statements() {}
@@ -295,6 +299,11 @@ public final class TaskmigoApiClient {
         /// Creates a Statement and returns its server-assigned id.
         public UUID create(CreateStatementRequest request) {
             return TaskmigoApiClient.this.create("/api/v0/statements", request);
+        }
+
+        /// Deletes one Statement by its server-assigned id.
+        public void delete(UUID statementId) {
+            TaskmigoApiClient.this.delete("/api/v0/statements/" + statementId);
         }
     }
 

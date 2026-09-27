@@ -29,6 +29,8 @@ public interface StatementCommandService {
         @Nullable String policy
     );
 
+    Optional<Statement> findById(UUID id);
+
     Optional<Statement> findByCode(@Nullable String code);
 
     void delete(Statement statement);

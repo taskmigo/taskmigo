@@ -5,6 +5,7 @@ import io.taskmigo.authorization.statement.application.port.out.StatementCommand
 import io.taskmigo.authorization.statement.domain.Statement;
 import io.taskmigo.authorization.statement.domain.StatementCode;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
@@ -16,6 +17,11 @@ public class JpaStatementCommandRepository implements StatementCommandRepository
 
     JpaStatementCommandRepository(StatementRepository statements) {
         this.statements = statements;
+    }
+
+    @Override
+    public Optional<Statement> findById(UUID id) {
+        return this.statements.findById(id).map(StatementEntity::toDomain);
     }
 
     @Override

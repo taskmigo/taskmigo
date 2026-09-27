@@ -5,6 +5,7 @@ import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
+import io.taskmigo.authorization.statement.StatementException;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.application.port.in.api.StatementService;
 import io.taskmigo.authorization.statement.application.port.in.internal.StatementCommandService;
@@ -50,6 +51,16 @@ public final class DefaultStatementService implements StatementService {
             } catch (StatementRuleViolation exception) {
                 throw badRequest(exception);
             }
+        });
+    }
+
+    @Override
+    public void deleteStatement(UUID id) {
+        this.transactions.write(() -> {
+            var statement = this.commands
+                .findById(id)
+                .orElseThrow(() -> new StatementException(StatementException.Type.NOT_FOUND, "Statement not found"));
+            this.commands.delete(statement);
         });
     }
 

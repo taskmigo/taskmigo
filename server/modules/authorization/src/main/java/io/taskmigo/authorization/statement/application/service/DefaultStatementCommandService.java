@@ -83,6 +83,11 @@ public final class DefaultStatementCommandService implements StatementCommandSer
     }
 
     @Override
+    public Optional<Statement> findById(UUID id) {
+        return this.statements.findById(id);
+    }
+
+    @Override
     public Optional<Statement> findByCode(@Nullable String code) {
         return this.statements.findByCode(StatementCode.of(code));
     }
