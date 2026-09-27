@@ -16,6 +16,7 @@ import io.taskmigo.authorization.statement.TargetInfo;
 import io.taskmigo.language.CompilationMode;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageContract;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -243,6 +244,55 @@ class StatementArtifactFactoryTest {
         assertThatThrownBy(() -> this.factory.build(List.of(effective), "POST", "/api/v0/users"))
             .isInstanceOf(AuthorizationException.class)
             .hasMessageContaining("valid regular expression");
+    }
+
+    /**
+     * Verifies that target syntax requiring backtracking is outside the supported authorization contract.
+     *
+     * Given: a persisted target path containing a backreference that Java regex accepts but RE2-compatible syntax does
+     * not support.
+     * Expect: the matching authorization operation rejects the target as an Authorization error before policy work.
+     */
+    @Test
+    @DisplayName("rejects target regex syntax that requires backtracking")
+    void shouldRejectTargetRegexWhenSyntaxRequiresBacktracking() {
+        // Arrange
+        EffectiveStatement statement = effective(
+            statement(UUID.randomUUID(), Effect.ALLOW, "/api/v0/users/(.+)\\1"),
+            Instant.EPOCH
+        );
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.factory.build(List.of(statement), "GET", "/api/v0/users/abcabc"))
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("valid regular expression");
+    }
+
+    /**
+     * Verifies that ambiguous target expressions cannot amplify CPU or exhaust the regex engine stack.
+     *
+     * Given: the pathological expression ^/(a|aa)+$ and a long near-match that triggers unbounded backtracking in
+     * java.util.regex.
+     * Expect: target matching completes within one second and reports no matching Statement.
+     */
+    @Test
+    @DisplayName("bounds matching time for adversarial target regex")
+    void shouldBoundTargetMatchingWhenRegexHasAmbiguousRepetition() {
+        // Arrange
+        EffectiveStatement statement = effective(
+            statement(UUID.randomUUID(), Effect.ALLOW, "^/(a|aa)+$"),
+            Instant.EPOCH
+        );
+        String requestPath = "/" + "a".repeat(8192) + "!";
+
+        // Act
+        long startedAt = System.nanoTime();
+        List<StatementExecutionArtifact> result = this.factory.build(List.of(statement), "GET", requestPath);
+        Duration elapsed = Duration.ofNanos(System.nanoTime() - startedAt);
+
+        // Assert
+        assertThat(result).isEmpty();
+        assertThat(elapsed).isLessThan(Duration.ofSeconds(1));
     }
 
     private static EffectiveStatement effective(StatementInfo statement, Instant updatedAt) {

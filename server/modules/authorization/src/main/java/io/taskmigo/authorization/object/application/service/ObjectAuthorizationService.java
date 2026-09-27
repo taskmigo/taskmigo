@@ -15,6 +15,7 @@ import io.taskmigo.authorization.object.model.ObjectAuthorizationPredicateModels
 import io.taskmigo.authorization.request.AuthorizationContext;
 import io.taskmigo.authorization.request.application.model.AuthorizationOperation;
 import io.taskmigo.authorization.statement.Scope;
+import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.LanguageCompiler;
@@ -74,7 +75,13 @@ public final class ObjectAuthorizationService implements ObjectAuthorization {
     /// Validates an object policy independently against every schema governed by its target.
     @Override
     public void validatePolicy(String policy, String method, String path) {
-        List<ObjectAuthorizationSchema<?>> applicable = this.targetResolver.applicable(method, path);
+        StatementTargetPathMatcher pathMatcher;
+        try {
+            pathMatcher = StatementTargetPathMatcher.compile(path);
+        } catch (IllegalArgumentException exception) {
+            throw new AuthorizationException("Statement target path is not a valid regular expression");
+        }
+        List<ObjectAuthorizationSchema<?>> applicable = this.targetResolver.applicable(method, pathMatcher);
         if (applicable.isEmpty()) {
             throw new AuthorizationException("Object Statement target matches no registered object schema route");
         }

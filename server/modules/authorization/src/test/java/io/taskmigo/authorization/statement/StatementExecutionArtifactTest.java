@@ -5,7 +5,6 @@ import static org.mockito.Mockito.mock;
 
 import io.taskmigo.language.CompiledSource;
 import java.util.UUID;
-import java.util.regex.Pattern;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -59,7 +58,7 @@ class StatementExecutionArtifactTest {
         return new StatementExecutionArtifact(
             statement,
             mock(CompiledSource.class),
-            Pattern.compile(statement.target().api().path())
+            StatementTargetPathMatcher.compile(statement.target().api().path())
         );
     }
 

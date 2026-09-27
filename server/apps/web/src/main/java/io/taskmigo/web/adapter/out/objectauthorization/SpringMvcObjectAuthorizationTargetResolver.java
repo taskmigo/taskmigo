@@ -3,11 +3,11 @@ package io.taskmigo.web.adapter.out.objectauthorization;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
+import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.regex.Pattern;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.annotation.Primary;
@@ -51,10 +51,10 @@ public final class SpringMvcObjectAuthorizationTargetResolver
     }
 
     @Override
-    public List<ObjectAuthorizationSchema<?>> applicable(String method, String path) {
+    public List<ObjectAuthorizationSchema<?>> applicable(String method, StatementTargetPathMatcher pathMatcher) {
         return this.routes
             .stream()
-            .filter(route -> route.matches(method, path))
+            .filter(route -> route.matches(method, pathMatcher))
             .<ObjectAuthorizationSchema<?>>map(Route::schema)
             .distinct()
             .toList();
@@ -108,10 +108,10 @@ public final class SpringMvcObjectAuthorizationTargetResolver
     }
 
     private record Route(String method, String path, ObjectAuthorizationSchema<?> schema) {
-        private boolean matches(String statementMethod, String statementPath) {
+        private boolean matches(String statementMethod, StatementTargetPathMatcher pathMatcher) {
             return (
                 ("*".equals(statementMethod) || "*".equals(this.method) || this.method.equals(statementMethod)) &&
-                Pattern.matches(statementPath, this.path)
+                pathMatcher.matches(this.path)
             );
         }
     }
