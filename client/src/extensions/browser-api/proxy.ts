@@ -1,5 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+export class BrowserApiAuthorizationUnavailableError extends Error {
+  constructor(options?: ErrorOptions) {
+    super("Browser API authorization is temporarily unavailable", options);
+    this.name = new.target.name;
+  }
+}
+
 export interface BrowserApiAuthorization {
   readonly accessToken: string;
   persist(response: NextResponse): void;
@@ -47,7 +54,15 @@ export class BrowserApiProxy {
       return BrowserApiProxy.#error(404, "Backend API route not found");
     }
 
-    const authorization = await this.#authorizer.authorize(request);
+    let authorization: BrowserApiAuthorization | undefined;
+    try {
+      authorization = await this.#authorizer.authorize(request);
+    } catch (error) {
+      if (error instanceof BrowserApiAuthorizationUnavailableError) {
+        return BrowserApiProxy.#error(503, "Authentication temporarily unavailable");
+      }
+      throw error;
+    }
     if (!authorization) {
       return this.#unauthorized();
     }

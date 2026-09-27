@@ -49,6 +49,15 @@ export interface AuthManagerOptions {
   clock?: Clock;
 }
 
+export class SessionRenewalError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = new.target.name;
+  }
+}
+
+export class InvalidSessionError extends SessionRenewalError {}
+
 export class DefaultAuthManager implements AuthManager {
   readonly #client: AuthorizationClient;
   readonly #navigation: AuthNavigation;
@@ -83,12 +92,21 @@ export class DefaultAuthManager implements AuthManager {
 
   async renew(session: Session): Promise<Session> {
     if (session.expiresAt > this.#clock() + this.#refreshSkewMilliseconds) {
+      this.#client.getAccessToken(session);
       return session;
     }
 
-    const renewed = await this.#client.renew(session);
+    let renewed: Session;
+    try {
+      renewed = await this.#client.renew(session);
+    } catch (error) {
+      if (error instanceof SessionRenewalError) {
+        throw error;
+      }
+      throw new SessionRenewalError("Authorization session renewal failed", { cause: error });
+    }
     if (renewed.user.id !== session.user.id) {
-      throw new Error("Authorization subject changed during renewal");
+      throw new InvalidSessionError("Authorization subject changed during renewal");
     }
     return renewed;
   }

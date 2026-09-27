@@ -3,7 +3,7 @@ import "server-only";
 import * as client from "openid-client";
 import { z } from "zod";
 
-import type { AuthorizationClient, Session, User } from "./core";
+import { InvalidSessionError, type AuthorizationClient, type Session, type User } from "./core";
 
 type AuthorizationState = { version: string; state: string; nonce: string; codeVerifier: string };
 type SessionState = { version: string; accessToken: string; refreshToken: string; idToken: string };
@@ -103,8 +103,22 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
   }
 
   async renew(session: Session): Promise<Session> {
-    const previous = OpenIdAuthorizationClient.#decode(session.authorizationState, this.#sessionStateSchema);
-    const tokens = await client.refreshTokenGrant(await this.#configuration(), previous.refreshToken);
+    let previous: SessionState;
+    try {
+      previous = OpenIdAuthorizationClient.#decode(session.authorizationState, this.#sessionStateSchema);
+    } catch (error) {
+      throw new InvalidSessionError("Authorization session state is invalid", { cause: error });
+    }
+
+    let tokens: Tokens;
+    try {
+      tokens = await client.refreshTokenGrant(await this.#configuration(), previous.refreshToken);
+    } catch (error) {
+      if (error instanceof client.ResponseBodyError && error.error === "invalid_grant") {
+        throw new InvalidSessionError("Authorization session can no longer be renewed", { cause: error });
+      }
+      throw error;
+    }
     const claims = tokens.claims();
 
     return this.#createSession(tokens, {
@@ -118,7 +132,11 @@ export class OpenIdAuthorizationClient implements AuthorizationClient {
   }
 
   getAccessToken(session: Session): string {
-    return OpenIdAuthorizationClient.#decode(session.authorizationState, this.#sessionStateSchema).accessToken;
+    try {
+      return OpenIdAuthorizationClient.#decode(session.authorizationState, this.#sessionStateSchema).accessToken;
+    } catch (error) {
+      throw new InvalidSessionError("Authorization session state is invalid", { cause: error });
+    }
   }
 
   async end(session: Session, postLogoutRedirectUri: URL): Promise<URL> {

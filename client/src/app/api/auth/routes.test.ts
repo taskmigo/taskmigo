@@ -1,3 +1,4 @@
+import { InvalidSessionError, SessionRenewalError } from "@/auth";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { NextRequest } from "next/server";
 
@@ -23,7 +24,10 @@ const auth = vi.hoisted(() => {
   return { manager, sessions, transactions, context, getAuth: vi.fn(() => context) };
 });
 
-vi.mock("@/auth", () => ({ getAuth: auth.getAuth }));
+vi.mock("@/auth", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/auth")>()),
+  getAuth: auth.getAuth,
+}));
 
 import { GET as callback } from "./callback/route";
 import { GET as login } from "./login/route";
@@ -172,14 +176,37 @@ describe("session route", () => {
     expect(auth.sessions.write).toHaveBeenCalledWith(response.cookies, renewed);
   });
 
-  test("clears a session that cannot be renewed", async () => {
+  test("clears a terminally invalid session that cannot be renewed", async () => {
     auth.sessions.read.mockReturnValue(session);
-    auth.manager.renew.mockRejectedValue(new Error("refresh failed"));
+    auth.manager.renew.mockRejectedValue(new InvalidSessionError("refresh token expired"));
 
     const response = await sessionEndpoint(request("/api/auth/session"));
 
     expect(response.headers.get("cache-control")).toBe("no-store");
     await expect(response.json()).resolves.toEqual({ authenticated: false });
     expect(auth.sessions.clear).toHaveBeenCalledWith(response.cookies);
+  });
+
+  test("does not hide unexpected renewal failures", async () => {
+    auth.sessions.read.mockReturnValue(session);
+    const failure = new Error("unexpected renewal bug");
+    auth.manager.renew.mockRejectedValue(failure);
+
+    await expect(sessionEndpoint(request("/api/auth/session"))).rejects.toBe(failure);
+    expect(auth.sessions.clear).not.toHaveBeenCalled();
+    expect(auth.sessions.write).not.toHaveBeenCalled();
+  });
+
+  test("preserves the session when renewal fails transiently", async () => {
+    auth.sessions.read.mockReturnValue(session);
+    auth.manager.renew.mockRejectedValue(new SessionRenewalError("provider unavailable"));
+
+    const response = await sessionEndpoint(request("/api/auth/session"));
+
+    expect(response.status).toBe(503);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    await expect(response.json()).resolves.toEqual({ error: "Authentication temporarily unavailable" });
+    expect(auth.sessions.clear).not.toHaveBeenCalled();
+    expect(auth.sessions.write).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,13 @@
 import { describe, expect, test, vi } from "vitest";
 
-import { AuthNavigation, DefaultAuthManager, type AuthorizationClient, type Session } from "./core";
+import {
+  AuthNavigation,
+  DefaultAuthManager,
+  InvalidSessionError,
+  SessionRenewalError,
+  type AuthorizationClient,
+  type Session,
+} from "./core";
 
 const now = 1_000_000;
 const appUrl = new URL("https://app.example/base/");
@@ -167,12 +174,37 @@ describe("DefaultAuthManager", () => {
     expect(client.getAccessToken).toHaveBeenCalledWith(renewed);
   });
 
-  test("rejects subject changes during renewal with a stable error message", async () => {
+  test("classifies subject changes during renewal as invalid sessions", async () => {
     const { client, manager: auth } = manager();
     const current = { ...activeSession, expiresAt: now };
     client.renew.mockResolvedValueOnce({ ...activeSession, user: { id: "attacker" } });
 
-    await expect(auth.renew(current)).rejects.toThrow("Authorization subject changed during renewal");
+    const renewal = auth.renew(current);
+
+    await expect(renewal).rejects.toBeInstanceOf(InvalidSessionError);
+    await expect(renewal).rejects.toThrow("Authorization subject changed during renewal");
+  });
+
+  test("preserves renewal failures already classified by the authorization client", async () => {
+    const { client, manager: auth } = manager();
+    const current = { ...activeSession, expiresAt: now };
+    const failure = new InvalidSessionError("refresh token expired");
+    client.renew.mockRejectedValueOnce(failure);
+
+    await expect(auth.renew(current)).rejects.toBe(failure);
+  });
+
+  test("classifies non-terminal client renewal failures as transient", async () => {
+    const { client, manager: auth } = manager();
+    const current = { ...activeSession, expiresAt: now };
+    const failure = new Error("provider unavailable");
+    client.renew.mockRejectedValueOnce(failure);
+
+    const renewal = auth.renew(current);
+
+    await expect(renewal).rejects.toBeInstanceOf(SessionRenewalError);
+    await expect(renewal).rejects.toHaveProperty("cause", failure);
+    await expect(renewal).rejects.not.toBeInstanceOf(InvalidSessionError);
   });
 
   test("signs out locally when no session exists", async () => {

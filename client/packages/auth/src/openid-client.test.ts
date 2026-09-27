@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import type { Session } from "./core";
+import { InvalidSessionError, type Session } from "./core";
 import type { OpenIdClientConfig } from "./openid-client";
 
 vi.mock("server-only", () => ({}));
@@ -15,6 +15,11 @@ const oidc = vi.hoisted(() => ({
   authorizationCodeGrant: vi.fn(),
   refreshTokenGrant: vi.fn(),
   buildEndSessionUrl: vi.fn(() => new URL("https://auth.example/logout")),
+  ResponseBodyError: class ResponseBodyError extends Error {
+    constructor(readonly error: string) {
+      super(error);
+    }
+  },
   ClientSecretBasic: vi.fn(() => ({ method: "client-secret-basic" })),
   allowInsecureRequests: vi.fn(),
 }));
@@ -230,6 +235,23 @@ describe("OpenIdAuthorizationClient", () => {
     });
   });
 
+  test("classifies invalid_grant refresh failures as terminal session invalidation", async () => {
+    const instance = await createClient();
+    const current = await createSession(instance);
+    oidc.refreshTokenGrant.mockRejectedValueOnce(new oidc.ResponseBodyError("invalid_grant"));
+
+    await expect(instance.renew(current)).rejects.toBeInstanceOf(InvalidSessionError);
+  });
+
+  test("does not classify transient refresh failures as invalid sessions", async () => {
+    const instance = await createClient();
+    const current = await createSession(instance);
+    const failure = new TypeError("network unavailable");
+    oidc.refreshTokenGrant.mockRejectedValueOnce(failure);
+
+    await expect(instance.renew(current)).rejects.toBe(failure);
+  });
+
   test("adopts renewed identity and replacement refresh/id tokens", async () => {
     const instance = await createClient();
     const current = await createSession(instance);
@@ -276,8 +298,8 @@ describe("OpenIdAuthorizationClient", () => {
       ).toString("base64url"),
     };
 
-    expect(() => instance.getAccessToken(current)).toThrow();
-    await expect(instance.renew(current)).rejects.toThrow();
+    expect(() => instance.getAccessToken(current)).toThrow(InvalidSessionError);
+    await expect(instance.renew(current)).rejects.toBeInstanceOf(InvalidSessionError);
     await expect(instance.end(current, new URL("https://app.example/signed-out"))).rejects.toThrow();
     expect(oidc.refreshTokenGrant).not.toHaveBeenCalled();
   });

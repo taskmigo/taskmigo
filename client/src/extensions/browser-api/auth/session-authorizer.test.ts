@@ -1,6 +1,8 @@
+import { InvalidSessionError, SessionRenewalError } from "@/auth";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
+import { BrowserApiAuthorizationUnavailableError } from "../proxy";
 import { SessionBrowserApiAuthorizer } from "./session-authorizer";
 
 const session = {
@@ -27,12 +29,20 @@ describe("SessionBrowserApiAuthorizer", () => {
     expect(manager.authorize).not.toHaveBeenCalled();
   });
 
-  test("returns no authorization when renewal fails", async () => {
+  test("returns no authorization when renewal proves the session is invalid", async () => {
     sessions.read.mockReturnValue(session);
-    manager.authorize.mockRejectedValueOnce(new Error("refresh failed"));
+    manager.authorize.mockRejectedValueOnce(new InvalidSessionError("refresh token expired"));
     const authorizer = new SessionBrowserApiAuthorizer(manager, sessions);
 
     await expect(authorizer.authorize(request())).resolves.toBeUndefined();
+  });
+
+  test("reports transient renewal failure without invalidating the session", async () => {
+    sessions.read.mockReturnValue(session);
+    manager.authorize.mockRejectedValueOnce(new SessionRenewalError("provider unavailable"));
+    const authorizer = new SessionBrowserApiAuthorizer(manager, sessions);
+
+    await expect(authorizer.authorize(request())).rejects.toBeInstanceOf(BrowserApiAuthorizationUnavailableError);
   });
 
   test("persists a renewed session through the authorization result", async () => {
