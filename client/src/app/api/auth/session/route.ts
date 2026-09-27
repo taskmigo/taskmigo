@@ -1,3 +1,4 @@
+import { InvalidSessionError, SessionRenewalError } from "@/auth";
 import { type NextRequest, NextResponse } from "next/server";
 
 import { getAuth } from "@/auth";
@@ -23,9 +24,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       sessions.write(response.cookies, current);
     }
     return response;
-  } catch {
-    const response = noStore(NextResponse.json({ authenticated: false }));
-    sessions.clear(response.cookies);
-    return response;
+  } catch (error) {
+    if (error instanceof InvalidSessionError) {
+      const response = noStore(NextResponse.json({ authenticated: false }));
+      sessions.clear(response.cookies);
+      return response;
+    }
+    if (error instanceof SessionRenewalError) {
+      return noStore(NextResponse.json({ error: "Authentication temporarily unavailable" }, { status: 503 }));
+    }
+    throw error;
   }
 }

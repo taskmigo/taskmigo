@@ -1,16 +1,22 @@
 package io.taskmigo.authorization.statement.application.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
+import io.taskmigo.authorization.statement.StatementException;
 import io.taskmigo.authorization.statement.application.port.in.internal.StatementCommandService;
 import io.taskmigo.authorization.statement.application.port.out.StatementQueryRepository;
+import io.taskmigo.authorization.statement.domain.Statement;
 import io.taskmigo.authorization.statement.domain.StatementRuleViolation;
+import io.taskmigo.foundation.DomainFailureType;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -57,6 +63,50 @@ class DefaultStatementServiceTest {
         )
             .isInstanceOf(AuthorizationException.class)
             .hasMessage("Statement code already exists");
+    }
+
+    /**
+     * Verifies an existing Statement is deleted through the canonical command path.
+     *
+     * Given: a Statement id that resolves to a canonical Statement aggregate.
+     * Expect: the command service receives exactly that Statement for deletion.
+     */
+    @Test
+    @DisplayName("deletes an existing statement through the command service")
+    void shouldDeleteStatementWhenStatementExists() {
+        // Arrange
+        UUID id = UUID.randomUUID();
+        Statement statement = mock(Statement.class);
+        when(this.commands.findById(id)).thenReturn(Optional.of(statement));
+
+        // Act
+        this.service.deleteStatement(id);
+
+        // Assert
+        verify(this.commands).delete(statement);
+    }
+
+    /**
+     * Verifies missing Statement deletion is reported with the domain not-found category.
+     *
+     * Given: a Statement id that cannot be resolved by the canonical command path.
+     * Expect: deletion fails as NOT_FOUND with the stable Statement-not-found message.
+     */
+    @Test
+    @DisplayName("reports not found when deleting a missing statement")
+    void shouldReportNotFoundWhenStatementDoesNotExist() {
+        // Arrange
+        UUID id = UUID.randomUUID();
+        when(this.commands.findById(id)).thenReturn(Optional.empty());
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.service.deleteStatement(id)).isInstanceOfSatisfying(
+            StatementException.class,
+            exception -> {
+                assertThat(exception.type()).isEqualTo(DomainFailureType.NOT_FOUND);
+                assertThat(exception.getMessage()).isEqualTo("Statement not found");
+            }
+        );
     }
 
     /**

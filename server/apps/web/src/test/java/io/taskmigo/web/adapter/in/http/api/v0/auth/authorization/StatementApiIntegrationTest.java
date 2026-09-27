@@ -3,16 +3,34 @@ package io.taskmigo.web.adapter.in.http.api.v0.auth.authorization;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.taskmigo.authorization.request.application.port.out.EffectiveStatementResolver;
 import io.taskmigo.web.adapter.in.http.api.v0.testing.ApiIntegrationTestSupport;
+import io.taskmigo.web.adapter.in.http.api.v0.testing.TaskmigoApiClient.CreateRoleRequest;
 import io.taskmigo.web.adapter.in.http.api.v0.testing.TaskmigoApiClient.CreateStatementRequest;
+import io.taskmigo.web.adapter.in.http.api.v0.testing.TaskmigoApiClient.CreateUserRequest;
 import io.taskmigo.web.adapter.in.http.api.v0.testing.TaskmigoApiClient.StatementApiTarget;
 import io.taskmigo.web.adapter.in.http.api.v0.testing.TaskmigoApiClient.StatementTarget;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClient;
 
 class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
+
+    private final EffectiveStatementResolver statementResolver;
+    private final JdbcTemplate jdbc;
+
+    @LocalServerPort
+    private int port;
+
+    StatementApiIntegrationTest(EffectiveStatementResolver statementResolver, JdbcTemplate jdbc) {
+        this.statementResolver = statementResolver;
+        this.jdbc = jdbc;
+    }
 
     /**
      * Verifies that the public API persists and returns the canonical Statement representation.
@@ -132,6 +150,107 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     /**
+     * Verifies deletion removes the Statement and every direct assignment that references it.
+     *
+     * Given: one Statement assigned directly to a User and to a Role also assigned to that User.
+     * Expect: deletion removes both bindings and the next effective-Statement resolution no longer contains it.
+     */
+    @Test
+    @DisplayName("deletes a statement and removes its assignments")
+    void shouldDeleteStatementAndAssignmentsWhenStatementExists() {
+        // Arrange
+        String code = "delete-" + UUID.randomUUID();
+        UUID statement = this.api().statements().create(this.request(code));
+        UUID role = this.api()
+            .roles()
+            .create(new CreateRoleRequest("DeleteStatementRole" + compactUuid(), null, Set.of()));
+        this.api().roles().replaceStatements(role, Set.of(statement));
+        String username = "statement-delete-" + compactUuid();
+        UUID user = this.api()
+            .users()
+            .create(
+                new CreateUserRequest(
+                    username,
+                    Set.of(username + "@example.com"),
+                    "Test",
+                    "User",
+                    Set.of(role),
+                    Set.of()
+                )
+            );
+        this.api().users().replaceStatements(user, Set.of(statement));
+        assertThat(this.statementResolver.resolve(user))
+            .extracting(effective -> effective.statement().id())
+            .contains(statement);
+
+        // Act
+        this.api().statements().delete(statement);
+
+        // Assert
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from role_statements where statement_id = ?",
+                Integer.class,
+                statement
+            )
+        ).isZero();
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from subject_statement_bindings where statement_id = ?",
+                Integer.class,
+                statement
+            )
+        ).isZero();
+        assertThat(this.statementResolver.resolve(user))
+            .extracting(effective -> effective.statement().id())
+            .doesNotContain(statement);
+    }
+
+    /**
+     * Verifies deleting an unknown Statement preserves the public not-found contract.
+     *
+     * Given: a random Statement id that has never been persisted.
+     * Expect: deletion returns HTTP 404 with the stable Statement-not-found message.
+     */
+    @Test
+    @DisplayName("returns not found when deleting an unknown statement")
+    void shouldReturnNotFoundWhenStatementDoesNotExist() {
+        // Arrange
+        UUID missing = UUID.randomUUID();
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.api().statements().delete(missing)).isInstanceOfSatisfying(
+            HttpClientErrorException.NotFound.class,
+            exception -> assertThat(exception.getResponseBodyAsString()).contains("Statement not found")
+        );
+    }
+
+    /**
+     * Verifies Statement deletion remains protected by the normal API authentication boundary.
+     *
+     * Given: an existing Statement and a DELETE request with no Authorization header.
+     * Expect: the request returns HTTP 401 and the Statement remains available afterwards.
+     */
+    @Test
+    @DisplayName("rejects unauthenticated statement deletion")
+    void shouldRejectStatementDeletionWhenCallerIsUnauthenticated() {
+        // Arrange
+        String code = "protected-delete-" + UUID.randomUUID();
+        UUID statement = this.api().statements().create(this.request(code));
+        RestClient unauthenticated = RestClient.create("http://localhost:" + this.port);
+
+        // Act + Assert
+        assertThatThrownBy(() ->
+            unauthenticated
+                .delete()
+                .uri("/api/v0/statements/" + statement)
+                .retrieve()
+                .toBodilessEntity()
+        ).isInstanceOf(HttpClientErrorException.Unauthorized.class);
+        assertThat(this.findStatement(code)).contains("\"code\":\"" + code + "\"");
+    }
+
+    /**
      * Verifies that duplicate runtime Statement codes remain a stable client failure through the public API.
      *
      * Given: a Statement has already been created through the public API with a generated code.
@@ -179,6 +298,10 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
             .contains("\"pageSize\":1")
             .contains("\"totalItems\":")
             .contains("\"totalPages\":");
+    }
+
+    private static String compactUuid() {
+        return UUID.randomUUID().toString().replace("-", "");
     }
 
     private CreateStatementRequest request(String name) {

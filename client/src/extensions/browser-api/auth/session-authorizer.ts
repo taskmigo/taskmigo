@@ -1,8 +1,12 @@
-import type { AuthManager, Session } from "@taskmigo/auth";
+import { InvalidSessionError, SessionRenewalError, type AuthManager, type Session } from "@/auth";
 import type { CookieState } from "@taskmigo/foundation/state";
 import type { NextRequest, NextResponse } from "next/server";
 
-import type { BrowserApiAuthorization, BrowserApiAuthorizer } from "../proxy";
+import {
+  type BrowserApiAuthorization,
+  BrowserApiAuthorizationUnavailableError,
+  type BrowserApiAuthorizer,
+} from "../proxy";
 
 type SessionStore = Pick<CookieState<Session>, "read" | "write" | "clear">;
 
@@ -49,8 +53,14 @@ export class SessionBrowserApiAuthorizer implements BrowserApiAuthorizer {
         authorized.session,
         this.#sessions,
       );
-    } catch {
-      return;
+    } catch (error) {
+      if (error instanceof InvalidSessionError) {
+        return;
+      }
+      if (error instanceof SessionRenewalError) {
+        throw new BrowserApiAuthorizationUnavailableError({ cause: error });
+      }
+      throw error;
     }
   }
 

@@ -5,6 +5,7 @@ import {
   type BrowserApiAuthorization,
   type BrowserApiAuthorizer,
   type BrowserApiBackend,
+  BrowserApiAuthorizationUnavailableError,
   BrowserApiProxy,
   type BrowserApiRequestPolicy,
 } from "./proxy";
@@ -85,6 +86,24 @@ describe("BrowserApiProxy", () => {
 
     expect(response.status).toBe(401);
     expect(authorizer.clear).toHaveBeenCalledWith(response);
+    expect(backend.forward).not.toHaveBeenCalled();
+  });
+
+  test("preserves authentication when authorization is temporarily unavailable", async () => {
+    vi.mocked(authorizer.authorize).mockRejectedValueOnce(new BrowserApiAuthorizationUnavailableError());
+
+    const response = await createProxy().handle(request(), context());
+
+    expect(response.status).toBe(503);
+    expect(authorizer.clear).not.toHaveBeenCalled();
+    expect(backend.forward).not.toHaveBeenCalled();
+  });
+
+  test("does not mask unexpected authorization failures", async () => {
+    vi.mocked(authorizer.authorize).mockRejectedValueOnce(new Error("unexpected"));
+
+    await expect(createProxy().handle(request(), context())).rejects.toThrow("unexpected");
+    expect(authorizer.clear).not.toHaveBeenCalled();
     expect(backend.forward).not.toHaveBeenCalled();
   });
 

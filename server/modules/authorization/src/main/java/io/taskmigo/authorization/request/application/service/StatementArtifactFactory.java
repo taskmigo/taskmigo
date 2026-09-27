@@ -15,32 +15,49 @@ import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.EnvironmentSchema;
 import io.taskmigo.language.LanguageCompiler;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 /// Builds executable Statement derivatives after authoritative Statement rows and revisions have been loaded.
 public final class StatementArtifactFactory {
 
+    private static final Duration CACHE_IDLE_TTL = Duration.ofHours(1);
+
     private final LanguageCompiler compiler;
     private final EnvironmentSchema objectSchema;
     private final ObjectAuthorizationTargetResolver targetResolver;
-    private final ConcurrentMap<UUID, CachedTargetMatcher> targetMatchers = new ConcurrentHashMap<>();
-    private final ConcurrentMap<UUID, CachedArtifacts> derived = new ConcurrentHashMap<>();
+    private final StatementArtifactCache<CachedTargetMatcher> targetMatchers;
+    private final StatementArtifactCache<CachedArtifacts> derived;
 
     public StatementArtifactFactory(
         LanguageCompiler compiler,
         List<ObjectAuthorizationSchema<?>> schemas,
         ObjectAuthorizationTargetResolver targetResolver
     ) {
+        this(
+            compiler,
+            schemas,
+            targetResolver,
+            StatementArtifactCache.expireAfterAccess(CACHE_IDLE_TTL),
+            StatementArtifactCache.expireAfterAccess(CACHE_IDLE_TTL)
+        );
+    }
+
+    StatementArtifactFactory(
+        LanguageCompiler compiler,
+        List<ObjectAuthorizationSchema<?>> schemas,
+        ObjectAuthorizationTargetResolver targetResolver,
+        StatementArtifactCache<CachedTargetMatcher> targetMatchers,
+        StatementArtifactCache<CachedArtifacts> derived
+    ) {
         this.compiler = compiler;
         this.objectSchema = AuthorizationEmbeddedLanguageSchemas.object(List.copyOf(schemas));
         this.targetResolver = targetResolver;
+        this.targetMatchers = targetMatchers;
+        this.derived = derived;
     }
 
     /// Derives only target-matching Statements so policy semantics remain deferred until the current operation needs them.
@@ -81,25 +98,14 @@ public final class StatementArtifactFactory {
             effective.updatedAt(),
             statement.target().api().path()
         );
-        CachedTargetMatcher current = this.targetMatchers.get(statement.id());
-        if (current != null && current.identity().equals(identity)) {
-            return current.matcher();
-        }
-
-        CachedTargetMatcher retained = Objects.requireNonNull(
-            this.targetMatchers.compute(statement.id(), (ignored, latest) -> {
-                if (latest != null && latest.identity().equals(identity)) {
-                    return latest;
-                }
-                if (latest != null && latest.identity().updatedAt().isAfter(identity.updatedAt())) {
-                    return latest;
-                }
-                return new CachedTargetMatcher(identity, StatementTargetPathMatcher.compile(identity.expression()));
-            })
+        CachedTargetMatcher retained = this.targetMatchers.getOrCreate(
+            statement.id(),
+            identity.updatedAt(),
+            cached -> cached.identity().updatedAt(),
+            cached -> cached.identity().equals(identity),
+            () -> new CachedTargetMatcher(identity, StatementTargetPathMatcher.compile(identity.expression()))
         );
-        return retained.identity().equals(identity)
-            ? retained.matcher()
-            : StatementTargetPathMatcher.compile(identity.expression());
+        return retained.matcher();
     }
 
     private DerivedArtifacts derive(
@@ -109,25 +115,14 @@ public final class StatementArtifactFactory {
         CompilationProfile profile,
         ArtifactIdentity identity
     ) {
-        CachedArtifacts current = this.derived.get(statement.id());
-        if (current != null && current.identity().equals(identity)) {
-            return current.artifacts();
-        }
-
-        DerivedArtifacts compiled = this.compile(statement, schema, pathMatcher, profile);
-        CachedArtifacts candidate = new CachedArtifacts(identity, compiled);
-        CachedArtifacts retained = Objects.requireNonNull(
-            this.derived.compute(statement.id(), (ignored, latest) -> {
-                if (latest != null && latest.identity().equals(identity)) {
-                    return latest;
-                }
-                if (latest != null && latest.identity().updatedAt().isAfter(identity.updatedAt())) {
-                    return latest;
-                }
-                return candidate;
-            })
+        CachedArtifacts retained = this.derived.getOrCreate(
+            statement.id(),
+            identity.updatedAt(),
+            cached -> cached.identity().updatedAt(),
+            cached -> cached.identity().equals(identity),
+            () -> new CachedArtifacts(identity, this.compile(statement, schema, pathMatcher, profile))
         );
-        return retained.identity().equals(identity) ? retained.artifacts() : compiled;
+        return retained.artifacts();
     }
 
     private EnvironmentSchema schema(StatementInfo statement) {

@@ -50,6 +50,7 @@ spring-boot-testcontainers = { module = "org.springframework.boot:spring-boot-te
 flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
 guava-bom = { module = "com.google.guava:guava-bom", version.ref = "guava" }
 guava = { module = "com.google.guava:guava" }
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine" }
 antlr-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr" }
 antlr-tool = { module = "org.antlr:antlr4", version.ref = "antlr" }
 re2j = { module = "com.google.re2j:re2j", version.ref = "re2j" }
