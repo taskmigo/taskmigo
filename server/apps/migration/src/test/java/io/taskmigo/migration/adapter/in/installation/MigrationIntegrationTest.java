@@ -9,6 +9,7 @@ import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.role.application.port.in.api.RoleService;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
+import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import io.taskmigo.authorization.statement.application.port.in.api.StatementService;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectRoleQueryService;
 import io.taskmigo.identity.group.application.port.in.api.GroupService;
@@ -249,6 +250,42 @@ class MigrationIntegrationTest {
             .filteredOn(statement -> builtInScopes.containsKey(statement.code()))
             .filteredOn(statement -> statement.scope() == Scope.OBJECT)
             .allSatisfy(statement -> assertThat(statement.policy()).doesNotStartWith("return"));
+    }
+
+    /**
+     * Verifies the built-in managed Statement targets stay inside the bounded runtime regex contract.
+     *
+     * Given: the Statements loaded from the managed migration YAML.
+     * Expect: every built-in target compiles and matches the versioned users route it is intended to cover.
+     */
+    @Test
+    @DisplayName("keeps built-in statement targets compatible with bounded matching")
+    void shouldMatchBuiltInStatementTargetsWhenRuntimeMatcherCompilesThem() {
+        // Arrange
+        Set<String> builtInCodes = Set.of(
+            "system_operator_request_all",
+            "system_operator_object_all",
+            "administrator_request_all",
+            "administrator_object_all",
+            "administrator_hide_system_user"
+        );
+
+        // Act
+        List<StatementInfo> builtIns = this.statements
+            .list(1, 100)
+            .items()
+            .stream()
+            .filter(statement -> builtInCodes.contains(statement.code()))
+            .toList();
+
+        // Assert
+        assertThat(builtIns)
+            .hasSize(builtInCodes.size())
+            .allSatisfy(statement ->
+                assertThat(
+                    StatementTargetPathMatcher.compile(statement.target().api().path()).matches("/api/v0/users")
+                ).isTrue()
+            );
     }
 
     /**

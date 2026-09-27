@@ -4,10 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 import io.taskmigo.language.CompiledSource;
+import java.time.Duration;
 import java.util.UUID;
-import java.util.regex.Pattern;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class StatementExecutionArtifactTest {
 
@@ -35,6 +37,30 @@ class StatementExecutionArtifactTest {
     }
 
     /**
+     * Verifies pathological target patterns stay bounded on the authorization matching hot path.
+     *
+     * Given: regular expressions that cause catastrophic backtracking in Java's matcher and a long near-match.
+     * Expect: each full-match evaluation returns false within the performance budget.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = { "^/(a+)+$", "^/(a|aa)+$" })
+    @DisplayName("bounds pathological target regex matching")
+    void shouldCompleteWithinBudgetWhenTargetRegexCanBacktrackPathologically(String targetPath) {
+        // Arrange
+        StatementExecutionArtifact artifact = artifact(statement("GET", targetPath));
+        String requestPath = "/" + "a".repeat(20_000) + "!";
+
+        // Act
+        long startedAt = System.nanoTime();
+        boolean matches = artifact.matches("GET", requestPath);
+        Duration elapsed = Duration.ofNanos(System.nanoTime() - startedAt);
+
+        // Assert
+        assertThat(matches).isFalse();
+        assertThat(elapsed).isLessThan(Duration.ofMillis(250));
+    }
+
+    /**
      * Verifies the wildcard method retains its established runtime meaning.
      *
      * Given: a Statement target whose HTTP method is `*`.
@@ -59,7 +85,7 @@ class StatementExecutionArtifactTest {
         return new StatementExecutionArtifact(
             statement,
             mock(CompiledSource.class),
-            Pattern.compile(statement.target().api().path())
+            StatementTargetPathMatcher.compile(statement.target().api().path())
         );
     }
 

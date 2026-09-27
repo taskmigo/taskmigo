@@ -245,6 +245,33 @@ class StatementArtifactFactoryTest {
             .hasMessageContaining("valid regular expression");
     }
 
+    /**
+     * Verifies Java-only backtracking constructs are rejected by the bounded runtime target contract.
+     *
+     * Given: a persisted Statement path containing a backreference that Java regex accepts but RE2 does not.
+     * Expect: target processing fails closed when the matching HTTP method executes.
+     */
+    @Test
+    @DisplayName("rejects target regex constructs that require backtracking")
+    void shouldRejectTargetRegexWhenPatternRequiresBacktracking() {
+        // Arrange
+        StatementInfo unsupported = new StatementInfo(
+            UUID.randomUUID(),
+            "unsupported_target",
+            null,
+            Effect.ALLOW,
+            Scope.REQUEST,
+            new TargetInfo(new ApiInfo("GET", "^/(a+)\\1$")),
+            "return true;"
+        );
+        EffectiveStatement effective = effective(unsupported, Instant.EPOCH);
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.factory.build(List.of(effective), "GET", "/aaaa"))
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("valid regular expression");
+    }
+
     private static EffectiveStatement effective(StatementInfo statement, Instant updatedAt) {
         return new EffectiveStatement(statement, updatedAt);
     }
