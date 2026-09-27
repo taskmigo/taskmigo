@@ -1,4 +1,4 @@
-/// Implements installation orchestration as plain Java over provider-owned inbound and migration-owned outbound ports.
+/// Orchestrates one-shot installation reconciliation.
 @NullMarked
 package io.taskmigo.migration.application.service;
 

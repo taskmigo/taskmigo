@@ -17,7 +17,7 @@ dependencies {
     testImplementation(libs.archunit.junit5)
     testImplementation(project(":testing:architecture"))
 
-    implementation(platform(libs.spring.boot.bom))
+    implementation(project(":modules:foundation:spring"))
     implementation(project(":modules:database"))
     implementation(project(":modules:access-control"))
     implementation(project(":modules:identity"))

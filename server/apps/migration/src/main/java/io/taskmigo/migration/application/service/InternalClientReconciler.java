@@ -3,21 +3,21 @@ package io.taskmigo.migration.application.service;
 import io.taskmigo.migration.application.model.InstallationChange;
 import io.taskmigo.migration.application.model.InstallationPlan;
 import io.taskmigo.migration.application.model.ManagedOAuthClient;
-import io.taskmigo.migration.application.port.out.ManagedClientRegistry;
-import io.taskmigo.migration.application.port.out.PasswordHasher;
+import io.taskmigo.migration.infrastructure.oauth.ManagedClientRepository;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
-/// Reconciles desired OAuth client state through the application-owned client registry port.
+/// Reconciles desired OAuth client state against Spring Authorization Server persistence.
 final class InternalClientReconciler {
 
-    private final ManagedClientRegistry clients;
-    private final PasswordHasher passwords;
+    private final ManagedClientRepository clients;
+    private final PasswordEncoder passwords;
 
-    InternalClientReconciler(ManagedClientRegistry clients, PasswordHasher passwords) {
+    InternalClientReconciler(ManagedClientRepository clients, PasswordEncoder passwords) {
         this.clients = clients;
         this.passwords = passwords;
     }
@@ -65,13 +65,13 @@ final class InternalClientReconciler {
         }
     }
 
-    private String encodedSecret(String rawSecret, ManagedClientRegistry.@Nullable ExistingClient existing) {
+    private String encodedSecret(String rawSecret, ManagedClientRepository.@Nullable ExistingClient existing) {
         if (existing != null) {
             var encodedSecret = existing.encodedSecret();
             if (encodedSecret != null && this.passwords.matches(rawSecret, encodedSecret)) {
                 return encodedSecret;
             }
         }
-        return this.passwords.hash(rawSecret);
+        return this.passwords.encode(rawSecret);
     }
 }

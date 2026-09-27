@@ -12,7 +12,7 @@ dependencies {
     testImplementation(libs.archunit.junit5)
 
     implementation(platform(libs.spring.boot.bom))
-    api(project(":modules:foundation"))
+    api(project(":modules:foundation:core"))
     implementation(libs.spring.boot.core.starter)
     api(project(":modules:language"))
 

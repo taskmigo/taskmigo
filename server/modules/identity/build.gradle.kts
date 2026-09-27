@@ -12,7 +12,7 @@ dependencies {
     testImplementation(project(":testing:architecture"))
 
     implementation(platform(libs.spring.boot.bom))
-    api(project(":modules:foundation"))
+    api(project(":modules:foundation:core"))
     api(project(":modules:query"))
     api(project(":modules:access-control"))
     implementation(project(":modules:database"))

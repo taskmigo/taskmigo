@@ -10,7 +10,6 @@ import io.taskmigo.identity.provisioning.application.port.in.api.GroupProvisioni
 import io.taskmigo.identity.provisioning.application.port.in.api.IdentityProvisioningService;
 import io.taskmigo.migration.application.model.InstallationChange;
 import io.taskmigo.migration.application.model.InstallationPlan;
-import io.taskmigo.migration.application.port.out.PasswordHasher;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,20 +18,21 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
-/// Reconciles declarative Identity and Access Control resources through provider-owned inbound ports.
+/// Reconciles declarative Identity and Access Control resources through their provider-owned provisioning APIs.
 final class ManagedResourceReconciler {
 
     private final AuthorizationProvisioningService authorization;
     private final IdentityProvisioningService identity;
     private final GroupProvisioningService groups;
-    private final PasswordHasher passwords;
+    private final PasswordEncoder passwords;
 
     ManagedResourceReconciler(
         AuthorizationProvisioningService authorization,
         IdentityProvisioningService identity,
         GroupProvisioningService groups,
-        PasswordHasher passwords
+        PasswordEncoder passwords
     ) {
         this.authorization = authorization;
         this.identity = identity;
@@ -211,7 +211,7 @@ final class ManagedResourceReconciler {
     }
 
     private @Nullable String initialPasswordHash(@Nullable String rawPassword) {
-        return rawPassword == null || rawPassword.isBlank() ? null : this.passwords.hash(rawPassword);
+        return rawPassword == null || rawPassword.isBlank() ? null : this.passwords.encode(rawPassword);
     }
 
     private static InstallationChange change(

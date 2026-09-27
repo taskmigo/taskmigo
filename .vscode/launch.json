@@ -5,7 +5,7 @@
       "type": "java",
       "name": "Taskmigo Migration",
       "request": "launch",
-      "mainClass": "io.taskmigo.TaskmigoMigrationApplication",
+      "mainClass": "io.taskmigo.migration.TaskmigoMigrationApplication",
       "projectName": "migration",
       "cwd": "${workspaceFolder}/server",
       "env": {

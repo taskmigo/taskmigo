@@ -20,8 +20,7 @@ dependencies {
     testImplementation(libs.archunit.junit5)
     testImplementation(project(":testing:architecture"))
 
-    implementation(platform(libs.spring.boot.bom))
-    implementation(project(":modules:foundation"))
+    implementation(project(":modules:foundation:spring"))
     implementation(project(":modules:query"))
     implementation(project(":modules:access-control"))
     // Provides shared datasource/JPA configuration; apps/migration owns migration execution.
