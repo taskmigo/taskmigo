@@ -272,6 +272,33 @@ class StatementArtifactFactoryTest {
             .hasMessageContaining("valid regular expression");
     }
 
+    /**
+     * Verifies unsupported engine semantics cannot silently turn a DENY target into a false negative.
+     *
+     * Given: a DENY target using case-insensitive Unicode-category syntax whose semantics are engine-dependent.
+     * Expect: target processing fails closed before route matching can omit the DENY Statement.
+     */
+    @Test
+    @DisplayName("fails closed before unsupported deny target semantics can diverge")
+    void shouldFailClosedWhenDenyTargetUsesUnsupportedUnicodeCaseFolding() {
+        // Arrange
+        StatementInfo deny = new StatementInfo(
+            UUID.randomUUID(),
+            "unicode_deny_target",
+            null,
+            Effect.DENY,
+            Scope.REQUEST,
+            new TargetInfo(new ApiInfo("GET", "(?i)/api/v0/users/\\p{Ll}+")),
+            "return true;"
+        );
+        EffectiveStatement effective = effective(deny, Instant.EPOCH);
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.factory.build(List.of(effective), "GET", "/api/v0/users/ADMIN"))
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("valid regular expression");
+    }
+
     private static EffectiveStatement effective(StatementInfo statement, Instant updatedAt) {
         return new EffectiveStatement(statement, updatedAt);
     }
