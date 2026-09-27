@@ -2,3 +2,22 @@
 spring:
   main:
     web-application-type: none
+  config:
+    import: classpath:application-database.yaml
+  modulith:
+    events:
+      externalization:
+        mode: outbox
+
+jobrunr:
+  database:
+    type: sql
+    skip-create: true
+  job-scheduler:
+    enabled: true
+  background-job-server:
+    enabled: true
+  dashboard:
+    enabled: false
+  miscellaneous:
+    allow-anonymous-data-usage: false

@@ -13,6 +13,7 @@ COPY modules/language/build.gradle.kts modules/language/build.gradle.kts
 COPY modules/query/build.gradle.kts modules/query/build.gradle.kts
 COPY modules/authorization/build.gradle.kts modules/authorization/build.gradle.kts
 COPY modules/database/build.gradle.kts modules/database/build.gradle.kts
+COPY modules/audit/build.gradle.kts modules/audit/build.gradle.kts
 COPY modules/identity/build.gradle.kts modules/identity/build.gradle.kts
 COPY benchmarks/authorization/build.gradle.kts benchmarks/authorization/build.gradle.kts
 COPY testing/architecture/build.gradle.kts testing/architecture/build.gradle.kts
@@ -32,6 +33,7 @@ COPY modules/language/src modules/language/src
 COPY modules/query/src modules/query/src
 COPY modules/authorization/src modules/authorization/src
 COPY modules/database/src modules/database/src
+COPY modules/audit/src modules/audit/src
 COPY modules/identity/src modules/identity/src
 COPY benchmarks/authorization/src benchmarks/authorization/src
 COPY apps/migration/src apps/migration/src

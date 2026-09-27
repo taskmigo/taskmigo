@@ -14,6 +14,7 @@ include(
     ":modules:query",
     ":modules:access-control",
     ":modules:database",
+    ":modules:audit",
     ":modules:identity",
     ":benchmarks:authorization",
     ":testing:architecture",

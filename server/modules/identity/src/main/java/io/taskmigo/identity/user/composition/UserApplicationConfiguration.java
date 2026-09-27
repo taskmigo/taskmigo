@@ -1,5 +1,6 @@
 package io.taskmigo.identity.user.composition;
 
+import io.taskmigo.audit.application.port.in.api.AuditEventService;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantQueryService;
 import io.taskmigo.identity.application.port.out.TransactionRunner;
@@ -29,9 +30,10 @@ class UserApplicationConfiguration {
         UserQueryRepository users,
         SubjectGrantQueryService grantQueries,
         SubjectGrantAssignmentService grantAssignments,
+        AuditEventService auditEvents,
         TransactionRunner transactions
     ) {
-        return new DefaultUserService(users, grantQueries, grantAssignments, transactions);
+        return new DefaultUserService(users, grantQueries, grantAssignments, auditEvents, transactions);
     }
 
     @Bean

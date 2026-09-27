@@ -1,5 +1,6 @@
 package io.taskmigo.identity.user.application.port.in.api;
 
+import io.taskmigo.audit.model.AuditActor;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.user.AuthenticationInfo;
@@ -22,5 +23,8 @@ public interface UserService {
     );
     Set<UUID> roleIds(UUID userId);
     void setStatements(UUID userId, Collection<UUID> statementIds);
+
+    /// Replaces direct Statement assignments and records the authenticated actor for audit.
+    void setStatements(UUID userId, Collection<UUID> statementIds, AuditActor actor);
     void setRoles(UUID userId, Collection<UUID> roleIds);
 }

@@ -5,6 +5,23 @@ spring:
       enabled: true
   config:
     import: classpath:application-database.yaml
+  modulith:
+    events:
+      externalization:
+        mode: outbox
+
+jobrunr:
+  database:
+    type: sql
+    skip-create: true
+  job-scheduler:
+    enabled: true
+  background-job-server:
+    enabled: false
+  dashboard:
+    enabled: false
+  miscellaneous:
+    allow-anonymous-data-usage: false
 
 scalar:
   enabled: true

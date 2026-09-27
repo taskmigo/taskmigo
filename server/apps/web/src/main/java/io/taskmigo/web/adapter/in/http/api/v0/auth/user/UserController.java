@@ -3,6 +3,7 @@ package io.taskmigo.web.adapter.in.http.api.v0.auth.user;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.taskmigo.audit.model.AuditActor;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.user.UserInfo;
@@ -30,6 +31,9 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -84,9 +88,14 @@ class UserController {
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setStatements(
         @PathVariable UUID userId,
-        @Valid @RequestBody StatementAssignmentRequest request
+        @Valid @RequestBody StatementAssignmentRequest request,
+        Authentication authentication
     ) {
-        this.users.setStatements(userId, request.statementIds() == null ? Set.of() : request.statementIds());
+        this.users.setStatements(
+            userId,
+            request.statementIds() == null ? Set.of() : request.statementIds(),
+            auditActor(authentication)
+        );
         return this.responses.ok("resource.user.statements.updated", "User statements updated");
     }
 
@@ -110,6 +119,19 @@ class UserController {
             "resource.user.created",
             "User created"
         );
+    }
+
+    private static AuditActor auditActor(Authentication authentication) {
+        if (!(authentication instanceof JwtAuthenticationToken token)) {
+            throw new IllegalStateException("Versioned API mutation requires JWT authentication");
+        }
+        Jwt jwt = token.getToken();
+        String userId = jwt.getClaimAsString("user_id");
+        if (userId == null) {
+            throw new IllegalStateException("Authenticated principal is missing user_id");
+        }
+        String username = jwt.getClaimAsString("principal_username");
+        return new AuditActor(UUID.fromString(userId), username == null ? authentication.getName() : username);
     }
 
     @Schema(name = "UserInfo")

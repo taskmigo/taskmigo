@@ -14,6 +14,7 @@ description = "Taskmigo HTTP and OAuth application"
 
 dependencies {
     compileOnly(platform(libs.spring.modulith.bom))
+    implementation(platform(libs.spring.modulith.bom))
     compileOnly(libs.spring.modulith.starter.core)
     testImplementation(platform(libs.spring.modulith.bom))
     testImplementation(libs.spring.modulith.starter.test)
@@ -22,6 +23,7 @@ dependencies {
 
     implementation(project(":modules:foundation:spring"))
     implementation(project(":modules:query"))
+    implementation(project(":modules:audit"))
     implementation(project(":modules:access-control"))
     // Provides shared datasource/JPA configuration; apps/migration owns migration execution.
     implementation(project(":modules:database"))
@@ -32,6 +34,7 @@ dependencies {
     implementation(libs.spring.boot.starter.validation)
     implementation(libs.spring.boot.starter.oauth2.authorization.server)
     implementation(libs.spring.boot.starter.oauth2.resource.server)
+    implementation(libs.spring.modulith.starter.jobrunr)
     compileOnly(libs.springdoc.openapi.starter.common)
     implementation(libs.scalar.webmvc)
 

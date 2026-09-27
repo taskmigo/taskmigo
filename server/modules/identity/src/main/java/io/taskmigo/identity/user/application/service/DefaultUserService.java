@@ -1,6 +1,11 @@
 package io.taskmigo.identity.user.application.service;
 
+import io.taskmigo.audit.application.port.in.api.AuditEventService;
+import io.taskmigo.audit.model.AuditActor;
+import io.taskmigo.audit.model.AuditFieldChange;
+import io.taskmigo.audit.model.AuditMutationEvent;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantQueryService;
 import io.taskmigo.foundation.OffsetPage;
@@ -12,7 +17,9 @@ import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
 import io.taskmigo.identity.user.application.port.out.UserQueryRepository;
 import io.taskmigo.query.QueryPredicate;
+import java.time.Instant;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -23,17 +30,20 @@ public final class DefaultUserService implements UserService {
     private final UserQueryRepository users;
     private final SubjectGrantQueryService grantQueries;
     private final SubjectGrantAssignmentService grantAssignments;
+    private final AuditEventService auditEvents;
     private final TransactionRunner transactions;
 
     public DefaultUserService(
         UserQueryRepository users,
         SubjectGrantQueryService grantQueries,
         SubjectGrantAssignmentService grantAssignments,
+        AuditEventService auditEvents,
         TransactionRunner transactions
     ) {
         this.users = users;
         this.grantQueries = grantQueries;
         this.grantAssignments = grantAssignments;
+        this.auditEvents = auditEvents;
         this.transactions = transactions;
     }
 
@@ -69,10 +79,12 @@ public final class DefaultUserService implements UserService {
 
     @Override
     public void setStatements(UUID userId, Collection<UUID> statementIds) {
-        this.transactions.write(() -> {
-            this.requireExisting(userId);
-            this.grantAssignments.setStatements(IdentitySubjects.user(userId), statementIds);
-        });
+        this.replaceStatements(userId, statementIds, Optional.empty());
+    }
+
+    @Override
+    public void setStatements(UUID userId, Collection<UUID> statementIds, AuditActor actor) {
+        this.replaceStatements(userId, statementIds, Optional.of(actor));
     }
 
     @Override
@@ -83,9 +95,40 @@ public final class DefaultUserService implements UserService {
         });
     }
 
+    private void replaceStatements(UUID userId, Collection<UUID> statementIds, Optional<AuditActor> actor) {
+        this.transactions.write(() -> {
+            this.requireExisting(userId);
+            SubjectRef subject = IdentitySubjects.user(userId);
+            Set<UUID> requested = Set.copyOf(statementIds);
+            Set<UUID> previous = actor.isPresent() ? this.grantQueries.statementIds(subject) : Set.of();
+
+            this.grantAssignments.setStatements(subject, requested);
+
+            actor
+                .filter(__ -> !previous.equals(requested))
+                .ifPresent(current ->
+                    this.auditEvents.publish(
+                        AuditMutationEvent.user(
+                            UUID.randomUUID(),
+                            userId,
+                            current,
+                            Instant.now(),
+                            List.of(
+                                AuditFieldChange.visible("statementIds", orderedIds(previous), orderedIds(requested))
+                            )
+                        )
+                    )
+                );
+        });
+    }
+
     private void requireExisting(UUID userId) {
         if (!this.users.exists(userId)) {
             throw new UserException(UserException.Type.NOT_FOUND, "User not found");
         }
+    }
+
+    private static List<String> orderedIds(Collection<UUID> ids) {
+        return ids.stream().sorted().map(UUID::toString).toList();
     }
 }

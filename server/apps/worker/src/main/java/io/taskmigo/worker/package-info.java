@@ -1,6 +1,5 @@
-/// Hosts the background-worker executable boundary. No background-job adapters are currently implemented; future
-/// jobs belong under `adapter.in` and consume deliberate inbound ports.
-@ApplicationModule
+/// Hosts background-job driving adapters and the JobRunr execution boundary.
+@ApplicationModule(allowedDependencies = { "audit :: input", "audit :: model" })
 @NullMarked
 package io.taskmigo.worker;
 

@@ -2,6 +2,8 @@
 @ApplicationModule(
     allowedDependencies = {
         "foundation",
+        "audit :: input",
+        "audit :: model",
         "query",
         "authorization :: object",
         "authorization :: object-input",

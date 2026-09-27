@@ -63,7 +63,8 @@ class ModulithArchitectureTest {
 
     /**
      * Verifies that Spring Modulith remains boundary metadata rather than a dependency of business or infrastructure
-     * classes inside reusable server modules.
+     * classes inside reusable server modules. Audit integration adapters are the explicit exception because they own
+     * Spring Modulith event externalization and JobRunr transport integration.
      *
      * Given: all production classes from Taskmigo's reusable server modules.
      * Expect: only package descriptors may depend on Spring Modulith annotations; ordinary classes stay independent.
@@ -75,6 +76,7 @@ class ModulithArchitectureTest {
         JavaClasses classes = new ClassFileImporter()
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
             .importPackages(
+                "io.taskmigo.audit",
                 "io.taskmigo.authorization",
                 "io.taskmigo.database",
                 "io.taskmigo.foundation",
@@ -85,6 +87,9 @@ class ModulithArchitectureTest {
         ArchRule ordinaryClassesDoNotDependOnSpringModulith = noClasses()
             .that()
             .resideInAnyPackage(
+                "io.taskmigo.audit.model..",
+                "io.taskmigo.audit.application..",
+                "io.taskmigo.audit.adapter.out.persistence..",
                 "io.taskmigo.authorization..",
                 "io.taskmigo.database..",
                 "io.taskmigo.foundation..",
