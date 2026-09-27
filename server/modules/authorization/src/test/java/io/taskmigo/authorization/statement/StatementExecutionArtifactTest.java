@@ -1,11 +1,13 @@
 package io.taskmigo.authorization.statement;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.mockito.Mockito.mock;
 
 import io.taskmigo.language.CompiledSource;
+import java.time.Duration;
 import java.util.UUID;
-import java.util.regex.Pattern;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -55,11 +57,71 @@ class StatementExecutionArtifactTest {
         assertThat(deleteMatches).isTrue();
     }
 
+    /**
+     * Verifies that a known catastrophic-backtracking pattern cannot consume an
+     * unbounded amount of authorization request time.
+     *
+     * Given: a non-matching path of 2,001 characters and the pathological
+     * `(a|aa)+$` target pattern.
+     * Expect: matching completes within one second and reports no match.
+     */
+    @Test
+    @DisplayName("bounds pathological target regex matching time")
+    void shouldBoundTargetMatchingTimeWhenPatternHasAmbiguousRepetition() {
+        // Arrange
+        StatementExecutionArtifact artifact = artifact(statement("GET", "(a|aa)+$"));
+        String requestPath = "a".repeat(2_000) + "!";
+
+        // Act + Assert
+        assertTimeoutPreemptively(Duration.ofSeconds(1), () ->
+            assertThat(artifact.matches("GET", requestPath)).isFalse()
+        );
+    }
+
+    /**
+     * Verifies that nested repetitions cannot consume an unbounded amount of
+     * authorization request time.
+     *
+     * Given: a non-matching path of 2,001 characters and the pathological
+     * `(a+)+$` target pattern.
+     * Expect: matching completes within one second and reports no match.
+     */
+    @Test
+    @DisplayName("bounds nested target regex repetition matching time")
+    void shouldBoundTargetMatchingTimeWhenPatternHasNestedRepetition() {
+        // Arrange
+        StatementExecutionArtifact artifact = artifact(statement("GET", "(a+)+$"));
+        String requestPath = "a".repeat(2_000) + "!";
+
+        // Act + Assert
+        assertTimeoutPreemptively(Duration.ofSeconds(1), () ->
+            assertThat(artifact.matches("GET", requestPath)).isFalse()
+        );
+    }
+
+    /**
+     * Verifies that target expressions cannot use regex constructs that require
+     * backtracking support.
+     *
+     * Given: a target expression containing a positive lookahead.
+     * Expect: compilation rejects the expression before it can enter the
+     * authorization matching path.
+     */
+    @Test
+    @DisplayName("rejects lookarounds in statement target expressions")
+    void shouldRejectTargetPatternWhenItUsesLookaround() {
+        // Arrange
+
+        // Act + Assert
+        assertThatThrownBy(() -> StatementTargetPattern.compile("/api/v0/users(?=/active)"))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
     private static StatementExecutionArtifact artifact(StatementInfo statement) {
         return new StatementExecutionArtifact(
             statement,
             mock(CompiledSource.class),
-            Pattern.compile(statement.target().api().path())
+            StatementTargetPattern.compile(statement.target().api().path())
         );
     }
 

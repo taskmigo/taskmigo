@@ -217,7 +217,7 @@ class ObjectAuthorizationServiceTest {
         // Arrange
         ObjectAuthorizationSchema<TestObject> otherSchema = schema("other");
         ObjectAuthorizationTargetResolver targetResolver = (method, path) ->
-            "/api/v0/objects".equals(path) ? List.of(this.schema) : List.of(otherSchema);
+            path.matches("/api/v0/objects") ? List.of(this.schema) : List.of(otherSchema);
         ObjectAuthorizationService targetedService = new ObjectAuthorizationService(
             new LanguageCompiler(),
             targetResolver

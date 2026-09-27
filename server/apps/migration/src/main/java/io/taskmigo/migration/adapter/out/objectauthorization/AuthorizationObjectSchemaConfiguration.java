@@ -4,10 +4,10 @@ import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.statement.StatementInfo;
+import io.taskmigo.authorization.statement.StatementTargetPattern;
 import io.taskmigo.identity.group.GroupInfo;
 import io.taskmigo.identity.user.UserInfo;
 import java.util.List;
-import java.util.regex.Pattern;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -41,10 +41,10 @@ class AuthorizationObjectSchemaConfiguration {
     }
 
     private record Route(String method, String path, ObjectAuthorizationSchema<?> schema) {
-        private boolean matches(String statementMethod, String statementPath) {
+        private boolean matches(String statementMethod, StatementTargetPattern statementPath) {
             return (
                 ("*".equals(statementMethod) || this.method.equals(statementMethod)) &&
-                Pattern.matches(statementPath, this.path)
+                statementPath.matches(this.path)
             );
         }
     }
