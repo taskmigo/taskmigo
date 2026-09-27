@@ -6,6 +6,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.taskmigo.audit.AuditEvent;
+import io.taskmigo.audit.AuditPublisher;
 import io.taskmigo.identity.user.application.port.in.internal.UserMutationResult;
 import io.taskmigo.identity.user.application.port.out.UserCommandRepository;
 import io.taskmigo.identity.user.domain.User;
@@ -76,7 +78,8 @@ class DefaultUserCommandServiceTest {
             "{bcrypt}existing"
         );
         when(users.findByUsername(Username.of("alice"))).thenReturn(Optional.of(existing));
-        var service = new DefaultUserCommandService(users, event -> {});
+        AuditPublisher audit = mock(AuditPublisher.class);
+        var service = new DefaultUserCommandService(users, audit);
 
         // Act
         UserMutationResult result = service.reconcileManaged(
@@ -91,6 +94,7 @@ class DefaultUserCommandServiceTest {
         assertThat(result).isEqualTo(new UserMutationResult(existing.id(), false, false));
         assertThat(existing.credential().passwordHash()).isEqualTo("{bcrypt}existing");
         verify(users, never()).save(existing);
+        verify(audit, never()).publish(org.mockito.ArgumentMatchers.any());
     }
 
     /**
@@ -106,7 +110,9 @@ class DefaultUserCommandServiceTest {
         UserCommandRepository users = mock(UserCommandRepository.class);
         User existing = User.restore(UUID.randomUUID(), "alice", Set.of(), "Alice", "User", UserStatus.ACTIVE, null);
         when(users.findByUsername(Username.of("alice"))).thenReturn(Optional.of(existing));
-        var service = new DefaultUserCommandService(users, event -> {});
+        AuditPublisher audit = mock(AuditPublisher.class);
+        var service = new DefaultUserCommandService(users, audit);
+        ArgumentCaptor<AuditEvent> published = ArgumentCaptor.forClass(AuditEvent.class);
 
         // Act
         UserMutationResult result = service.reconcileManaged("alice", "{bcrypt}initial", Set.of(), "Alice", "User");
@@ -115,5 +121,57 @@ class DefaultUserCommandServiceTest {
         assertThat(result).isEqualTo(new UserMutationResult(existing.id(), false, true));
         assertThat(existing.credential().passwordHash()).isEqualTo("{bcrypt}initial");
         verify(users).save(existing);
+        verify(audit).publish(published.capture());
+        assertThat(published.getValue().entityType()).isEqualTo("user");
+        assertThat(published.getValue().entityId()).isEqualTo(existing.id());
+        assertThat(published.getValue().changes()).singleElement().satisfies(change -> {
+            assertThat(change.field()).isEqualTo("password");
+            assertThat(change.sensitive()).isTrue();
+            assertThat(change.beforeValue()).isNull();
+            assertThat(change.afterValue()).isNull();
+        });
+    }
+
+    @Test
+    @DisplayName("publishes one field-level audit event for profile changes")
+    void shouldPublishAuditDiffForManagedProfileUpdate() {
+        // Arrange
+        UserCommandRepository users = mock(UserCommandRepository.class);
+        User existing = User.restore(
+            UUID.randomUUID(),
+            "alice",
+            Set.of("old@example.com"),
+            "Alice",
+            "Old",
+            UserStatus.ACTIVE,
+            "{bcrypt}existing"
+        );
+        when(users.findByUsername(Username.of("alice"))).thenReturn(Optional.of(existing));
+        AuditPublisher audit = mock(AuditPublisher.class);
+        var service = new DefaultUserCommandService(users, audit);
+        ArgumentCaptor<AuditEvent> published = ArgumentCaptor.forClass(AuditEvent.class);
+
+        // Act
+        UserMutationResult result = service.reconcileManaged(
+            "alice",
+            null,
+            Set.of("new@example.com"),
+            "Alice",
+            "New"
+        );
+
+        // Assert
+        assertThat(result.changed()).isTrue();
+        verify(users).save(existing);
+        verify(audit).publish(published.capture());
+        AuditEvent event = published.getValue();
+        assertThat(event.entityType()).isEqualTo("user");
+        assertThat(event.entityId()).isEqualTo(existing.id());
+        assertThat(event.changes()).extracting(change -> change.field()).containsExactly("emails", "lastName");
+        assertThat(event.changes().get(0).beforeValue()).isEqualTo(Set.of("old@example.com"));
+        assertThat(event.changes().get(0).afterValue()).isEqualTo(Set.of("new@example.com"));
+        assertThat(event.changes().get(1).beforeValue()).isEqualTo("Old");
+        assertThat(event.changes().get(1).afterValue()).isEqualTo("New");
     }
 }
+
