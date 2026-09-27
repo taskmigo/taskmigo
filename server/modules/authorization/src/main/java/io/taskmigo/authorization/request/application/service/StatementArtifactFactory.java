@@ -9,6 +9,7 @@ import io.taskmigo.authorization.request.application.port.out.EffectiveStatement
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.authorization.statement.StatementInfo;
+import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import io.taskmigo.language.CompilationProfile;
 import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.EmbeddedLanguageException;
@@ -22,8 +23,6 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
 
 /// Builds executable Statement derivatives after authoritative Statement rows and revisions have been loaded.
 public final class StatementArtifactFactory {
@@ -31,6 +30,7 @@ public final class StatementArtifactFactory {
     private final LanguageCompiler compiler;
     private final EnvironmentSchema objectSchema;
     private final ObjectAuthorizationTargetResolver targetResolver;
+    private final ConcurrentMap<UUID, CachedTargetMatcher> targetMatchers = new ConcurrentHashMap<>();
     private final ConcurrentMap<UUID, CachedArtifacts> derived = new ConcurrentHashMap<>();
 
     public StatementArtifactFactory(
@@ -55,8 +55,8 @@ public final class StatementArtifactFactory {
             if (!methodMatches(statement, requestMethod)) {
                 continue;
             }
-            Pattern pathMatcher = this.compileTargetPath(statement);
-            if (!pathMatches(pathMatcher, requestPath)) {
+            StatementTargetPathMatcher pathMatcher = this.targetMatcher(effective);
+            if (!pathMatcher.matches(requestPath)) {
                 continue;
             }
 
@@ -67,7 +67,7 @@ public final class StatementArtifactFactory {
                 schema.fingerprint(),
                 this.compiler.contractFingerprint(),
                 profile.fingerprint(),
-                this.applicableSchemaIdentities(statement)
+                this.applicableSchemaIdentities(statement, pathMatcher)
             );
             DerivedArtifacts artifacts = this.derive(statement, schema, pathMatcher, profile, identity);
             result.add(new StatementExecutionArtifact(statement, artifacts.policy(), artifacts.pathMatcher()));
@@ -75,10 +75,37 @@ public final class StatementArtifactFactory {
         return List.copyOf(result);
     }
 
+    private StatementTargetPathMatcher targetMatcher(EffectiveStatement effective) {
+        StatementInfo statement = effective.statement();
+        TargetMatcherIdentity identity = new TargetMatcherIdentity(
+            effective.updatedAt(),
+            statement.target().api().path()
+        );
+        CachedTargetMatcher current = this.targetMatchers.get(statement.id());
+        if (current != null && current.identity().equals(identity)) {
+            return current.matcher();
+        }
+
+        CachedTargetMatcher retained = Objects.requireNonNull(
+            this.targetMatchers.compute(statement.id(), (ignored, latest) -> {
+                if (latest != null && latest.identity().equals(identity)) {
+                    return latest;
+                }
+                if (latest != null && latest.identity().updatedAt().isAfter(identity.updatedAt())) {
+                    return latest;
+                }
+                return new CachedTargetMatcher(identity, StatementTargetPathMatcher.compile(identity.expression()));
+            })
+        );
+        return retained.identity().equals(identity)
+            ? retained.matcher()
+            : StatementTargetPathMatcher.compile(identity.expression());
+    }
+
     private DerivedArtifacts derive(
         StatementInfo statement,
         EnvironmentSchema schema,
-        Pattern pathMatcher,
+        StatementTargetPathMatcher pathMatcher,
         CompilationProfile profile,
         ArtifactIdentity identity
     ) {
@@ -117,7 +144,7 @@ public final class StatementArtifactFactory {
     private DerivedArtifacts compile(
         StatementInfo statement,
         EnvironmentSchema schema,
-        Pattern pathMatcher,
+        StatementTargetPathMatcher pathMatcher,
         CompilationProfile profile
     ) {
         try {
@@ -127,34 +154,25 @@ public final class StatementArtifactFactory {
         }
     }
 
-    private Pattern compileTargetPath(StatementInfo statement) {
-        try {
-            return Pattern.compile(statement.target().api().path());
-        } catch (PatternSyntaxException exception) {
-            throw new AuthorizationException("Statement target path is not a valid regular expression");
-        }
-    }
-
     private static boolean methodMatches(StatementInfo statement, String requestMethod) {
         return statement.target().api().method().equals("*") || statement.target().api().method().equals(requestMethod);
     }
 
-    private static boolean pathMatches(Pattern pathMatcher, String requestPath) {
-        String pathWithoutQuery = requestPath.split("\\?", 2)[0];
-        return pathMatcher.matcher(pathWithoutQuery).matches();
-    }
-
-    private List<String> applicableSchemaIdentities(StatementInfo statement) {
+    private List<String> applicableSchemaIdentities(StatementInfo statement, StatementTargetPathMatcher pathMatcher) {
         if (statement.scope() != Scope.OBJECT) {
             return List.of();
         }
         return this.targetResolver
-            .applicable(statement.target().api().method(), statement.target().api().path())
+            .applicable(statement.target().api().method(), pathMatcher)
             .stream()
             .map(ObjectAuthorizationSchema::identity)
             .sorted()
             .toList();
     }
+
+    private record TargetMatcherIdentity(Instant updatedAt, String expression) {}
+
+    private record CachedTargetMatcher(TargetMatcherIdentity identity, StatementTargetPathMatcher matcher) {}
 
     private record ArtifactIdentity(
         Instant updatedAt,
@@ -170,5 +188,5 @@ public final class StatementArtifactFactory {
 
     private record CachedArtifacts(ArtifactIdentity identity, DerivedArtifacts artifacts) {}
 
-    private record DerivedArtifacts(CompiledSource policy, Pattern pathMatcher) {}
+    private record DerivedArtifacts(CompiledSource policy, StatementTargetPathMatcher pathMatcher) {}
 }

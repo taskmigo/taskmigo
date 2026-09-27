@@ -170,6 +170,24 @@ class ObjectAuthorizationServiceTest {
     }
 
     /**
+     * Verifies Object policy validation uses the same bounded Statement target contract as authorization.
+     *
+     * Given: a target containing a Java-regex backreference that is outside the supported RE2 syntax.
+     * Expect: validation fails closed before route applicability or policy compilation.
+     */
+    @Test
+    @DisplayName("rejects unsupported target regex during object policy validation")
+    void shouldRejectTargetRegexWhenObjectPolicyValidationRequiresBacktracking() {
+        // Arrange
+        String targetPath = "^/(a+)\\1$";
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.service.validatePolicy("true", "GET", targetPath))
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("valid regular expression");
+    }
+
+    /**
      * Verifies that a concrete non-Boolean Object result fails closed at authorization time.
      *
      * Given: an Object policy returning a Number and no symbolic Object input.
@@ -216,8 +234,8 @@ class ObjectAuthorizationServiceTest {
     void shouldValidateObjectPolicyAgainstApplicableSchemasOnly() {
         // Arrange
         ObjectAuthorizationSchema<TestObject> otherSchema = schema("other");
-        ObjectAuthorizationTargetResolver targetResolver = (method, path) ->
-            "/api/v0/objects".equals(path) ? List.of(this.schema) : List.of(otherSchema);
+        ObjectAuthorizationTargetResolver targetResolver = (method, pathMatcher) ->
+            pathMatcher.matches("/api/v0/objects") ? List.of(this.schema) : List.of(otherSchema);
         ObjectAuthorizationService targetedService = new ObjectAuthorizationService(
             new LanguageCompiler(),
             targetResolver

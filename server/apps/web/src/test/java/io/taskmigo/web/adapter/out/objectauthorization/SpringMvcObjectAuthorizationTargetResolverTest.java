@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +67,10 @@ class SpringMvcObjectAuthorizationTargetResolverTest {
 
         // Act
         resolver.afterSingletonsInstantiated();
-        List<ObjectAuthorizationSchema<?>> applicable = resolver.applicable("GET", "/api/v0/objects");
+        List<ObjectAuthorizationSchema<?>> applicable = resolver.applicable(
+            "GET",
+            StatementTargetPathMatcher.compile("/api/v0/objects")
+        );
 
         // Assert
         assertThat(applicable).containsExactly(this.schema);

@@ -4,10 +4,10 @@ import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.statement.StatementInfo;
+import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import io.taskmigo.identity.group.GroupInfo;
 import io.taskmigo.identity.user.UserInfo;
 import java.util.List;
-import java.util.regex.Pattern;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -31,20 +31,20 @@ class AuthorizationObjectSchemaConfiguration {
             new Route("GET", "/api/v0/roles", roles),
             new Route("GET", "/api/v0/statements", statements)
         );
-        return (method, path) ->
+        return (method, pathMatcher) ->
             routes
                 .stream()
-                .filter(route -> route.matches(method, path))
+                .filter(route -> route.matches(method, pathMatcher))
                 .<ObjectAuthorizationSchema<?>>map(Route::schema)
                 .distinct()
                 .toList();
     }
 
     private record Route(String method, String path, ObjectAuthorizationSchema<?> schema) {
-        private boolean matches(String statementMethod, String statementPath) {
+        private boolean matches(String statementMethod, StatementTargetPathMatcher pathMatcher) {
             return (
                 ("*".equals(statementMethod) || this.method.equals(statementMethod)) &&
-                Pattern.matches(statementPath, this.path)
+                pathMatcher.matches(this.path)
             );
         }
     }

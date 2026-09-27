@@ -20,6 +20,7 @@ dependencies {
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(platform(libs.guava.bom))
     implementation(libs.guava)
+    implementation(libs.re2j)
 
     testImplementation(libs.spring.boot.starter.test)
     testImplementation("org.junit.jupiter:junit-jupiter")

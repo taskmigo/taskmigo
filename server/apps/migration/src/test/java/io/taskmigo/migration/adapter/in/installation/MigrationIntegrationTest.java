@@ -9,6 +9,7 @@ import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.role.application.port.in.api.RoleService;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
+import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import io.taskmigo.authorization.statement.application.port.in.api.StatementService;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectRoleQueryService;
 import io.taskmigo.identity.group.application.port.in.api.GroupService;
@@ -249,6 +250,28 @@ class MigrationIntegrationTest {
             .filteredOn(statement -> builtInScopes.containsKey(statement.code()))
             .filteredOn(statement -> statement.scope() == Scope.OBJECT)
             .allSatisfy(statement -> assertThat(statement.policy()).doesNotStartWith("return"));
+    }
+
+    /**
+     * Verifies every managed Statement target stays inside the bounded runtime regex contract.
+     *
+     * Given: all Statement definitions loaded from the managed migration YAML.
+     * Expect: every configured target compiles, including Statements added to the resources in the future.
+     */
+    @Test
+    @DisplayName("keeps every managed statement target compatible with bounded matching")
+    void shouldCompileEveryManagedStatementTargetWhenMigrationResourcesLoad() {
+        // Arrange
+        List<InstallationPlan.Statement> managedStatements = this.resources.load().statements();
+
+        // Act + Assert
+        assertThat(managedStatements)
+            .isNotEmpty()
+            .allSatisfy(statement ->
+                assertThat(StatementTargetPathMatcher.compile(statement.target().api().path()))
+                    .as(statement.code())
+                    .isNotNull()
+            );
     }
 
     /**
