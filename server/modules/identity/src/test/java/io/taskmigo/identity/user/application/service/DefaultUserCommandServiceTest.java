@@ -124,12 +124,14 @@ class DefaultUserCommandServiceTest {
         verify(audit).publish(published.capture());
         assertThat(published.getValue().entityType()).isEqualTo("user");
         assertThat(published.getValue().entityId()).isEqualTo(existing.id());
-        assertThat(published.getValue().changes()).singleElement().satisfies(change -> {
-            assertThat(change.field()).isEqualTo("password");
-            assertThat(change.sensitive()).isTrue();
-            assertThat(change.beforeValue()).isNull();
-            assertThat(change.afterValue()).isNull();
-        });
+        assertThat(published.getValue().changes())
+            .singleElement()
+            .satisfies(change -> {
+                assertThat(change.field()).isEqualTo("password");
+                assertThat(change.sensitive()).isTrue();
+                assertThat(change.beforeValue()).isNull();
+                assertThat(change.afterValue()).isNull();
+            });
     }
 
     @Test
@@ -152,13 +154,7 @@ class DefaultUserCommandServiceTest {
         ArgumentCaptor<AuditEvent> published = ArgumentCaptor.forClass(AuditEvent.class);
 
         // Act
-        UserMutationResult result = service.reconcileManaged(
-            "alice",
-            null,
-            Set.of("new@example.com"),
-            "Alice",
-            "New"
-        );
+        UserMutationResult result = service.reconcileManaged("alice", null, Set.of("new@example.com"), "Alice", "New");
 
         // Assert
         assertThat(result.changed()).isTrue();
@@ -167,11 +163,12 @@ class DefaultUserCommandServiceTest {
         AuditEvent event = published.getValue();
         assertThat(event.entityType()).isEqualTo("user");
         assertThat(event.entityId()).isEqualTo(existing.id());
-        assertThat(event.changes()).extracting(change -> change.field()).containsExactly("emails", "lastName");
+        assertThat(event.changes())
+            .extracting(change -> change.field())
+            .containsExactly("emails", "lastName");
         assertThat(event.changes().get(0).beforeValue()).isEqualTo(Set.of("old@example.com"));
         assertThat(event.changes().get(0).afterValue()).isEqualTo(Set.of("new@example.com"));
         assertThat(event.changes().get(1).beforeValue()).isEqualTo("Old");
         assertThat(event.changes().get(1).afterValue()).isEqualTo("New");
     }
 }
-

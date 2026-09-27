@@ -8,7 +8,8 @@ class AuditChangeTest {
 
     @Test
     void rejectsValuesForSensitiveChanges() {
-        assertThatThrownBy(() -> new AuditChange("password", true, "old", "new"))
-            .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new AuditChange("password", true, "old", "new")).isInstanceOf(
+            IllegalArgumentException.class
+        );
     }
 }

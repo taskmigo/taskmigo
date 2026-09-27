@@ -28,9 +28,8 @@ class AuditApplicationConfiguration {
     EventExternalizationConfiguration auditEventExternalizationConfiguration() {
         return EventExternalizationConfiguration.externalizing()
             .selectByType(AuditEvent.class)
-            .route(
-                AuditEvent.class,
-                event -> RoutingTarget.forTarget("taskmigo-audit").andKey(event.entityId().toString())
+            .route(AuditEvent.class, event ->
+                RoutingTarget.forTarget("taskmigo-audit").andKey(event.entityId().toString())
             )
             .build();
     }
