@@ -20,6 +20,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 
 class DefaultUserCommandServiceTest {
 
@@ -94,7 +95,7 @@ class DefaultUserCommandServiceTest {
         assertThat(result).isEqualTo(new UserMutationResult(existing.id(), false, false));
         assertThat(existing.credential().passwordHash()).isEqualTo("{bcrypt}existing");
         verify(users, never()).save(existing);
-        verify(audit, never()).publish(org.mockito.ArgumentMatchers.any());
+        verify(audit, never()).publish(ArgumentMatchers.any());
     }
 
     /**

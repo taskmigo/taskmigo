@@ -8,6 +8,7 @@ dependencies {
     api(project(":modules:foundation:core"))
 
     compileOnly(platform(libs.spring.modulith.bom))
+    compileOnly(libs.spring.modulith.starter.core)
     implementation(libs.spring.modulith.events.api)
     implementation(libs.namastack.outbox.api)
     implementation(libs.namastack.outbox.core)
