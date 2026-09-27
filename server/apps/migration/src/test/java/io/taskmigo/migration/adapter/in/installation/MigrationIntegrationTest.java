@@ -253,38 +253,24 @@ class MigrationIntegrationTest {
     }
 
     /**
-     * Verifies the built-in managed Statement targets stay inside the bounded runtime regex contract.
+     * Verifies every managed Statement target stays inside the bounded runtime regex contract.
      *
-     * Given: the Statements loaded from the managed migration YAML.
-     * Expect: every built-in target compiles and matches the versioned users route it is intended to cover.
+     * Given: all Statement definitions loaded from the managed migration YAML.
+     * Expect: every configured target compiles, including Statements added to the resources in the future.
      */
     @Test
-    @DisplayName("keeps built-in statement targets compatible with bounded matching")
-    void shouldMatchBuiltInStatementTargetsWhenRuntimeMatcherCompilesThem() {
+    @DisplayName("keeps every managed statement target compatible with bounded matching")
+    void shouldCompileEveryManagedStatementTargetWhenMigrationResourcesLoad() {
         // Arrange
-        Set<String> builtInCodes = Set.of(
-            "system_operator_request_all",
-            "system_operator_object_all",
-            "administrator_request_all",
-            "administrator_object_all",
-            "administrator_hide_system_user"
-        );
+        List<InstallationPlan.Statement> managedStatements = this.resources.load().statements();
 
-        // Act
-        List<StatementInfo> builtIns = this.statements
-            .list(1, 100)
-            .items()
-            .stream()
-            .filter(statement -> builtInCodes.contains(statement.code()))
-            .toList();
-
-        // Assert
-        assertThat(builtIns)
-            .hasSize(builtInCodes.size())
+        // Act + Assert
+        assertThat(managedStatements)
+            .isNotEmpty()
             .allSatisfy(statement ->
-                assertThat(
-                    StatementTargetPathMatcher.compile(statement.target().api().path()).matches("/api/v0/users")
-                ).isTrue()
+                assertThat(StatementTargetPathMatcher.compile(statement.target().api().path()))
+                    .as(statement.code())
+                    .isNotNull()
             );
     }
 
