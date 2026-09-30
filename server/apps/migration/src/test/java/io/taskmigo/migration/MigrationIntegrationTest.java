@@ -31,11 +31,8 @@ import java.util.concurrent.Executors;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties.Client;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.system.CapturedOutput;
-import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -45,8 +42,6 @@ import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.test.context.TestConstructor;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest(
     properties = {
@@ -57,7 +52,6 @@ import tools.jackson.databind.json.JsonMapper;
     }
 )
 @Import(PostgresTestConfiguration.class)
-@ExtendWith(OutputCaptureExtension.class)
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 class MigrationIntegrationTest {
 
@@ -312,6 +306,63 @@ class MigrationIntegrationTest {
     }
 
     /**
+     * Verifies that managed User updates are recorded by the durable audit outbox instead of migration change logs.
+     *
+     * Given: migration creates a managed User and later reconciles changed profile state for that same User.
+     * Expect: creation emits no update audit work and the later update persists one JobRunr audit payload attributed to the system User.
+     */
+    @Test
+    @DisplayName("publishes durable audit work for managed user updates")
+    void shouldPublishDurableAuditWorkWhenMigrationUpdatesManagedUser() {
+        // Arrange
+        String username = "audit-migration-" + UUID.randomUUID();
+        String updatedEmail = username + "@example.com";
+        var initial = new InstallationPlan.User(
+            username,
+            null,
+            List.of(),
+            "Before",
+            "User",
+            List.of(),
+            List.of(),
+            false
+        );
+        this.migration.install(new InstallationPlan(List.of(initial), List.of(), List.of(), List.of(), Map.of()));
+        UUID userId = this.users.findForAuthentication(username).orElseThrow().id();
+        UUID systemUserId = this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().id();
+        assertThat(this.auditJobPayloads(userId)).isEmpty();
+
+        var updated = new InstallationPlan.User(
+            username,
+            null,
+            List.of(updatedEmail),
+            "After",
+            "User",
+            List.of(),
+            List.of(),
+            false
+        );
+
+        // Act
+        this.migration.install(new InstallationPlan(List.of(updated), List.of(), List.of(), List.of(), Map.of()));
+
+        // Assert
+        assertThat(this.auditJobPayloads(userId))
+            .singleElement()
+            .satisfies(payload ->
+                assertThat(payload).contains(
+                    systemUserId.toString(),
+                    SystemUser.USERNAME,
+                    "firstName",
+                    "Before",
+                    "After",
+                    "emails",
+                    updatedEmail
+                )
+            );
+    }
+
+    /**
      * Verifies that declarative absence removes dependency-linked managed resources safely.
      *
      * Given: one managed Statement referenced by a Role, Group, and User, followed by the same definitions marked absent.
@@ -500,85 +551,6 @@ class MigrationIntegrationTest {
     }
 
     /**
-     * Verifies: a managed OAuth client emits events only when its configured data changes.
-     * Given: a new internal client, followed by a changed configuration and then the same configuration again.
-     * Expect: the events are `added` and `updated` only, and no secret is present in either event.
-     */
-    @Test
-    @DisplayName("writes ECS JSON events only for added and changed clients")
-    void shouldWriteJsonChangeEventsWhenInternalClientDataChanges(CapturedOutput output) throws Exception {
-        // Arrange
-        String clientId = "logging-" + UUID.randomUUID();
-        Client initialClient = client(clientId, "logging-secret");
-        Client changedClient = client(clientId, "logging-secret");
-        changedClient.getRegistration().setClientName("Changed logging client");
-
-        // Act
-        this.migration.install(resources(Map.of("logging", initialClient)));
-        this.migration.install(resources(Map.of("logging", changedClient)));
-        this.migration.install(resources(Map.of("logging", changedClient)));
-
-        // Assert
-        var events = output
-            .getAll()
-            .lines()
-            .filter(line -> line.contains("\"key\":\"" + clientId + "\""))
-            .map(MigrationIntegrationTest::parseJson)
-            .toList();
-        assertThat(events).hasSize(2);
-        assertThat(events)
-            .extracting(node -> node.path("event").path("type").asString())
-            .containsOnly("change");
-        assertThat(events)
-            .extracting(node -> node.path("event").path("action").asString())
-            .containsExactly("added", "updated");
-        assertThat(events)
-            .extracting(node -> node.path("taskmigo").path("migration").path("resource").path("type").asString())
-            .containsOnly("oauth-client");
-        assertThat(events)
-            .extracting(node -> node.path("taskmigo").path("migration").path("resource").path("key").asString())
-            .containsOnly(clientId);
-        assertThat(output.getAll()).doesNotContain("logging-secret");
-    }
-
-    /**
-     * Verifies: a failed transaction does not publish changes that were rolled back.
-     * Given: a transaction that saves one client before refusing to adopt an unmanaged client.
-     * Expect: the first client is absent from persistence and no change event is emitted for it.
-     */
-    @Test
-    @DisplayName("does not log client changes when reconciliation rolls back")
-    void shouldNotWriteChangeEventWhenInternalClientReconciliationRollsBack(CapturedOutput output) {
-        // Arrange
-        String managedClientId = "rollback-" + UUID.randomUUID();
-        String unmanagedClientId = "rollback-unmanaged-" + UUID.randomUUID();
-        this.clients.save(
-            RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId(unmanagedClientId)
-                .clientSecret(this.passwordEncoder.encode("rollback-secret"))
-                .clientName("Unmanaged")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .build()
-        );
-        var configuredClients = Map.of(
-            "a-managed",
-            client(managedClientId, "managed-secret"),
-            "b-unmanaged",
-            client(unmanagedClientId, "unmanaged-secret")
-        );
-
-        // Act
-        assertThatThrownBy(() -> this.migration.install(resources(configuredClients))).hasMessageContaining(
-            "Refusing to adopt unmanaged OAuth client"
-        );
-
-        // Assert
-        assertThat(this.clients.findByClientId(managedClientId)).isNull();
-        assertThat(output.getAll()).doesNotContain(managedClientId);
-    }
-
-    /**
      * Verifies: migration refuses to adopt a client without the internal ownership marker.
      * Given: an existing user-owned registration with the same client id.
      * Expect: reconciliation fails closed and leaves that registration unmanaged.
@@ -639,12 +611,16 @@ class MigrationIntegrationTest {
         );
     }
 
-    private RegisteredClient storedClient(String clientId) {
-        return Objects.requireNonNull(this.clients.findByClientId(clientId));
+    private List<String> auditJobPayloads(UUID userId) {
+        return this.jdbc.query(
+            "select jobAsJson from jobrunr_jobs where jobAsJson like ?",
+            (resultSet, rowNumber) -> Objects.requireNonNull(resultSet.getString(1)),
+            "%" + userId + "%"
+        );
     }
 
-    private static JsonNode parseJson(String line) {
-        return JsonMapper.builder().build().readTree(line);
+    private RegisteredClient storedClient(String clientId) {
+        return Objects.requireNonNull(this.clients.findByClientId(clientId));
     }
 
     private static Client client(String clientId, String clientSecret) {
