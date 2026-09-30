@@ -13,6 +13,7 @@ COPY modules/language/build.gradle.kts modules/language/build.gradle.kts
 COPY modules/query/build.gradle.kts modules/query/build.gradle.kts
 COPY modules/authorization/build.gradle.kts modules/authorization/build.gradle.kts
 COPY modules/database/build.gradle.kts modules/database/build.gradle.kts
+COPY modules/audit/build.gradle.kts modules/audit/build.gradle.kts
 COPY modules/identity/build.gradle.kts modules/identity/build.gradle.kts
 COPY benchmarks/authorization/build.gradle.kts benchmarks/authorization/build.gradle.kts
 COPY testing/architecture/build.gradle.kts testing/architecture/build.gradle.kts
@@ -32,6 +33,7 @@ COPY modules/language/src modules/language/src
 COPY modules/query/src modules/query/src
 COPY modules/authorization/src modules/authorization/src
 COPY modules/database/src modules/database/src
+COPY modules/audit/src modules/audit/src
 COPY modules/identity/src modules/identity/src
 COPY benchmarks/authorization/src benchmarks/authorization/src
 COPY apps/migration/src apps/migration/src
@@ -51,7 +53,7 @@ RUN --mount=type=cache,id=taskmigo-gradle,target=/root/.gradle,sharing=locked \
 FROM eclipse-temurin:26.0.2_10-jdk-alpine-3.24@sha256:e5b0a876436e5d1c8ff84dfd091cb530b83a9ed4273317d24acb673695bb7e0c AS runtime-builder
 
 RUN jlink \
-        --add-modules java.base,java.compiler,java.desktop,java.instrument,java.management,java.naming,java.net.http,java.prefs,java.rmi,java.scripting,java.security.jgss,java.security.sasl,java.sql,java.sql.rowset,java.transaction.xa,java.xml,java.xml.crypto,jdk.crypto.ec,jdk.crypto.cryptoki,jdk.jfr,jdk.management,jdk.unsupported,jdk.zipfs \
+        --add-modules java.base,java.compiler,java.desktop,java.instrument,java.management,java.naming,java.net.http,java.prefs,java.rmi,java.scripting,java.security.jgss,java.security.sasl,java.sql,java.sql.rowset,java.transaction.xa,java.xml,java.xml.crypto,jdk.crypto.ec,jdk.crypto.cryptoki,jdk.httpserver,jdk.jfr,jdk.management,jdk.unsupported,jdk.zipfs \
         --strip-debug \
         --no-man-pages \
         --no-header-files \

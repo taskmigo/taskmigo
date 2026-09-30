@@ -13,6 +13,7 @@ dependencies {
 
     implementation(platform(libs.spring.boot.bom))
     api(project(":modules:foundation:core"))
+    implementation(project(":modules:audit"))
     api(project(":modules:query"))
     api(project(":modules:access-control"))
     implementation(project(":modules:database"))

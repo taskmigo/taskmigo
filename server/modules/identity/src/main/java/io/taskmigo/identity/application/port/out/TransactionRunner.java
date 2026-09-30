@@ -9,16 +9,19 @@ public interface TransactionRunner {
     ///
     /// @param work application work to execute
     /// @return the non-null result returned by the work
+    @SuppressWarnings("NullableProblems")
     <T> T read(Supplier<T> work);
 
     /// Executes mutating application work in the current transaction or a new transaction.
     ///
     /// @param work application work to execute
     /// @return the non-null result returned by the work
+    @SuppressWarnings("NullableProblems")
     <T> T write(Supplier<T> work);
 
     /// Executes mutating application work in the current transaction or a new transaction.
     ///
     /// @param work application work to execute
+    @SuppressWarnings("NullableProblems")
     void write(Runnable work);
 }

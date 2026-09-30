@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.user.UserInfo;
+import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.application.port.in.api.UserRegistrationService;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
 import io.taskmigo.query.FilteredQuery;
@@ -23,6 +24,7 @@ import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -30,6 +32,7 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -84,9 +87,14 @@ class UserController {
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setStatements(
         @PathVariable UUID userId,
-        @Valid @RequestBody StatementAssignmentRequest request
+        @Valid @RequestBody StatementAssignmentRequest request,
+        JwtAuthenticationToken authentication
     ) {
-        this.users.setStatements(userId, request.statementIds() == null ? Set.of() : request.statementIds());
+        this.users.setStatements(
+            userId,
+            request.statementIds() == null ? Set.of() : request.statementIds(),
+            actor(authentication)
+        );
         return this.responses.ok("resource.user.statements.updated", "User statements updated");
     }
 
@@ -110,6 +118,12 @@ class UserController {
             "resource.user.created",
             "User created"
         );
+    }
+
+    private static UserMutationActor actor(JwtAuthenticationToken authentication) {
+        String userId = Objects.requireNonNull(authentication.getToken().getClaimAsString("user_id"));
+        String username = authentication.getToken().getClaimAsString("principal_username");
+        return new UserMutationActor(UUID.fromString(userId), username == null ? authentication.getName() : username);
     }
 
     @Schema(name = "UserInfo")

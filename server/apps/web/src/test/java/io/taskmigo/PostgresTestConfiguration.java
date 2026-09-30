@@ -52,12 +52,13 @@ public class PostgresTestConfiguration {
                 "system_statements_full_access",
                 "/api/v0/statements"
             );
+            UUID auditAccess = objectStatement(authorization, "system_audit_full_access", "/api/v0/audit/.*");
             UUID roleId = authorization
                 .reconcileRole(
                     "system-operator",
                     "System Operator",
                     "Highest-privilege integration-test role.",
-                    List.of(fullAccess, usersAccess, rolesAccess, groupsAccess, statementsAccess)
+                    List.of(fullAccess, usersAccess, rolesAccess, groupsAccess, statementsAccess, auditAccess)
                 )
                 .id();
             identity.reconcileUser(

@@ -4,6 +4,7 @@ import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.user.AuthenticationInfo;
 import io.taskmigo.identity.user.UserInfo;
+import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
 import java.util.Optional;
@@ -21,6 +22,6 @@ public interface UserService {
         ObjectAuthorizationPredicate<UserInfo> authorization
     );
     Set<UUID> roleIds(UUID userId);
-    void setStatements(UUID userId, Collection<UUID> statementIds);
-    void setRoles(UUID userId, Collection<UUID> roleIds);
+    void setStatements(UUID userId, Collection<UUID> statementIds, UserMutationActor actor);
+    void setRoles(UUID userId, Collection<UUID> roleIds, UserMutationActor actor);
 }

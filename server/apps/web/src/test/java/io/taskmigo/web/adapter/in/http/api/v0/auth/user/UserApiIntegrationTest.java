@@ -10,6 +10,7 @@ import io.taskmigo.authorization.role.application.port.in.api.RoleService;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectRoleQueryService;
 import io.taskmigo.identity.group.application.port.in.api.GroupService;
+import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
 import io.taskmigo.web.adapter.in.http.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.web.adapter.in.http.api.v0.testing.TaskmigoApiClient.CreateGroupRequest;
@@ -239,9 +240,16 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
             );
     }
 
+    /**
+     * Verifies that mixed direct and inherited User grants resolve without duplicate statements.
+     *
+     * Given: a User with direct statements plus role and group hierarchies that share one statement.
+     * Expect: the effective statement set contains every reachable statement exactly once.
+     */
     @Test
     @DisplayName("resolves direct and inherited statements without duplicates")
     void shouldResolveAllEffectiveStatementsWhenUserHasMixedAssignments() {
+        // Arrange
         String inheritedRoleName = "inherited-role-" + UUID.randomUUID();
         String groupStatementName = "group-" + UUID.randomUUID();
         String directStatementName = "direct-" + UUID.randomUUID();
@@ -272,8 +280,13 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
             .create(new CreateGroupRequest(uniqueGroupName("Parent group"), null, List.of(nestedGroup), Set.of()));
         this.groups.setRoles(nestedGroup, Set.of(childRole, groupRole));
         UUID user = this.create("mixed-statements", List.of(parentRole), List.of(parentGroup));
-        this.users.setStatements(user, List.of(directStatement, sharedStatement));
+        this.users.setStatements(
+            user,
+            List.of(directStatement, sharedStatement),
+            new UserMutationActor(user, "audit-test")
+        );
 
+        // Act
         List<String> names = this.statementResolver
             .resolve(user)
             .stream()
@@ -281,6 +294,7 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
             .map(StatementInfo::code)
             .toList();
 
+        // Assert
         assertThat(names).containsExactlyInAnyOrder(
             inheritedRoleName,
             groupStatementName,

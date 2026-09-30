@@ -1,10 +1,20 @@
 ---
 spring:
+  # JobRunr outbox externalization is the durable audit handoff. The classic
+  # EventPublicationRegistry lifecycle is a separate subsystem and is intentionally
+  # not activated by this application.
+  autoconfigure:
+    exclude:
+      - org.springframework.modulith.events.config.EventPublicationAutoConfiguration
   threads:
     virtual:
       enabled: true
   config:
     import: classpath:application-database.yaml
+  modulith:
+    events:
+      externalization:
+        mode: outbox
 
 scalar:
   enabled: true
@@ -22,7 +32,15 @@ scalar:
     disabled: true
 
 taskmigo:
+  audit:
+    enabled: true
   oauth:
     signing-key-file: ${TASKMIGO_OAUTH_SIGNING_KEY_FILE:./data/oauth-signing-key.pem}
     signing-key-id: ${TASKMIGO_OAUTH_SIGNING_KEY_ID:primary}
     signing-key-auto-create: ${TASKMIGO_OAUTH_SIGNING_KEY_AUTO_CREATE:false}
+
+jobrunr:
+  database:
+    skip-create: true
+  background-job-server:
+    enabled: false

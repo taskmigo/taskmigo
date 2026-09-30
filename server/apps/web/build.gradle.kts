@@ -20,13 +20,17 @@ dependencies {
     testImplementation(libs.archunit.junit5)
     testImplementation(project(":testing:architecture"))
 
+    implementation(platform(libs.spring.modulith.bom))
     implementation(project(":modules:foundation:spring"))
     implementation(project(":modules:query"))
+    implementation(project(":modules:audit"))
     implementation(project(":modules:access-control"))
     // Provides shared datasource/JPA configuration; apps/migration owns migration execution.
     implementation(project(":modules:database"))
     implementation(project(":modules:identity"))
     runtimeOnly(libs.jspecify)
+    implementation(libs.spring.modulith.starter.jobrunr)
+    implementation(libs.jobrunr)
     implementation(libs.spring.boot.starter.jdbc)
     implementation(libs.spring.boot.starter.webmvc)
     implementation(libs.spring.boot.starter.validation)
@@ -37,6 +41,7 @@ dependencies {
 
     testImplementation(libs.springdoc.openapi.starter.webmvc.api)
     testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.jobrunr)
     testImplementation(libs.spring.boot.testcontainers)
     testImplementation(libs.spring.boot.starter.data.jpa)
     testImplementation(libs.spring.boot.starter.flyway)

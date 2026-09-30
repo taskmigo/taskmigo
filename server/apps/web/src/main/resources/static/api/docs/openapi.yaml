@@ -673,6 +673,83 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+  /api/v0/audit/{entityType}/logs:
+    get:
+      tags:
+      - Audit
+      summary: List entity audit logs
+      operationId: listAuditLogs
+      parameters:
+      - name: entityType
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: page
+        in: query
+        description: Page number to retrieve (1-based index)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 1
+          description: Page number to retrieve (1-based index)
+          minimum: 1
+      - name: pageSize
+        in: query
+        description: Number of items per page
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          description: Number of items per page
+          maximum: 100
+          minimum: 1
+      - name: authorization
+        in: query
+        required: true
+        schema:
+          $ref: "#/components/schemas/ObjectAuthorizationPredicateUserInfo"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListAuditLogOffsetMeta"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
   /api/v0/statements/{statementId}:
     delete:
       tags:
@@ -1349,6 +1426,80 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/GroupInfo"
+    ApiResponseListAuditLogOffsetMeta:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the request completed successfully
+        statusCode:
+          type: integer
+          format: int32
+          description: HTTP status code of the response
+        message:
+          $ref: "#/components/schemas/Message"
+          description: Machine-readable and human-readable outcome message
+        error:
+          type: "null"
+          $ref: "#/components/schemas/Error"
+          description: Error details when the request fails
+        meta:
+          $ref: "#/components/schemas/OffsetMeta"
+          description: Execution and pagination metadata
+        data:
+          type:
+          - array
+          - "null"
+          description: Response payload
+          items:
+            $ref: "#/components/schemas/AuditLog"
+      required:
+      - data
+      - error
+      - message
+      - meta
+      - statusCode
+      - success
+    AuditActor:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+    AuditChange:
+      type: object
+      properties:
+        field:
+          type: string
+        before: {}
+        after: {}
+        sensitive:
+          type: boolean
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sourceEventId:
+          type: string
+          format: uuid
+        entityType:
+          type: string
+        entityId:
+          type: string
+          format: uuid
+        actor:
+          $ref: "#/components/schemas/AuditActor"
+        occurredAt:
+          type: string
+          format: date-time
+        changes:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditChange"
   securitySchemes:
     taskmigoOAuth:
       type: oauth2

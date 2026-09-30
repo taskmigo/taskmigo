@@ -2,6 +2,8 @@
 @ApplicationModule(
     allowedDependencies = {
         "foundation",
+        "audit :: events",
+        "audit :: model",
         "database :: criteria",
         "query",
         "query :: model",
