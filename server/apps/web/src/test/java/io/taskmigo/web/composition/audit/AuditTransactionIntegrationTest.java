@@ -6,11 +6,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
+import io.taskmigo.audit.application.port.in.append.AuditAppendService;
+import io.taskmigo.audit.event.AuditEvent;
+import io.taskmigo.audit.model.AuditActor;
+import io.taskmigo.audit.model.AuditChange;
 import io.taskmigo.identity.provisioning.application.port.in.api.IdentityProvisioningService;
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
 import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -25,6 +31,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestConstructor;
+import org.springframework.transaction.IllegalTransactionStateException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -40,17 +47,20 @@ import org.springframework.transaction.support.TransactionTemplate;
 class AuditTransactionIntegrationTest {
 
     private final JdbcTemplate jdbc;
+    private final AuditAppendService audits;
     private final UserService users;
     private final IdentityProvisioningService provisioning;
     private final PlatformTransactionManager transactions;
 
     AuditTransactionIntegrationTest(
         JdbcTemplate jdbc,
+        AuditAppendService audits,
         UserService users,
         IdentityProvisioningService provisioning,
         PlatformTransactionManager transactions
     ) {
         this.jdbc = jdbc;
+        this.audits = audits;
         this.users = users;
         this.provisioning = provisioning;
         this.transactions = transactions;
@@ -96,6 +106,29 @@ class AuditTransactionIntegrationTest {
                     statementId.toString()
                 );
             });
+    }
+
+    /**
+     * Verifies that synchronous audit append cannot create its own independent transaction.
+     *
+     * Given: a valid audit event invoked directly without an owning business transaction.
+     * Expect: the append boundary rejects the call because caller-owned transaction propagation is mandatory.
+     */
+    @Test
+    @DisplayName("requires an existing transaction for audit append")
+    void shouldRequireExistingTransactionWhenAuditAppendIsCalledDirectly() {
+        // Arrange
+        AuditEvent event = new AuditEvent(
+            UUID.randomUUID(),
+            "user",
+            UUID.randomUUID(),
+            new AuditActor(UUID.randomUUID(), "operator"),
+            Instant.parse("2026-10-01T00:00:00Z"),
+            List.of(AuditChange.visible("firstName", "Before", "After"))
+        );
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.audits.append(event)).isInstanceOf(IllegalTransactionStateException.class);
     }
 
     /**
