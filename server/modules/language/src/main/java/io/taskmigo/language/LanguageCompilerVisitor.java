@@ -355,7 +355,7 @@ final class LanguageCompilerVisitor {
             path.add(identifiers.get(index).getText());
         }
         LanguageDiagnostic.SourceSpan sourceSpan = span(context);
-        SemanticAst.@Nullable Expression local = this.scopes.getLast().lookup(root);
+        SemanticAst.Expression local = this.scopes.getLast().lookup(root);
         if (local != null) {
             if (path.isEmpty()) {
                 return local;

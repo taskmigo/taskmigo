@@ -62,7 +62,11 @@ subprojects {
         tasks.withType<JavaCompile>().configureEach {
             options.errorprone {
                 disableAllChecks.set(true)
-                error("NullAway", "RequireExplicitNullMarking")
+                error(
+                    "JSpecifyUnrecognizedAnnotationLocation",
+                    "NullAway",
+                    "RequireExplicitNullMarking",
+                )
                 option("NullAway:OnlyNullMarked", "true")
                 option("NullAway:JSpecifyMode", "true")
                 option("NullAway:JSpecifyExperimental", "true")
