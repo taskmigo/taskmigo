@@ -20,7 +20,7 @@ public record AuditChange(String field, @Nullable Object before, @Nullable Objec
         return new AuditChange(field, before, after, false);
     }
 
-    /// Creates a sensitive-field marker whose values are omitted before durable publication.
+    /// Creates a sensitive-field marker whose values are omitted before audit persistence.
     public static AuditChange sensitive(String field) {
         return new AuditChange(field, null, null, true);
     }

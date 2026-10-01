@@ -8,13 +8,13 @@ import org.junit.jupiter.api.Test;
 class UserAuditChangesTest {
 
     /**
-     * Verifies that sensitive User field values are stripped before durable audit publication.
+     * Verifies that sensitive User field values are stripped before synchronous audit persistence.
      *
      * Given: previous and new passwordHash values.
      * Expect: the resulting change is marked sensitive and carries neither value.
      */
     @Test
-    @DisplayName("removes sensitive values before creating the durable change payload")
+    @DisplayName("removes sensitive values before creating the audit change")
     void shouldRemoveValuesWhenFieldIsSensitive() {
         // Arrange
         String before = "{bcrypt}old";

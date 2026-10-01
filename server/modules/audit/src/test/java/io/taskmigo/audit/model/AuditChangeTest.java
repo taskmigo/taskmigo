@@ -11,7 +11,7 @@ class AuditChangeTest {
      * Verifies that a sensitive audit change cannot retain either side of the field diff.
      *
      * Given: a sensitive passwordHash change that still contains a previous value.
-     * Expect: construction is rejected before the change can reach durable publication.
+     * Expect: construction is rejected before the change can reach audit persistence.
      */
     @Test
     @DisplayName("rejects sensitive audit changes that still contain values")
