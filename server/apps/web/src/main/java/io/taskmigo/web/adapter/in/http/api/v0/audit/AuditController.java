@@ -1,6 +1,7 @@
 package io.taskmigo.web.adapter.in.http.api.v0.audit;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.taskmigo.audit.application.port.in.query.AuditQueryService;
@@ -50,7 +51,7 @@ class AuditController {
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @PathVariable String entityType,
         @ParameterObject @Valid OffsetPageRequest pagination,
-        ObjectAuthorizationPredicate<UserInfo> authorization
+        @Parameter(hidden = true) ObjectAuthorizationPredicate<UserInfo> authorization
     ) {
         if (!authorization.isAlwaysTrue()) {
             throw new AccessDeniedException("Audit access requires unrestricted User visibility");

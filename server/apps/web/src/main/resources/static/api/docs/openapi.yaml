@@ -706,11 +706,6 @@ paths:
           description: Number of items per page
           maximum: 100
           minimum: 1
-      - name: authorization
-        in: query
-        required: true
-        schema:
-          $ref: "#/components/schemas/ObjectAuthorizationPredicateUserInfo"
       responses:
         "200":
           description: OK
