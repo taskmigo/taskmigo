@@ -67,7 +67,6 @@ class AuditController {
     @Schema(name = "AuditLog")
     record Response(
         UUID id,
-        UUID sourceEventId,
         String entityType,
         UUID entityId,
         ActorResponse actor,
@@ -77,7 +76,6 @@ class AuditController {
         static Response from(AuditLog log) {
             return new Response(
                 log.id(),
-                log.sourceEventId(),
                 log.entityType(),
                 log.entityId(),
                 ActorResponse.from(log.actor()),

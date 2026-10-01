@@ -31,7 +31,6 @@ public class JpaAuditLogStore implements AuditLogStore {
         this.logs.saveAndFlush(
             new AuditLogEntity(
                 event.id(),
-                event.id(),
                 event.entityType(),
                 event.entityId(),
                 event.actor().id(),
@@ -56,7 +55,6 @@ public class JpaAuditLogStore implements AuditLogStore {
     private AuditLog toModel(AuditLogEntity entity) {
         return new AuditLog(
             entity.id,
-            entity.sourceEventId,
             entity.entityType,
             entity.entityId,
             new AuditActor(entity.actorId, entity.actorUsername),

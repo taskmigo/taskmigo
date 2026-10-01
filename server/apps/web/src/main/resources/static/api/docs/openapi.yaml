@@ -1483,9 +1483,6 @@ components:
         id:
           type: string
           format: uuid
-        sourceEventId:
-          type: string
-          format: uuid
         entityType:
           type: string
         entityId:

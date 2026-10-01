@@ -4,23 +4,16 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
 @Entity
-@Table(
-    name = "audit_logs",
-    uniqueConstraints = @UniqueConstraint(name = "uk_audit_logs_source_event_id", columnNames = "source_event_id")
-)
+@Table(name = "audit_logs")
 class AuditLogEntity {
 
     @Id
     UUID id;
-
-    @Column(name = "source_event_id", nullable = false)
-    UUID sourceEventId;
 
     @Column(name = "entity_type", nullable = false, length = 64)
     String entityType;
@@ -42,7 +35,6 @@ class AuditLogEntity {
 
     protected AuditLogEntity() {
         this.id = new UUID(0, 0);
-        this.sourceEventId = new UUID(0, 0);
         this.entityType = "";
         this.entityId = new UUID(0, 0);
         this.actorId = new UUID(0, 0);
@@ -53,7 +45,6 @@ class AuditLogEntity {
 
     AuditLogEntity(
         UUID id,
-        UUID sourceEventId,
         String entityType,
         UUID entityId,
         UUID actorId,
@@ -62,7 +53,6 @@ class AuditLogEntity {
         String changesJson
     ) {
         this.id = Objects.requireNonNull(id);
-        this.sourceEventId = Objects.requireNonNull(sourceEventId);
         this.entityType = Objects.requireNonNull(entityType);
         this.entityId = Objects.requireNonNull(entityId);
         this.actorId = Objects.requireNonNull(actorId);

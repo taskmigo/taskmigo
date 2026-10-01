@@ -188,13 +188,11 @@ CREATE TABLE oauth2_authorization_consent (
 
 CREATE TABLE audit_logs (
     id UUID PRIMARY KEY,
-    source_event_id UUID NOT NULL,
     entity_type VARCHAR(64) NOT NULL,
     entity_id UUID NOT NULL,
     actor_id UUID NOT NULL,
     actor_username VARCHAR(100) NOT NULL,
     occurred_at timestamptz(3) NOT NULL,
-    changes_json TEXT NOT NULL,
-    CONSTRAINT uk_audit_logs_source_event_id UNIQUE (source_event_id)
+    changes_json TEXT NOT NULL
 );
 CREATE INDEX ix_audit_logs_entity_order ON audit_logs (entity_type, occurred_at DESC, id DESC);
