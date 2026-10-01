@@ -2,6 +2,7 @@ package io.taskmigo.identity.user.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -13,7 +14,8 @@ import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantQue
 import io.taskmigo.identity.application.port.out.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.user.UserMutationActor;
-import io.taskmigo.identity.user.application.port.out.UserAuditPublisher;
+import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
+import io.taskmigo.identity.user.application.port.out.UserAuditAppender;
 import io.taskmigo.identity.user.application.port.out.UserQueryRepository;
 import java.time.Clock;
 import java.time.Instant;
@@ -32,35 +34,39 @@ class DefaultUserServiceTest {
     private static final Instant NOW = Instant.parse("2026-09-28T00:00:00Z");
 
     /**
-     * Verifies that a real User statement mutation publishes the complete immutable audit payload.
+     * Verifies that a User statement mutation is serialized before state and audit are written.
      *
      * Given: an existing User whose direct statement assignment changes from one ID to another.
-     * Expect: assignment succeeds and one audit event captures entity, actor, mutation time, and deterministic diff.
+     * Expect: the User lock is acquired first, assignment changes, then one synchronous audit record is appended.
      */
     @Test
-    @DisplayName("publishes a complete audit event when direct statements change")
-    void shouldPublishAuditEventWhenDirectStatementsChange() {
+    @DisplayName("locks and audits when direct statements change")
+    void shouldLockAndAppendAuditWhenDirectStatementsChange() {
         // Arrange
         UUID userId = UUID.randomUUID();
         UUID beforeId = UUID.randomUUID();
         UUID afterId = UUID.randomUUID();
         UserMutationActor actor = new UserMutationActor(UUID.randomUUID(), "operator");
         UserQueryRepository users = Mockito.mock(UserQueryRepository.class);
+        UserCommandService commands = Mockito.mock(UserCommandService.class);
         SubjectGrantQueryService queries = Mockito.mock(SubjectGrantQueryService.class);
         SubjectGrantAssignmentService assignments = Mockito.mock(SubjectGrantAssignmentService.class);
-        UserAuditPublisher audits = Mockito.mock(UserAuditPublisher.class);
+        UserAuditAppender audits = Mockito.mock(UserAuditAppender.class);
         SubjectRef subject = IdentitySubjects.user(userId);
-        when(users.exists(userId)).thenReturn(true);
+        when(commands.lock(userId)).thenReturn(true);
         when(queries.statementIds(subject)).thenReturn(Set.of(beforeId));
-        DefaultUserService service = service(users, queries, assignments, audits);
+        DefaultUserService service = service(users, commands, queries, assignments, audits);
 
         // Act
         service.setStatements(userId, List.of(afterId), actor);
 
         // Assert
-        verify(assignments).setStatements(subject, Set.of(afterId));
+        var order = inOrder(commands, queries, assignments, audits);
+        order.verify(commands).lock(userId);
+        order.verify(queries).statementIds(subject);
+        order.verify(assignments).setStatements(subject, Set.of(afterId));
         ArgumentCaptor<AuditEvent> event = ArgumentCaptor.forClass(AuditEvent.class);
-        verify(audits).publish(event.capture());
+        order.verify(audits).append(event.capture());
         assertThat(event.getValue().entityType()).isEqualTo("user");
         assertThat(event.getValue().entityId()).isEqualTo(userId);
         assertThat(event.getValue().actor().id()).isEqualTo(actor.id());
@@ -77,64 +83,70 @@ class DefaultUserServiceTest {
     }
 
     /**
-     * Verifies that a no-op User statement mutation produces no assignment and no audit event.
+     * Verifies that a no-op User statement mutation still acquires the User lock but writes no audit.
      *
      * Given: a User already has exactly the requested direct statement set.
-     * Expect: neither the assignment port nor the audit publisher is invoked.
+     * Expect: the lock is acquired and neither assignment nor audit persistence is invoked.
      */
     @Test
-    @DisplayName("does not assign or publish when direct statements are unchanged")
-    void shouldNotPublishAuditEventWhenDirectStatementsAreUnchanged() {
+    @DisplayName("locks but does not audit unchanged direct statements")
+    void shouldNotAppendAuditWhenDirectStatementsAreUnchanged() {
         // Arrange
         UUID userId = UUID.randomUUID();
         UUID statementId = UUID.randomUUID();
         UserQueryRepository users = Mockito.mock(UserQueryRepository.class);
+        UserCommandService commands = Mockito.mock(UserCommandService.class);
         SubjectGrantQueryService queries = Mockito.mock(SubjectGrantQueryService.class);
         SubjectGrantAssignmentService assignments = Mockito.mock(SubjectGrantAssignmentService.class);
-        UserAuditPublisher audits = Mockito.mock(UserAuditPublisher.class);
+        UserAuditAppender audits = Mockito.mock(UserAuditAppender.class);
         SubjectRef subject = IdentitySubjects.user(userId);
-        when(users.exists(userId)).thenReturn(true);
+        when(commands.lock(userId)).thenReturn(true);
         when(queries.statementIds(subject)).thenReturn(Set.of(statementId));
-        DefaultUserService service = service(users, queries, assignments, audits);
+        DefaultUserService service = service(users, commands, queries, assignments, audits);
 
         // Act
         service.setStatements(userId, List.of(statementId), new UserMutationActor(UUID.randomUUID(), "operator"));
 
         // Assert
+        verify(commands).lock(userId);
         verify(assignments, never()).setStatements(any(), any());
-        verify(audits, never()).publish(any());
+        verify(audits, never()).append(any());
     }
 
     /**
-     * Verifies that a real User Role mutation publishes one audit event with a deterministic Role diff.
+     * Verifies that a User Role mutation is serialized before state and audit are written.
      *
      * Given: an existing User whose direct Role assignment changes from one ID to another.
-     * Expect: assignment succeeds and the audit event records the Role IDs, actor, and originating timestamp.
+     * Expect: the User lock is acquired first, assignment changes, then one synchronous audit record is appended.
      */
     @Test
-    @DisplayName("publishes a complete audit event when direct roles change")
-    void shouldPublishAuditEventWhenDirectRolesChange() {
+    @DisplayName("locks and audits when direct roles change")
+    void shouldLockAndAppendAuditWhenDirectRolesChange() {
         // Arrange
         UUID userId = UUID.randomUUID();
         UUID beforeId = UUID.randomUUID();
         UUID afterId = UUID.randomUUID();
         UserMutationActor actor = new UserMutationActor(UUID.randomUUID(), "operator");
         UserQueryRepository users = Mockito.mock(UserQueryRepository.class);
+        UserCommandService commands = Mockito.mock(UserCommandService.class);
         SubjectGrantQueryService queries = Mockito.mock(SubjectGrantQueryService.class);
         SubjectGrantAssignmentService assignments = Mockito.mock(SubjectGrantAssignmentService.class);
-        UserAuditPublisher audits = Mockito.mock(UserAuditPublisher.class);
+        UserAuditAppender audits = Mockito.mock(UserAuditAppender.class);
         SubjectRef subject = IdentitySubjects.user(userId);
-        when(users.exists(userId)).thenReturn(true);
+        when(commands.lock(userId)).thenReturn(true);
         when(queries.roleIds(subject)).thenReturn(Set.of(beforeId));
-        DefaultUserService service = service(users, queries, assignments, audits);
+        DefaultUserService service = service(users, commands, queries, assignments, audits);
 
         // Act
         service.setRoles(userId, List.of(afterId), actor);
 
         // Assert
-        verify(assignments).setRoles(subject, Set.of(afterId));
+        var order = inOrder(commands, queries, assignments, audits);
+        order.verify(commands).lock(userId);
+        order.verify(queries).roleIds(subject);
+        order.verify(assignments).setRoles(subject, Set.of(afterId));
         ArgumentCaptor<AuditEvent> event = ArgumentCaptor.forClass(AuditEvent.class);
-        verify(audits).publish(event.capture());
+        order.verify(audits).append(event.capture());
         assertThat(event.getValue().entityType()).isEqualTo("user");
         assertThat(event.getValue().entityId()).isEqualTo(userId);
         assertThat(event.getValue().actor().id()).isEqualTo(actor.id());
@@ -151,42 +163,46 @@ class DefaultUserServiceTest {
     }
 
     /**
-     * Verifies that a no-op User Role mutation produces no assignment and no audit event.
+     * Verifies that a no-op User Role mutation still acquires the User lock but writes no audit.
      *
      * Given: a User already has exactly the requested direct Role set.
-     * Expect: neither the assignment port nor the audit publisher is invoked.
+     * Expect: the lock is acquired and neither assignment nor audit persistence is invoked.
      */
     @Test
-    @DisplayName("does not assign or publish when direct roles are unchanged")
-    void shouldNotPublishAuditEventWhenDirectRolesAreUnchanged() {
+    @DisplayName("locks but does not audit unchanged direct roles")
+    void shouldNotAppendAuditWhenDirectRolesAreUnchanged() {
         // Arrange
         UUID userId = UUID.randomUUID();
         UUID roleId = UUID.randomUUID();
         UserQueryRepository users = Mockito.mock(UserQueryRepository.class);
+        UserCommandService commands = Mockito.mock(UserCommandService.class);
         SubjectGrantQueryService queries = Mockito.mock(SubjectGrantQueryService.class);
         SubjectGrantAssignmentService assignments = Mockito.mock(SubjectGrantAssignmentService.class);
-        UserAuditPublisher audits = Mockito.mock(UserAuditPublisher.class);
+        UserAuditAppender audits = Mockito.mock(UserAuditAppender.class);
         SubjectRef subject = IdentitySubjects.user(userId);
-        when(users.exists(userId)).thenReturn(true);
+        when(commands.lock(userId)).thenReturn(true);
         when(queries.roleIds(subject)).thenReturn(Set.of(roleId));
-        DefaultUserService service = service(users, queries, assignments, audits);
+        DefaultUserService service = service(users, commands, queries, assignments, audits);
 
         // Act
         service.setRoles(userId, List.of(roleId), new UserMutationActor(UUID.randomUUID(), "operator"));
 
         // Assert
+        verify(commands).lock(userId);
         verify(assignments, never()).setRoles(any(), any());
-        verify(audits, never()).publish(any());
+        verify(audits, never()).append(any());
     }
 
     private static DefaultUserService service(
         UserQueryRepository users,
+        UserCommandService commands,
         SubjectGrantQueryService queries,
         SubjectGrantAssignmentService assignments,
-        UserAuditPublisher audits
+        UserAuditAppender audits
     ) {
         return new DefaultUserService(
             users,
+            commands,
             queries,
             assignments,
             audits,

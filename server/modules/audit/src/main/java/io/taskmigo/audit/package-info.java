@@ -1,4 +1,4 @@
-/// Owns durable entity-audit records, query semantics, and asynchronous append processing.
+/// Owns immutable entity-audit records, synchronous append semantics, and audit queries.
 @ApplicationModule(allowedDependencies = { "foundation", "database" })
 @NullMarked
 package io.taskmigo.audit;

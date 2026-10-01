@@ -14,7 +14,6 @@ jmh-gradle-plugin = "0.7.3"
 guava = "33.7.1-jre"
 antlr = "4.13.2"
 re2j = "1.8"
-jobrunr = "8.6.1"
 
 [libraries]
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
@@ -32,9 +31,6 @@ jackson-dataformat-yaml = { module = "tools.jackson.dataformat:jackson-dataforma
 jakarta-persistence-api = { module = "jakarta.persistence:jakarta.persistence-api" }
 spring-modulith-starter-core = { module = "org.springframework.modulith:spring-modulith-starter-core" }
 spring-modulith-starter-test = { module = "org.springframework.modulith:spring-modulith-starter-test" }
-spring-modulith-events-api = { module = "org.springframework.modulith:spring-modulith-events-api" }
-spring-modulith-events-jobrunr = { module = "org.springframework.modulith:spring-modulith-events-jobrunr" }
-spring-modulith-starter-jobrunr = { module = "org.springframework.modulith:spring-modulith-starter-jobrunr" }
 springdoc-openapi-starter-common = { module = "org.springdoc:springdoc-openapi-starter-common", version.ref = "springdoc-openapi" }
 springdoc-openapi-starter-webmvc-api = { module = "org.springdoc:springdoc-openapi-starter-webmvc-api", version.ref = "springdoc-openapi" }
 scalar-webmvc = { module = "com.scalar.maven:scalar-webmvc", version.ref = "scalar" }
@@ -58,7 +54,6 @@ caffeine = { module = "com.github.ben-manes.caffeine:caffeine" }
 antlr-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr" }
 antlr-tool = { module = "org.antlr:antlr4", version.ref = "antlr" }
 re2j = { module = "com.google.re2j:re2j", version.ref = "re2j" }
-jobrunr = { module = "org.jobrunr:jobrunr", version.ref = "jobrunr" }
 postgresql-driver = { module = "org.postgresql:postgresql" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter" }
 testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }

@@ -32,7 +32,7 @@ class DefaultUserCommandServiceTest {
     void shouldCreateManagedUserWhenUsernameIsMissing() {
         // Arrange
         UserCommandRepository users = mock(UserCommandRepository.class);
-        when(users.findByUsername(Username.of("alice"))).thenReturn(Optional.empty());
+        when(users.findByUsernameForUpdate(Username.of("alice"))).thenReturn(Optional.empty());
         var service = new DefaultUserCommandService(users);
         ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
 
@@ -76,7 +76,7 @@ class DefaultUserCommandServiceTest {
             UserStatus.ACTIVE,
             "{bcrypt}existing"
         );
-        when(users.findByUsername(Username.of("alice"))).thenReturn(Optional.of(existing));
+        when(users.findByUsernameForUpdate(Username.of("alice"))).thenReturn(Optional.of(existing));
         var service = new DefaultUserCommandService(users);
 
         // Act
@@ -106,7 +106,7 @@ class DefaultUserCommandServiceTest {
         // Arrange
         UserCommandRepository users = mock(UserCommandRepository.class);
         User existing = User.restore(UUID.randomUUID(), "alice", Set.of(), "Alice", "User", UserStatus.ACTIVE, null);
-        when(users.findByUsername(Username.of("alice"))).thenReturn(Optional.of(existing));
+        when(users.findByUsernameForUpdate(Username.of("alice"))).thenReturn(Optional.of(existing));
         var service = new DefaultUserCommandService(users);
 
         // Act
@@ -147,7 +147,7 @@ class DefaultUserCommandServiceTest {
             UserStatus.ACTIVE,
             null
         );
-        when(users.findByUsername(Username.of("alice"))).thenReturn(Optional.of(existing));
+        when(users.findByUsernameForUpdate(Username.of("alice"))).thenReturn(Optional.of(existing));
         var service = new DefaultUserCommandService(users);
 
         // Act

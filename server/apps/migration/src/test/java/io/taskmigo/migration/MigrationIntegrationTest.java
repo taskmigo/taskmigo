@@ -29,6 +29,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import org.flywaydb.core.Flyway;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties.Client;
@@ -306,14 +307,14 @@ class MigrationIntegrationTest {
     }
 
     /**
-     * Verifies that managed User updates are recorded by the durable audit outbox instead of migration change logs.
+     * Verifies that managed User updates append the final audit row synchronously.
      *
      * Given: migration creates a managed User and later reconciles changed profile state for that same User.
-     * Expect: creation emits no update audit work and the later update persists one JobRunr audit payload attributed to the system User.
+     * Expect: creation emits no update audit and the later update commits one audit row attributed to the system User.
      */
     @Test
-    @DisplayName("publishes durable audit work for managed user updates")
-    void shouldPublishDurableAuditWorkWhenMigrationUpdatesManagedUser() {
+    @DisplayName("appends synchronous audit for managed user updates")
+    void shouldAppendAuditWhenMigrationUpdatesManagedUser() {
         // Arrange
         String username = "audit-migration-" + UUID.randomUUID();
         String updatedEmail = username + "@example.com";
@@ -330,7 +331,7 @@ class MigrationIntegrationTest {
         this.migration.install(new InstallationPlan(List.of(initial), List.of(), List.of(), List.of(), Map.of()));
         UUID userId = this.users.findForAuthentication(username).orElseThrow().id();
         UUID systemUserId = this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().id();
-        assertThat(this.auditJobPayloads(userId)).isEmpty();
+        assertThat(this.auditRows(userId)).isEmpty();
 
         var updated = new InstallationPlan.User(
             username,
@@ -347,19 +348,19 @@ class MigrationIntegrationTest {
         this.migration.install(new InstallationPlan(List.of(updated), List.of(), List.of(), List.of(), Map.of()));
 
         // Assert
-        assertThat(this.auditJobPayloads(userId))
+        assertThat(this.auditRows(userId))
             .singleElement()
-            .satisfies(payload ->
-                assertThat(payload).contains(
-                    systemUserId.toString(),
-                    SystemUser.USERNAME,
+            .satisfies(row -> {
+                assertThat(row.get("actor_id")).isEqualTo(systemUserId);
+                assertThat(row.get("actor_username")).isEqualTo(SystemUser.USERNAME);
+                assertThat(Objects.requireNonNull(row.get("changes_json")).toString()).contains(
                     "firstName",
                     "Before",
                     "After",
                     "emails",
                     updatedEmail
-                )
-            );
+                );
+            });
     }
 
     /**
@@ -611,11 +612,10 @@ class MigrationIntegrationTest {
         );
     }
 
-    private List<String> auditJobPayloads(UUID userId) {
-        return this.jdbc.query(
-            "select jobAsJson from jobrunr_jobs where jobAsJson like ?",
-            (resultSet, rowNumber) -> Objects.requireNonNull(resultSet.getString(1)),
-            "%" + userId + "%"
+    private List<Map<String, @Nullable Object>> auditRows(UUID userId) {
+        return this.jdbc.queryForList(
+            "select actor_id, actor_username, changes_json from audit_logs where entity_type = 'user' and entity_id = ?",
+            userId
         );
     }
 

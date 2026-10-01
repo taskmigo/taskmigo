@@ -6,6 +6,7 @@ import java.util.function.Supplier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /// Adapts audit application transaction scopes to Spring transaction management.
@@ -20,6 +21,7 @@ final class SpringAuditTransactionRunner implements AuditTransactionRunner {
         this.reads = new TransactionTemplate(manager);
         this.reads.setReadOnly(true);
         this.writes = new TransactionTemplate(manager);
+        this.writes.setPropagationBehavior(TransactionDefinition.PROPAGATION_MANDATORY);
     }
 
     @Override

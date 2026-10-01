@@ -1,4 +1,4 @@
-/// Publishes immutable audit events for durable Spring Modulith externalization.
+/// Publishes immutable audit mutation data shared with owning modules.
 @NamedInterface("events")
 @NullMarked
 package io.taskmigo.audit.event;

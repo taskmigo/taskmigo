@@ -1,4 +1,4 @@
-/// Publishes the audit append use case consumed by background workers.
+/// Publishes the synchronous audit append use case used inside owning business transactions.
 @NamedInterface("append-input")
 @NullMarked
 package io.taskmigo.audit.application.port.in.append;

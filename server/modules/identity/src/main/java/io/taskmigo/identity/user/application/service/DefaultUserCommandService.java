@@ -48,7 +48,7 @@ public final class DefaultUserCommandService implements UserCommandService {
         @Nullable String lastName
     ) {
         Username normalizedUsername = Username.of(username);
-        User existing = this.users.findByUsername(normalizedUsername).orElse(null);
+        User existing = this.users.findByUsernameForUpdate(normalizedUsername).orElse(null);
         if (existing == null) {
             User created = User.managed(
                 UUID.randomUUID(),
@@ -95,8 +95,18 @@ public final class DefaultUserCommandService implements UserCommandService {
     }
 
     @Override
+    public boolean lock(UUID id) {
+        return this.users.lock(id);
+    }
+
+    @Override
     public Optional<User> findByUsername(@Nullable String username) {
         return this.users.findByUsername(Username.of(username));
+    }
+
+    @Override
+    public Optional<User> findByUsernameForUpdate(@Nullable String username) {
+        return this.users.findByUsernameForUpdate(Username.of(username));
     }
 
     @Override

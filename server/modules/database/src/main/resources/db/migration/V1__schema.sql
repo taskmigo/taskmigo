@@ -193,88 +193,8 @@ CREATE TABLE audit_logs (
     entity_id UUID NOT NULL,
     actor_id UUID NOT NULL,
     actor_username VARCHAR(100) NOT NULL,
-    occurred_at timestamptz NOT NULL,
+    occurred_at timestamptz(3) NOT NULL,
     changes_json TEXT NOT NULL,
     CONSTRAINT uk_audit_logs_source_event_id UNIQUE (source_event_id)
 );
 CREATE INDEX ix_audit_logs_entity_order ON audit_logs (entity_type, occurred_at DESC, id DESC);
-
--- JobRunr 8.6.1 schema is owned by Flyway; runtime schema creation is disabled in every application.
-CREATE TABLE jobrunr_jobs (
-    id CHAR(36) PRIMARY KEY,
-    version INT NOT NULL,
-    jobAsJson TEXT NOT NULL,
-    jobSignature VARCHAR(512) NOT NULL,
-    state VARCHAR(36) NOT NULL,
-    createdAt TIMESTAMP NOT NULL,
-    updatedAt TIMESTAMP NOT NULL,
-    scheduledAt TIMESTAMP,
-    recurringJobId VARCHAR(128)
-);
-CREATE INDEX jobrunr_state_idx ON jobrunr_jobs (state);
-CREATE INDEX jobrunr_job_signature_idx ON jobrunr_jobs (jobSignature);
-CREATE INDEX jobrunr_job_created_at_idx ON jobrunr_jobs (createdAt);
-CREATE INDEX jobrunr_job_scheduled_at_idx ON jobrunr_jobs (scheduledAt);
-CREATE INDEX jobrunr_job_rci_idx ON jobrunr_jobs (recurringJobId);
-CREATE INDEX jobrunr_jobs_state_updated_idx ON jobrunr_jobs (state ASC, updatedAt ASC);
-
-CREATE TABLE jobrunr_recurring_jobs (
-    id CHAR(128) PRIMARY KEY,
-    version INT NOT NULL,
-    jobAsJson TEXT NOT NULL,
-    createdAt BIGINT NOT NULL DEFAULT 0
-);
-CREATE INDEX jobrunr_recurring_job_created_at_idx ON jobrunr_recurring_jobs (createdAt);
-
-CREATE TABLE jobrunr_backgroundjobservers (
-    id CHAR(36) PRIMARY KEY,
-    workerPoolSize INT NOT NULL,
-    pollIntervalInSeconds INT NOT NULL,
-    firstHeartbeat TIMESTAMP(6) NOT NULL,
-    lastHeartbeat TIMESTAMP(6) NOT NULL,
-    running INT NOT NULL,
-    systemTotalMemory BIGINT NOT NULL,
-    systemFreeMemory BIGINT NOT NULL,
-    systemCpuLoad NUMERIC(3, 2) NOT NULL,
-    processMaxMemory BIGINT NOT NULL,
-    processFreeMemory BIGINT NOT NULL,
-    processAllocatedMemory BIGINT NOT NULL,
-    processCpuLoad NUMERIC(3, 2) NOT NULL,
-    deleteSucceededJobsAfter VARCHAR(32),
-    permanentlyDeleteJobsAfter VARCHAR(32),
-    name VARCHAR(128)
-);
-CREATE INDEX jobrunr_bgjobsrvrs_fsthb_idx ON jobrunr_backgroundjobservers (firstHeartbeat);
-CREATE INDEX jobrunr_bgjobsrvrs_lsthb_idx ON jobrunr_backgroundjobservers (lastHeartbeat);
-
-CREATE TABLE jobrunr_metadata (
-    id VARCHAR(156) PRIMARY KEY,
-    name VARCHAR(92) NOT NULL,
-    owner VARCHAR(64) NOT NULL,
-    value TEXT NOT NULL,
-    createdAt TIMESTAMP NOT NULL,
-    updatedAt TIMESTAMP NOT NULL
-);
-INSERT INTO jobrunr_metadata (id, name, owner, value, createdAt, updatedAt)
-VALUES ('succeeded-jobs-counter-cluster', 'succeeded-jobs-counter', 'cluster', '0', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
-
-CREATE VIEW jobrunr_jobs_stats AS
-WITH job_stat_results AS (
-    SELECT state, count(*) AS count
-    FROM jobrunr_jobs
-    GROUP BY state
-)
-SELECT coalesce((SELECT sum(job_stat_results.count) FROM job_stat_results), 0)                            AS total,
-       coalesce((SELECT sum(job_stat_results.count) FROM job_stat_results WHERE state = 'AWAITING'), 0)   AS awaiting,
-       coalesce((SELECT sum(job_stat_results.count) FROM job_stat_results WHERE state = 'SCHEDULED'), 0)  AS scheduled,
-       coalesce((SELECT sum(job_stat_results.count) FROM job_stat_results WHERE state = 'ENQUEUED'), 0)   AS enqueued,
-       coalesce((SELECT sum(job_stat_results.count) FROM job_stat_results WHERE state = 'PROCESSING'), 0) AS processing,
-       coalesce((SELECT sum(job_stat_results.count) FROM job_stat_results WHERE state = 'PROCESSED'), 0)  AS processed,
-       coalesce((SELECT sum(job_stat_results.count) FROM job_stat_results WHERE state = 'FAILED'), 0)     AS failed,
-       coalesce((SELECT sum(job_stat_results.count) FROM job_stat_results WHERE state = 'SUCCEEDED'), 0)  AS succeeded,
-       coalesce((SELECT cast(cast(value AS char(10)) AS decimal(10, 0))
-                 FROM jobrunr_metadata
-                 WHERE id = 'succeeded-jobs-counter-cluster'), 0)                                         AS allTimeSucceeded,
-       coalesce((SELECT sum(job_stat_results.count) FROM job_stat_results WHERE state = 'DELETED'), 0)    AS deleted,
-       (SELECT count(*) FROM jobrunr_backgroundjobservers)                                                AS nbrOfBackgroundJobServers,
-       (SELECT count(*) FROM jobrunr_recurring_jobs)                                                      AS nbrOfRecurringJobs;

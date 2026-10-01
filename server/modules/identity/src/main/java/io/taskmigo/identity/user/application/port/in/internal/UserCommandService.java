@@ -24,7 +24,11 @@ public interface UserCommandService {
         @Nullable String lastName
     );
 
+    boolean lock(UUID id);
+
     Optional<User> findByUsername(@Nullable String username);
+
+    Optional<User> findByUsernameForUpdate(@Nullable String username);
 
     void delete(User user);
 }

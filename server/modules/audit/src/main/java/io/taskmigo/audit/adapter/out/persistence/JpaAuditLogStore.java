@@ -7,29 +7,23 @@ import io.taskmigo.audit.model.AuditChange;
 import io.taskmigo.audit.model.AuditLog;
 import io.taskmigo.foundation.OffsetPage;
 import java.util.Arrays;
-import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
-import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 /// Persists immutable audit records and their field-level changes through JPA.
 @Repository
 @ConditionalOnProperty(prefix = "taskmigo.audit", name = "enabled", havingValue = "true")
 public class JpaAuditLogStore implements AuditLogStore {
 
+    private static final JsonMapper JSON = JsonMapper.builder().build();
+
     private final JpaAuditLogRepository logs;
-    private final ObjectMapper mapper;
 
-    JpaAuditLogStore(JpaAuditLogRepository logs, ObjectMapper mapper) {
+    JpaAuditLogStore(JpaAuditLogRepository logs) {
         this.logs = logs;
-        this.mapper = mapper;
-    }
-
-    @Override
-    public boolean existsBySourceEventId(UUID sourceEventId) {
-        return this.logs.existsBySourceEventId(sourceEventId);
     }
 
     @Override
@@ -73,7 +67,7 @@ public class JpaAuditLogStore implements AuditLogStore {
 
     private String writeChanges(AuditChange[] changes) {
         try {
-            return this.mapper.writeValueAsString(changes);
+            return JSON.writeValueAsString(changes);
         } catch (Exception exception) {
             throw new IllegalStateException("Failed to serialize audit changes", exception);
         }
@@ -81,7 +75,7 @@ public class JpaAuditLogStore implements AuditLogStore {
 
     private AuditChange[] readChanges(String changesJson) {
         try {
-            return this.mapper.readValue(changesJson, AuditChange[].class);
+            return JSON.readValue(changesJson, AuditChange[].class);
         } catch (Exception exception) {
             throw new IllegalStateException("Failed to deserialize audit changes", exception);
         }

@@ -1,8 +1,5 @@
 ---
 spring:
-  autoconfigure:
-    exclude:
-      - org.springframework.modulith.events.config.EventPublicationAutoConfiguration
   config:
     import: classpath:application-database.yaml
   main:
@@ -10,16 +7,6 @@ spring:
   flyway:
     enabled: true
     validate-migration-naming: true
-  modulith:
-    events:
-      externalization:
-        mode: outbox
-
-jobrunr:
-  database:
-    skip-create: true
-  background-job-server:
-    enabled: false
 
 taskmigo:
   audit:

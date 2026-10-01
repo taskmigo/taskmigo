@@ -7,7 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 interface JpaAuditLogRepository extends JpaRepository<AuditLogEntity, UUID> {
 
-    boolean existsBySourceEventId(UUID sourceEventId);
-
     Page<AuditLogEntity> findAllByEntityType(String entityType, Pageable pageable);
 }

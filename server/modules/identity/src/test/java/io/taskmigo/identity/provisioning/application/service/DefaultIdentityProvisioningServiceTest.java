@@ -20,7 +20,7 @@ import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
 import io.taskmigo.identity.user.application.port.in.internal.UserMutationResult;
-import io.taskmigo.identity.user.application.port.out.UserAuditPublisher;
+import io.taskmigo.identity.user.application.port.out.UserAuditAppender;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.UserRuleViolation;
 import io.taskmigo.identity.user.domain.UserStatus;
@@ -63,7 +63,7 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        UserAuditPublisher audits = mock(UserAuditPublisher.class);
+        UserAuditAppender audits = mock(UserAuditAppender.class);
         var service = service(users, grantAssignments, grantQueries, groups, audits);
 
         // Act
@@ -82,14 +82,14 @@ class DefaultIdentityProvisioningServiceTest {
         verify(grantAssignments).setRoles(IdentitySubjects.user(id), Set.of(roleId));
         verify(grantAssignments).setStatements(IdentitySubjects.user(id), Set.of());
         verify(groups).setGroupsForUser(id, Set.of(groupId));
-        verify(audits, never()).publish(any());
+        verify(audits, never()).append(any());
     }
 
     /**
      * Verifies that one managed reconciliation emits one complete audit event for every changed User field.
      *
      * Given: canonical profile/credential changes plus Role, Statement, and Group assignment changes.
-     * Expect: provisioning writes desired state and publishes one event containing all field-level diffs.
+     * Expect: provisioning writes desired state and appends one event containing all field-level diffs.
      */
     @Test
     @DisplayName("audits all changes from one managed user reconciliation")
@@ -119,7 +119,7 @@ class DefaultIdentityProvisioningServiceTest {
         when(grantQueries.statementIds(IdentitySubjects.user(id))).thenReturn(Set.of(oldStatement));
         MembershipService groups = mock(MembershipService.class);
         when(groups.groupsForUser(id)).thenReturn(List.of(oldGroup));
-        UserAuditPublisher audits = mock(UserAuditPublisher.class);
+        UserAuditAppender audits = mock(UserAuditAppender.class);
         var service = service(users, grantAssignments, grantQueries, groups, audits);
         ArgumentCaptor<AuditEvent> event = ArgumentCaptor.forClass(AuditEvent.class);
 
@@ -139,7 +139,7 @@ class DefaultIdentityProvisioningServiceTest {
         verify(grantAssignments).setRoles(IdentitySubjects.user(id), Set.of(newRole));
         verify(grantAssignments).setStatements(IdentitySubjects.user(id), Set.of());
         verify(groups).setGroupsForUser(id, Set.of(newGroup));
-        verify(audits).publish(event.capture());
+        verify(audits).append(event.capture());
         assertThat(event.getValue().entityType()).isEqualTo("user");
         assertThat(event.getValue().entityId()).isEqualTo(id);
         assertThat(event.getValue().actor().id()).isEqualTo(system.id());
@@ -159,7 +159,7 @@ class DefaultIdentityProvisioningServiceTest {
      * Verifies that an identical managed User and identical external assignments remain unchanged.
      *
      * Given: canonical User state and all grants/memberships already equal desired state.
-     * Expect: provisioning reports UNCHANGED and publishes no audit event.
+     * Expect: provisioning reports UNCHANGED and appends no audit event.
      */
     @Test
     @DisplayName("reports unchanged when managed user and assignments already match")
@@ -178,7 +178,7 @@ class DefaultIdentityProvisioningServiceTest {
         when(grantQueries.statementIds(IdentitySubjects.user(id))).thenReturn(Set.of());
         MembershipService groups = mock(MembershipService.class);
         when(groups.groupsForUser(id)).thenReturn(List.of());
-        UserAuditPublisher audits = mock(UserAuditPublisher.class);
+        UserAuditAppender audits = mock(UserAuditAppender.class);
         var service = service(users, grantAssignments, grantQueries, groups, audits);
 
         // Act
@@ -197,7 +197,7 @@ class DefaultIdentityProvisioningServiceTest {
         verify(grantAssignments, never()).setRoles(any(), any());
         verify(grantAssignments, never()).setStatements(any(), any());
         verify(groups, never()).setGroupsForUser(any(), any());
-        verify(audits, never()).publish(any());
+        verify(audits, never()).append(any());
     }
 
     /**
@@ -212,11 +212,11 @@ class DefaultIdentityProvisioningServiceTest {
         // Arrange
         UserCommandService users = mock(UserCommandService.class);
         User existing = user("alice");
-        when(users.findByUsername("alice")).thenReturn(Optional.of(existing));
+        when(users.findByUsernameForUpdate("alice")).thenReturn(Optional.of(existing));
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditPublisher.class));
+        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditAppender.class));
 
         // Act
         boolean removed = service.deleteUser("alice");
@@ -240,11 +240,11 @@ class DefaultIdentityProvisioningServiceTest {
     void shouldNotDeleteManagedUserWhenUsernameIsMissing() {
         // Arrange
         UserCommandService users = mock(UserCommandService.class);
-        when(users.findByUsername("alice")).thenReturn(Optional.empty());
+        when(users.findByUsernameForUpdate("alice")).thenReturn(Optional.empty());
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditPublisher.class));
+        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditAppender.class));
 
         // Act
         boolean removed = service.deleteUser("alice");
@@ -269,11 +269,11 @@ class DefaultIdentityProvisioningServiceTest {
         // Arrange
         UserCommandService users = mock(UserCommandService.class);
         User system = user("system");
-        when(users.findByUsername("system")).thenReturn(Optional.of(system));
+        when(users.findByUsernameForUpdate("system")).thenReturn(Optional.of(system));
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditPublisher.class));
+        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditAppender.class));
 
         // Act + Assert
         assertThatThrownBy(() -> service.deleteUser("system"))
@@ -303,7 +303,7 @@ class DefaultIdentityProvisioningServiceTest {
             mock(SubjectGrantAssignmentService.class),
             mock(SubjectGrantQueryService.class),
             mock(MembershipService.class),
-            mock(UserAuditPublisher.class)
+            mock(UserAuditAppender.class)
         );
 
         // Act + Assert
@@ -317,7 +317,7 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantAssignmentService grantAssignments,
         SubjectGrantQueryService grantQueries,
         MembershipService groups,
-        UserAuditPublisher audits
+        UserAuditAppender audits
     ) {
         return new DefaultIdentityProvisioningService(
             users,

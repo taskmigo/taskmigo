@@ -15,7 +15,7 @@ import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserException;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
 import io.taskmigo.identity.user.application.port.in.internal.UserMutationResult;
-import io.taskmigo.identity.user.application.port.out.UserAuditPublisher;
+import io.taskmigo.identity.user.application.port.out.UserAuditAppender;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.UserRuleViolation;
 import java.time.Clock;
@@ -35,7 +35,7 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
     private final SubjectGrantAssignmentService grantAssignments;
     private final SubjectGrantQueryService grantQueries;
     private final MembershipService memberships;
-    private final UserAuditPublisher audits;
+    private final UserAuditAppender audits;
     private final TransactionRunner transactions;
     private final Clock clock;
 
@@ -44,7 +44,7 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
         SubjectGrantAssignmentService grantAssignments,
         SubjectGrantQueryService grantQueries,
         MembershipService memberships,
-        UserAuditPublisher audits,
+        UserAuditAppender audits,
         TransactionRunner transactions,
         Clock clock
     ) {
@@ -138,7 +138,7 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
             return new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.UNCHANGED);
         }
 
-        this.audits.publish(
+        this.audits.append(
             new AuditEvent(UUID.randomUUID(), ENTITY_TYPE, id, this.systemActor(), this.clock.instant(), changes)
         );
         return new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.UPDATED);
@@ -156,7 +156,7 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
     private boolean deleteUserInTransaction(String username) {
         User existing;
         try {
-            existing = this.users.findByUsername(username).orElse(null);
+            existing = this.users.findByUsernameForUpdate(username).orElse(null);
         } catch (UserRuleViolation exception) {
             throw provisioningFailure(exception);
         }

@@ -5,10 +5,11 @@ import io.taskmigo.identity.user.application.port.out.UserCommandRepository;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.Username;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
-/// Adapts canonical User aggregate persistence to JPA.
+/// Adapts canonical User aggregate persistence and per-User mutation locking to JPA.
 @Repository
 public class JpaUserCommandRepository implements UserCommandRepository {
 
@@ -19,8 +20,18 @@ public class JpaUserCommandRepository implements UserCommandRepository {
     }
 
     @Override
+    public boolean lock(UUID id) {
+        return this.users.findFirstById(id).isPresent();
+    }
+
+    @Override
     public Optional<User> findByUsername(Username username) {
         return this.users.findByUsername(username.value()).map(UserEntity::toDomain);
+    }
+
+    @Override
+    public Optional<User> findByUsernameForUpdate(Username username) {
+        return this.users.findFirstByUsername(username.value()).map(UserEntity::toDomain);
     }
 
     @Override

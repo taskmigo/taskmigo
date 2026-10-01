@@ -2,10 +2,10 @@ package io.taskmigo.audit.application.port.in.append;
 
 import io.taskmigo.audit.event.AuditEvent;
 
-/// Appends an externalized audit event idempotently.
+/// Appends an audit record synchronously inside the caller-owned business transaction.
 public interface AuditAppendService {
-    /// Persists the final audit record, treating an already-appended source event as success.
+    /// Persists the final immutable audit record before the owning mutation transaction can commit.
     ///
-    /// @param event durable mutation event to append
+    /// @param event mutation audit data to append
     void append(AuditEvent event);
 }

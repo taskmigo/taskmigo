@@ -1,21 +1,4 @@
 ---
 spring:
-  # The worker consumes the JobRunr outbox and does not use the classic
-  # EventPublicationRegistry lifecycle.
-  autoconfigure:
-    exclude:
-      - org.springframework.modulith.events.config.EventPublicationAutoConfiguration
   main:
     web-application-type: none
-  config:
-    import: classpath:application-database.yaml
-
-jobrunr:
-  database:
-    skip-create: true
-  background-job-server:
-    enabled: true
-
-taskmigo:
-  audit:
-    enabled: true
