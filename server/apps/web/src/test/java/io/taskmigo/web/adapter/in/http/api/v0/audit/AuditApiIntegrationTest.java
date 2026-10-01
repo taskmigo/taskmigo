@@ -25,16 +25,19 @@ class AuditApiIntegrationTest extends ApiIntegrationTestSupport {
     /**
      * Verifies that audit pagination is applied after deterministic newest-first ordering.
      *
-     * Given: three User audit rows with distinct operation timestamps, all newer than ordinary test data.
-     * Expect: page one with pageSize two returns the newest and middle rows in that order and omits the oldest row.
+     * Given: three User audit rows where the newest two share the same operation timestamp.
+     * Expect: page one with pageSize two uses id DESC as a deterministic tie-breaker and omits the oldest row.
      */
     @Test
     @DisplayName("returns user audit logs newest first before offset pagination")
     void shouldReturnNewestUserAuditLogsWhenPageIsRequested() {
         // Arrange
         UUID oldest = this.insertAudit(Instant.parse("2099-01-01T00:00:00Z"));
-        UUID middle = this.insertAudit(Instant.parse("2099-01-02T00:00:00Z"));
-        UUID newest = this.insertAudit(Instant.parse("2099-01-03T00:00:00Z"));
+        Instant tiedTimestamp = Instant.parse("2099-01-03T00:00:00Z");
+        UUID middle = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        UUID newest = UUID.fromString("00000000-0000-0000-0000-000000000002");
+        this.insertAudit(middle, tiedTimestamp);
+        this.insertAudit(newest, tiedTimestamp);
 
         // Act
         String response = this.api().get("/api/v0/audit/user/logs?page=1&pageSize=2");
@@ -90,6 +93,11 @@ class AuditApiIntegrationTest extends ApiIntegrationTestSupport {
 
     private UUID insertAudit(Instant occurredAt) {
         UUID id = UUID.randomUUID();
+        this.insertAudit(id, occurredAt);
+        return id;
+    }
+
+    private void insertAudit(UUID id, Instant occurredAt) {
         this.jdbc.update(
             """
             insert into audit_logs (
@@ -101,6 +109,5 @@ class AuditApiIntegrationTest extends ApiIntegrationTestSupport {
             UUID.randomUUID(),
             Timestamp.from(occurredAt)
         );
-        return id;
     }
 }
