@@ -22,6 +22,7 @@ dependencies {
 
     implementation(project(":modules:foundation:spring"))
     implementation(project(":modules:query"))
+    implementation(project(":modules:audit"))
     implementation(project(":modules:access-control"))
     // Provides shared datasource/JPA configuration; apps/migration owns migration execution.
     implementation(project(":modules:database"))

@@ -1,11 +1,9 @@
 package io.taskmigo.migration.application.service;
 
-import io.taskmigo.migration.application.model.InstallationChange;
 import io.taskmigo.migration.application.model.InstallationPlan;
 import io.taskmigo.migration.application.model.ManagedOAuthClient;
 import io.taskmigo.migration.infrastructure.oauth.ManagedClientRepository;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
@@ -31,18 +29,11 @@ final class InternalClientReconciler {
         });
     }
 
-    void reconcile(Map<String, InstallationPlan.OAuthClient> configuredClients, List<InstallationChange> changes) {
-        configuredClients
-            .entrySet()
-            .stream()
-            .sorted(Map.Entry.comparingByKey())
-            .forEach(configuredClient -> this.reconcile(configuredClient, changes));
+    void reconcile(Map<String, InstallationPlan.OAuthClient> configuredClients) {
+        configuredClients.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(this::reconcile);
     }
 
-    private void reconcile(
-        Map.Entry<String, InstallationPlan.OAuthClient> configuredClient,
-        List<InstallationChange> changes
-    ) {
+    private void reconcile(Map.Entry<String, InstallationPlan.OAuthClient> configuredClient) {
         InstallationPlan.OAuthClient definition = configuredClient.getValue();
         var existing = this.clients.findByClientId(definition.clientId());
 
@@ -54,14 +45,8 @@ final class InternalClientReconciler {
         String id = existing.isPresent() ? existing.orElseThrow().id() : configuredClient.getKey();
         ManagedOAuthClient desired = ManagedOAuthClient.from(id, encodedSecret, definition);
 
-        InstallationChange.Action action = existing.isEmpty()
-            ? InstallationChange.Action.ADDED
-            : this.clients.matches(desired)
-              ? InstallationChange.Action.UNCHANGED
-              : InstallationChange.Action.UPDATED;
-        if (action != InstallationChange.Action.UNCHANGED) {
+        if (existing.isEmpty() || !this.clients.matches(desired)) {
             this.clients.save(desired);
-            changes.add(new InstallationChange("oauth-client", definition.clientId(), action));
         }
     }
 

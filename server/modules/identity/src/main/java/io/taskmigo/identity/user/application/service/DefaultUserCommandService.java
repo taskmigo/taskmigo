@@ -1,11 +1,15 @@
 package io.taskmigo.identity.user.application.service;
 
+import io.taskmigo.audit.model.AuditChange;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
 import io.taskmigo.identity.user.application.port.in.internal.UserMutationResult;
 import io.taskmigo.identity.user.application.port.out.UserCommandRepository;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.Username;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -44,7 +48,7 @@ public final class DefaultUserCommandService implements UserCommandService {
         @Nullable String lastName
     ) {
         Username normalizedUsername = Username.of(username);
-        User existing = this.users.findByUsername(normalizedUsername).orElse(null);
+        User existing = this.users.findByUsernameForUpdate(normalizedUsername).orElse(null);
         if (existing == null) {
             User created = User.managed(
                 UUID.randomUUID(),
@@ -58,13 +62,41 @@ public final class DefaultUserCommandService implements UserCommandService {
             return new UserMutationResult(created.id(), true, true);
         }
 
+        var beforeProfile = existing.profile();
+        String beforePasswordHash = existing.credential().passwordHash();
+
         boolean profileChanged = existing.reconcileProfile(emails, firstName, lastName);
         boolean credentialChanged = existing.initializeCredential(initialPasswordHash);
         boolean changed = profileChanged || credentialChanged;
         if (changed) {
             this.users.save(existing);
         }
-        return new UserMutationResult(existing.id(), false, changed);
+
+        List<AuditChange> changes = new ArrayList<>();
+        var afterProfile = existing.profile();
+        if (!beforeProfile.emails().equals(afterProfile.emails())) {
+            changes.add(
+                UserAuditChanges.visible("emails", ordered(beforeProfile.emails()), ordered(afterProfile.emails()))
+            );
+        }
+        if (!beforeProfile.firstName().equals(afterProfile.firstName())) {
+            changes.add(UserAuditChanges.visible("firstName", beforeProfile.firstName(), afterProfile.firstName()));
+        }
+        if (!beforeProfile.lastName().equals(afterProfile.lastName())) {
+            changes.add(UserAuditChanges.visible("lastName", beforeProfile.lastName(), afterProfile.lastName()));
+        }
+
+        String afterPasswordHash = existing.credential().passwordHash();
+        if (!Objects.equals(beforePasswordHash, afterPasswordHash)) {
+            changes.add(UserAuditChanges.visible("passwordHash", beforePasswordHash, afterPasswordHash));
+        }
+
+        return new UserMutationResult(existing.id(), false, changed, changes);
+    }
+
+    @Override
+    public boolean lock(UUID id) {
+        return this.users.lock(id);
     }
 
     @Override
@@ -73,7 +105,16 @@ public final class DefaultUserCommandService implements UserCommandService {
     }
 
     @Override
+    public Optional<User> findByUsernameForUpdate(@Nullable String username) {
+        return this.users.findByUsernameForUpdate(Username.of(username));
+    }
+
+    @Override
     public void delete(User user) {
         this.users.delete(user);
+    }
+
+    private static List<String> ordered(Collection<String> values) {
+        return values.stream().sorted().toList();
     }
 }

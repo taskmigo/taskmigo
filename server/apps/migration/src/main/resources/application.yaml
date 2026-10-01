@@ -8,6 +8,10 @@ spring:
     enabled: true
     validate-migration-naming: true
 
+taskmigo:
+  audit:
+    enabled: true
+
 logging:
   structured:
     format:

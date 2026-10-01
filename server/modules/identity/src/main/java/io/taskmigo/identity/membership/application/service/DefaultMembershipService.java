@@ -4,7 +4,8 @@ import io.taskmigo.identity.application.port.out.TransactionRunner;
 import io.taskmigo.identity.group.application.port.in.api.GroupService;
 import io.taskmigo.identity.membership.application.port.in.api.MembershipService;
 import io.taskmigo.identity.membership.application.port.out.MembershipRepository;
-import io.taskmigo.identity.user.application.port.in.api.UserService;
+import io.taskmigo.identity.user.UserException;
+import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -15,13 +16,13 @@ public final class DefaultMembershipService implements MembershipService {
 
     private final MembershipRepository memberships;
     private final GroupService groups;
-    private final UserService users;
+    private final UserCommandService users;
     private final TransactionRunner transactions;
 
     public DefaultMembershipService(
         MembershipRepository memberships,
         GroupService groups,
-        UserService users,
+        UserCommandService users,
         TransactionRunner transactions
     ) {
         this.memberships = memberships;
@@ -34,7 +35,7 @@ public final class DefaultMembershipService implements MembershipService {
     public void addMember(UUID groupId, UUID userId) {
         this.transactions.write(() -> {
             this.groups.requireGroups(Set.of(groupId));
-            this.users.require(userId);
+            this.requireLocked(userId);
             this.memberships.add(groupId, userId);
         });
     }
@@ -42,9 +43,9 @@ public final class DefaultMembershipService implements MembershipService {
     @Override
     public void setGroupsForUser(UUID userId, Collection<UUID> groupIds) {
         this.transactions.write(() -> {
-            this.users.require(userId);
             Set<UUID> requested = Set.copyOf(groupIds);
             this.groups.requireGroups(requested);
+            this.requireLocked(userId);
             Set<UUID> current = Set.copyOf(this.memberships.groupsForUser(userId));
             requested
                 .stream()
@@ -60,5 +61,11 @@ public final class DefaultMembershipService implements MembershipService {
     @Override
     public List<UUID> groupsForUser(UUID userId) {
         return this.transactions.read(() -> this.memberships.groupsForUser(userId));
+    }
+
+    private void requireLocked(UUID userId) {
+        if (!this.users.lock(userId)) {
+            throw new UserException(UserException.Type.NOT_FOUND, "User not found");
+        }
     }
 }

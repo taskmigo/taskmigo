@@ -30,6 +30,11 @@ public abstract class ApiIntegrationTestSupport {
 
     private @Nullable TaskmigoApiClient api;
 
+    /// Returns the random HTTP port of the current integration-test server.
+    protected final int port() {
+        return this.port;
+    }
+
     /// Returns the authenticated client for the current integration-test server.
     protected final TaskmigoApiClient api() {
         TaskmigoApiClient existing = this.api;

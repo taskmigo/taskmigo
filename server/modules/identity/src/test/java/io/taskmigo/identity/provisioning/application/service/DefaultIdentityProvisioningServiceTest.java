@@ -8,6 +8,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.taskmigo.audit.event.AuditEvent;
+import io.taskmigo.audit.model.AuditChange;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantQueryService;
 import io.taskmigo.identity.application.port.out.TransactionRunner;
@@ -15,11 +17,16 @@ import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.membership.application.port.in.api.MembershipService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningException;
 import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
+import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
 import io.taskmigo.identity.user.application.port.in.internal.UserMutationResult;
+import io.taskmigo.identity.user.application.port.out.UserAuditAppender;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.UserRuleViolation;
 import io.taskmigo.identity.user.domain.UserStatus;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -28,15 +35,18 @@ import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 @NullMarked
 class DefaultIdentityProvisioningServiceTest {
 
+    private static final Instant NOW = Instant.parse("2026-09-30T00:00:00Z");
+
     /**
-     * Verifies provisioning composes a newly created User with managed grants and memberships.
+     * Verifies that provisioning composes a newly created User with managed grants and memberships.
      *
      * Given: the shared User command path reports a created aggregate.
-     * Expect: Roles, direct Statements, and Groups are reconciled and the result reports ADDED.
+     * Expect: Roles, direct Statements, and Groups are reconciled without emitting an update audit event.
      */
     @Test
     @DisplayName("reports added when the shared user command path creates a user")
@@ -46,19 +56,15 @@ class DefaultIdentityProvisioningServiceTest {
         UUID roleId = UUID.randomUUID();
         UUID groupId = UUID.randomUUID();
         UserCommandService users = mock(UserCommandService.class);
+        when(users.findByUsername("alice")).thenReturn(Optional.empty());
         when(users.reconcileManaged("alice", "{bcrypt}hash", List.of("Alice@EXAMPLE.COM"), "Alice", "User")).thenReturn(
             new UserMutationResult(id, true, true)
         );
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = new DefaultIdentityProvisioningService(
-            users,
-            grantAssignments,
-            grantQueries,
-            groups,
-            directTransactions()
-        );
+        UserAuditAppender audits = mock(UserAuditAppender.class);
+        var service = service(users, grantAssignments, grantQueries, groups, audits);
 
         // Act
         IdentityProvisioningResult<UUID> result = service.reconcileUser(
@@ -76,68 +82,93 @@ class DefaultIdentityProvisioningServiceTest {
         verify(grantAssignments).setRoles(IdentitySubjects.user(id), Set.of(roleId));
         verify(grantAssignments).setStatements(IdentitySubjects.user(id), Set.of());
         verify(groups).setGroupsForUser(id, Set.of(groupId));
+        verify(audits, never()).append(any());
     }
 
     /**
-     * Verifies canonical User changes contribute to managed reconciliation status without duplicate normalization.
+     * Verifies that one managed reconciliation emits one complete audit event for every changed User field.
      *
-     * Given: the shared User command path reports an existing changed aggregate and external assignments already match.
-     * Expect: provisioning reports UPDATED without performing grant or membership writes.
+     * Given: canonical profile/credential changes plus Role, Statement, and Group assignment changes.
+     * Expect: provisioning writes desired state and appends one event containing all field-level diffs.
      */
     @Test
-    @DisplayName("reports updated when canonical user state changes")
-    void shouldReportUpdatedWhenCanonicalUserMutationChangesExistingUser() {
+    @DisplayName("audits all changes from one managed user reconciliation")
+    void shouldPublishOneAuditEventWhenManagedUserChangesAcrossBoundaries() {
         // Arrange
-        UUID id = UUID.randomUUID();
+        User existing = user("alice");
+        User system = user("system");
+        UUID id = existing.id();
+        UUID oldRole = UUID.randomUUID();
+        UUID newRole = UUID.randomUUID();
+        UUID oldStatement = UUID.randomUUID();
+        UUID oldGroup = UUID.randomUUID();
+        UUID newGroup = UUID.randomUUID();
         UserCommandService users = mock(UserCommandService.class);
-        when(users.reconcileManaged(" alice ", null, List.of("ALICE@example.com"), " Alice ", " User ")).thenReturn(
-            new UserMutationResult(id, false, true)
+        when(users.findByUsername(SystemUser.USERNAME)).thenReturn(Optional.of(system));
+        when(users.reconcileManaged("alice", "{bcrypt}initial", List.of("new@example.com"), "New", "User")).thenReturn(
+            new UserMutationResult(
+                id,
+                false,
+                true,
+                List.of(AuditChange.visible("firstName", "Test", "New"), AuditChange.sensitive("passwordHash"))
+            )
         );
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
-        when(grantQueries.roleIds(IdentitySubjects.user(id))).thenReturn(Set.of());
-        when(grantQueries.statementIds(IdentitySubjects.user(id))).thenReturn(Set.of());
+        when(grantQueries.roleIds(IdentitySubjects.user(id))).thenReturn(Set.of(oldRole));
+        when(grantQueries.statementIds(IdentitySubjects.user(id))).thenReturn(Set.of(oldStatement));
         MembershipService groups = mock(MembershipService.class);
-        when(groups.groupsForUser(id)).thenReturn(List.of());
-        var service = new DefaultIdentityProvisioningService(
-            users,
-            grantAssignments,
-            grantQueries,
-            groups,
-            directTransactions()
-        );
+        when(groups.groupsForUser(id)).thenReturn(List.of(oldGroup));
+        UserAuditAppender audits = mock(UserAuditAppender.class);
+        var service = service(users, grantAssignments, grantQueries, groups, audits);
+        ArgumentCaptor<AuditEvent> event = ArgumentCaptor.forClass(AuditEvent.class);
 
         // Act
         IdentityProvisioningResult<UUID> result = service.reconcileUser(
-            " alice ",
-            null,
-            List.of("ALICE@example.com"),
-            " Alice ",
-            " User ",
-            Set.of(),
-            Set.of()
+            "alice",
+            "{bcrypt}initial",
+            List.of("new@example.com"),
+            "New",
+            "User",
+            Set.of(newRole),
+            Set.of(newGroup)
         );
 
         // Assert
         assertThat(result).isEqualTo(new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.UPDATED));
-        verify(users).reconcileManaged(" alice ", null, List.of("ALICE@example.com"), " Alice ", " User ");
-        verify(grantAssignments, never()).setRoles(any(), any());
-        verify(grantAssignments, never()).setStatements(any(), any());
-        verify(groups, never()).setGroupsForUser(any(), any());
+        verify(grantAssignments).setRoles(IdentitySubjects.user(id), Set.of(newRole));
+        verify(grantAssignments).setStatements(IdentitySubjects.user(id), Set.of());
+        verify(groups).setGroupsForUser(id, Set.of(newGroup));
+        verify(audits).append(event.capture());
+        assertThat(event.getValue().entityType()).isEqualTo("user");
+        assertThat(event.getValue().entityId()).isEqualTo(id);
+        assertThat(event.getValue().actor().id()).isEqualTo(system.id());
+        assertThat(event.getValue().actor().username()).isEqualTo(SystemUser.USERNAME);
+        assertThat(event.getValue().occurredAt()).isEqualTo(NOW);
+        assertThat(event.getValue().changes())
+            .extracting(AuditChange::field)
+            .containsExactly("firstName", "passwordHash", "roleIds", "statementIds", "groupIds");
+        assertThat(event.getValue().changes())
+            .filteredOn(AuditChange::sensitive)
+            .singleElement()
+            .extracting(AuditChange::field)
+            .isEqualTo("passwordHash");
     }
 
     /**
-     * Verifies an identical managed User and identical external assignments remain unchanged.
+     * Verifies that an identical managed User and identical external assignments remain unchanged.
      *
      * Given: canonical User state and all grants/memberships already equal desired state.
-     * Expect: provisioning reports UNCHANGED and performs no mutation.
+     * Expect: provisioning reports UNCHANGED and appends no audit event.
      */
     @Test
     @DisplayName("reports unchanged when managed user and assignments already match")
     void shouldReportUnchangedWhenManagedUserAlreadyMatches() {
         // Arrange
-        UUID id = UUID.randomUUID();
+        User existing = user("alice");
+        UUID id = existing.id();
         UserCommandService users = mock(UserCommandService.class);
+        when(users.findByUsername("alice")).thenReturn(Optional.of(existing));
         when(
             users.reconcileManaged("alice", "{bcrypt}different", List.of("alice@example.com"), "Alice", "User")
         ).thenReturn(new UserMutationResult(id, false, false));
@@ -147,13 +178,8 @@ class DefaultIdentityProvisioningServiceTest {
         when(grantQueries.statementIds(IdentitySubjects.user(id))).thenReturn(Set.of());
         MembershipService groups = mock(MembershipService.class);
         when(groups.groupsForUser(id)).thenReturn(List.of());
-        var service = new DefaultIdentityProvisioningService(
-            users,
-            grantAssignments,
-            grantQueries,
-            groups,
-            directTransactions()
-        );
+        UserAuditAppender audits = mock(UserAuditAppender.class);
+        var service = service(users, grantAssignments, grantQueries, groups, audits);
 
         // Act
         IdentityProvisioningResult<UUID> result = service.reconcileUser(
@@ -171,10 +197,11 @@ class DefaultIdentityProvisioningServiceTest {
         verify(grantAssignments, never()).setRoles(any(), any());
         verify(grantAssignments, never()).setStatements(any(), any());
         verify(groups, never()).setGroupsForUser(any(), any());
+        verify(audits, never()).append(any());
     }
 
     /**
-     * Verifies deletion clears external state before deleting the canonical User aggregate.
+     * Verifies that deletion clears external state before deleting the canonical User aggregate.
      *
      * Given: a non-system managed User resolved by the shared User command path.
      * Expect: grants and memberships are cleared, then the aggregate is deleted and removal is reported.
@@ -185,17 +212,11 @@ class DefaultIdentityProvisioningServiceTest {
         // Arrange
         UserCommandService users = mock(UserCommandService.class);
         User existing = user("alice");
-        when(users.findByUsername("alice")).thenReturn(Optional.of(existing));
+        when(users.findByUsernameForUpdate("alice")).thenReturn(Optional.of(existing));
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = new DefaultIdentityProvisioningService(
-            users,
-            grantAssignments,
-            grantQueries,
-            groups,
-            directTransactions()
-        );
+        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditAppender.class));
 
         // Act
         boolean removed = service.deleteUser("alice");
@@ -209,7 +230,7 @@ class DefaultIdentityProvisioningServiceTest {
     }
 
     /**
-     * Verifies deleting an absent managed User is idempotent.
+     * Verifies that deleting an absent managed User is idempotent.
      *
      * Given: the shared User command path cannot resolve the username.
      * Expect: deletion returns false and no external state is mutated.
@@ -219,17 +240,11 @@ class DefaultIdentityProvisioningServiceTest {
     void shouldNotDeleteManagedUserWhenUsernameIsMissing() {
         // Arrange
         UserCommandService users = mock(UserCommandService.class);
-        when(users.findByUsername("alice")).thenReturn(Optional.empty());
+        when(users.findByUsernameForUpdate("alice")).thenReturn(Optional.empty());
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = new DefaultIdentityProvisioningService(
-            users,
-            grantAssignments,
-            grantQueries,
-            groups,
-            directTransactions()
-        );
+        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditAppender.class));
 
         // Act
         boolean removed = service.deleteUser("alice");
@@ -243,7 +258,7 @@ class DefaultIdentityProvisioningServiceTest {
     }
 
     /**
-     * Verifies the domain-owned system deletion rule is translated at the provisioning boundary.
+     * Verifies that the domain-owned system deletion rule is translated at the provisioning boundary.
      *
      * Given: the shared User command path resolves the system User.
      * Expect: provisioning raises its typed failure and performs no delete or cleanup.
@@ -254,17 +269,11 @@ class DefaultIdentityProvisioningServiceTest {
         // Arrange
         UserCommandService users = mock(UserCommandService.class);
         User system = user("system");
-        when(users.findByUsername("system")).thenReturn(Optional.of(system));
+        when(users.findByUsernameForUpdate("system")).thenReturn(Optional.of(system));
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = new DefaultIdentityProvisioningService(
-            users,
-            grantAssignments,
-            grantQueries,
-            groups,
-            directTransactions()
-        );
+        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditAppender.class));
 
         // Act + Assert
         assertThatThrownBy(() -> service.deleteUser("system"))
@@ -277,7 +286,7 @@ class DefaultIdentityProvisioningServiceTest {
     }
 
     /**
-     * Verifies the domain-owned system initial-password rule is translated at the provisioning boundary.
+     * Verifies that the domain-owned system initial-password rule is translated at the provisioning boundary.
      *
      * Given: managed creation reports the missing-system-credential rule.
      * Expect: provisioning raises its typed failure.
@@ -287,19 +296,38 @@ class DefaultIdentityProvisioningServiceTest {
     void shouldTranslateMissingSystemCredentialWhenManagedUserIsCreated() {
         // Arrange
         UserCommandService users = mock(UserCommandService.class);
+        when(users.findByUsername("system")).thenReturn(Optional.empty());
         when(users.reconcileManaged("system", null, null, "System", "User")).thenThrow(systemCredentialFailure());
-        var service = new DefaultIdentityProvisioningService(
+        var service = service(
             users,
             mock(SubjectGrantAssignmentService.class),
             mock(SubjectGrantQueryService.class),
             mock(MembershipService.class),
-            directTransactions()
+            mock(UserAuditAppender.class)
         );
 
         // Act + Assert
         assertThatThrownBy(() -> service.reconcileUser("system", null, null, "System", "User", Set.of(), Set.of()))
             .isInstanceOf(IdentityProvisioningException.class)
             .hasMessageContaining("initial password hash is required");
+    }
+
+    private static DefaultIdentityProvisioningService service(
+        UserCommandService users,
+        SubjectGrantAssignmentService grantAssignments,
+        SubjectGrantQueryService grantQueries,
+        MembershipService groups,
+        UserAuditAppender audits
+    ) {
+        return new DefaultIdentityProvisioningService(
+            users,
+            grantAssignments,
+            grantQueries,
+            groups,
+            audits,
+            directTransactions(),
+            Clock.fixed(NOW, ZoneOffset.UTC)
+        );
     }
 
     private static UserRuleViolation systemCredentialFailure() {
@@ -316,7 +344,7 @@ class DefaultIdentityProvisioningServiceTest {
             UUID.randomUUID(),
             username,
             Set.of(),
-            "Test",
+            username.equals("alice") ? "Test" : "System",
             "User",
             UserStatus.ACTIVE,
             username.equals("system") ? "{bcrypt}hash" : null

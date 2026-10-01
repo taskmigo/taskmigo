@@ -19,6 +19,7 @@ dependencies {
 
     implementation(project(":modules:foundation:spring"))
     implementation(project(":modules:database"))
+    implementation(project(":modules:audit"))
     implementation(project(":modules:access-control"))
     implementation(project(":modules:identity"))
     runtimeOnly(libs.jspecify)

@@ -8,11 +8,13 @@ import io.taskmigo.identity.membership.application.port.in.api.MembershipService
 import io.taskmigo.identity.user.application.port.in.api.UserRegistrationService;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
+import io.taskmigo.identity.user.application.port.out.UserAuditAppender;
 import io.taskmigo.identity.user.application.port.out.UserCommandRepository;
 import io.taskmigo.identity.user.application.port.out.UserQueryRepository;
 import io.taskmigo.identity.user.application.service.DefaultUserCommandService;
 import io.taskmigo.identity.user.application.service.DefaultUserService;
 import io.taskmigo.identity.user.application.service.UserRegistrationApplicationService;
+import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -27,11 +29,21 @@ class UserApplicationConfiguration {
     @Bean
     UserService defaultUserService(
         UserQueryRepository users,
+        UserCommandService commands,
         SubjectGrantQueryService grantQueries,
         SubjectGrantAssignmentService grantAssignments,
+        UserAuditAppender audits,
         TransactionRunner transactions
     ) {
-        return new DefaultUserService(users, grantQueries, grantAssignments, transactions);
+        return new DefaultUserService(
+            users,
+            commands,
+            grantQueries,
+            grantAssignments,
+            audits,
+            transactions,
+            Clock.systemUTC()
+        );
     }
 
     @Bean

@@ -64,6 +64,15 @@ class OpenApiGenerationIntegrationTest {
 
         // Assert
         assertThat(Files.readString(OPENAPI_FILE, StandardCharsets.UTF_8)).isEqualTo(generated);
+        assertThat(generated).contains("/api/v0/audit/{entityType}/logs:");
+        assertThat(auditPathSection(generated)).doesNotContain("name: authorization");
+    }
+
+    private static String auditPathSection(String generated) {
+        int start = generated.indexOf("  /api/v0/audit/{entityType}/logs:");
+        int nextPath = generated.indexOf("\n  /api/", start + 1);
+        int end = nextPath >= 0 ? nextPath : generated.indexOf("\ncomponents:", start);
+        return generated.substring(start, end);
     }
 
     private String generatedOpenApiYaml() {

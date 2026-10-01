@@ -11,6 +11,8 @@ import io.taskmigo.identity.provisioning.application.port.in.api.IdentityProvisi
 import io.taskmigo.identity.provisioning.application.service.DefaultGroupProvisioningService;
 import io.taskmigo.identity.provisioning.application.service.DefaultIdentityProvisioningService;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
+import io.taskmigo.identity.user.application.port.out.UserAuditAppender;
+import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -34,8 +36,17 @@ class ProvisioningApplicationConfiguration {
         SubjectGrantAssignmentService grantAssignments,
         SubjectGrantQueryService grantQueries,
         MembershipService memberships,
+        UserAuditAppender audits,
         TransactionRunner transactions
     ) {
-        return new DefaultIdentityProvisioningService(users, grantAssignments, grantQueries, memberships, transactions);
+        return new DefaultIdentityProvisioningService(
+            users,
+            grantAssignments,
+            grantQueries,
+            memberships,
+            audits,
+            transactions,
+            Clock.systemUTC()
+        );
     }
 }

@@ -1,14 +1,11 @@
 package io.taskmigo.migration.application.service;
 
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
-import io.taskmigo.authorization.provisioning.AuthorizationProvisioningResult;
 import io.taskmigo.authorization.provisioning.application.port.in.api.AuthorizationProvisioningService;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
-import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
 import io.taskmigo.identity.provisioning.application.port.in.api.GroupProvisioningService;
 import io.taskmigo.identity.provisioning.application.port.in.api.IdentityProvisioningService;
-import io.taskmigo.migration.application.model.InstallationChange;
 import io.taskmigo.migration.application.model.InstallationPlan;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -71,116 +68,82 @@ final class ManagedResourceReconciler {
         }
     }
 
-    void reconcile(InstallationPlan data, List<InstallationChange> changes) {
-        this.deleteAbsent(data, changes);
+    void reconcile(InstallationPlan data) {
+        this.deleteAbsent(data);
 
-        Map<String, UUID> statementIds = this.reconcileStatements(data.statements(), changes);
-        Map<String, UUID> roleIds = this.reconcileRoles(data.roles(), statementIds, changes);
-        Map<String, UUID> groupIds = this.reconcileGroups(data.groups(), roleIds, changes);
-        this.reconcileUsers(data.users(), roleIds, groupIds, changes);
+        Map<String, UUID> statementIds = this.reconcileStatements(data.statements());
+        Map<String, UUID> roleIds = this.reconcileRoles(data.roles(), statementIds);
+        Map<String, UUID> groupIds = this.reconcileGroups(data.groups(), roleIds);
+        this.reconcileUsers(data.users(), roleIds, groupIds);
     }
 
-    private void deleteAbsent(InstallationPlan data, List<InstallationChange> changes) {
+    private void deleteAbsent(InstallationPlan data) {
         data.users()
             .stream()
             .filter(InstallationPlan.User::absent)
-            .forEach(user -> {
-                if (this.identity.deleteUser(user.username())) {
-                    changes.add(change("user", user.username(), InstallationChange.Action.REMOVED));
-                }
-            });
+            .forEach(user -> this.identity.deleteUser(user.username()));
         data.groups()
             .stream()
             .filter(InstallationPlan.Group::absent)
-            .forEach(group -> {
-                if (this.groups.deleteGroup(group.code())) {
-                    changes.add(change("group", group.code(), InstallationChange.Action.REMOVED));
-                }
-            });
+            .forEach(group -> this.groups.deleteGroup(group.code()));
         data.roles()
             .stream()
             .filter(InstallationPlan.Role::absent)
-            .forEach(role -> {
-                if (this.authorization.deleteRole(role.code())) {
-                    changes.add(change("role", role.code(), InstallationChange.Action.REMOVED));
-                }
-            });
+            .forEach(role -> this.authorization.deleteRole(role.code()));
         data.statements()
             .stream()
             .filter(InstallationPlan.Statement::absent)
-            .forEach(statement -> {
-                if (this.authorization.deleteStatement(statement.code())) {
-                    changes.add(change("statement", statement.code(), InstallationChange.Action.REMOVED));
-                }
-            });
+            .forEach(statement -> this.authorization.deleteStatement(statement.code()));
     }
 
-    private Map<String, UUID> reconcileStatements(
-        List<InstallationPlan.Statement> definitions,
-        List<InstallationChange> changes
-    ) {
+    private Map<String, UUID> reconcileStatements(List<InstallationPlan.Statement> definitions) {
         Map<String, UUID> result = new LinkedHashMap<>();
         for (InstallationPlan.Statement definition : definitions) {
             if (definition.absent()) {
                 continue;
             }
-            AuthorizationProvisioningResult<UUID> reconciliation = this.authorization.reconcileStatement(
-                definition.code(),
-                definition.description(),
-                Effect.from(definition.effect()),
-                Scope.from(definition.scope()),
-                definition.target().api().method(),
-                definition.target().api().path(),
-                definition.policy()
-            );
-            result.put(definition.code(), reconciliation.id());
-            changes.add(change("statement", definition.code(), migrationAction(reconciliation.change())));
+            UUID id = this.authorization
+                .reconcileStatement(
+                    definition.code(),
+                    definition.description(),
+                    Effect.from(definition.effect()),
+                    Scope.from(definition.scope()),
+                    definition.target().api().method(),
+                    definition.target().api().path(),
+                    definition.policy()
+                )
+                .id();
+            result.put(definition.code(), id);
         }
         return result;
     }
 
-    private Map<String, UUID> reconcileRoles(
-        List<InstallationPlan.Role> definitions,
-        Map<String, UUID> statementIds,
-        List<InstallationChange> changes
-    ) {
+    private Map<String, UUID> reconcileRoles(List<InstallationPlan.Role> definitions, Map<String, UUID> statementIds) {
         Map<String, UUID> result = new LinkedHashMap<>();
         for (InstallationPlan.Role definition : definitions) {
             if (definition.absent()) {
                 continue;
             }
             Set<UUID> ids = definition.statements().stream().map(statementIds::get).collect(Collectors.toSet());
-            AuthorizationProvisioningResult<UUID> reconciliation = this.authorization.reconcileRole(
-                definition.code(),
-                definition.displayName(),
-                definition.description(),
-                ids
-            );
-            result.put(definition.code(), reconciliation.id());
-            changes.add(change("role", definition.code(), migrationAction(reconciliation.change())));
+            UUID id = this.authorization
+                .reconcileRole(definition.code(), definition.displayName(), definition.description(), ids)
+                .id();
+            result.put(definition.code(), id);
         }
         return result;
     }
 
-    private Map<String, UUID> reconcileGroups(
-        List<InstallationPlan.Group> definitions,
-        Map<String, UUID> roleIds,
-        List<InstallationChange> changes
-    ) {
+    private Map<String, UUID> reconcileGroups(List<InstallationPlan.Group> definitions, Map<String, UUID> roleIds) {
         Map<String, UUID> result = new LinkedHashMap<>();
         for (InstallationPlan.Group definition : definitions) {
             if (definition.absent()) {
                 continue;
             }
             Set<UUID> ids = definition.roles().stream().map(roleIds::get).collect(Collectors.toSet());
-            IdentityProvisioningResult<UUID> reconciliation = this.groups.reconcileGroup(
-                definition.code(),
-                definition.displayName(),
-                definition.description(),
-                ids
-            );
-            result.put(definition.code(), reconciliation.id());
-            changes.add(change("group", definition.code(), migrationAction(reconciliation.change())));
+            UUID id = this.groups
+                .reconcileGroup(definition.code(), definition.displayName(), definition.description(), ids)
+                .id();
+            result.put(definition.code(), id);
         }
         return result;
     }
@@ -188,8 +151,7 @@ final class ManagedResourceReconciler {
     private void reconcileUsers(
         List<InstallationPlan.User> definitions,
         Map<String, UUID> roleIds,
-        Map<String, UUID> groupIds,
-        List<InstallationChange> changes
+        Map<String, UUID> groupIds
     ) {
         for (InstallationPlan.User user : definitions) {
             if (user.absent()) {
@@ -197,7 +159,7 @@ final class ManagedResourceReconciler {
             }
             Set<UUID> roles = user.roles().stream().map(roleIds::get).collect(Collectors.toSet());
             Set<UUID> groups = user.groups().stream().map(groupIds::get).collect(Collectors.toSet());
-            IdentityProvisioningResult<UUID> reconciliation = this.identity.reconcileUser(
+            this.identity.reconcileUser(
                 user.username(),
                 this.initialPasswordHash(user.password()),
                 user.emails(),
@@ -206,36 +168,11 @@ final class ManagedResourceReconciler {
                 roles,
                 groups
             );
-            changes.add(change("user", user.username(), migrationAction(reconciliation.change())));
         }
     }
 
     private @Nullable String initialPasswordHash(@Nullable String rawPassword) {
         return rawPassword == null || rawPassword.isBlank() ? null : this.passwords.encode(rawPassword);
-    }
-
-    private static InstallationChange change(
-        String resourceType,
-        String resourceKey,
-        InstallationChange.Action action
-    ) {
-        return new InstallationChange(resourceType, resourceKey, action);
-    }
-
-    private static InstallationChange.Action migrationAction(AuthorizationProvisioningResult.Change change) {
-        return switch (change) {
-            case CREATED -> InstallationChange.Action.ADDED;
-            case UPDATED -> InstallationChange.Action.UPDATED;
-            case UNCHANGED -> InstallationChange.Action.UNCHANGED;
-        };
-    }
-
-    private static InstallationChange.Action migrationAction(IdentityProvisioningResult.Change change) {
-        return switch (change) {
-            case CREATED -> InstallationChange.Action.ADDED;
-            case UPDATED -> InstallationChange.Action.UPDATED;
-            case UNCHANGED -> InstallationChange.Action.UNCHANGED;
-        };
     }
 
     private static <T> Map<String, T> unique(List<T> values, Function<T, String> key, String type) {

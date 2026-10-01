@@ -8,6 +8,7 @@ import io.taskmigo.authorization.request.application.port.out.EffectiveStatement
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.application.port.in.api.StatementService;
+import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.application.port.in.api.UserRegistrationService;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
 import io.taskmigo.web.adapter.in.http.api.v0.testing.ApiIntegrationTestSupport;
@@ -43,9 +44,16 @@ class StatementTimestampIntegrationTest extends ApiIntegrationTestSupport {
         this.resolver = resolver;
     }
 
+    /**
+     * Verifies that statement updates advance the authorization revision timestamp.
+     *
+     * Given: a statement assigned to a User and its initial persisted revision.
+     * Expect: reconciling the statement preserves created_at while advancing updated_at in persistence and resolution.
+     */
     @Test
     @DisplayName("advances statement updated_at and exposes it as the authorization revision")
     void shouldAdvanceUpdatedAtWhenStatementIsUpdated() {
+        // Arrange
         String suffix = UUID.randomUUID().toString();
         String statementCode = "timestamp-" + suffix;
         UUID statementId = this.statements.create(
@@ -65,12 +73,13 @@ class StatementTimestampIntegrationTest extends ApiIntegrationTestSupport {
             Set.of(),
             Set.of()
         );
-        this.users.setStatements(userId, List.of(statementId));
+        this.users.setStatements(userId, List.of(statementId), new UserMutationActor(userId, "audit-test"));
         StatementEntity created = this.statementRepository.findById(statementId).orElseThrow();
         Instant createdAt = created.createdAt();
         Instant initialUpdatedAt = created.updatedAt();
         EffectiveStatement initialResolved = this.resolver.resolve(userId).getFirst();
 
+        // Act
         this.provisioning.reconcileStatement(
             statementCode,
             "after",
@@ -83,6 +92,7 @@ class StatementTimestampIntegrationTest extends ApiIntegrationTestSupport {
         StatementEntity updated = this.statementRepository.findById(statementId).orElseThrow();
         EffectiveStatement updatedResolved = this.resolver.resolve(userId).getFirst();
 
+        // Assert
         assertThat(initialUpdatedAt).isAfterOrEqualTo(createdAt);
         assertThat(initialResolved.updatedAt()).isEqualTo(initialUpdatedAt);
         assertThat(updated.createdAt()).isEqualTo(createdAt);
