@@ -209,7 +209,7 @@ public final class User {
 
     /// Enforces that lifecycle/profile/access mutations cannot target a retained or purged User.
     public void requireMutable() {
-        if (this.status == UserStatus.RETAINED) {
+        if (this.status == UserStatus.RETAINED || this.status == UserStatus.PURGED) {
             throw UserRuleViolation.retainedUserReadOnly();
         }
     }
