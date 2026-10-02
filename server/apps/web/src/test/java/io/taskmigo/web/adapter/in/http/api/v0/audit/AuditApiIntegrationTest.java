@@ -101,8 +101,8 @@ class AuditApiIntegrationTest extends ApiIntegrationTestSupport {
         this.jdbc.update(
             """
             insert into audit_logs (
-                id, entity_type, entity_id, actor_id, actor_username, occurred_at, changes_json
-            ) values (?, 'user', ?, ?, 'audit-api-test', ?, '[]')
+                id, entity_type, entity_id, actor_id, occurred_at, changes_json
+            ) values (?, 'user', ?, ?, ?, '[]')
             """,
             id,
             UUID.randomUUID(),

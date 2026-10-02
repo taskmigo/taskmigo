@@ -352,7 +352,6 @@ class MigrationIntegrationTest {
             .singleElement()
             .satisfies(row -> {
                 assertThat(row.get("actor_id")).isEqualTo(systemUserId);
-                assertThat(row.get("actor_username")).isEqualTo(SystemUser.USERNAME);
                 assertThat(Objects.requireNonNull(row.get("changes_json")).toString()).contains(
                     "firstName",
                     "Before",
@@ -614,7 +613,7 @@ class MigrationIntegrationTest {
 
     private List<Map<String, @Nullable Object>> auditRows(UUID userId) {
         return this.jdbc.queryForList(
-            "select actor_id, actor_username, changes_json from audit_logs where entity_type = 'user' and entity_id = ?",
+            "select actor_id, changes_json from audit_logs where entity_type = 'user' and entity_id = ?",
             userId
         );
     }

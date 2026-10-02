@@ -29,7 +29,7 @@ class AuditEventTest {
             UUID.randomUUID(),
             "user",
             UUID.randomUUID(),
-            new AuditActor(UUID.randomUUID(), "operator"),
+            new AuditActor(UUID.randomUUID()),
             occurredAt,
             List.of(AuditChange.visible("firstName", "Before", "After"))
         );
