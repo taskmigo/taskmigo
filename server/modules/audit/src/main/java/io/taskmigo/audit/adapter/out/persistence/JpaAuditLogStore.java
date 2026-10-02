@@ -34,7 +34,6 @@ public class JpaAuditLogStore implements AuditLogStore {
                 event.entityType(),
                 event.entityId(),
                 event.actor().id(),
-                event.actor().username(),
                 event.occurredAt(),
                 this.writeChanges(event.changes().toArray(AuditChange[]::new))
             )
@@ -57,7 +56,7 @@ public class JpaAuditLogStore implements AuditLogStore {
             entity.id,
             entity.entityType,
             entity.entityId,
-            new AuditActor(entity.actorId, entity.actorUsername),
+            new AuditActor(entity.actorId),
             entity.occurredAt,
             Arrays.asList(this.readChanges(entity.changesJson))
         );

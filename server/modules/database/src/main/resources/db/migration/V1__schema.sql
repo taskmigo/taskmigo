@@ -201,7 +201,6 @@ CREATE TABLE audit_logs (
     entity_type VARCHAR(64) NOT NULL,
     entity_id UUID NOT NULL,
     actor_id UUID NOT NULL,
-    actor_username VARCHAR(100) NOT NULL,
     occurred_at timestamptz(3) NOT NULL,
     changes_json TEXT NOT NULL
 );

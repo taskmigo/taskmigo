@@ -150,7 +150,7 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
             .orElseThrow(() ->
                 new IllegalStateException("System User must exist before managed User updates are audited")
             );
-        return new AuditActor(system.id(), SystemUser.USERNAME);
+        return new AuditActor(system.id());
     }
 
     private boolean deleteUserInTransaction(String username) {

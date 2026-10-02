@@ -215,7 +215,7 @@ public final class DefaultUserService implements UserService {
                 UUID.randomUUID(),
                 ENTITY_TYPE,
                 userId,
-                new AuditActor(actor.id(), actor.username()),
+                new AuditActor(actor.id()),
                 occurredAt,
                 changes
             )
