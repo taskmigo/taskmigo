@@ -3,6 +3,7 @@ package io.taskmigo.identity.provisioning.composition;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantQueryService;
 import io.taskmigo.identity.application.port.out.TransactionRunner;
+import io.taskmigo.identity.configuration.application.port.in.api.ConfigurationService;
 import io.taskmigo.identity.group.application.port.in.internal.GroupCommandService;
 import io.taskmigo.identity.group.application.port.out.GroupHierarchyRepository;
 import io.taskmigo.identity.membership.application.port.in.api.MembershipService;
@@ -36,6 +37,7 @@ class ProvisioningApplicationConfiguration {
         SubjectGrantAssignmentService grantAssignments,
         SubjectGrantQueryService grantQueries,
         MembershipService memberships,
+        ConfigurationService configuration,
         UserAuditAppender audits,
         TransactionRunner transactions
     ) {
@@ -44,6 +46,7 @@ class ProvisioningApplicationConfiguration {
             grantAssignments,
             grantQueries,
             memberships,
+            configuration,
             audits,
             transactions,
             Clock.systemUTC()
