@@ -14,6 +14,7 @@ import java.util.UUID;
 /// Defines the published inbound port for User queries, lifecycle, and direct grant assignments.
 public interface UserService {
     UserInfo require(UUID id);
+    Optional<UserInfo> find(UUID id);
     Optional<AuthenticationInfo> findForAuthentication(String username);
     OffsetPage<UserInfo> list(
         int page,

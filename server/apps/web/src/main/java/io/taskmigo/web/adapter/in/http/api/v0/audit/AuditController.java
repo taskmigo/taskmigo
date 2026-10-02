@@ -11,6 +11,7 @@ import io.taskmigo.audit.model.AuditLog;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.user.UserInfo;
+import io.taskmigo.identity.user.application.port.in.api.UserService;
 import io.taskmigo.web.adapter.in.http.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponseFactory;
@@ -38,10 +39,15 @@ import org.springframework.web.bind.annotation.RestController;
 class AuditController {
 
     private final AuditQueryService audits;
+    private static final String UNKNOWN_USER = "Unknown user";
+
+    private final AuditQueryService audits;
+    private final UserService users;
     private final ApiResponseFactory responses;
 
-    AuditController(AuditQueryService audits, ApiResponseFactory responses) {
+    AuditController(AuditQueryService audits, UserService users, ApiResponseFactory responses) {
         this.audits = audits;
+        this.users = users;
         this.responses = responses;
     }
 
@@ -58,7 +64,7 @@ class AuditController {
         }
         OffsetPage<AuditLog> logs = this.audits.list(entityType, pagination.getPage(), pagination.getPageSize());
         return this.responses.ok(
-            logs.items().stream().map(Response::from).toList(),
+            logs.items().stream().map(this::response).toList(),
             new ApiResponse.OffsetPagination(pagination, logs),
             "resource.audit.listed",
             "Audit logs listed"
@@ -74,24 +80,24 @@ class AuditController {
         Instant occurredAt,
         List<ChangeResponse> changes
     ) {
-        static Response from(AuditLog log) {
-            return new Response(
-                log.id(),
-                log.entityType(),
-                log.entityId(),
-                ActorResponse.from(log.actor()),
-                log.occurredAt(),
-                log.changes().stream().map(ChangeResponse::from).toList()
-            );
-        }
+    }
+
+    private Response response(AuditLog log) {
+        return new Response(
+            log.id(),
+            log.entityType(),
+            log.entityId(),
+            new ActorResponse(
+                log.actor().id(),
+                this.users.find(log.actor().id()).map(UserInfo::username).orElse(UNKNOWN_USER)
+            ),
+            log.occurredAt(),
+            log.changes().stream().map(ChangeResponse::from).toList()
+        );
     }
 
     @Schema(name = "AuditActor")
-    record ActorResponse(UUID id, String username) {
-        static ActorResponse from(AuditActor actor) {
-            return new ActorResponse(actor.id(), actor.username());
-        }
-    }
+    record ActorResponse(UUID id, String username) {}
 
     @Schema(name = "AuditChange")
     record ChangeResponse(String field, @Nullable Object before, @Nullable Object after, boolean sensitive) {
