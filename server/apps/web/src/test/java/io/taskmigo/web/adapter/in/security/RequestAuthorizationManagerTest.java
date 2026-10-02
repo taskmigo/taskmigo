@@ -11,6 +11,8 @@ import io.taskmigo.authorization.request.AuthorizationPrincipal;
 import io.taskmigo.authorization.request.AuthorizationRequest;
 import io.taskmigo.authorization.request.RequestAuthorizationResult;
 import io.taskmigo.authorization.request.application.port.in.api.RequestAuthorization;
+import io.taskmigo.identity.user.UserInfo;
+import io.taskmigo.identity.user.application.port.in.api.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +57,9 @@ class RequestAuthorizationManagerTest {
             .claim("principal_username", "alice")
             .build();
         JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt, List.of(), "alice");
-        RequestAuthorizationManager manager = new RequestAuthorizationManager(authorization);
+        UserService users = mock(UserService.class);
+        when(users.require(userId)).thenReturn(new UserInfo(userId, "alice", "Alice", "User", java.util.Set.of(), "Alice User"));
+        RequestAuthorizationManager manager = new RequestAuthorizationManager(authorization, users);
 
         // Act
         AuthorizationDecision decision = manager.authorize(() -> authentication, context);
@@ -97,7 +101,9 @@ class RequestAuthorizationManagerTest {
             .claim("user_id", userId.toString())
             .build();
         JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt, List.of());
-        RequestAuthorizationManager manager = new RequestAuthorizationManager(authorization);
+        UserService users = mock(UserService.class);
+        when(users.require(userId)).thenReturn(new UserInfo(userId, "alice", "Alice", "User", java.util.Set.of(), "Alice User"));
+        RequestAuthorizationManager manager = new RequestAuthorizationManager(authorization, users);
 
         // Act
         AuthorizationDecision decision = manager.authorize(() -> authentication, context);
@@ -129,7 +135,9 @@ class RequestAuthorizationManagerTest {
             .claim("user_id", userId.toString())
             .build();
         JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt, List.of());
-        RequestAuthorizationManager manager = new RequestAuthorizationManager(authorization);
+        UserService users = mock(UserService.class);
+        when(users.require(userId)).thenReturn(new UserInfo(userId, "alice", "Alice", "User", java.util.Set.of(), "Alice User"));
+        RequestAuthorizationManager manager = new RequestAuthorizationManager(authorization, users);
 
         // Act
         AuthorizationDecision decision = manager.authorize(() -> authentication, context);

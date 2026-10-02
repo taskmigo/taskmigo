@@ -6,6 +6,8 @@ import io.taskmigo.authorization.request.AuthorizationRequest;
 import io.taskmigo.authorization.request.RequestAuthorizationResult;
 import io.taskmigo.authorization.request.application.port.in.api.RequestAuthorization;
 import io.taskmigo.identity.user.UserException;
+import io.taskmigo.identity.user.UserStatus;
+import io.taskmigo.identity.user.application.port.in.api.UserService;
 import java.util.UUID;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
@@ -28,9 +30,11 @@ final class RequestAuthorizationManager implements AuthorizationManager<RequestA
     private static final String DECISION_ATTRIBUTE = "taskmigo.authorization.request.decision";
 
     private final RequestAuthorization authorization;
+    private final UserService users;
 
-    RequestAuthorizationManager(RequestAuthorization authorization) {
+    RequestAuthorizationManager(RequestAuthorization authorization, UserService users) {
         this.authorization = authorization;
+        this.users = users;
     }
 
     @Override
@@ -63,6 +67,9 @@ final class RequestAuthorizationManager implements AuthorizationManager<RequestA
             return new AuthorizationDecision(false);
         }
         try {
+            if (this.users.require(id).status() != UserStatus.ACTIVE) {
+                return new AuthorizationDecision(false);
+            }
             Object cachedDecision = context.getRequest().getAttribute(DECISION_ATTRIBUTE);
             if (cachedDecision instanceof Boolean decision) {
                 return new AuthorizationDecision(decision);

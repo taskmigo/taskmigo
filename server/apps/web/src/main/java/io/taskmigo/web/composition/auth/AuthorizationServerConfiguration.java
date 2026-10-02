@@ -76,7 +76,7 @@ class AuthorizationServerConfiguration {
             if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
                 context.getClaims().subject(context.getRegisteredClient().getClientId());
                 context.getClaims().claim("principal_type", "service");
-                userService.findForAuthentication(SystemUser.USERNAME).ifPresent(user -> {
+                userService.findForAuthentication(SystemUser.USERNAME).filter(user -> user.active()).ifPresent(user -> {
                     context.getClaims().claim("user_id", user.id().toString());
                     context.getClaims().claim("principal_username", user.username());
                 });
@@ -87,7 +87,7 @@ class AuthorizationServerConfiguration {
             if (authorization == null) {
                 return;
             }
-            userService.findForAuthentication(authorization.getPrincipalName()).ifPresent(user -> {
+            userService.findForAuthentication(authorization.getPrincipalName()).filter(user -> user.active()).ifPresent(user -> {
                 context.getClaims().claim("principal_type", "user");
                 context.getClaims().claim("user_id", user.id().toString());
                 context.getClaims().claim("principal_username", user.username());
