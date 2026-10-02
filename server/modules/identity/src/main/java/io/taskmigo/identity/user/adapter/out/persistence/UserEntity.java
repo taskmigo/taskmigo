@@ -26,13 +26,16 @@ public class UserEntity {
     @Id
     UUID id;
 
-    @Column(nullable = false, length = 100)
+    @Nullable
+    @Column(length = 100)
     String username;
 
-    @Column(name = "first_name", nullable = false, length = 100)
+    @Nullable
+    @Column(name = "first_name", length = 100)
     String firstName;
 
-    @Column(name = "last_name", nullable = false, length = 100)
+    @Nullable
+    @Column(name = "last_name", length = 100)
     String lastName;
 
     @ElementCollection
@@ -57,10 +60,10 @@ public class UserEntity {
 
     private UserEntity(
         UUID id,
-        String username,
+        @Nullable String username,
         Set<String> emails,
-        String firstName,
-        String lastName,
+        @Nullable String firstName,
+        @Nullable String lastName,
         UserStatus status,
         @Nullable Instant retainedAt,
         @Nullable String passwordHash
@@ -78,10 +81,10 @@ public class UserEntity {
     static UserEntity from(User user) {
         return new UserEntity(
             user.id(),
-            user.username().value(),
-            user.profile().emails(),
-            user.profile().firstName(),
-            user.profile().lastName(),
+            user.status() == UserStatus.PURGED ? null : user.username().value(),
+            user.status() == UserStatus.PURGED ? Set.of() : user.profile().emails(),
+            user.status() == UserStatus.PURGED ? null : user.profile().firstName(),
+            user.status() == UserStatus.PURGED ? null : user.profile().lastName(),
             user.status(),
             user.retainedAt(),
             user.credential().passwordHash()
@@ -89,6 +92,9 @@ public class UserEntity {
     }
 
     User toDomain() {
+        if (this.status == UserStatus.PURGED) {
+            return User.restorePurged(this.id, java.util.Objects.requireNonNull(this.retainedAt));
+        }
         return User.restore(
             this.id,
             this.username,
@@ -105,14 +111,17 @@ public class UserEntity {
         return this.id;
     }
 
+    @Nullable
     String username() {
         return this.username;
     }
 
+    @Nullable
     String firstName() {
         return this.firstName;
     }
 
+    @Nullable
     String lastName() {
         return this.lastName;
     }
