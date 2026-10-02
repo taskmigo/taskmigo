@@ -179,7 +179,9 @@ public final class DefaultUserService implements UserService {
             if (this.configuration.get().retention().user().immediate()) {
                 changes.add(UserAuditChanges.visible("status", target.status().name(), "PURGED"));
                 this.append(userId, actor, changes, now);
-                this.commands.delete(target);
+                target.retain(now);
+                target.purge();
+                this.commands.save(target);
                 return true;
             }
 
