@@ -37,12 +37,12 @@ public class JpaUserQueryRepository implements UserQueryRepository {
 
     @Override
     public Optional<UserInfo> find(UUID id) {
-        return this.users.findById(id).map(JpaUserQueryRepository::info);
+        return this.users.findById(id).filter(user -> user.status() != UserStatus.PURGED).map(JpaUserQueryRepository::info);
     }
 
     @Override
     public Optional<UserInfo> find(UUID id, ObjectAuthorizationPredicate<UserInfo> authorization) {
-        Specification<UserEntity> idMatch = (root, query, builder) -> builder.equal(root.get("id"), id);
+        Specification<UserEntity> idMatch = (root, query, builder) -> builder.and(builder.equal(root.get("id"), id), builder.notEqual(root.get("status"), UserStatus.PURGED));
         return this.users.findOne(idMatch.and(this.objectBinder.bind(authorization))).map(JpaUserQueryRepository::info);
     }
 
@@ -64,8 +64,9 @@ public class JpaUserQueryRepository implements UserQueryRepository {
         ObjectAuthorizationPredicate<UserInfo> authorization
     ) {
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
+        Specification<UserEntity> visible = (root, query, builder) -> builder.notEqual(root.get("status"), UserStatus.PURGED);
         var result = this.users.findAll(
-            this.queryBinder.bind(filter).and(this.objectBinder.bind(authorization)),
+            visible.and(this.queryBinder.bind(filter)).and(this.objectBinder.bind(authorization)),
             pageable
         );
         return new OffsetPage<>(
