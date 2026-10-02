@@ -282,6 +282,11 @@ public final class TaskmigoApiClient {
             return TaskmigoApiClient.this.create("/api/v0/users", request);
         }
 
+        /// Deletes a User through the public HTTP API.
+        public void delete(UUID userId) {
+            TaskmigoApiClient.this.delete("/api/v0/users/" + userId);
+        }
+
         /// Replaces the complete set of Statements directly assigned to a User.
         public void replaceStatements(UUID userId, Collection<UUID> statementIds) {
             TaskmigoApiClient.this.patch(
