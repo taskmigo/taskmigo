@@ -76,7 +76,8 @@ public final class DefaultUserRetentionService implements UserRetentionService {
         this.grantAssignments.setRoles(subject, Set.of());
         this.grantAssignments.setStatements(subject, Set.of());
         this.memberships.setGroupsForUser(userId, Set.of());
-        this.users.delete(user);
+        user.purge();
+        this.users.save(user);
         return true;
     }
 }
