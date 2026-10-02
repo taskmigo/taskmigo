@@ -8,16 +8,16 @@ VALUES ('retention.user', 'P30D');
 
 CREATE TABLE users (
     id UUID PRIMARY KEY,
-    username VARCHAR(100) NOT NULL,
-    first_name VARCHAR(100) NOT NULL,
-    last_name VARCHAR(100) NOT NULL,
+    username VARCHAR(100),
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
     status VARCHAR(16) NOT NULL,
     retained_at timestamptz(3),
     password_hash VARCHAR(255),
     CONSTRAINT uk_users_username UNIQUE (username),
-    CONSTRAINT ck_users_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DISABLED', 'RETAINED')),
-    CONSTRAINT ck_users_names CHECK (btrim(first_name) <> '' AND btrim(last_name) <> ''),
-    CONSTRAINT ck_users_retained_at CHECK ((status = 'RETAINED') = (retained_at IS NOT NULL))
+    CONSTRAINT ck_users_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DISABLED', 'RETAINED', 'PURGED')),
+    CONSTRAINT ck_users_identity CHECK ((status = 'PURGED' AND username IS NULL AND first_name IS NULL AND last_name IS NULL AND password_hash IS NULL) OR (status <> 'PURGED' AND username IS NOT NULL AND first_name IS NOT NULL AND last_name IS NOT NULL AND btrim(first_name) <> '' AND btrim(last_name) <> '')),
+    CONSTRAINT ck_users_retained_at CHECK ((status IN ('RETAINED', 'PURGED')) = (retained_at IS NOT NULL))
 );
 
 CREATE TABLE user_emails (
