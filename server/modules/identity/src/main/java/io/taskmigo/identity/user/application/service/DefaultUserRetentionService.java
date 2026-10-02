@@ -4,7 +4,6 @@ import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantAssignmentService;
 import io.taskmigo.identity.application.port.out.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;
-import io.taskmigo.identity.membership.application.port.in.api.MembershipService;
 import io.taskmigo.identity.configuration.RetentionDuration;
 import io.taskmigo.identity.configuration.application.port.in.api.ConfigurationService;
 import io.taskmigo.identity.user.UserStatus;
@@ -22,20 +21,17 @@ public final class DefaultUserRetentionService implements UserRetentionService {
     private final UserCommandService users;
     private final ConfigurationService configuration;
     private final SubjectGrantAssignmentService grantAssignments;
-    private final MembershipService memberships;
     private final TransactionRunner transactions;
 
     public DefaultUserRetentionService(
         UserCommandService users,
         ConfigurationService configuration,
         SubjectGrantAssignmentService grantAssignments,
-        MembershipService memberships,
         TransactionRunner transactions
     ) {
         this.users = users;
         this.configuration = configuration;
         this.grantAssignments = grantAssignments;
-        this.memberships = memberships;
         this.transactions = transactions;
     }
 
@@ -75,7 +71,6 @@ public final class DefaultUserRetentionService implements UserRetentionService {
         SubjectRef subject = IdentitySubjects.user(userId);
         this.grantAssignments.setRoles(subject, Set.of());
         this.grantAssignments.setStatements(subject, Set.of());
-        this.memberships.setGroupsForUser(userId, Set.of());
         user.purge();
         this.users.save(user);
         return true;
