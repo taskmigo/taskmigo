@@ -7,6 +7,7 @@ import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantAss
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantQueryService;
 import io.taskmigo.identity.application.port.out.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;
+import io.taskmigo.identity.configuration.application.port.in.api.ConfigurationService;
 import io.taskmigo.identity.membership.application.port.in.api.MembershipService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningException;
 import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
@@ -35,6 +36,7 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
     private final SubjectGrantAssignmentService grantAssignments;
     private final SubjectGrantQueryService grantQueries;
     private final MembershipService memberships;
+    private final ConfigurationService configuration;
     private final UserAuditAppender audits;
     private final TransactionRunner transactions;
     private final Clock clock;
@@ -44,6 +46,7 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
         SubjectGrantAssignmentService grantAssignments,
         SubjectGrantQueryService grantQueries,
         MembershipService memberships,
+        ConfigurationService configuration,
         UserAuditAppender audits,
         TransactionRunner transactions,
         Clock clock
@@ -52,6 +55,7 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
         this.grantAssignments = grantAssignments;
         this.grantQueries = grantQueries;
         this.memberships = memberships;
+        this.configuration = configuration;
         this.audits = audits;
         this.transactions = transactions;
         this.clock = clock;
@@ -172,7 +176,24 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
         this.grantAssignments.setRoles(IdentitySubjects.user(existing.id()), Set.of());
         this.grantAssignments.setStatements(IdentitySubjects.user(existing.id()), Set.of());
         this.memberships.setGroupsForUser(existing.id(), Set.of());
-        this.users.delete(existing);
+
+        var now = this.clock.instant();
+        String beforeStatus = existing.status().name();
+        existing.retain(now);
+        if (this.configuration.get().retention().user().immediate()) {
+            existing.purge();
+        }
+        this.users.save(existing);
+        this.audits.append(
+            new AuditEvent(
+                UUID.randomUUID(),
+                ENTITY_TYPE,
+                existing.id(),
+                this.systemActor(),
+                now,
+                List.of(AuditChange.visible("status", beforeStatus, existing.status().name()))
+            )
+        );
         return true;
     }
 
