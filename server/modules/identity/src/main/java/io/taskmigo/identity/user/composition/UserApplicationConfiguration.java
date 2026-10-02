@@ -58,10 +58,9 @@ class UserApplicationConfiguration {
         UserCommandService users,
         ConfigurationService configuration,
         SubjectGrantAssignmentService grantAssignments,
-        MembershipService memberships,
         TransactionRunner transactions
     ) {
-        return new DefaultUserRetentionService(users, configuration, grantAssignments, memberships, transactions);
+        return new DefaultUserRetentionService(users, configuration, grantAssignments, transactions);
     }
 
     @Bean
