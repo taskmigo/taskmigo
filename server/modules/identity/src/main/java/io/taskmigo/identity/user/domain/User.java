@@ -12,31 +12,37 @@ import org.jspecify.annotations.Nullable;
 public final class User {
 
     private final UUID id;
-    private final Username username;
-    private UserProfile profile;
+    private @Nullable Username username;
+    private @Nullable UserProfile profile;
     private UserStatus status;
     private @Nullable Instant retainedAt;
     private UserCredential credential;
 
     private User(
         UUID id,
-        Username username,
-        UserProfile profile,
+        @Nullable Username username,
+        @Nullable UserProfile profile,
         UserStatus status,
         @Nullable Instant retainedAt,
         UserCredential credential
     ) {
         this.id = Objects.requireNonNull(id);
-        this.username = Objects.requireNonNull(username);
-        this.profile = Objects.requireNonNull(profile);
+        this.username = username;
+        this.profile = profile;
         this.status = Objects.requireNonNull(status);
         this.retainedAt = retainedAt;
         this.credential = Objects.requireNonNull(credential);
-        if (status == UserStatus.RETAINED && retainedAt == null) {
-            throw new IllegalArgumentException("RETAINED users must have retainedAt");
+        if ((status == UserStatus.RETAINED || status == UserStatus.PURGED) && retainedAt == null) {
+            throw new IllegalArgumentException("RETAINED and PURGED users must have retainedAt");
         }
-        if (status != UserStatus.RETAINED && retainedAt != null) {
-            throw new IllegalArgumentException("Only RETAINED users may have retainedAt");
+        if (status != UserStatus.RETAINED && status != UserStatus.PURGED && retainedAt != null) {
+            throw new IllegalArgumentException("Only RETAINED or PURGED users may have retainedAt");
+        }
+        if (status == UserStatus.PURGED && (username != null || profile != null || credential.initialized())) {
+            throw new IllegalArgumentException("PURGED users cannot retain identity, profile, or credential data");
+        }
+        if (status != UserStatus.PURGED && (username == null || profile == null)) {
+            throw new IllegalArgumentException("Non-PURGED users require identity and profile data");
         }
     }
 
@@ -125,11 +131,11 @@ public final class User {
     }
 
     public Username username() {
-        return this.username;
+        return Objects.requireNonNull(this.username, "PURGED user has no username");
     }
 
     public UserProfile profile() {
-        return this.profile;
+        return Objects.requireNonNull(this.profile, "PURGED user has no profile");
     }
 
     public UserStatus status() {
@@ -144,6 +150,11 @@ public final class User {
         return this.credential;
     }
 
+    /// Reconstitutes a persisted tombstone without recreating identifying data.
+    public static User restorePurged(UUID id, Instant retainedAt) {
+        return new User(id, null, null, UserStatus.PURGED, retainedAt, UserCredential.empty());
+    }
+
     /// Reconciles normalized profile state and reports whether canonical User state changed.
     public boolean reconcileProfile(
         @Nullable Collection<String> emails,
@@ -152,7 +163,7 @@ public final class User {
     ) {
         this.requireMutable();
         UserProfile requested = UserProfile.of(emails, firstName, lastName);
-        if (this.profile.equals(requested)) {
+        if (this.profile().equals(requested)) {
             return false;
         }
         this.profile = requested;
@@ -173,7 +184,7 @@ public final class User {
     /// Moves an ordinary User into retained read-only state, preserving the first retention timestamp.
     public boolean retain(Instant retainedAt) {
         this.requireManagedDeletionAllowed();
-        if (this.status == UserStatus.RETAINED) {
+        if (this.status == UserStatus.RETAINED || this.status == UserStatus.PURGED) {
             return false;
         }
         this.status = UserStatus.RETAINED;
@@ -181,7 +192,22 @@ public final class User {
         return true;
     }
 
-    /// Enforces that lifecycle/profile/access mutations cannot target a retained User.
+    /// Permanently removes identifying and credential data while preserving the stable User identifier.
+    public boolean purge() {
+        if (this.status == UserStatus.PURGED) {
+            return false;
+        }
+        if (this.status != UserStatus.RETAINED) {
+            throw UserRuleViolation.retainedUserReadOnly();
+        }
+        this.username = null;
+        this.profile = null;
+        this.credential = UserCredential.empty();
+        this.status = UserStatus.PURGED;
+        return true;
+    }
+
+    /// Enforces that lifecycle/profile/access mutations cannot target a retained or purged User.
     public void requireMutable() {
         if (this.status == UserStatus.RETAINED) {
             throw UserRuleViolation.retainedUserReadOnly();
@@ -190,7 +216,7 @@ public final class User {
 
     /// Enforces the managed-lifecycle restriction that the system User cannot be removed.
     public void requireManagedDeletionAllowed() {
-        if (this.username.system()) {
+        if (this.username != null && this.username.system()) {
             throw UserRuleViolation.systemUserDeletionForbidden();
         }
     }
