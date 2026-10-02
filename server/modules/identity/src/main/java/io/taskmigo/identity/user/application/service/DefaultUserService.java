@@ -76,6 +76,11 @@ public final class DefaultUserService implements UserService {
     }
 
     @Override
+    public Optional<UserInfo> find(UUID id) {
+        return this.transactions.read(() -> this.users.find(id));
+    }
+
+    @Override
     public Optional<AuthenticationInfo> findForAuthentication(String username) {
         return this.transactions.read(() -> this.users.findForAuthentication(username));
     }
