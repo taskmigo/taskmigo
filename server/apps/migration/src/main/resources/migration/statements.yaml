@@ -54,24 +54,35 @@
   policy: object.username == "system"
   absent: false
 
-- code: user_statement_mutation_allow_active
-  description: Allows direct statement mutation only for non-retained users.
+- code: user_mutation_object_allow
+  description: Allows authorized operators to target User mutation objects.
   effect: allow
   scope: object
   target:
     api:
-      method: PATCH
-      path: /api/v0/users/.*/statements
-  policy: object.status != "RETAINED"
+      method: "*"
+      path: /api/v0/users/.*
+  policy: true
   absent: false
 
-- code: user_delete_allow_active_non_system
-  description: Allows deletion only for non-retained, non-system users.
-  effect: allow
+- code: user_mutation_deny_retained
+  description: Prevents mutation or repeated deletion of retained Users.
+  effect: deny
+  scope: object
+  target:
+    api:
+      method: "*"
+      path: /api/v0/users/.*
+  policy: object.status == "RETAINED"
+  absent: false
+
+- code: user_delete_deny_system
+  description: Prevents deletion of the persisted system User.
+  effect: deny
   scope: object
   target:
     api:
       method: DELETE
       path: /api/v0/users/.*
-  policy: object.status != "RETAINED" && object.username != "system"
+  policy: object.username == "system"
   absent: false

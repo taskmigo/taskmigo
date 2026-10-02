@@ -10,8 +10,9 @@
   statements:
     - system_operator_request_all
     - system_operator_object_all
-    - user_statement_mutation_allow_active
-    - user_delete_allow_active_non_system
+    - user_mutation_object_allow
+    - user_mutation_deny_retained
+    - user_delete_deny_system
 
 - code: administrator
   displayName: Administrator
@@ -20,5 +21,6 @@
     - administrator_request_all
     - administrator_object_all
     - administrator_hide_system_user
-    - user_statement_mutation_allow_active
-    - user_delete_allow_active_non_system
+    - user_mutation_object_allow
+    - user_mutation_deny_retained
+    - user_delete_deny_system
