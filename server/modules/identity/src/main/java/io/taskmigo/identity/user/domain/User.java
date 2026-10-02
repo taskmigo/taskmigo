@@ -1,26 +1,43 @@
 package io.taskmigo.identity.user.domain;
 
+import io.taskmigo.identity.user.UserStatus;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
-/// Owns canonical User identity, profile, status, credential, and reserved-system invariants.
+/// Owns canonical User identity, profile, lifecycle, credential, and reserved-system invariants.
 public final class User {
 
     private final UUID id;
     private final Username username;
     private UserProfile profile;
-    private final UserStatus status;
+    private UserStatus status;
+    private @Nullable Instant retainedAt;
     private UserCredential credential;
 
-    private User(UUID id, Username username, UserProfile profile, UserStatus status, UserCredential credential) {
+    private User(
+        UUID id,
+        Username username,
+        UserProfile profile,
+        UserStatus status,
+        @Nullable Instant retainedAt,
+        UserCredential credential
+    ) {
         this.id = Objects.requireNonNull(id);
         this.username = Objects.requireNonNull(username);
         this.profile = Objects.requireNonNull(profile);
         this.status = Objects.requireNonNull(status);
+        this.retainedAt = retainedAt;
         this.credential = Objects.requireNonNull(credential);
+        if (status == UserStatus.RETAINED && retainedAt == null) {
+            throw new IllegalArgumentException("RETAINED users must have retainedAt");
+        }
+        if (status != UserStatus.RETAINED && retainedAt != null) {
+            throw new IllegalArgumentException("Only RETAINED users may have retainedAt");
+        }
     }
 
     /// Creates an ordinary runtime User, rejecting the reserved system username.
@@ -40,6 +57,7 @@ public final class User {
             normalizedUsername,
             UserProfile.of(emails, firstName, lastName),
             UserStatus.ACTIVE,
+            null,
             UserCredential.empty()
         );
     }
@@ -63,6 +81,7 @@ public final class User {
             normalizedUsername,
             profile,
             UserStatus.ACTIVE,
+            null,
             UserCredential.initial(initialPasswordHash)
         );
     }
@@ -75,6 +94,7 @@ public final class User {
         String firstName,
         String lastName,
         UserStatus status,
+        @Nullable Instant retainedAt,
         @Nullable String passwordHash
     ) {
         return new User(
@@ -82,8 +102,22 @@ public final class User {
             Username.of(username),
             UserProfile.of(emails, firstName, lastName),
             status,
+            retainedAt,
             UserCredential.initial(passwordHash)
         );
+    }
+
+    /// Reconstitutes pre-retention persisted User state.
+    public static User restore(
+        UUID id,
+        String username,
+        Set<String> emails,
+        String firstName,
+        String lastName,
+        UserStatus status,
+        @Nullable String passwordHash
+    ) {
+        return restore(id, username, emails, firstName, lastName, status, null, passwordHash);
     }
 
     public UUID id() {
@@ -102,6 +136,10 @@ public final class User {
         return this.status;
     }
 
+    public @Nullable Instant retainedAt() {
+        return this.retainedAt;
+    }
+
     public UserCredential credential() {
         return this.credential;
     }
@@ -112,6 +150,7 @@ public final class User {
         @Nullable String firstName,
         @Nullable String lastName
     ) {
+        this.requireMutable();
         UserProfile requested = UserProfile.of(emails, firstName, lastName);
         if (this.profile.equals(requested)) {
             return false;
@@ -122,12 +161,31 @@ public final class User {
 
     /// Initializes a previously missing credential without overwriting any persisted hash.
     public boolean initializeCredential(@Nullable String initialPasswordHash) {
+        this.requireMutable();
         UserCredential requested = this.credential.initializeIfMissing(initialPasswordHash);
         if (this.credential.equals(requested)) {
             return false;
         }
         this.credential = requested;
         return true;
+    }
+
+    /// Moves an ordinary User into retained read-only state, preserving the first retention timestamp.
+    public boolean retain(Instant retainedAt) {
+        this.requireManagedDeletionAllowed();
+        if (this.status == UserStatus.RETAINED) {
+            return false;
+        }
+        this.status = UserStatus.RETAINED;
+        this.retainedAt = Objects.requireNonNull(retainedAt);
+        return true;
+    }
+
+    /// Enforces that lifecycle/profile/access mutations cannot target a retained User.
+    public void requireMutable() {
+        if (this.status == UserStatus.RETAINED) {
+            throw UserRuleViolation.retainedUserReadOnly();
+        }
     }
 
     /// Enforces the managed-lifecycle restriction that the system User cannot be removed.

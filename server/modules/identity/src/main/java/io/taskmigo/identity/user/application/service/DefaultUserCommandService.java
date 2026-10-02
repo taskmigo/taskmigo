@@ -6,6 +6,7 @@ import io.taskmigo.identity.user.application.port.in.internal.UserMutationResult
 import io.taskmigo.identity.user.application.port.out.UserCommandRepository;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.Username;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -100,6 +101,11 @@ public final class DefaultUserCommandService implements UserCommandService {
     }
 
     @Override
+    public Optional<User> findByIdForUpdate(UUID id) {
+        return this.users.findByIdForUpdate(id);
+    }
+
+    @Override
     public Optional<User> findByUsername(@Nullable String username) {
         return this.users.findByUsername(Username.of(username));
     }
@@ -107,6 +113,16 @@ public final class DefaultUserCommandService implements UserCommandService {
     @Override
     public Optional<User> findByUsernameForUpdate(@Nullable String username) {
         return this.users.findByUsernameForUpdate(Username.of(username));
+    }
+
+    @Override
+    public List<UUID> retainedBefore(Instant cutoff) {
+        return this.users.retainedBefore(cutoff);
+    }
+
+    @Override
+    public void save(User user) {
+        this.users.save(user);
     }
 
     @Override

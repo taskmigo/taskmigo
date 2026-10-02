@@ -11,12 +11,12 @@
   absent: false
 
 - code: system_operator_object_all
-  description: Allows System Operator to read every object returned by versioned APIs.
+  description: Allows System Operator to read every object returned by versioned GET APIs.
   effect: allow
   scope: object
   target:
     api:
-      method: "*"
+      method: GET
       path: /api/v0/.*
   policy: true
   absent: false
@@ -33,12 +33,12 @@
   absent: false
 
 - code: administrator_object_all
-  description: Allows Administrator to read objects returned by versioned APIs.
+  description: Allows Administrator to read objects returned by versioned GET APIs.
   effect: allow
   scope: object
   target:
     api:
-      method: "*"
+      method: GET
       path: /api/v0/.*
   policy: true
   absent: false
@@ -52,4 +52,26 @@
       method: "*"
       path: /api/v0/users
   policy: object.username == "system"
+  absent: false
+
+- code: user_statement_mutation_allow_active
+  description: Allows direct statement mutation only for non-retained users.
+  effect: allow
+  scope: object
+  target:
+    api:
+      method: PATCH
+      path: /api/v0/users/.*/statements
+  policy: object.status != "RETAINED"
+  absent: false
+
+- code: user_delete_allow_active_non_system
+  description: Allows deletion only for non-retained, non-system users.
+  effect: allow
+  scope: object
+  target:
+    api:
+      method: DELETE
+      path: /api/v0/users/.*
+  policy: object.status != "RETAINED" && object.username != "system"
   absent: false

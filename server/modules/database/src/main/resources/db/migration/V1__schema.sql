@@ -1,13 +1,23 @@
+CREATE TABLE application_configuration (
+    configuration_key VARCHAR(100) PRIMARY KEY,
+    configuration_value VARCHAR(1000) NOT NULL
+);
+
+INSERT INTO application_configuration (configuration_key, configuration_value)
+VALUES ('retention.user', 'P30D');
+
 CREATE TABLE users (
     id UUID PRIMARY KEY,
     username VARCHAR(100) NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     status VARCHAR(16) NOT NULL,
+    retained_at timestamptz(3),
     password_hash VARCHAR(255),
     CONSTRAINT uk_users_username UNIQUE (username),
-    CONSTRAINT ck_users_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DISABLED')),
-    CONSTRAINT ck_users_names CHECK (btrim(first_name) <> '' AND btrim(last_name) <> '')
+    CONSTRAINT ck_users_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DISABLED', 'RETAINED')),
+    CONSTRAINT ck_users_names CHECK (btrim(first_name) <> '' AND btrim(last_name) <> ''),
+    CONSTRAINT ck_users_retained_at CHECK ((status = 'RETAINED') = (retained_at IS NOT NULL))
 );
 
 CREATE TABLE user_emails (

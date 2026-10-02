@@ -8,8 +8,11 @@ import static org.mockito.Mockito.when;
 import io.taskmigo.identity.application.port.out.TransactionRunner;
 import io.taskmigo.identity.group.application.port.in.api.GroupService;
 import io.taskmigo.identity.membership.application.port.out.MembershipRepository;
+import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
+import io.taskmigo.identity.user.domain.User;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -37,14 +40,14 @@ class DefaultMembershipServiceTest {
         when(memberships.groupsForUser(userId)).thenReturn(List.of(current));
         GroupService groups = mock(GroupService.class);
         UserCommandService users = mock(UserCommandService.class);
-        when(users.lock(userId)).thenReturn(true);
+        when(users.findByIdForUpdate(userId)).thenReturn(Optional.of(activeUser(userId)));
         var service = new DefaultMembershipService(memberships, groups, users, directTransactions());
 
         // Act
         service.setGroupsForUser(userId, Set.of(requested));
 
         // Assert
-        verify(users).lock(userId);
+        verify(users).findByIdForUpdate(userId);
         verify(groups).requireGroups(Set.of(requested));
         verify(memberships).add(requested, userId);
         verify(memberships).remove(current, userId);
@@ -66,14 +69,14 @@ class DefaultMembershipServiceTest {
         when(memberships.groupsForUser(userId)).thenReturn(List.of());
         GroupService groups = mock(GroupService.class);
         UserCommandService users = mock(UserCommandService.class);
-        when(users.lock(userId)).thenReturn(true);
+        when(users.findByIdForUpdate(userId)).thenReturn(Optional.of(activeUser(userId)));
         var service = new DefaultMembershipService(memberships, groups, users, directTransactions());
 
         // Act
         service.setGroupsForUser(userId, List.of(groupId, groupId));
 
         // Assert
-        verify(users).lock(userId);
+        verify(users).findByIdForUpdate(userId);
         verify(groups).requireGroups(Set.of(groupId));
         verify(memberships).add(groupId, userId);
         verify(memberships, never()).remove(groupId, userId);
@@ -94,7 +97,7 @@ class DefaultMembershipServiceTest {
         MembershipRepository memberships = mock(MembershipRepository.class);
         GroupService groups = mock(GroupService.class);
         UserCommandService users = mock(UserCommandService.class);
-        when(users.lock(userId)).thenReturn(true);
+        when(users.findByIdForUpdate(userId)).thenReturn(Optional.of(activeUser(userId)));
         var service = new DefaultMembershipService(memberships, groups, users, directTransactions());
 
         // Act
@@ -102,8 +105,12 @@ class DefaultMembershipServiceTest {
 
         // Assert
         verify(groups).requireGroups(Set.of(groupId));
-        verify(users).lock(userId);
+        verify(users).findByIdForUpdate(userId);
         verify(memberships).add(groupId, userId);
+    }
+
+    private static User activeUser(UUID id) {
+        return User.restore(id, "membership-user", Set.of(), "Membership", "User", UserStatus.ACTIVE, null);
     }
 
     private static TransactionRunner directTransactions() {

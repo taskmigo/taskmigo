@@ -1,7 +1,9 @@
 package io.taskmigo.identity.user.application.port.in.internal;
 
 import io.taskmigo.identity.user.domain.User;
+import java.time.Instant;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -26,9 +28,15 @@ public interface UserCommandService {
 
     boolean lock(UUID id);
 
+    Optional<User> findByIdForUpdate(UUID id);
+
     Optional<User> findByUsername(@Nullable String username);
 
     Optional<User> findByUsernameForUpdate(@Nullable String username);
+
+    List<UUID> retainedBefore(Instant cutoff);
+
+    void save(User user);
 
     void delete(User user);
 }

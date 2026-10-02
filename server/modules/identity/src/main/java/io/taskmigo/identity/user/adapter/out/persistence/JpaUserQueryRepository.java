@@ -6,14 +6,15 @@ import io.taskmigo.identity.adapter.out.persistence.query.ObjectAuthorizationPre
 import io.taskmigo.identity.adapter.out.persistence.query.QueryPredicateBinder;
 import io.taskmigo.identity.user.AuthenticationInfo;
 import io.taskmigo.identity.user.UserInfo;
+import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.port.out.UserQueryRepository;
 import io.taskmigo.identity.user.domain.UserProfile;
-import io.taskmigo.identity.user.domain.UserStatus;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 /// Reads User projections directly from JPA without hydrating the mutation aggregate.
@@ -37,6 +38,12 @@ public class JpaUserQueryRepository implements UserQueryRepository {
     @Override
     public Optional<UserInfo> find(UUID id) {
         return this.users.findById(id).map(JpaUserQueryRepository::info);
+    }
+
+    @Override
+    public Optional<UserInfo> find(UUID id, ObjectAuthorizationPredicate<UserInfo> authorization) {
+        Specification<UserEntity> idMatch = (root, query, builder) -> builder.equal(root.get("id"), id);
+        return this.users.findOne(idMatch.and(this.objectBinder.bind(authorization))).map(JpaUserQueryRepository::info);
     }
 
     @Override
@@ -76,7 +83,9 @@ public class JpaUserQueryRepository implements UserQueryRepository {
             profile.firstName(),
             profile.lastName(),
             profile.emails(),
-            profile.displayName()
+            profile.displayName(),
+            user.status(),
+            user.retainedAt()
         );
     }
 

@@ -3,6 +3,8 @@ package io.taskmigo.identity.user.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.taskmigo.identity.user.UserStatus;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -127,6 +129,36 @@ class UserTest {
         // Assert
         assertThat(changed).isTrue();
         assertThat(user.profile()).isEqualTo(new UserProfile(Set.of("alice@example.com"), "Alice", "User"));
+    }
+
+    /**
+     * Verifies retained lifecycle state becomes immutable after the first retention transition.
+     *
+     * Given: an ACTIVE User retained at a fixed timestamp.
+     * Expect: status and retainedAt are stored and later profile or credential mutation is rejected.
+     */
+    @Test
+    @DisplayName("makes retained users read-only")
+    void shouldMakeUserReadOnlyWhenRetained() {
+        // Arrange
+        Instant retainedAt = Instant.parse("2026-10-02T00:00:00Z");
+        User user = User.restore(UUID.randomUUID(), "alice", Set.of(), "Alice", "User", UserStatus.ACTIVE, null);
+
+        // Act
+        boolean changed = user.retain(retainedAt);
+
+        // Assert
+        assertThat(changed).isTrue();
+        assertThat(user.status()).isEqualTo(UserStatus.RETAINED);
+        assertThat(user.retainedAt()).isEqualTo(retainedAt);
+        assertThatThrownBy(() -> user.reconcileProfile(Set.of(), "Changed", "User")).isInstanceOfSatisfying(
+            UserRuleViolation.class,
+            exception -> assertThat(exception.reason()).isEqualTo(UserRuleViolation.Reason.RETAINED_USER_READ_ONLY)
+        );
+        assertThatThrownBy(() -> user.initializeCredential("{bcrypt}new")).isInstanceOfSatisfying(
+            UserRuleViolation.class,
+            exception -> assertThat(exception.reason()).isEqualTo(UserRuleViolation.Reason.RETAINED_USER_READ_ONLY)
+        );
     }
 
     /**

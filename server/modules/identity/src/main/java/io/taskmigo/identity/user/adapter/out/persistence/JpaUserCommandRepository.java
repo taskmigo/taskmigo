@@ -1,9 +1,12 @@
 package io.taskmigo.identity.user.adapter.out.persistence;
 
 import io.taskmigo.identity.user.UserException;
+import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.port.out.UserCommandRepository;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.Username;
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -25,6 +28,11 @@ public class JpaUserCommandRepository implements UserCommandRepository {
     }
 
     @Override
+    public Optional<User> findByIdForUpdate(UUID id) {
+        return this.users.findFirstById(id).map(UserEntity::toDomain);
+    }
+
+    @Override
     public Optional<User> findByUsername(Username username) {
         return this.users.findByUsername(username.value()).map(UserEntity::toDomain);
     }
@@ -32,6 +40,18 @@ public class JpaUserCommandRepository implements UserCommandRepository {
     @Override
     public Optional<User> findByUsernameForUpdate(Username username) {
         return this.users.findFirstByUsername(username.value()).map(UserEntity::toDomain);
+    }
+
+    @Override
+    public List<UUID> retainedBefore(Instant cutoff) {
+        return this.users
+            .findTop100ByStatusAndRetainedAtLessThanEqualOrderByRetainedAtAsc(
+                UserStatus.RETAINED,
+                cutoff
+            )
+            .stream()
+            .map(UserEntity::id)
+            .toList();
     }
 
     @Override

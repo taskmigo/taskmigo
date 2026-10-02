@@ -1,7 +1,7 @@
 package io.taskmigo.identity.user.adapter.out.persistence;
 
+import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.domain.User;
-import io.taskmigo.identity.user.domain.UserStatus;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -11,6 +11,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -45,6 +46,10 @@ public class UserEntity {
     UserStatus status;
 
     @Nullable
+    @Column(name = "retained_at")
+    Instant retainedAt;
+
+    @Nullable
     @Column(name = "password_hash")
     String passwordHash;
 
@@ -57,6 +62,7 @@ public class UserEntity {
         String firstName,
         String lastName,
         UserStatus status,
+        @Nullable Instant retainedAt,
         @Nullable String passwordHash
     ) {
         this.id = id;
@@ -65,6 +71,7 @@ public class UserEntity {
         this.firstName = firstName;
         this.lastName = lastName;
         this.status = status;
+        this.retainedAt = retainedAt;
         this.passwordHash = passwordHash;
     }
 
@@ -76,6 +83,7 @@ public class UserEntity {
             user.profile().firstName(),
             user.profile().lastName(),
             user.status(),
+            user.retainedAt(),
             user.credential().passwordHash()
         );
     }
@@ -88,6 +96,7 @@ public class UserEntity {
             this.firstName,
             this.lastName,
             this.status,
+            this.retainedAt,
             this.passwordHash
         );
     }
@@ -114,6 +123,11 @@ public class UserEntity {
 
     UserStatus status() {
         return this.status;
+    }
+
+    @Nullable
+    Instant retainedAt() {
+        return this.retainedAt;
     }
 
     @Nullable
