@@ -221,25 +221,14 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
         UserDeletionLifecycleService deletion = mock(UserDeletionLifecycleService.class);
-        var service = service(
-            users,
-            grantAssignments,
-            grantQueries,
-            groups,
-            mock(UserAuditAppender.class),
-            deletion
-        );
+        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditAppender.class), deletion);
 
         // Act
         boolean removed = service.deleteUser("alice");
 
         // Assert
         assertThat(removed).isTrue();
-        verify(deletion).delete(
-            existing,
-            new UserMutationActor(system.id(), SystemUser.USERNAME),
-            NOW
-        );
+        verify(deletion).delete(existing, new UserMutationActor(system.id(), SystemUser.USERNAME), NOW);
     }
 
     /**
@@ -331,14 +320,7 @@ class DefaultIdentityProvisioningServiceTest {
         MembershipService groups,
         UserAuditAppender audits
     ) {
-        return service(
-            users,
-            grantAssignments,
-            grantQueries,
-            groups,
-            audits,
-            mock(UserDeletionLifecycleService.class)
-        );
+        return service(users, grantAssignments, grantQueries, groups, audits, mock(UserDeletionLifecycleService.class));
     }
 
     private static DefaultIdentityProvisioningService service(
