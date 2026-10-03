@@ -297,7 +297,11 @@ final class JpaObjectAuthorizationExpressionBinder {
             return UUID.fromString(text);
         }
         if (type.isEnum() && value instanceof String text) {
-            for (Object constant : type.getEnumConstants()) {
+            Object[] constants = type.getEnumConstants();
+            if (constants == null) {
+                throw failure("Persistence enum constants are unavailable for " + type.getSimpleName());
+            }
+            for (Object constant : constants) {
                 if (((Enum<?>) constant).name().equals(text)) {
                     return constant;
                 }
