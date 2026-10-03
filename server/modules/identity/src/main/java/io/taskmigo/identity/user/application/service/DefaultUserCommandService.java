@@ -131,7 +131,6 @@ public final class DefaultUserCommandService implements UserCommandService {
         this.users.save(user);
     }
 
-
     private static List<String> ordered(Collection<String> values) {
         return values.stream().sorted().toList();
     }
