@@ -88,7 +88,7 @@ class AuditTransactionIntegrationTest {
         assertThat(
             this.jdbc.queryForList(
                 """
-                select actor_id, occurred_at, changes_json
+                select actor_id, actor_username, occurred_at, changes_json
                 from audit_logs
                 where entity_type = 'user' and entity_id = ?
                 """,
@@ -98,6 +98,7 @@ class AuditTransactionIntegrationTest {
             .singleElement()
             .satisfies(row -> {
                 assertThat(row.get("actor_id")).isEqualTo(actor.id());
+                assertThat(row.get("actor_username")).isEqualTo(actor.username());
                 Timestamp occurredAt = (Timestamp) Objects.requireNonNull(row.get("occurred_at"));
                 assertThat(occurredAt.toInstant().getNano() % 1_000_000).isZero();
                 assertThat(Objects.requireNonNull(row.get("changes_json")).toString()).contains(
@@ -121,7 +122,7 @@ class AuditTransactionIntegrationTest {
             UUID.randomUUID(),
             "user",
             UUID.randomUUID(),
-            new AuditActor(UUID.randomUUID()),
+            new AuditActor(UUID.randomUUID(), "operator"),
             Instant.parse("2026-10-01T00:00:00Z"),
             List.of(AuditChange.visible("firstName", "Before", "After"))
         );
