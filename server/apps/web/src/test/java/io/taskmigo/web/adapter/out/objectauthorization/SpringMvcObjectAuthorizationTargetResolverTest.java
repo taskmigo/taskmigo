@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -39,7 +39,7 @@ class SpringMvcObjectAuthorizationTargetResolverTest {
     private VersionRequestCondition version;
 
     @Mock
-    private ObjectAuthorizationSchema<TestObject> schema;
+    private ObjectAuthorizationBinding<TestObject> binding;
 
     /**
      * Verifies that Object Authorization target metadata is derived from the actual Spring MVC handler mapping.
@@ -59,21 +59,21 @@ class SpringMvcObjectAuthorizationTargetResolverTest {
         when(this.version.getVersion()).thenReturn("0");
         when(this.mapping.getPatternValues()).thenReturn(Set.of("/api/v{version}/objects"));
         when(this.mapping.getMethodsCondition()).thenReturn(new RequestMethodsRequestCondition(RequestMethod.GET));
-        when(this.schema.objectType()).thenReturn(TestObject.class);
+        when(this.binding.objectType()).thenReturn(TestObject.class);
         SpringMvcObjectAuthorizationTargetResolver resolver = new SpringMvcObjectAuthorizationTargetResolver(
             this.handlerMappings,
-            List.of(this.schema)
+            List.of(this.binding)
         );
 
         // Act
         resolver.afterSingletonsInstantiated();
-        List<ObjectAuthorizationSchema<?>> applicable = resolver.applicable(
+        List<ObjectAuthorizationBinding<?>> applicable = resolver.applicable(
             "GET",
             StatementTargetPathMatcher.compile("/api/v0/objects")
         );
 
         // Assert
-        assertThat(applicable).containsExactly(this.schema);
+        assertThat(applicable).containsExactly(this.binding);
     }
 
     private static final class TestController {

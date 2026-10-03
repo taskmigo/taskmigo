@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
+import io.taskmigo.language.FieldId;
 import io.taskmigo.query.model.QueryExpression;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -24,6 +25,8 @@ import org.springframework.data.jpa.domain.Specification;
 @ExtendWith(MockitoExtension.class)
 class JpaUnaryPlusExpressionBinderTest {
 
+    private static final FieldId AMOUNT = FieldId.of("field:test:amount");
+
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     private Root<TestEntity> root;
 
@@ -37,13 +40,13 @@ class JpaUnaryPlusExpressionBinderTest {
     @DisplayName("should bind unary plus when query value is numeric")
     void shouldBindUnaryPlusWhenQueryValueIsNumeric() {
         // Arrange
-        QueryExpression.Reference amount = new QueryExpression.Reference("object", List.of("amount"));
+        QueryExpression.Reference amount = new QueryExpression.Reference("object", List.of("amount"), AMOUNT);
         QueryExpression plus = new QueryExpression.Unary(QueryExpression.UnaryOperator.PLUS, amount);
         QueryExpression expression = new QueryExpression.Binary(QueryExpression.BinaryOperator.EQUAL, plus, plus);
         Specification<TestEntity> specification = JpaQueryExpressionBinder.bind(
             expression,
-            Map.of("amount", "amount"),
-            Map.of("amount", Integer.class)
+            Map.of(AMOUNT, "amount"),
+            Map.of(AMOUNT, Integer.class)
         );
 
         // Act + Assert
@@ -62,7 +65,8 @@ class JpaUnaryPlusExpressionBinderTest {
         // Arrange
         ObjectAuthorizationExpression.Reference amount = new ObjectAuthorizationExpression.Reference(
             "object",
-            List.of("amount")
+            List.of("amount"),
+            AMOUNT
         );
         ObjectAuthorizationExpression plus = new ObjectAuthorizationExpression.Unary(
             ObjectAuthorizationExpression.UnaryOperator.PLUS,
@@ -75,8 +79,8 @@ class JpaUnaryPlusExpressionBinderTest {
         );
         Specification<TestEntity> specification = JpaObjectAuthorizationExpressionBinder.bind(
             expression,
-            Map.of("amount", "amount"),
-            Map.of("amount", Integer.class)
+            Map.of(AMOUNT, "amount"),
+            Map.of(AMOUNT, Integer.class)
         );
 
         // Act + Assert

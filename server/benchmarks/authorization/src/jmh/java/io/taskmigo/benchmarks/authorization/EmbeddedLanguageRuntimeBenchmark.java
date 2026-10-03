@@ -66,17 +66,29 @@ public class EmbeddedLanguageRuntimeBenchmark {
             int size = Integer.parseInt(this.listSize);
             ResourceSchema record = ResourceSchema.of(
                 new ResourceType("benchmark.record"),
-                List.of(new Field(new FieldId("record.values"), FieldPath.parse("values"),
-                    new LanguageType.ListType(LanguageType.Scalar.NUMBER), false))
+                List.of(
+                    new Field(
+                        new FieldId("record.values"),
+                        FieldPath.parse("values"),
+                        new LanguageType.ListType(LanguageType.Scalar.NUMBER),
+                        false
+                    )
+                )
             );
-            ResourceSchema threshold = ResourceSchema.of(
-                new ResourceType("benchmark.threshold"), List.of()
+            ResourceSchema threshold = ResourceSchema.of(new ResourceType("benchmark.threshold"), List.of());
+            CompilerEnvironment schema = CompilerEnvironment.of(
+                Map.of(
+                    "record",
+                    new CompilerEnvironment.Root(
+                        record,
+                        new LanguageType.StructuredType("Record", Map.of()),
+                        false,
+                        true
+                    ),
+                    "threshold",
+                    new CompilerEnvironment.Root(threshold, LanguageType.Scalar.NUMBER, false, true)
+                )
             );
-            CompilerEnvironment schema = CompilerEnvironment.of(Map.of(
-                "record", new CompilerEnvironment.Root(record,
-                    new LanguageType.StructuredType("Record", Map.of()), false, true),
-                "threshold", new CompilerEnvironment.Root(threshold, LanguageType.Scalar.NUMBER, false, true)
-            ));
             this.compiled = new LanguageCompiler().compile(
                 "return all(record.values, value => value >= threshold);",
                 schema
@@ -85,6 +97,5 @@ public class EmbeddedLanguageRuntimeBenchmark {
             this.roots = Map.of("record", Map.of("values", values), "threshold", 0);
             this.sparseRoots = Map.of("threshold", 0);
         }
-
     }
 }

@@ -1,8 +1,6 @@
 package io.taskmigo.authorization.embeddedlanguage;
 
-import io.taskmigo.authorization.object.ObjectAuthorizationField;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
-import io.taskmigo.foundation.TypeDescriptor;
+import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
 import io.taskmigo.language.CompilerEnvironment;
 import io.taskmigo.language.Field;
 import io.taskmigo.language.FieldId;
@@ -16,7 +14,6 @@ import io.taskmigo.language.SchemaFingerprint;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -36,63 +33,37 @@ public final class AuthorizationEmbeddedLanguageSchemas {
     public static CompilerEnvironment request() {
         return CompilerEnvironment.of(
             Map.of(
-                "principal", new CompilerEnvironment.Root(PRINCIPAL, false),
-                "request", new CompilerEnvironment.Root(REQUEST, false)
+                "principal",
+                new CompilerEnvironment.Root(PRINCIPAL, false),
+                "request",
+                new CompilerEnvironment.Root(REQUEST, false)
             )
         );
     }
 
-    /// Returns object authorization roots for every logical object contract governed by a route.
-    public static CompilerEnvironment object(List<? extends ObjectAuthorizationSchema<?>> schemas) {
-        if (schemas.size() == 1) {
-            return object(schemas.getFirst());
-        }
-        List<Field> fields = schemas
-            .stream()
-            .flatMap(schema -> schema.resourceSchema().fields().stream())
-            .distinct()
-            .toList();
-        ResourceSchema object = schema(ResourceType.of("taskmigo:authorization:object:" + schemas), fields);
-        return environment(object);
-    }
-
     /// Returns cached object authorization roots for one logical resource contract.
-    public static <Q> CompilerEnvironment object(ObjectAuthorizationSchema<Q> schema) {
+    public static <Q> CompilerEnvironment object(ObjectAuthorizationBinding<Q> schema) {
         return OBJECTS.computeIfAbsent(schema.identity(), ignored -> environment(objectSchema(schema)));
     }
 
     private static CompilerEnvironment environment(ResourceSchema object) {
-        ResourceSchemaResolver resolver = ResourceSchemaResolver.fixed(Map.of(
-            PRINCIPAL.type(), PRINCIPAL,
-            REQUEST.type(), REQUEST,
-            object.type(), object
-        ));
+        ResourceSchemaResolver resolver = ResourceSchemaResolver.fixed(
+            Map.of(PRINCIPAL.type(), PRINCIPAL, REQUEST.type(), REQUEST, object.type(), object)
+        );
         return CompilerEnvironment.of(
             Map.of(
-                "principal", new CompilerEnvironment.Root(
-                    resolver.resolve(PRINCIPAL.type(), SchemaContext.EMPTY), false
-                ),
-                "request", new CompilerEnvironment.Root(
-                    resolver.resolve(REQUEST.type(), SchemaContext.EMPTY), false
-                ),
-                "object", new CompilerEnvironment.Root(
-                    resolver.resolve(object.type(), SchemaContext.EMPTY), true
-                )
+                "principal",
+                new CompilerEnvironment.Root(resolver.resolve(PRINCIPAL.type(), SchemaContext.EMPTY), false),
+                "request",
+                new CompilerEnvironment.Root(resolver.resolve(REQUEST.type(), SchemaContext.EMPTY), false),
+                "object",
+                new CompilerEnvironment.Root(resolver.resolve(object.type(), SchemaContext.EMPTY), true)
             )
         );
     }
 
-    private static <Q> ResourceSchema objectSchema(ObjectAuthorizationSchema<Q> schema) {
+    private static <Q> ResourceSchema objectSchema(ObjectAuthorizationBinding<Q> schema) {
         return schema.resourceSchema();
-    }
-
-    private static Field toField(String owner, ObjectAuthorizationField field) {
-        return field(
-            owner,
-            field.path().text(),
-            languageType(field.type()),
-            field.nullable()
-        );
     }
 
     private static Field field(String owner, String path, LanguageType type, boolean nullable) {
@@ -136,25 +107,5 @@ public final class AuthorizationEmbeddedLanguageSchemas {
 
     private static LanguageType string() {
         return LanguageType.Scalar.STRING;
-    }
-
-    private static LanguageType languageType(TypeDescriptor type) {
-        Class<?> raw = type.rawType();
-        if (raw == String.class || raw == UUID.class || raw == Character.class || raw == char.class) {
-            return LanguageType.Scalar.STRING;
-        }
-        if (raw == Boolean.class || raw == boolean.class) {
-            return LanguageType.Scalar.BOOL;
-        }
-        if (Number.class.isAssignableFrom(raw) || raw.isPrimitive()) {
-            return LanguageType.Scalar.NUMBER;
-        }
-        if (Collection.class.isAssignableFrom(raw)) {
-            TypeDescriptor elementType = type.typeArguments().isEmpty()
-                ? TypeDescriptor.of(Object.class)
-                : type.typeArguments().getFirst();
-            return new LanguageType.ListType(languageType(elementType));
-        }
-        return new LanguageType.StructuredType(raw.getName(), Map.of());
     }
 }

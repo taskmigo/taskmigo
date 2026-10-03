@@ -42,7 +42,15 @@ record SemanticAst(
     }
 
     SemanticAst(Expression expression, String sourceFingerprint, String schemaFingerprint, String compilerFingerprint) {
-        this(expression, sourceFingerprint, schemaFingerprint, Map.of(), compilerFingerprint, CompilationMode.PROGRAM, "");
+        this(
+            expression,
+            sourceFingerprint,
+            schemaFingerprint,
+            Map.of(),
+            compilerFingerprint,
+            CompilationMode.PROGRAM,
+            ""
+        );
     }
 
     SemanticAst(
@@ -132,7 +140,20 @@ record SemanticAst(
         LanguageDiagnostic.SourceSpan span
     ) implements Expression {
         Reference(String root, List<String> path) {
-            this(root, path, null, null, null, LanguageType.Scalar.STRING, false, false, -1, -1, Set.of(root), UNKNOWN_SPAN);
+            this(
+                root,
+                path,
+                null,
+                null,
+                null,
+                LanguageType.Scalar.STRING,
+                false,
+                false,
+                -1,
+                -1,
+                Set.of(root),
+                UNKNOWN_SPAN
+            );
         }
 
         Reference(

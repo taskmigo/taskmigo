@@ -450,11 +450,7 @@ final class LanguageCompilerVisitor {
         );
     }
 
-    private Field resolveResourceField(
-        String root,
-        List<String> path,
-        LanguageDiagnostic.SourceSpan sourceSpan
-    ) {
+    private Field resolveResourceField(String root, List<String> path, LanguageDiagnostic.SourceSpan sourceSpan) {
         try {
             return this.environment.root(root).schema().resolve(new FieldPath(path));
         } catch (IllegalArgumentException exception) {

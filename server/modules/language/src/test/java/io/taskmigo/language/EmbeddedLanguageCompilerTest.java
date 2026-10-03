@@ -171,10 +171,7 @@ class EmbeddedLanguageCompilerTest {
             Map.of()
         );
         CompilerEnvironment symbolic = environment(
-            Map.of(
-                "record",
-                resource("test:symbolic", true, field("score", LanguageType.Scalar.NUMBER, false))
-            )
+            Map.of("record", resource("test:symbolic", true, field("score", LanguageType.Scalar.NUMBER, false)))
         );
         PartialProgram residual = new EmbeddedLanguagePartialEvaluator().partial(
             compiler.compile("return record.score + 1;", symbolic),

@@ -12,7 +12,10 @@ final class LanguageTestEnvironment {
 
     static CompilerEnvironment environment(Map<String, RootSpec> roots) {
         return CompilerEnvironment.of(
-            roots.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().build()))
+            roots
+                .entrySet()
+                .stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().build()))
         );
     }
 

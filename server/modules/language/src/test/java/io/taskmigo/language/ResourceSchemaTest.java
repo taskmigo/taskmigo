@@ -27,16 +27,33 @@ class ResourceSchemaTest {
     void shouldProduceDifferentFingerprintWhenSemanticFieldContractChanges() {
         ResourceSchema baseline = ResourceSchema.of(USER, List.of(NAME));
 
-        assertThat(ResourceSchema.of(USER, List.of(field("field:user:display-name", "name", LanguageType.Scalar.STRING, false))).fingerprint())
-            .isNotEqualTo(baseline.fingerprint());
-        assertThat(ResourceSchema.of(USER, List.of(field("field:user:name", "displayName", LanguageType.Scalar.STRING, false))).fingerprint())
-            .isNotEqualTo(baseline.fingerprint());
-        assertThat(ResourceSchema.of(USER, List.of(field("field:user:name", "name", LanguageType.Scalar.NUMBER, false))).fingerprint())
-            .isNotEqualTo(baseline.fingerprint());
-        assertThat(ResourceSchema.of(USER, List.of(field("field:user:name", "name", LanguageType.Scalar.STRING, true))).fingerprint())
-            .isNotEqualTo(baseline.fingerprint());
-        assertThat(ResourceSchema.of(ResourceType.of("resource:group"), List.of(NAME)).fingerprint())
-            .isNotEqualTo(baseline.fingerprint());
+        assertThat(
+            ResourceSchema.of(
+                USER,
+                List.of(field("field:user:display-name", "name", LanguageType.Scalar.STRING, false))
+            ).fingerprint()
+        ).isNotEqualTo(baseline.fingerprint());
+        assertThat(
+            ResourceSchema.of(
+                USER,
+                List.of(field("field:user:name", "displayName", LanguageType.Scalar.STRING, false))
+            ).fingerprint()
+        ).isNotEqualTo(baseline.fingerprint());
+        assertThat(
+            ResourceSchema.of(
+                USER,
+                List.of(field("field:user:name", "name", LanguageType.Scalar.NUMBER, false))
+            ).fingerprint()
+        ).isNotEqualTo(baseline.fingerprint());
+        assertThat(
+            ResourceSchema.of(
+                USER,
+                List.of(field("field:user:name", "name", LanguageType.Scalar.STRING, true))
+            ).fingerprint()
+        ).isNotEqualTo(baseline.fingerprint());
+        assertThat(ResourceSchema.of(ResourceType.of("resource:group"), List.of(NAME)).fingerprint()).isNotEqualTo(
+            baseline.fingerprint()
+        );
     }
 
     @Test

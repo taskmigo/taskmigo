@@ -32,8 +32,9 @@ class ResolvedResourceReferenceTest {
         assertThat(reference.fieldPath()).isEqualTo(FieldPath.parse("priority"));
         assertThat(reference.type()).isEqualTo(LanguageType.Scalar.NUMBER);
         assertThat(reference.symbolic()).isTrue();
-        assertThat(program.schemaFingerprints())
-            .containsExactlyEntriesOf(Map.of(ResourceType.of("resource:ticket"), schema.fingerprint()));
+        assertThat(program.schemaFingerprints()).containsExactlyEntriesOf(
+            Map.of(ResourceType.of("resource:ticket"), schema.fingerprint())
+        );
     }
 
     @Test
@@ -45,10 +46,12 @@ class ResolvedResourceReferenceTest {
         SemanticAst userProgram = compile("actor", user, "return actor.name;");
         SemanticAst groupProgram = compile("actor", group, "return actor.name;");
 
-        assertThat(((SemanticAst.Reference) userProgram.expression()).fieldId())
-            .isEqualTo(FieldId.of("field:user:name"));
-        assertThat(((SemanticAst.Reference) groupProgram.expression()).fieldId())
-            .isEqualTo(FieldId.of("field:group:name"));
+        assertThat(((SemanticAst.Reference) userProgram.expression()).fieldId()).isEqualTo(
+            FieldId.of("field:user:name")
+        );
+        assertThat(((SemanticAst.Reference) groupProgram.expression()).fieldId()).isEqualTo(
+            FieldId.of("field:group:name")
+        );
     }
 
     @Test

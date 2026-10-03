@@ -1,7 +1,7 @@
 package io.taskmigo.web.adapter.out.objectauthorization;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import java.util.Arrays;
@@ -27,16 +27,16 @@ public final class SpringMvcObjectAuthorizationTargetResolver
 {
 
     private final ObjectProvider<RequestMappingHandlerMapping> handlerMappings;
-    private final List<ObjectAuthorizationSchema<?>> schemas;
+    private final List<ObjectAuthorizationBinding<?>> bindings;
     private List<Route> routes = List.of();
 
-    /// Creates a resolver from Spring MVC mappings and the resource-owned schemas.
+    /// Creates a resolver from Spring MVC mappings and the resource-owned bindings.
     public SpringMvcObjectAuthorizationTargetResolver(
         ObjectProvider<RequestMappingHandlerMapping> handlerMappings,
-        List<ObjectAuthorizationSchema<?>> schemas
+        List<ObjectAuthorizationBinding<?>> bindings
     ) {
         this.handlerMappings = handlerMappings;
-        this.schemas = List.copyOf(schemas);
+        this.bindings = List.copyOf(bindings);
     }
 
     @Override
@@ -51,24 +51,24 @@ public final class SpringMvcObjectAuthorizationTargetResolver
     }
 
     @Override
-    public List<ObjectAuthorizationSchema<?>> applicable(
+    public List<ObjectAuthorizationBinding<?>> applicable(
         String method,
         StatementTargetPathMatcher pathMatcher
     ) {
         return this.routes
             .stream()
             .filter(route -> route.matches(method, pathMatcher))
-            .<ObjectAuthorizationSchema<?>>map(Route::schema)
+            .<ObjectAuthorizationBinding<?>>map(Route::binding)
             .distinct()
             .toList();
     }
 
     private List<Route> routes(RequestMappingInfo mapping, HandlerMethod handler) {
-        Optional<ObjectAuthorizationSchema<?>> schema = this.schema(handler);
-        if (schema.isEmpty()) {
+        Optional<ObjectAuthorizationBinding<?>> binding = this.binding(handler);
+        if (binding.isEmpty()) {
             return List.of();
         }
-        ObjectAuthorizationSchema<?> declaredSchema = schema.orElseThrow();
+        ObjectAuthorizationBinding<?> declaredBinding = binding.orElseThrow();
         String version = mapping.getVersionCondition().getVersion();
         List<String> methods = mapping.getMethodsCondition().getMethods().isEmpty()
             ? List.of("*")
@@ -77,11 +77,11 @@ public final class SpringMvcObjectAuthorizationTargetResolver
             .getPatternValues()
             .stream()
             .map(pattern -> version == null ? pattern : pattern.replace("{version}", version))
-            .flatMap(route -> methods.stream().map(method -> new Route(method, route, declaredSchema)))
+            .flatMap(route -> methods.stream().map(method -> new Route(method, route, declaredBinding)))
             .toList();
     }
 
-    private Optional<ObjectAuthorizationSchema<?>> schema(HandlerMethod handler) {
+    private Optional<ObjectAuthorizationBinding<?>> binding(HandlerMethod handler) {
         List<MethodParameter> predicateParameters = Arrays.stream(handler.getMethodParameters())
             .filter(parameter -> parameter.getParameterType() == ObjectAuthorizationPredicate.class)
             .toList();
@@ -93,12 +93,12 @@ public final class SpringMvcObjectAuthorizationTargetResolver
         }
         Class<?> objectType = this.objectType(predicateParameters.getFirst());
         return Optional.of(
-            this.schemas
+            this.bindings
                 .stream()
                 .filter(candidate -> candidate.objectType().equals(objectType))
                 .findFirst()
                 .orElseThrow(() ->
-                    new IllegalStateException("No Object Authorization Schema registered for " + objectType.getName())
+                    new IllegalStateException("No Object Authorization binding registered for " + objectType.getName())
                 )
         );
     }
@@ -110,7 +110,7 @@ public final class SpringMvcObjectAuthorizationTargetResolver
         );
     }
 
-    private record Route(String method, String path, ObjectAuthorizationSchema<?> schema) {
+    private record Route(String method, String path, ObjectAuthorizationBinding<?> binding) {
         private boolean matches(String statementMethod, StatementTargetPathMatcher pathMatcher) {
             return (
                 ("*".equals(statementMethod) || "*".equals(this.method) || this.method.equals(statementMethod)) &&

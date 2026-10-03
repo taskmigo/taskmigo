@@ -2,6 +2,7 @@ package io.taskmigo.identity.adapter.out.persistence.query;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationPredicateModel;
+import io.taskmigo.language.FieldId;
 import java.util.Map;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -10,15 +11,15 @@ public final class JpaObjectAuthorizationPredicateBinder<Q, E> implements Object
 
     private final Class<Q> objectType;
     private final Class<E> domainType;
-    private final Map<String, String> paths;
-    private final Map<String, Class<?>> types;
+    private final Map<FieldId, String> paths;
+    private final Map<FieldId, Class<?>> types;
 
     /// Creates a binder with explicit logical-to-physical paths and physical value types.
     public JpaObjectAuthorizationPredicateBinder(
         Class<Q> objectType,
         Class<E> domainType,
-        Map<String, String> paths,
-        Map<String, Class<?>> types
+        Map<FieldId, String> paths,
+        Map<FieldId, Class<?>> types
     ) {
         this.objectType = objectType;
         this.domainType = domainType;

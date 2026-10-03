@@ -2,7 +2,7 @@ package io.taskmigo.authorization.object.application.service;
 
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
-import io.taskmigo.authorization.object.ObjectAuthorizationField;
+import io.taskmigo.authorization.object.ObjectAuthorizationFieldBinding;
 import io.taskmigo.authorization.object.ObjectAuthorizationOperator;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
 
@@ -52,15 +52,10 @@ final class ObjectAuthorizationExpressionValidator {
         ObjectAuthorizationBinding<Q> schema
     ) {
         if (reference.root().equals("object")) {
-            ObjectAuthorizationField field = reference.fieldId() == null
-                ? schema.fields().stream()
-                    .filter(candidate -> candidate.path().segments().equals(reference.path()))
-                    .findFirst()
-                    .orElseThrow(() -> invalid("object path is not queryable"))
-                : schema.field(reference.fieldId()).orElseThrow(() -> invalid("object field identity is unknown"));
-            if (reference.fieldId() != null && !field.path().segments().equals(reference.path())) {
-                throw invalid("object field identity does not match resolved path");
+            if (reference.fieldId() == null) {
+                throw invalid("object field does not have a semantic identity");
             }
+            schema.field(reference.fieldId()).orElseThrow(() -> invalid("object field identity is unknown"));
         }
     }
 
@@ -101,14 +96,14 @@ final class ObjectAuthorizationExpressionValidator {
         ObjectAuthorizationOperator operator,
         ObjectAuthorizationBinding<Q> schema
     ) {
-        ObjectAuthorizationField field = reference.fieldId() == null
-            ? schema.fields().stream()
-                .filter(candidate -> candidate.path().segments().equals(reference.path()))
-                .findFirst()
-                .orElseThrow(() -> invalid("object path is not queryable"))
-            : schema.field(reference.fieldId()).orElseThrow(() -> invalid("object field identity is unknown"));
+        if (reference.fieldId() == null) {
+            throw invalid("object field does not have a semantic identity");
+        }
+        ObjectAuthorizationFieldBinding field = schema
+            .field(reference.fieldId())
+            .orElseThrow(() -> invalid("object field identity is unknown"));
         if (!field.operators().contains(operator)) {
-            throw invalid("operator is not supported for object path " + field.path().text());
+            throw invalid("operator is not supported for object field " + field.id().value());
         }
     }
 

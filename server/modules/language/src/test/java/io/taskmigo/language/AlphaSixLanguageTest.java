@@ -18,11 +18,7 @@ class AlphaSixLanguageTest {
     private final CompilerEnvironment schema = environment(
         Map.of(
             "record",
-            resource(
-                "test:alpha6",
-                true,
-                field("emails", new LanguageType.ListType(LanguageType.Scalar.STRING), false)
-            )
+            resource("test:alpha6", true, field("emails", new LanguageType.ListType(LanguageType.Scalar.STRING), false))
         )
     );
 

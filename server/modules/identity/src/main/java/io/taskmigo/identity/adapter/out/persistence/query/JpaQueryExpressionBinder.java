@@ -1,6 +1,7 @@
 package io.taskmigo.identity.adapter.out.persistence.query;
 
 import io.taskmigo.database.criteria.JpaCriteriaComparison;
+import io.taskmigo.language.FieldId;
 import io.taskmigo.query.model.QueryExpression;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
@@ -21,8 +22,8 @@ final class JpaQueryExpressionBinder {
 
     static <E> Specification<E> bind(
         QueryExpression expression,
-        Map<String, String> paths,
-        Map<String, Class<?>> types
+        Map<FieldId, String> paths,
+        Map<FieldId, Class<?>> types
     ) {
         return (root, query, builder) -> predicate(expression, root, builder, paths, types);
     }
@@ -31,8 +32,8 @@ final class JpaQueryExpressionBinder {
         QueryExpression expression,
         Root<E> root,
         CriteriaBuilder builder,
-        Map<String, String> paths,
-        Map<String, Class<?>> types
+        Map<FieldId, String> paths,
+        Map<FieldId, Class<?>> types
     ) {
         return switch (expression) {
             case QueryExpression.Literal literal when literal.value() instanceof Boolean value -> value
@@ -69,8 +70,8 @@ final class JpaQueryExpressionBinder {
         QueryExpression.Binary binary,
         Root<E> root,
         CriteriaBuilder builder,
-        Map<String, String> paths,
-        Map<String, Class<?>> types
+        Map<FieldId, String> paths,
+        Map<FieldId, Class<?>> types
     ) {
         boolean leftNull = isNull(binary.left());
         boolean rightNull = isNull(binary.right());
@@ -107,14 +108,13 @@ final class JpaQueryExpressionBinder {
         QueryExpression.Binary binary,
         Root<E> root,
         CriteriaBuilder builder,
-        Map<String, String> paths,
-        Map<String, Class<?>> types
+        Map<FieldId, String> paths,
+        Map<FieldId, Class<?>> types
     ) {
         Expression<?> left = value(binary.left(), root, builder, paths, types);
         List<Expression<?>> candidates = new ArrayList<>();
-        String logical =
-            binary.left() instanceof QueryExpression.Reference reference ? String.join(".", reference.runtimePath()) : null;
-        Class<?> type = logical == null ? null : types.get(logical);
+        FieldId id = binary.left() instanceof QueryExpression.Reference reference ? reference.fieldId() : null;
+        Class<?> type = id == null ? null : types.get(id);
         switch (binary.right()) {
             case QueryExpression.ListValue list -> list.values().forEach(item ->
                 candidates.add(
@@ -131,7 +131,7 @@ final class JpaQueryExpressionBinder {
         return left.in(candidates.toArray(Expression<?>[]::new));
     }
 
-    private static Class<?> comparisonType(QueryExpression left, QueryExpression right, Map<String, Class<?>> types) {
+    private static Class<?> comparisonType(QueryExpression left, QueryExpression right, Map<FieldId, Class<?>> types) {
         Class<?> type = referenceType(left, types);
         if (type == null) {
             type = referenceType(right, types);
@@ -153,14 +153,14 @@ final class JpaQueryExpressionBinder {
         throw unsupported("ordered comparison type");
     }
 
-    private static @Nullable Class<?> referenceType(QueryExpression expression, Map<String, Class<?>> types) {
+    private static @Nullable Class<?> referenceType(QueryExpression expression, Map<FieldId, Class<?>> types) {
         if (!(expression instanceof QueryExpression.Reference reference)) {
             return null;
         }
-        String logical = String.join(".", reference.runtimePath());
-        Class<?> type = types.get(logical);
+        FieldId id = requireFieldId(reference);
+        Class<?> type = types.get(id);
         if (type == null) {
-            throw failure("Persistence type is not bound: " + logical);
+            throw failure("Persistence type is not bound: " + id.value());
         }
         return type;
     }
@@ -187,14 +187,14 @@ final class JpaQueryExpressionBinder {
         QueryExpression other,
         Root<E> root,
         CriteriaBuilder builder,
-        Map<String, String> paths,
-        Map<String, Class<?>> types
+        Map<FieldId, String> paths,
+        Map<FieldId, Class<?>> types
     ) {
         if (
             expression instanceof QueryExpression.Literal literal &&
             other instanceof QueryExpression.Reference reference
         ) {
-            return literal(coerce(literal.value(), types.get(String.join(".", reference.runtimePath()))), builder);
+            return literal(coerce(literal.value(), types.get(requireFieldId(reference))), builder);
         }
         return value(expression, root, builder, paths, types);
     }
@@ -203,8 +203,8 @@ final class JpaQueryExpressionBinder {
         QueryExpression expression,
         Root<E> root,
         CriteriaBuilder builder,
-        Map<String, String> paths,
-        Map<String, Class<?>> types
+        Map<FieldId, String> paths,
+        Map<FieldId, Class<?>> types
     ) {
         return switch (expression) {
             case QueryExpression.Reference reference -> field(reference, root, paths);
@@ -248,8 +248,8 @@ final class JpaQueryExpressionBinder {
         QueryExpression expression,
         Root<E> root,
         CriteriaBuilder builder,
-        Map<String, String> paths,
-        Map<String, Class<?>> types
+        Map<FieldId, String> paths,
+        Map<FieldId, Class<?>> types
     ) {
         return value(expression, root, builder, paths, types).as(Number.class);
     }
@@ -257,21 +257,28 @@ final class JpaQueryExpressionBinder {
     private static <E> Expression<?> field(
         QueryExpression.Reference reference,
         Root<E> root,
-        Map<String, String> paths
+        Map<FieldId, String> paths
     ) {
         if (!reference.root().equals("object")) {
             throw unsupported("non-object reference");
         }
-        String logical = String.join(".", reference.runtimePath());
-        String physical = paths.get(logical);
+        FieldId id = requireFieldId(reference);
+        String physical = paths.get(id);
         if (physical == null) {
-            throw failure("Persistence path is not bound: " + logical);
+            throw failure("Persistence path is not bound: " + id.value());
         }
         Path<?> current = root;
         for (String segment : physical.split("\\.")) {
             current = current.get(segment);
         }
         return current;
+    }
+
+    private static FieldId requireFieldId(QueryExpression.Reference reference) {
+        if (reference.fieldId() == null) {
+            throw failure("Persistence field does not have a semantic identity");
+        }
+        return reference.fieldId();
     }
 
     private static Expression<?> literal(@Nullable Object value, CriteriaBuilder builder) {

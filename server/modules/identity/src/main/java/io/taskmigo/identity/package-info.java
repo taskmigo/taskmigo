@@ -2,6 +2,7 @@
 @ApplicationModule(
     allowedDependencies = {
         "foundation",
+        "language",
         "audit :: append-input",
         "audit :: events",
         "audit :: model",

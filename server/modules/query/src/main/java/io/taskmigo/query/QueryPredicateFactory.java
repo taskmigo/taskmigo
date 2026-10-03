@@ -29,24 +29,24 @@ final class QueryPredicateFactory {
         return model;
     }
 
-    static String schemaIdentity(QueryPredicate<?> predicate) {
-        return model(predicate).schemaIdentity();
+    static String bindingIdentity(QueryPredicate<?> predicate) {
+        return model(predicate).bindingIdentity();
     }
 
-    static <Q> QueryPredicate<Q> wrap(String schemaIdentity, QueryExpression expression) {
-        return new LogicalQueryPredicate<>(schemaIdentity, expression);
+    static <Q> QueryPredicate<Q> wrap(String bindingIdentity, QueryExpression expression) {
+        return new LogicalQueryPredicate<>(bindingIdentity, expression);
     }
 
     static <Q> QueryPredicate<Q> constantLike(QueryPredicate<?> predicate, boolean value) {
-        return wrap(schemaIdentity(predicate), new QueryExpression.Literal(value));
+        return wrap(bindingIdentity(predicate), new QueryExpression.Literal(value));
     }
 
     private record LogicalQueryPredicate<Q>(
-        String schemaIdentity,
+        String bindingIdentity,
         QueryExpression expression
     ) implements QueryPredicate<Q>, QueryPredicateModel {
         private LogicalQueryPredicate {
-            Objects.requireNonNull(schemaIdentity);
+            Objects.requireNonNull(bindingIdentity);
             Objects.requireNonNull(expression);
         }
 

@@ -103,7 +103,7 @@ final class DefaultQueryPredicates implements QueryPredicates {
     }
 
     private static String schema(QueryPredicate<?> predicate) {
-        return QueryPredicateFactory.schemaIdentity(predicate);
+        return QueryPredicateFactory.bindingIdentity(predicate);
     }
 
     private static void requireCompatible(QueryPredicate<?> left, QueryPredicate<?> right) {
