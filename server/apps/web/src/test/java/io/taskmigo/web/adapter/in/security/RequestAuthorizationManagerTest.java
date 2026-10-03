@@ -15,8 +15,10 @@ import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,7 +62,7 @@ class RequestAuthorizationManagerTest {
         JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt, List.of(), "alice");
         UserService users = mock(UserService.class);
         when(users.require(userId)).thenReturn(
-            new UserInfo(userId, "alice", "Alice", "User", java.util.Set.of(), "Alice User")
+            new UserInfo(userId, "alice", "Alice", "User", Set.of(), "Alice User")
         );
         RequestAuthorizationManager manager = new RequestAuthorizationManager(authorization, users);
 
@@ -106,7 +108,7 @@ class RequestAuthorizationManagerTest {
         JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt, List.of());
         UserService users = mock(UserService.class);
         when(users.require(userId)).thenReturn(
-            new UserInfo(userId, "alice", "Alice", "User", java.util.Set.of(), "Alice User")
+            new UserInfo(userId, "alice", "Alice", "User", Set.of(), "Alice User")
         );
         RequestAuthorizationManager manager = new RequestAuthorizationManager(authorization, users);
 
@@ -145,10 +147,10 @@ class RequestAuthorizationManagerTest {
                 "alice",
                 "Alice",
                 "User",
-                java.util.Set.of(),
+                Set.of(),
                 "Alice User",
                 UserStatus.RETAINED,
-                java.time.Instant.parse("2026-10-03T00:00:00Z")
+                Instant.parse("2026-10-03T00:00:00Z")
             )
         );
         RequestAuthorizationManager manager = new RequestAuthorizationManager(authorization, users);
@@ -186,7 +188,7 @@ class RequestAuthorizationManagerTest {
         JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt, List.of());
         UserService users = mock(UserService.class);
         when(users.require(userId)).thenReturn(
-            new UserInfo(userId, "alice", "Alice", "User", java.util.Set.of(), "Alice User")
+            new UserInfo(userId, "alice", "Alice", "User", Set.of(), "Alice User")
         );
         RequestAuthorizationManager manager = new RequestAuthorizationManager(authorization, users);
 

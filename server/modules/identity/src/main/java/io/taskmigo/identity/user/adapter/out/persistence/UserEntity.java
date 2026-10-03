@@ -13,6 +13,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.hibernate.annotations.BatchSize;
@@ -103,15 +104,15 @@ public class UserEntity {
             return User.restoreTombstone(
                 this.id,
                 this.retainedAt,
-                java.util.Objects.requireNonNull(this.tombstonedAt)
+                Objects.requireNonNull(this.tombstonedAt)
             );
         }
         return User.restore(
             this.id,
-            java.util.Objects.requireNonNull(this.username),
+            Objects.requireNonNull(this.username),
             Set.copyOf(this.emails),
-            java.util.Objects.requireNonNull(this.firstName),
-            java.util.Objects.requireNonNull(this.lastName),
+            Objects.requireNonNull(this.firstName),
+            Objects.requireNonNull(this.lastName),
             this.status,
             this.retainedAt,
             this.tombstonedAt,

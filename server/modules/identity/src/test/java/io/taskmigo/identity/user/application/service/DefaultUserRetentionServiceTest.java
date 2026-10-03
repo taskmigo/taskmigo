@@ -1,6 +1,8 @@
 package io.taskmigo.identity.user.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -90,9 +92,9 @@ class DefaultUserRetentionServiceTest {
         // Assert
         assertThat(tombstoned).isZero();
         verify(tombstones, never()).tombstone(
-            org.mockito.ArgumentMatchers.any(),
-            org.mockito.ArgumentMatchers.any(),
-            org.mockito.ArgumentMatchers.any()
+            any(),
+            any(),
+            any()
         );
     }
 
@@ -126,9 +128,9 @@ class DefaultUserRetentionServiceTest {
         doThrow(new IllegalStateException("simulated failure"))
             .when(tombstones)
             .tombstone(
-                org.mockito.ArgumentMatchers.eq(firstUser),
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq(NOW)
+                eq(firstUser),
+                any(),
+                eq(NOW)
             );
         var service = new DefaultUserRetentionService(users, configuration, tombstones, directTransactions());
 
@@ -138,9 +140,9 @@ class DefaultUserRetentionServiceTest {
         // Assert
         assertThat(tombstoned).isEqualTo(1);
         verify(tombstones).tombstone(
-            org.mockito.ArgumentMatchers.eq(secondUser),
-            org.mockito.ArgumentMatchers.any(),
-            org.mockito.ArgumentMatchers.eq(NOW)
+            eq(secondUser),
+            any(),
+            eq(NOW)
         );
     }
 

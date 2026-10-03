@@ -103,7 +103,7 @@ public class JpaUserQueryRepository implements UserQueryRepository {
         );
         return new AuthenticationInfo(
             user.id(),
-            user.username(),
+            Objects.requireNonNull(user.username()),
             profile.displayName(),
             UserStatus.ACTIVE.equals(user.status()),
             user.passwordHash()

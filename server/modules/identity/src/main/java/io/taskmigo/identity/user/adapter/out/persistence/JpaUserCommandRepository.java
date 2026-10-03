@@ -8,6 +8,7 @@ import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.Username;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -54,7 +55,7 @@ public class JpaUserCommandRepository implements UserCommandRepository {
             : this.users.findRetainedCandidatesAfter(cutoff, after.retainedAt(), after.id());
         return candidates
             .stream()
-            .map(user -> new RetainedUserCandidate(user.id(), java.util.Objects.requireNonNull(user.retainedAt())))
+            .map(user -> new RetainedUserCandidate(user.id(), Objects.requireNonNull(user.retainedAt())))
             .toList();
     }
 
@@ -71,5 +72,4 @@ public class JpaUserCommandRepository implements UserCommandRepository {
             throw new UserException(UserException.Type.CONFLICT, "Username or email already exists", exception);
         }
     }
-
 }
