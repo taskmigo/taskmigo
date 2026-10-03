@@ -316,12 +316,5 @@ class UserDeletionLifecycleIntegrationTest extends ApiIntegrationTestSupport {
         );
     }
 
-    private record ManagedUser(
-        UUID id,
-        String username,
-        String email,
-        UUID roleId,
-        UUID groupId,
-        UUID statementId
-    ) {}
+    private record ManagedUser(UUID id, String username, String email, UUID roleId, UUID groupId, UUID statementId) {}
 }
