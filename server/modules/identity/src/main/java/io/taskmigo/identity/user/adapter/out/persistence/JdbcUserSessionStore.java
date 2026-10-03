@@ -6,7 +6,7 @@ import org.springframework.stereotype.Repository;
 
 /// Removes OAuth authorization and consent rows before User identity data is discarded.
 @Repository
-public final class JdbcUserSessionStore implements UserSessionStore {
+public class JdbcUserSessionStore implements UserSessionStore {
 
     private final JdbcOperations jdbc;
 
