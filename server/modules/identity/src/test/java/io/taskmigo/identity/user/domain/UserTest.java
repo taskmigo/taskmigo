@@ -162,6 +162,73 @@ class UserTest {
     }
 
     /**
+     * Given: an ACTIVE User and immediate deletion.
+     * Expect: the aggregate becomes TOMBSTONE without synthesizing retainedAt.
+     */
+    @Test
+    @DisplayName("tombstones a live user without setting retainedAt")
+    void shouldTombstoneLiveUserWithoutRetentionTimestamp() {
+        // Arrange
+        Instant tombstonedAt = Instant.parse("2026-10-03T00:00:00Z");
+        User user = User.restore(
+            UUID.randomUUID(),
+            "alice",
+            Set.of("alice@example.com"),
+            "Alice",
+            "User",
+            UserStatus.ACTIVE,
+            "{bcrypt}hash"
+        );
+
+        // Act
+        boolean changed = user.tombstone(tombstonedAt);
+
+        // Assert
+        assertThat(changed).isTrue();
+        assertThat(user.status()).isEqualTo(UserStatus.TOMBSTONE);
+        assertThat(user.retainedAt()).isNull();
+        assertThat(user.tombstonedAt()).isEqualTo(tombstonedAt);
+        assertThat(user.credential().initialized()).isFalse();
+        assertThatThrownBy(user::username).isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(user::profile).isInstanceOf(NullPointerException.class);
+    }
+
+    /**
+     * Given: a RETAINED User with an existing retention timestamp.
+     * Expect: tombstoning preserves retainedAt and records tombstonedAt once.
+     */
+    @Test
+    @DisplayName("preserves retainedAt when a retained user is tombstoned")
+    void shouldPreserveRetentionTimestampWhenTombstoned() {
+        // Arrange
+        Instant retainedAt = Instant.parse("2026-09-01T00:00:00Z");
+        Instant tombstonedAt = Instant.parse("2026-10-03T00:00:00Z");
+        User user = User.restore(
+            UUID.randomUUID(),
+            "alice",
+            Set.of(),
+            "Alice",
+            "User",
+            UserStatus.RETAINED,
+            retainedAt,
+            null,
+            null
+        );
+
+        // Act
+        user.tombstone(tombstonedAt);
+
+        // Assert
+        assertThat(user.status()).isEqualTo(UserStatus.TOMBSTONE);
+        assertThat(user.retainedAt()).isEqualTo(retainedAt);
+        assertThat(user.tombstonedAt()).isEqualTo(tombstonedAt);
+        assertThatThrownBy(() -> user.reconcileProfile(Set.of(), "Changed", "User")).isInstanceOfSatisfying(
+            UserRuleViolation.class,
+            exception -> assertThat(exception.reason()).isEqualTo(UserRuleViolation.Reason.RETAINED_USER_READ_ONLY)
+        );
+    }
+
+    /**
      * Verifies the system User cannot participate in managed deletion.
      *
      * Given: the persisted system User aggregate.
