@@ -35,23 +35,37 @@ public final class User {
         this.retainedAt = retainedAt;
         this.tombstonedAt = tombstonedAt;
         this.credential = Objects.requireNonNull(credential);
-        if (status == UserStatus.RETAINED && retainedAt == null) {
-            throw new IllegalArgumentException("RETAINED users must have retainedAt");
-        }
-        if (status != UserStatus.RETAINED && status != UserStatus.TOMBSTONE && retainedAt != null) {
-            throw new IllegalArgumentException("Only RETAINED or TOMBSTONE users may have retainedAt");
-        }
-        if (status == UserStatus.TOMBSTONE && tombstonedAt == null) {
-            throw new IllegalArgumentException("TOMBSTONE users must have tombstonedAt");
-        }
-        if (status != UserStatus.TOMBSTONE && tombstonedAt != null) {
-            throw new IllegalArgumentException("Only TOMBSTONE users may have tombstonedAt");
-        }
-        if (status == UserStatus.TOMBSTONE && (username != null || profile != null || credential.initialized())) {
-            throw new IllegalArgumentException("TOMBSTONE users cannot retain identity, profile, or credential data");
-        }
-        if (status != UserStatus.TOMBSTONE && (username == null || profile == null)) {
-            throw new IllegalArgumentException("Non-TOMBSTONE users require identity and profile data");
+        switch (status) {
+            case RETAINED -> {
+                if (retainedAt == null) {
+                    throw new IllegalArgumentException("RETAINED users must have retainedAt");
+                }
+                if (tombstonedAt != null) {
+                    throw new IllegalArgumentException("Only TOMBSTONE users may have tombstonedAt");
+                }
+                if (username == null || profile == null) {
+                    throw new IllegalArgumentException("Non-TOMBSTONE users require identity and profile data");
+                }
+            }
+            case TOMBSTONE -> {
+                if (tombstonedAt == null) {
+                    throw new IllegalArgumentException("TOMBSTONE users must have tombstonedAt");
+                }
+                if (username != null || profile != null || credential.initialized()) {
+                    throw new IllegalArgumentException("TOMBSTONE users cannot retain identity, profile, or credential data");
+                }
+            }
+            default -> {
+                if (retainedAt != null) {
+                    throw new IllegalArgumentException("Only RETAINED or TOMBSTONE users may have retainedAt");
+                }
+                if (tombstonedAt != null) {
+                    throw new IllegalArgumentException("Only TOMBSTONE users may have tombstonedAt");
+                }
+                if (username == null || profile == null) {
+                    throw new IllegalArgumentException("Non-TOMBSTONE users require identity and profile data");
+                }
+            }
         }
     }
 
