@@ -314,18 +314,15 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
     @DisplayName("denies deletion of the system user through policy")
     void shouldDenySystemUserDeletionThroughPolicy() {
         // Arrange
-        UUID systemUserId = this.jdbc.queryForObject(
-            "select id from users where username = ?",
-            UUID.class,
-            "system"
-        );
+        UUID systemUserId = this.jdbc.queryForObject("select id from users where username = ?", UUID.class, "system");
 
         // Act + Assert
         assertThatThrownBy(() -> this.api().users().delete(systemUserId)).isInstanceOf(
             HttpClientErrorException.Forbidden.class
         );
-        assertThat(this.jdbc.queryForObject("select count(*) from users where id = ?", Integer.class, systemUserId))
-            .isOne();
+        assertThat(
+            this.jdbc.queryForObject("select count(*) from users where id = ?", Integer.class, systemUserId)
+        ).isOne();
     }
 
     /**
