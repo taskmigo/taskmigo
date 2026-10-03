@@ -11,13 +11,16 @@ import io.taskmigo.identity.user.application.port.in.api.UserRegistrationService
 import io.taskmigo.identity.user.application.port.in.api.UserRetentionService;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
+import io.taskmigo.identity.user.application.port.in.internal.UserTombstoneService;
 import io.taskmigo.identity.user.application.port.out.UserAuditAppender;
+import io.taskmigo.identity.user.application.port.out.UserAuditScrubber;
 import io.taskmigo.identity.user.application.port.out.UserCommandRepository;
 import io.taskmigo.identity.user.application.port.out.UserQueryRepository;
 import io.taskmigo.identity.user.application.port.out.UserSessionStore;
 import io.taskmigo.identity.user.application.service.DefaultUserCommandService;
 import io.taskmigo.identity.user.application.service.DefaultUserRetentionService;
 import io.taskmigo.identity.user.application.service.DefaultUserService;
+import io.taskmigo.identity.user.application.service.DefaultUserTombstoneService;
 import io.taskmigo.identity.user.application.service.UserAccessRevocationService;
 import io.taskmigo.identity.user.application.service.UserRegistrationApplicationService;
 import java.time.Clock;
@@ -35,6 +38,16 @@ class UserApplicationConfiguration {
         UserSessionStore sessions
     ) {
         return new UserAccessRevocationService(grantQueries, grantAssignments, memberships, sessions);
+    }
+
+    @Bean
+    UserTombstoneService defaultUserTombstoneService(
+        UserCommandService users,
+        UserAccessRevocationService access,
+        UserAuditScrubber auditScrubber,
+        UserAuditAppender audits
+    ) {
+        return new DefaultUserTombstoneService(users, access, auditScrubber, audits);
     }
 
     @Bean
