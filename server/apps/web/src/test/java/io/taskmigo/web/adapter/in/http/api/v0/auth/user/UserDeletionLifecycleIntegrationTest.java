@@ -148,17 +148,17 @@ class UserDeletionLifecycleIntegrationTest extends ApiIntegrationTestSupport {
 
         String tombstoneAudit = Objects.requireNonNull(
             this.jdbc.queryForObject(
-            """
-            select changes_json
-            from audit_logs
-            where entity_type = 'user'
-              and entity_id = ?
-              and changes_json like '%TOMBSTONE%'
-            order by occurred_at desc, id desc
-            limit 1
-            """,
-            String.class,
-            managed.id()
+                """
+                select changes_json
+                from audit_logs
+                where entity_type = 'user'
+                  and entity_id = ?
+                  and changes_json like '%TOMBSTONE%'
+                order by occurred_at desc, id desc
+                limit 1
+                """,
+                String.class,
+                managed.id()
             )
         );
         assertThat(tombstoneAudit)
@@ -308,18 +308,18 @@ class UserDeletionLifecycleIntegrationTest extends ApiIntegrationTestSupport {
     private String lifecycleAuditChanges(UUID userId, String status) {
         return Objects.requireNonNull(
             this.jdbc.queryForObject(
-            """
-            select changes_json
-            from audit_logs
-            where entity_type = 'user'
-              and entity_id = ?
-              and changes_json like ?
-            order by occurred_at desc, id desc
-            limit 1
-            """,
-            String.class,
-            userId,
-            "%" + status + "%"
+                """
+                select changes_json
+                from audit_logs
+                where entity_type = 'user'
+                  and entity_id = ?
+                  and changes_json like ?
+                order by occurred_at desc, id desc
+                limit 1
+                """,
+                String.class,
+                userId,
+                "%" + status + "%"
             )
         );
     }
