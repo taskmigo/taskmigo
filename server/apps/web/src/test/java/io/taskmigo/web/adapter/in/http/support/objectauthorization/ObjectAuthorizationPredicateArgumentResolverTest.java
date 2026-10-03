@@ -1,6 +1,7 @@
 package io.taskmigo.web.adapter.in.http.support.objectauthorization;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
@@ -26,6 +27,9 @@ class ObjectAuthorizationPredicateArgumentResolverTest {
 
     @Mock
     private ObjectAuthorizationBinding<TestObject> binding;
+
+    @Mock
+    private ObjectAuthorizationBinding<TestObject> duplicateBinding;
 
     @Mock
     private ObjectAuthorizationPredicate<TestObject> predicate;
@@ -60,6 +64,33 @@ class ObjectAuthorizationPredicateArgumentResolverTest {
         // Assert
         assertThat(resolver.supportsParameter(parameter)).isTrue();
         assertThat(resolved).isSameAs(this.predicate);
+    }
+
+    /**
+     * Verifies that one controller integration type cannot silently select an arbitrary binding.
+     *
+     * Given: two Object Authorization bindings registered for `TestObject`.
+     * Expect: argument resolution fails before authorization because semantic binding selection is ambiguous.
+     */
+    @Test
+    @DisplayName("rejects duplicate object authorization bindings for one controller type")
+    void shouldRejectResolutionWhenObjectAuthorizationBindingsShareControllerType() throws NoSuchMethodException {
+        // Arrange
+        Method method = TestController.class.getDeclaredMethod("list", ObjectAuthorizationPredicate.class);
+        MethodParameter parameter = new MethodParameter(method, 0);
+        when(this.binding.objectType()).thenReturn(TestObject.class);
+        when(this.duplicateBinding.objectType()).thenReturn(TestObject.class);
+        ObjectAuthorizationPredicateArgumentResolver resolver = new ObjectAuthorizationPredicateArgumentResolver(
+            this.authorization,
+            List.of(this.binding, this.duplicateBinding)
+        );
+
+        // Act + Assert
+        assertThatThrownBy(() ->
+            resolver.resolveArgument(parameter, null, new ServletWebRequest(new MockHttpServletRequest()), null)
+        )
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("multiple Object Authorization bindings");
     }
 
     private static final class TestController {

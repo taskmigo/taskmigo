@@ -48,15 +48,18 @@ public final class FilteredQueryArgumentResolver implements HandlerMethodArgumen
     ) {
         ResolvableType type = ResolvableType.forMethodParameter(parameter).getGeneric(0);
         Class<?> queryType = type.resolve();
-        QueryBinding<?> binding = this.bindings
+        List<QueryBinding<?>> matches = this.bindings
             .stream()
             .filter(candidate -> candidate.queryType().equals(queryType))
-            .findFirst()
-            .orElseThrow(() ->
-                new IllegalStateException(
-                    "No query binding registered for " + Objects.requireNonNull(queryType).getName()
-                )
-            );
+            .toList();
+        Class<?> declaredType = Objects.requireNonNull(queryType);
+        if (matches.isEmpty()) {
+            throw new IllegalStateException("No query binding registered for " + declaredType.getName());
+        }
+        if (matches.size() != 1) {
+            throw new IllegalStateException("multiple query bindings registered for " + declaredType.getName());
+        }
+        QueryBinding<?> binding = matches.getFirst();
         ResourceSchema schema = this.schemas
             .stream()
             .filter(candidate -> candidate.type().equals(binding.resourceType()))
