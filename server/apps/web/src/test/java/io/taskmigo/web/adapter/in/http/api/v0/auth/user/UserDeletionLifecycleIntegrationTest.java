@@ -59,7 +59,7 @@ class UserDeletionLifecycleIntegrationTest extends ApiIntegrationTestSupport {
         this.api().users().delete(managed.id());
 
         // Assert
-        Map<String, Object> user = this.userRow(managed.id());
+        Map<String, @Nullable Object> user = this.userRow(managed.id());
         assertThat(user.get("status")).isEqualTo("RETAINED");
         assertThat(user.get("username")).isEqualTo(managed.username());
         assertThat(user.get("first_name")).isEqualTo("Lifecycle");
@@ -103,7 +103,7 @@ class UserDeletionLifecycleIntegrationTest extends ApiIntegrationTestSupport {
         this.api().users().delete(managed.id());
 
         // Assert
-        Map<String, Object> user = this.userRow(managed.id());
+        Map<String, @Nullable Object> user = this.userRow(managed.id());
         assertThat(user.get("id")).isEqualTo(managed.id());
         assertThat(user.get("status")).isEqualTo("TOMBSTONE");
         assertThat(user.get("username")).isNull();
