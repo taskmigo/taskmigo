@@ -1,11 +1,20 @@
 package io.taskmigo.authorization.object.application.port.in.api;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.request.AuthorizationContext;
 
 /// Produces typed logical Object Authorization predicates from one Request Authorization context.
 public interface ObjectAuthorization {
+    /// Produces a predicate from the shared semantic resource binding.
+    default <Q> ObjectAuthorizationPredicate<Q> authorize(
+        AuthorizationContext context,
+        ObjectAuthorizationBinding<Q> binding
+    ) {
+        throw new UnsupportedOperationException("Object Authorization binding is not implemented");
+    }
+
     /// Partially evaluates Object Statements against the selected Object Authorization schema.
     <Q> ObjectAuthorizationPredicate<Q> authorize(AuthorizationContext context, ObjectAuthorizationSchema<Q> schema);
 
