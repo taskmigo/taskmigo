@@ -73,7 +73,7 @@ class UserDeletionLifecycleIntegrationTest extends ApiIntegrationTestSupport {
         assertThat(this.oauthAuthorizationCount(managed.username())).isZero();
         assertThat(this.oauthConsentCount(managed.username())).isZero();
 
-        String deletionAudit = this.latestAuditChanges(managed.id());
+        String deletionAudit = this.lifecycleAuditChanges(managed.id(), "RETAINED");
         assertThat(deletionAudit)
             .contains("\"field\":\"roleIds\"", "\"field\":\"statementIds\"", "\"field\":\"groupIds\"")
             .contains("\"sensitive\":true")
@@ -302,17 +302,20 @@ class UserDeletionLifecycleIntegrationTest extends ApiIntegrationTestSupport {
         return this.jdbc.queryForObject(sql, Integer.class, value);
     }
 
-    private String latestAuditChanges(UUID userId) {
+    private String lifecycleAuditChanges(UUID userId, String status) {
         return this.jdbc.queryForObject(
             """
             select changes_json
             from audit_logs
-            where entity_type = 'user' and entity_id = ?
+            where entity_type = 'user'
+              and entity_id = ?
+              and changes_json like ?
             order by occurred_at desc, id desc
             limit 1
             """,
             String.class,
-            userId
+            userId,
+            "%" + status + "%"
         );
     }
 
