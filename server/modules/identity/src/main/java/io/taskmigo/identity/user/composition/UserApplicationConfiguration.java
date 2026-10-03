@@ -11,6 +11,7 @@ import io.taskmigo.identity.user.application.port.in.api.UserRegistrationService
 import io.taskmigo.identity.user.application.port.in.api.UserRetentionService;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
+import io.taskmigo.identity.user.application.port.in.internal.UserDeletionLifecycleService;
 import io.taskmigo.identity.user.application.port.in.internal.UserTombstoneService;
 import io.taskmigo.identity.user.application.port.out.UserAuditAppender;
 import io.taskmigo.identity.user.application.port.out.UserAuditScrubber;
@@ -18,6 +19,7 @@ import io.taskmigo.identity.user.application.port.out.UserCommandRepository;
 import io.taskmigo.identity.user.application.port.out.UserQueryRepository;
 import io.taskmigo.identity.user.application.port.out.UserSessionStore;
 import io.taskmigo.identity.user.application.service.DefaultUserCommandService;
+import io.taskmigo.identity.user.application.service.DefaultUserDeletionLifecycleService;
 import io.taskmigo.identity.user.application.service.DefaultUserRetentionService;
 import io.taskmigo.identity.user.application.service.DefaultUserService;
 import io.taskmigo.identity.user.application.service.DefaultUserTombstoneService;
@@ -38,6 +40,17 @@ class UserApplicationConfiguration {
         UserSessionStore sessions
     ) {
         return new UserAccessRevocationService(grantQueries, grantAssignments, memberships, sessions);
+    }
+
+    @Bean
+    UserDeletionLifecycleService defaultUserDeletionLifecycleService(
+        ConfigurationService configuration,
+        UserAccessRevocationService access,
+        UserTombstoneService tombstones,
+        UserCommandService users,
+        UserAuditAppender audits
+    ) {
+        return new DefaultUserDeletionLifecycleService(configuration, access, tombstones, users, audits);
     }
 
     @Bean
