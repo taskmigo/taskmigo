@@ -13,7 +13,6 @@ import io.taskmigo.identity.user.application.port.in.internal.UserTombstoneServi
 import io.taskmigo.identity.user.domain.User;
 import java.time.Instant;
 import java.util.List;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,7 +44,6 @@ public final class DefaultUserRetentionService implements UserRetentionService {
         Instant cutoff = now.minus(retention.duration());
         UserMutationActor actor = this.transactions.read(this::systemActor);
         int tombstoned = 0;
-        @Nullable
         RetainedUserCandidate cursor = null;
 
         while (true) {
