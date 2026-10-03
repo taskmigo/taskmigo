@@ -67,13 +67,7 @@ public final class AuthorizationEmbeddedLanguageSchemas {
     }
 
     private static <Q> ResourceSchema objectSchema(ObjectAuthorizationSchema<Q> schema) {
-        return schema(
-            ResourceType.of("taskmigo:authorization:object:" + schema.objectType().getName()),
-            schema.fields()
-                .stream()
-                .map(field -> toField(schema.objectType().getName(), field))
-                .toList()
-        );
+        return schema.resourceSchema();
     }
 
     private static Field toField(String owner, ObjectAuthorizationField field) {
