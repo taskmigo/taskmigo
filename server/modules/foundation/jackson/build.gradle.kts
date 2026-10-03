@@ -5,6 +5,9 @@ plugins {
 description = "Taskmigo shared Jackson serialization policy"
 
 dependencies {
+    compileOnly(platform(libs.spring.modulith.bom))
+    compileOnly(libs.spring.modulith.starter.core)
+
     api(platform(libs.spring.boot.bom))
     api(libs.jackson.databind)
     compileOnly("org.springframework.boot:spring-boot-autoconfigure")
