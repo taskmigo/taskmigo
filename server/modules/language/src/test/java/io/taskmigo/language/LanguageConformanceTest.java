@@ -1,5 +1,9 @@
 package io.taskmigo.language;
 
+import static io.taskmigo.language.LanguageTestEnvironment.environment;
+import static io.taskmigo.language.LanguageTestEnvironment.field;
+import static io.taskmigo.language.LanguageTestEnvironment.resource;
+import static io.taskmigo.language.LanguageTestEnvironment.value;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -21,15 +25,8 @@ class LanguageConformanceTest {
     @DisplayName("derives required roots from the final folded expression")
     void shouldDropRequiredRootWhenShortCircuitFoldingRemovesReference() {
         // Arrange
-        EnvironmentSchema schema = new EnvironmentSchema(
-            "folded-roots",
-            Map.of(
-                "request",
-                new EnvironmentSchema.Root(
-                    new EnvironmentSchema.Field(LanguageType.Scalar.BOOL, false, false),
-                    Map.of("flag", new EnvironmentSchema.Field(LanguageType.Scalar.BOOL, false, false))
-                )
-            )
+        CompilerEnvironment schema = environment(
+            Map.of("request", resource("test:folded-request", false, field("flag", LanguageType.Scalar.BOOL, false)))
         );
 
         // Act
@@ -54,17 +51,11 @@ class LanguageConformanceTest {
     @DisplayName("supports dependency metadata beyond sixty four roots")
     void shouldTrackDependenciesWhenSchemaContainsMoreThanSixtyFourRoots() {
         // Arrange
-        Map<String, EnvironmentSchema.Root> roots = new HashMap<>();
+        Map<String, LanguageTestEnvironment.RootSpec> roots = new HashMap<>();
         for (int index = 0; index < 70; index++) {
-            roots.put(
-                "root" + index,
-                new EnvironmentSchema.Root(
-                    new EnvironmentSchema.Field(LanguageType.Scalar.NUMBER, false, false),
-                    Map.of()
-                )
-            );
+            roots.put("root" + index, value("test:root:" + index, LanguageType.Scalar.NUMBER, false));
         }
-        EnvironmentSchema schema = new EnvironmentSchema("wide-roots", roots);
+        CompilerEnvironment schema = environment(roots);
 
         // Act
         SemanticAst program = new EmbeddedLanguageCompiler().compile(
@@ -89,7 +80,7 @@ class LanguageConformanceTest {
     @DisplayName("preserves null values in language list literals")
     void shouldPreserveNullWhenListLiteralContainsNull() {
         // Arrange
-        EnvironmentSchema schema = scalarSchema("unused", LanguageType.Scalar.STRING);
+        CompilerEnvironment schema = scalarSchema("unused", LanguageType.Scalar.STRING);
 
         // Act
         Object result = new LanguageCompiler()
@@ -113,17 +104,8 @@ class LanguageConformanceTest {
     @DisplayName("resolves structured root fields through lexical aliases")
     void shouldResolveStructuredFieldWhenRootIsAssignedToLocalAlias() {
         // Arrange
-        EnvironmentSchema.Field name = new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, false);
-        Map<String, EnvironmentSchema.Field> fields = Map.of("name", name);
-        EnvironmentSchema schema = new EnvironmentSchema(
-            "structured-alias",
-            Map.of(
-                "object",
-                new EnvironmentSchema.Root(
-                    new EnvironmentSchema.Field(new LanguageType.StructuredType("Object", fields), false, false),
-                    fields
-                )
-            )
+        CompilerEnvironment schema = environment(
+            Map.of("object", resource("test:structured-alias", false, field("name", LanguageType.Scalar.STRING, false)))
         );
         CompiledSource source = new LanguageCompiler().compile("const alias = object; return alias.name;", schema);
 
@@ -146,7 +128,7 @@ class LanguageConformanceTest {
     void shouldPreserveSourceFingerprintWhenKnownSourcesAreCompiled() {
         // Arrange
         LanguageCompiler compiler = new LanguageCompiler();
-        EnvironmentSchema schema = scalarSchema("unused", LanguageType.Scalar.STRING);
+        CompilerEnvironment schema = scalarSchema("unused", LanguageType.Scalar.STRING);
 
         // Act
         CompiledSource first = compiler.compile("1 + 2", schema, CompilationProfile.expression());
@@ -176,7 +158,7 @@ class LanguageConformanceTest {
     @DisplayName("enforces token and syntax depth limits during direct compilation")
     void shouldRejectSourcesWhenTokenOrSyntaxDepthLimitIsExceeded() {
         // Arrange
-        EnvironmentSchema schema = scalarSchema("unused", LanguageType.Scalar.STRING);
+        CompilerEnvironment schema = scalarSchema("unused", LanguageType.Scalar.STRING);
         EmbeddedLanguageCompiler tokenLimited = new EmbeddedLanguageCompiler(
             new CompilerLimits(100, 2, 20, 20, 20, 20, 20, 20)
         );
@@ -195,10 +177,7 @@ class LanguageConformanceTest {
             .isEqualTo(LanguageDiagnostic.Category.ComplexityError);
     }
 
-    private static EnvironmentSchema scalarSchema(String root, LanguageType type) {
-        return new EnvironmentSchema(
-            "conformance-" + root + '-' + type,
-            Map.of(root, new EnvironmentSchema.Root(new EnvironmentSchema.Field(type, false, false), Map.of()))
-        );
+    private static CompilerEnvironment scalarSchema(String root, LanguageType type) {
+        return environment(Map.of(root, value("test:conformance:" + root + ':' + type, type, false)));
     }
 }

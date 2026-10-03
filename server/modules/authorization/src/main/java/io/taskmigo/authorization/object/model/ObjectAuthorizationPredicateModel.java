@@ -4,5 +4,5 @@ package io.taskmigo.authorization.object.model;
 public interface ObjectAuthorizationPredicateModel {
     ObjectAuthorizationExpression expression();
 
-    String schemaIdentity();
+    String bindingIdentity();
 }

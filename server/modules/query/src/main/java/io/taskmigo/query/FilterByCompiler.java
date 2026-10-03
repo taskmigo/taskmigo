@@ -1,28 +1,23 @@
 package io.taskmigo.query;
 
-import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.language.CompilationFeature;
 import io.taskmigo.language.CompilationMode;
 import io.taskmigo.language.CompilationProfile;
 import io.taskmigo.language.CompiledSource;
+import io.taskmigo.language.CompilerEnvironment;
 import io.taskmigo.language.EmbeddedLanguageException;
-import io.taskmigo.language.EnvironmentSchema;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageType;
+import io.taskmigo.language.ResourceSchema;
+import io.taskmigo.language.ResourceSchemaResolver;
+import io.taskmigo.language.SchemaContext;
 import io.taskmigo.query.model.QueryExpression;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
-/// Compiles the optional HTTP filterBy expression against an explicit Query Schema.
+/// Compiles optional HTTP filters against semantic resource schemas and separate execution bindings.
 @Service
 public class FilterByCompiler {
 
@@ -41,7 +36,6 @@ public class FilterByCompiler {
     );
 
     private final LanguageCompiler compiler;
-    private final ConcurrentMap<QuerySchema<?>, EnvironmentSchema> environments = new ConcurrentHashMap<>();
 
     /// Creates a filter compiler using the default Language limits.
     public FilterByCompiler() {
@@ -53,102 +47,42 @@ public class FilterByCompiler {
         this.compiler = compiler;
     }
 
-    /// Compiles blank input as an always-true predicate and rejects every non-Boolean source.
-    public <Q> QueryPredicate<Q> compile(QuerySchema<Q> schema, @Nullable String source) {
-        if (source == null || source.isBlank()) {
-            return QueryPredicateFactory.alwaysTrue(schema);
-        }
+    /// Compiles blank input as an always-true predicate and rejects incompatible schemas or execution bindings.
+    public <Q> QueryPredicate<Q> compile(ResourceSchema schema, QueryBinding<Q> binding, @Nullable String source) {
         try {
-            EnvironmentSchema environment = this.environments.computeIfAbsent(schema, FilterByCompiler::environment);
+            requireCompatible(schema, binding);
+            if (source == null || source.isBlank()) {
+                return QueryPredicateFactory.alwaysTrue(binding);
+            }
+            ResourceSchema effectiveSchema = ResourceSchemaResolver.fixed(Map.of(schema.type(), schema)).resolve(
+                schema.type(),
+                SchemaContext.EMPTY
+            );
+            CompilerEnvironment environment = CompilerEnvironment.of(
+                Map.of("object", new CompilerEnvironment.Root(effectiveSchema, true))
+            );
             CompiledSource compiled = this.compiler.compile(source, environment, PROFILE);
             if (compiled.resultType() != LanguageType.Scalar.BOOL) {
                 throw new FilterByException("filterBy expression must return Bool");
             }
             QueryExpression expression = compiled.map(LanguageQueryExpressionVisitor.INSTANCE);
-            QuerySchemaValidator.validate(expression, schema);
-            return QueryPredicateFactory.from(schema, expression);
+            QueryBindingValidator.validate(expression, binding);
+            return QueryPredicateFactory.from(binding, expression);
         } catch (EmbeddedLanguageException | IllegalArgumentException exception) {
             throw new FilterByException("Invalid filterBy expression", exception);
         }
     }
 
-    /// Compiles a schema selected through Spring's generic type resolution.
-    public QueryPredicate<?> compileUntyped(QuerySchema<?> schema, @Nullable String source) {
-        return this.compile(schema, source);
+    /// Compiles bindings selected through Spring's generic type resolution.
+    public QueryPredicate<?> compileUntyped(ResourceSchema schema, QueryBinding<?> binding, @Nullable String source) {
+        return this.compile(schema, binding, source);
     }
 
-    private static <Q> EnvironmentSchema environment(QuerySchema<Q> schema) {
-        Map<String, EnvironmentSchema.Field> fields = new HashMap<>();
-        for (QueryField field : schema.fields()) {
-            List<String> segments = field.path().segments();
-            if (segments.size() == 1) {
-                fields.put(segments.getFirst(), toField(field));
-            } else {
-                fields.putIfAbsent(segments.getFirst(), nestedField(schema, segments.getFirst()));
-            }
+    private static void requireCompatible(ResourceSchema schema, QueryBinding<?> binding) {
+        if (
+            !schema.type().equals(binding.resourceType()) || !schema.fingerprint().equals(binding.schemaFingerprint())
+        ) {
+            throw new IllegalArgumentException("query binding is incompatible with resource schema");
         }
-        return new EnvironmentSchema(
-            "query-filter:" + schema.identity(),
-            Map.of(
-                "object",
-                new EnvironmentSchema.Root(new EnvironmentSchema.Field(structured(schema), false, true), fields)
-            )
-        );
-    }
-
-    private static <Q> EnvironmentSchema.Field nestedField(QuerySchema<Q> schema, String prefix) {
-        List<String> prefixSegments = List.of(prefix.split("\\."));
-        Map<String, EnvironmentSchema.Field> children = schema
-            .fields()
-            .stream()
-            .filter(
-                field ->
-                    field.path().segments().size() > prefixSegments.size() &&
-                    field.path().segments().subList(0, prefixSegments.size()).equals(prefixSegments)
-            )
-            .collect(
-                Collectors.toMap(
-                    field -> field.path().segments().get(prefixSegments.size()),
-                    field ->
-                        field.path().segments().size() == prefixSegments.size() + 1
-                            ? toField(field)
-                            : nestedField(schema, prefix + "." + field.path().segments().get(prefixSegments.size())),
-                    (left, right) -> left
-                )
-            );
-        return new EnvironmentSchema.Field(new LanguageType.StructuredType(prefix, children), false, true);
-    }
-
-    private static <Q> LanguageType.StructuredType structured(QuerySchema<Q> schema) {
-        Map<String, EnvironmentSchema.Field> fields = new HashMap<>();
-        for (QueryField field : schema.fields()) {
-            String first = field.path().segments().getFirst();
-            fields.put(first, field.path().segments().size() == 1 ? toField(field) : nestedField(schema, first));
-        }
-        return new LanguageType.StructuredType(schema.queryType().getName(), fields);
-    }
-
-    private static EnvironmentSchema.Field toField(QueryField field) {
-        return new EnvironmentSchema.Field(toLanguageType(field.type()), field.nullable(), true);
-    }
-
-    private static LanguageType toLanguageType(TypeDescriptor type) {
-        Class<?> raw = type.rawType();
-        if (raw == String.class || raw == Character.class || raw == char.class || raw == UUID.class) {
-            return LanguageType.Scalar.STRING;
-        }
-        if (raw == Boolean.class || raw == boolean.class) {
-            return LanguageType.Scalar.BOOL;
-        }
-        if (Number.class.isAssignableFrom(raw) || raw.isPrimitive()) {
-            return LanguageType.Scalar.NUMBER;
-        }
-        if (Collection.class.isAssignableFrom(raw)) {
-            TypeDescriptor elementType = type.typeArguments().isEmpty()
-                ? TypeDescriptor.of(Object.class)
-                : type.typeArguments().getFirst();
-            return new LanguageType.ListType(toLanguageType(elementType));
-        }
-        return new LanguageType.StructuredType(raw.getName(), Map.of());
     }
 }

@@ -1,7 +1,7 @@
 package io.taskmigo.authorization.object.model;
 
+import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import java.util.Objects;
 
 /// Creates and exposes the trusted logical model behind opaque Object Authorization predicates.
@@ -10,14 +10,14 @@ public final class ObjectAuthorizationPredicateModels {
     private ObjectAuthorizationPredicateModels() {}
 
     public static <Q> ObjectAuthorizationPredicate<Q> from(
-        ObjectAuthorizationSchema<Q> schema,
+        ObjectAuthorizationBinding<Q> schema,
         ObjectAuthorizationExpression expression
     ) {
         Objects.requireNonNull(schema);
         return wrap(schema.identity(), expression);
     }
 
-    public static <Q> ObjectAuthorizationPredicate<Q> constant(ObjectAuthorizationSchema<Q> schema, boolean value) {
+    public static <Q> ObjectAuthorizationPredicate<Q> constant(ObjectAuthorizationBinding<Q> schema, boolean value) {
         return from(schema, new ObjectAuthorizationExpression.Literal(value));
     }
 
@@ -25,15 +25,15 @@ public final class ObjectAuthorizationPredicateModels {
         ObjectAuthorizationPredicate<?> predicate,
         boolean value
     ) {
-        return wrap(schemaIdentity(predicate), new ObjectAuthorizationExpression.Literal(value));
+        return wrap(bindingIdentity(predicate), new ObjectAuthorizationExpression.Literal(value));
     }
 
     public static <Q> ObjectAuthorizationPredicate<Q> wrap(
-        String schemaIdentity,
+        String bindingIdentity,
         ObjectAuthorizationExpression expression
     ) {
         return new LogicalObjectAuthorizationPredicate<>(
-            Objects.requireNonNull(schemaIdentity),
+            Objects.requireNonNull(bindingIdentity),
             Objects.requireNonNull(expression)
         );
     }
@@ -45,12 +45,12 @@ public final class ObjectAuthorizationPredicateModels {
         return model;
     }
 
-    public static String schemaIdentity(ObjectAuthorizationPredicate<?> predicate) {
-        return model(predicate).schemaIdentity();
+    public static String bindingIdentity(ObjectAuthorizationPredicate<?> predicate) {
+        return model(predicate).bindingIdentity();
     }
 
     private record LogicalObjectAuthorizationPredicate<Q>(
-        String schemaIdentity,
+        String bindingIdentity,
         ObjectAuthorizationExpression expression
     ) implements ObjectAuthorizationPredicate<Q>, ObjectAuthorizationPredicateModel {
         @Override

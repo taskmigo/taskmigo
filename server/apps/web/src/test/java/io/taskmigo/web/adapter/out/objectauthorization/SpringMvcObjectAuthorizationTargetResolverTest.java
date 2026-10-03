@@ -1,10 +1,11 @@
 package io.taskmigo.web.adapter.out.objectauthorization;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -39,7 +40,10 @@ class SpringMvcObjectAuthorizationTargetResolverTest {
     private VersionRequestCondition version;
 
     @Mock
-    private ObjectAuthorizationSchema<TestObject> schema;
+    private ObjectAuthorizationBinding<TestObject> binding;
+
+    @Mock
+    private ObjectAuthorizationBinding<TestObject> duplicateBinding;
 
     /**
      * Verifies that Object Authorization target metadata is derived from the actual Spring MVC handler mapping.
@@ -59,21 +63,48 @@ class SpringMvcObjectAuthorizationTargetResolverTest {
         when(this.version.getVersion()).thenReturn("0");
         when(this.mapping.getPatternValues()).thenReturn(Set.of("/api/v{version}/objects"));
         when(this.mapping.getMethodsCondition()).thenReturn(new RequestMethodsRequestCondition(RequestMethod.GET));
-        when(this.schema.objectType()).thenReturn(TestObject.class);
+        when(this.binding.objectType()).thenReturn(TestObject.class);
         SpringMvcObjectAuthorizationTargetResolver resolver = new SpringMvcObjectAuthorizationTargetResolver(
             this.handlerMappings,
-            List.of(this.schema)
+            List.of(this.binding)
         );
 
         // Act
         resolver.afterSingletonsInstantiated();
-        List<ObjectAuthorizationSchema<?>> applicable = resolver.applicable(
+        List<ObjectAuthorizationBinding<?>> applicable = resolver.applicable(
             "GET",
             StatementTargetPathMatcher.compile("/api/v0/objects")
         );
 
         // Assert
-        assertThat(applicable).containsExactly(this.schema);
+        assertThat(applicable).containsExactly(this.binding);
+    }
+
+    /**
+     * Verifies that MVC route discovery does not silently choose one of several bindings for the same handler type.
+     *
+     * Given: a typed handler and two bindings registered for `TestObject`.
+     * Expect: route initialization fails with an unambiguous binding-registration error.
+     */
+    @Test
+    @DisplayName("rejects duplicate bindings for one typed MVC handler")
+    void shouldRejectInitializationWhenTypedHandlerHasDuplicateBindings() throws NoSuchMethodException {
+        // Arrange
+        Method method = TestController.class.getDeclaredMethod("list", ObjectAuthorizationPredicate.class);
+        HandlerMethod handler = new HandlerMethod(new TestController(), method);
+        when(this.handlerMappings.getObject()).thenReturn(this.handlerMapping);
+        when(this.handlerMapping.getHandlerMethods()).thenReturn(Map.of(this.mapping, handler));
+        when(this.binding.objectType()).thenReturn(TestObject.class);
+        when(this.duplicateBinding.objectType()).thenReturn(TestObject.class);
+        SpringMvcObjectAuthorizationTargetResolver resolver = new SpringMvcObjectAuthorizationTargetResolver(
+            this.handlerMappings,
+            List.of(this.binding, this.duplicateBinding)
+        );
+
+        // Act + Assert
+        assertThatThrownBy(resolver::afterSingletonsInstantiated)
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("multiple Object Authorization bindings");
     }
 
     private static final class TestController {

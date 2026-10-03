@@ -1,5 +1,6 @@
 package io.taskmigo.authorization.object.model;
 
+import io.taskmigo.language.FieldId;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -17,7 +18,15 @@ public sealed interface ObjectAuthorizationExpression
 {
     record Literal(@Nullable Object value) implements ObjectAuthorizationExpression {}
 
-    record Reference(String root, List<String> path) implements ObjectAuthorizationExpression {
+    record Reference(
+        String root,
+        List<String> path,
+        @Nullable FieldId fieldId
+    ) implements ObjectAuthorizationExpression {
+        public Reference(String root, List<String> path) {
+            this(root, path, null);
+        }
+
         public Reference {
             Objects.requireNonNull(root);
             path = List.copyOf(path);

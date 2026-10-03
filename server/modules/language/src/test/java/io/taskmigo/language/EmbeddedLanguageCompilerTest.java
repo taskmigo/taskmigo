@@ -1,5 +1,8 @@
 package io.taskmigo.language;
 
+import static io.taskmigo.language.LanguageTestEnvironment.environment;
+import static io.taskmigo.language.LanguageTestEnvironment.field;
+import static io.taskmigo.language.LanguageTestEnvironment.resource;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -13,20 +16,14 @@ import org.junit.jupiter.api.Test;
 
 class EmbeddedLanguageCompilerTest {
 
-    private final EnvironmentSchema schema = new EnvironmentSchema(
-        "test",
+    private final CompilerEnvironment schema = environment(
         Map.of(
             "request",
-            new EnvironmentSchema.Root(
-                new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, false),
-                Map.of(
-                    "method",
-                    new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, false),
-                    "optional",
-                    new EnvironmentSchema.Field(LanguageType.Scalar.STRING, true, false),
-                    "pathVariables",
-                    new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, false, LanguageType.Scalar.STRING)
-                )
+            resource(
+                "test:request",
+                false,
+                field("method", LanguageType.Scalar.STRING, false),
+                field("optional", LanguageType.Scalar.STRING, true)
             )
         )
     );
@@ -173,15 +170,8 @@ class EmbeddedLanguageCompilerTest {
             compiler.compile("return 42;", schema),
             Map.of()
         );
-        EnvironmentSchema symbolic = new EnvironmentSchema(
-            "symbolic",
-            Map.of(
-                "record",
-                new EnvironmentSchema.Root(
-                    new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, true),
-                    Map.of("score", new EnvironmentSchema.Field(LanguageType.Scalar.NUMBER, false, true))
-                )
-            )
+        CompilerEnvironment symbolic = environment(
+            Map.of("record", resource("test:symbolic", true, field("score", LanguageType.Scalar.NUMBER, false)))
         );
         PartialProgram residual = new EmbeddedLanguagePartialEvaluator().partial(
             compiler.compile("return record.score + 1;", symbolic),

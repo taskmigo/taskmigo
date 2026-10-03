@@ -1,7 +1,10 @@
 package io.taskmigo.query;
 
+import io.taskmigo.language.FieldId;
+import io.taskmigo.language.FieldPath;
 import io.taskmigo.language.LanguageDiagnostic.SourceSpan;
 import io.taskmigo.language.LanguageType;
+import io.taskmigo.language.ResourceType;
 import io.taskmigo.language.ast.BinaryOperator;
 import io.taskmigo.language.ast.ExpressionVisitor;
 import io.taskmigo.language.ast.QuantifierOperator;
@@ -25,13 +28,16 @@ final class LanguageQueryExpressionVisitor implements ExpressionVisitor<QueryExp
     @Override
     public QueryExpression reference(
         String root,
-        List<String> path,
+        List<String> runtimePath,
+        @Nullable ResourceType resourceType,
+        @Nullable FieldId fieldId,
+        @Nullable FieldPath fieldPath,
         LanguageType type,
         boolean nullable,
         boolean symbolic,
         SourceSpan span
     ) {
-        return new QueryExpression.Reference(root, path);
+        return new QueryExpression.Reference(root, runtimePath, fieldId);
     }
 
     @Override

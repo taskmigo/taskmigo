@@ -5,10 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.authorization.core.AuthorizationException;
-import io.taskmigo.authorization.object.ObjectAuthorizationField;
-import io.taskmigo.authorization.object.ObjectAuthorizationPath;
+import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
+import io.taskmigo.authorization.object.ObjectAuthorizationFieldBinding;
+import io.taskmigo.authorization.object.ObjectAuthorizationOperator;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.authorization.object.StaticObjectAuthorizationBinding;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.request.AuthorizationPrincipal;
 import io.taskmigo.authorization.request.AuthorizationRequest;
@@ -25,14 +26,18 @@ import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.TargetInfo;
-import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.language.EmbeddedLanguageException;
+import io.taskmigo.language.Field;
+import io.taskmigo.language.FieldId;
+import io.taskmigo.language.FieldPath;
 import io.taskmigo.language.LanguageCompiler;
+import io.taskmigo.language.LanguageType;
+import io.taskmigo.language.ResourceSchema;
+import io.taskmigo.language.ResourceType;
 import java.time.Instant;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,7 +45,7 @@ import org.mockito.Mockito;
 
 class ObjectAuthorizationServiceTest {
 
-    private final ObjectAuthorizationSchema<TestObject> schema = schema();
+    private final ObjectAuthorizationBinding<TestObject> schema = schema();
     private final StatementArtifactFactory artifacts = new StatementArtifactFactory(
         new LanguageCompiler(),
         List.of(this.schema),
@@ -233,7 +238,7 @@ class ObjectAuthorizationServiceTest {
     @DisplayName("validates an object policy against only applicable schemas")
     void shouldValidateObjectPolicyAgainstApplicableSchemasOnly() {
         // Arrange
-        ObjectAuthorizationSchema<TestObject> otherSchema = schema("other");
+        ObjectAuthorizationBinding<TestObject> otherSchema = schema("other");
         ObjectAuthorizationTargetResolver targetResolver = (method, pathMatcher) ->
             pathMatcher.matches("/api/v0/objects") ? List.of(this.schema) : List.of(otherSchema);
         ObjectAuthorizationService targetedService = new ObjectAuthorizationService(
@@ -302,7 +307,7 @@ class ObjectAuthorizationServiceTest {
     @DisplayName("uses API-visible nested paths for object authorization")
     void shouldUseApiVisibleStatementPathWhenObjectPolicyReferencesTarget() {
         // Arrange
-        ObjectAuthorizationSchema<TestObject> apiSchema = schema("target.api.path");
+        ObjectAuthorizationBinding<TestObject> apiSchema = schema("target.api.path");
         ObjectAuthorizationService apiService = new ObjectAuthorizationService(
             new LanguageCompiler(),
             ObjectAuthorizationTargetResolver.all(List.of(apiSchema))
@@ -346,32 +351,36 @@ class ObjectAuthorizationServiceTest {
         );
     }
 
-    private static ObjectAuthorizationSchema<TestObject> schema() {
+    private static ObjectAuthorizationBinding<TestObject> schema() {
         return schema("name");
     }
 
-    private static ObjectAuthorizationSchema<TestObject> schema(String path) {
-        ObjectAuthorizationField field = new ObjectAuthorizationField(
-            ObjectAuthorizationPath.parse(path),
-            TypeDescriptor.of(String.class),
-            false
+    private static ObjectAuthorizationBinding<TestObject> schema(String path) {
+        ResourceType type = ResourceType.of("test:object");
+        FieldId id = FieldId.of("field:test:object:" + path);
+        ResourceSchema schema = ResourceSchema.of(
+            type,
+            List.of(new Field(id, FieldPath.parse(path), LanguageType.Scalar.STRING, false))
         );
-        return new ObjectAuthorizationSchema<>() {
-            @Override
-            public Class<TestObject> objectType() {
-                return TestObject.class;
-            }
-
-            @Override
-            public Optional<ObjectAuthorizationField> field(ObjectAuthorizationPath path) {
-                return field.path().equals(path) ? Optional.of(field) : Optional.empty();
-            }
-
-            @Override
-            public Collection<ObjectAuthorizationField> fields() {
-                return List.of(field);
-            }
-        };
+        return new StaticObjectAuthorizationBinding<>(
+            TestObject.class,
+            schema,
+            List.of(
+                new ObjectAuthorizationFieldBinding(
+                    id,
+                    path,
+                    Set.of(
+                        ObjectAuthorizationOperator.EQ,
+                        ObjectAuthorizationOperator.NE,
+                        ObjectAuthorizationOperator.GT,
+                        ObjectAuthorizationOperator.GE,
+                        ObjectAuthorizationOperator.LT,
+                        ObjectAuthorizationOperator.LE,
+                        ObjectAuthorizationOperator.IN
+                    )
+                )
+            )
+        );
     }
 
     private static final class TestObject {}

@@ -1,5 +1,6 @@
 package io.taskmigo.identity.adapter.out.persistence.query;
 
+import io.taskmigo.language.FieldId;
 import io.taskmigo.query.QueryPredicate;
 import io.taskmigo.query.model.QueryPredicateModel;
 import java.util.Map;
@@ -10,15 +11,15 @@ public final class JpaQueryPredicateBinder<Q, E> implements QueryPredicateBinder
 
     private final Class<Q> queryType;
     private final Class<E> domainType;
-    private final Map<String, String> paths;
-    private final Map<String, Class<?>> types;
+    private final Map<FieldId, String> paths;
+    private final Map<FieldId, Class<?>> types;
 
     /// Creates a binder with explicit logical-to-physical paths and physical value types.
     public JpaQueryPredicateBinder(
         Class<Q> queryType,
         Class<E> domainType,
-        Map<String, String> paths,
-        Map<String, Class<?>> types
+        Map<FieldId, String> paths,
+        Map<FieldId, Class<?>> types
     ) {
         this.queryType = queryType;
         this.domainType = domainType;

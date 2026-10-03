@@ -1,8 +1,9 @@
 package io.taskmigo.web.adapter.in.http.support.query;
 
+import io.taskmigo.language.ResourceSchema;
 import io.taskmigo.query.FilterByCompiler;
 import io.taskmigo.query.FilteredQuery;
-import io.taskmigo.query.QuerySchema;
+import io.taskmigo.query.QueryBinding;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -18,11 +19,17 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 @Component
 public final class FilteredQueryArgumentResolver implements HandlerMethodArgumentResolver {
 
-    private final List<QuerySchema<?>> schemas;
+    private final List<QueryBinding<?>> bindings;
+    private final List<ResourceSchema> schemas;
     private final FilterByCompiler filters;
 
-    /// Creates a resolver using Spring-managed Query Schemas and the filter compiler.
-    public FilteredQueryArgumentResolver(List<QuerySchema<?>> schemas, FilterByCompiler filters) {
+    /// Creates a resolver using Spring-managed query bindings and semantic schemas.
+    public FilteredQueryArgumentResolver(
+        List<QueryBinding<?>> bindings,
+        List<ResourceSchema> schemas,
+        FilterByCompiler filters
+    ) {
+        this.bindings = List.copyOf(bindings);
         this.schemas = List.copyOf(schemas);
         this.filters = filters;
     }
@@ -41,15 +48,24 @@ public final class FilteredQueryArgumentResolver implements HandlerMethodArgumen
     ) {
         ResolvableType type = ResolvableType.forMethodParameter(parameter).getGeneric(0);
         Class<?> queryType = type.resolve();
-        QuerySchema<?> schema = this.schemas
+        List<QueryBinding<?>> matches = this.bindings
             .stream()
             .filter(candidate -> candidate.queryType().equals(queryType))
+            .toList();
+        Class<?> declaredType = Objects.requireNonNull(queryType);
+        if (matches.isEmpty()) {
+            throw new IllegalStateException("No query binding registered for " + declaredType.getName());
+        }
+        if (matches.size() != 1) {
+            throw new IllegalStateException("multiple query bindings registered for " + declaredType.getName());
+        }
+        QueryBinding<?> binding = matches.getFirst();
+        ResourceSchema schema = this.schemas
+            .stream()
+            .filter(candidate -> candidate.type().equals(binding.resourceType()))
+            .filter(candidate -> candidate.fingerprint().equals(binding.schemaFingerprint()))
             .findFirst()
-            .orElseThrow(() ->
-                new IllegalStateException(
-                    "No Query Schema registered for " + Objects.requireNonNull(queryType).getName()
-                )
-            );
-        return new FilteredQuery<>(this.filters.compileUntyped(schema, webRequest.getParameter("filterBy")));
+            .orElseThrow(() -> new IllegalStateException("No compatible resource schema registered for query binding"));
+        return new FilteredQuery<>(this.filters.compileUntyped(schema, binding, webRequest.getParameter("filterBy")));
     }
 }

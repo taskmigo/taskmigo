@@ -1,6 +1,6 @@
 package io.taskmigo.migration.infrastructure.config;
 
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.statement.StatementInfo;
@@ -20,10 +20,10 @@ class AuthorizationObjectSchemaConfiguration {
     @Bean
     @Primary
     ObjectAuthorizationTargetResolver objectAuthorizationTargetResolver(
-        ObjectAuthorizationSchema<UserInfo> users,
-        ObjectAuthorizationSchema<GroupInfo> groups,
-        ObjectAuthorizationSchema<RoleInfo> roles,
-        ObjectAuthorizationSchema<StatementInfo> statements
+        ObjectAuthorizationBinding<UserInfo> users,
+        ObjectAuthorizationBinding<GroupInfo> groups,
+        ObjectAuthorizationBinding<RoleInfo> roles,
+        ObjectAuthorizationBinding<StatementInfo> statements
     ) {
         List<Route> routes = List.of(
             new Route("GET", "/api/v0/users", users),
@@ -37,12 +37,12 @@ class AuthorizationObjectSchemaConfiguration {
             routes
                 .stream()
                 .filter(route -> route.matches(method, pathMatcher))
-                .<ObjectAuthorizationSchema<?>>map(Route::schema)
+                .<ObjectAuthorizationBinding<?>>map(Route::binding)
                 .distinct()
                 .toList();
     }
 
-    private record Route(String method, String path, ObjectAuthorizationSchema<?> schema) {
+    private record Route(String method, String path, ObjectAuthorizationBinding<?> binding) {
         private boolean matches(String statementMethod, StatementTargetPathMatcher pathMatcher) {
             return (
                 ("*".equals(statementMethod) || this.method.equals(statementMethod)) && pathMatcher.matches(this.path)

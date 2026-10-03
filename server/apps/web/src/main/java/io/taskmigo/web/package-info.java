@@ -2,6 +2,7 @@
 @ApplicationModule(
     allowedDependencies = {
         "foundation",
+        "language",
         "audit :: model",
         "audit :: query-input",
         "query",

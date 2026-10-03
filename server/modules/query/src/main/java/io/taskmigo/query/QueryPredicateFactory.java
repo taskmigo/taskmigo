@@ -9,17 +9,17 @@ final class QueryPredicateFactory {
 
     private QueryPredicateFactory() {}
 
-    static <Q> QueryPredicate<Q> from(QuerySchema<Q> schema, QueryExpression expression) {
-        Objects.requireNonNull(schema);
-        return new LogicalQueryPredicate<>(schema.identity(), Objects.requireNonNull(expression));
+    static <Q> QueryPredicate<Q> from(QueryBinding<Q> binding, QueryExpression expression) {
+        Objects.requireNonNull(binding);
+        return new LogicalQueryPredicate<>(binding.identity(), Objects.requireNonNull(expression));
     }
 
-    static <Q> QueryPredicate<Q> alwaysTrue(QuerySchema<Q> schema) {
-        return from(schema, new QueryExpression.Literal(true));
+    static <Q> QueryPredicate<Q> alwaysTrue(QueryBinding<Q> binding) {
+        return from(binding, new QueryExpression.Literal(true));
     }
 
-    static <Q> QueryPredicate<Q> alwaysFalse(QuerySchema<Q> schema) {
-        return from(schema, new QueryExpression.Literal(false));
+    static <Q> QueryPredicate<Q> alwaysFalse(QueryBinding<Q> binding) {
+        return from(binding, new QueryExpression.Literal(false));
     }
 
     static QueryPredicateModel model(QueryPredicate<?> predicate) {
@@ -29,24 +29,24 @@ final class QueryPredicateFactory {
         return model;
     }
 
-    static String schemaIdentity(QueryPredicate<?> predicate) {
-        return model(predicate).schemaIdentity();
+    static String bindingIdentity(QueryPredicate<?> predicate) {
+        return model(predicate).bindingIdentity();
     }
 
-    static <Q> QueryPredicate<Q> wrap(String schemaIdentity, QueryExpression expression) {
-        return new LogicalQueryPredicate<>(schemaIdentity, expression);
+    static <Q> QueryPredicate<Q> wrap(String bindingIdentity, QueryExpression expression) {
+        return new LogicalQueryPredicate<>(bindingIdentity, expression);
     }
 
     static <Q> QueryPredicate<Q> constantLike(QueryPredicate<?> predicate, boolean value) {
-        return wrap(schemaIdentity(predicate), new QueryExpression.Literal(value));
+        return wrap(bindingIdentity(predicate), new QueryExpression.Literal(value));
     }
 
     private record LogicalQueryPredicate<Q>(
-        String schemaIdentity,
+        String bindingIdentity,
         QueryExpression expression
     ) implements QueryPredicate<Q>, QueryPredicateModel {
         private LogicalQueryPredicate {
-            Objects.requireNonNull(schemaIdentity);
+            Objects.requireNonNull(bindingIdentity);
             Objects.requireNonNull(expression);
         }
 

@@ -17,7 +17,7 @@ import org.jspecify.annotations.Nullable;
 /// Compiles the generated ANTLR parse tree directly into typed Language Semantic AST.
 final class LanguageCompilerVisitor {
 
-    private final EnvironmentSchema schema;
+    private final CompilerEnvironment environment;
     private final CompilerLimits limits;
     private final CompilationProfile profile;
     private final List<Scope> scopes = new ArrayList<>();
@@ -27,8 +27,8 @@ final class LanguageCompilerVisitor {
     private int lambdaNesting;
     private int localSlotCount;
 
-    LanguageCompilerVisitor(EnvironmentSchema schema, CompilerLimits limits, CompilationProfile profile) {
-        this.schema = schema;
+    LanguageCompilerVisitor(CompilerEnvironment environment, CompilerLimits limits, CompilationProfile profile) {
+        this.environment = environment;
         this.limits = limits;
         this.profile = profile;
     }
@@ -340,11 +340,11 @@ final class LanguageCompilerVisitor {
             case EmbeddedLanguageParser.STRING -> parseString(token);
             default -> throw syntax("invalid literal", token);
         };
-        return this.node(new SemanticAst.Literal(value, typeOf(value), this.schema.noDependencies(), span(token)));
+        return this.node(new SemanticAst.Literal(value, typeOf(value), this.environment.noDependencies(), span(token)));
     }
 
     private SemanticAst.Expression literal(@Nullable Object value, LanguageDiagnostic.SourceSpan span) {
-        return this.node(new SemanticAst.Literal(value, typeOf(value), this.schema.noDependencies(), span));
+        return this.node(new SemanticAst.Literal(value, typeOf(value), this.environment.noDependencies(), span));
     }
 
     private SemanticAst.Expression reference(EmbeddedLanguageParser.ReferenceContext context) {
@@ -364,11 +364,32 @@ final class LanguageCompilerVisitor {
                 ArrayList<String> localPath = new ArrayList<>(localReference.path().size() + path.size());
                 localPath.addAll(localReference.path());
                 localPath.addAll(path);
+                if (localReference.resourceType() != null) {
+                    ArrayList<String> resolvedPath = new ArrayList<>(localReference.path());
+                    resolvedPath.addAll(path);
+                    Field field = this.resolveResourceField(localReference.root(), resolvedPath, sourceSpan);
+                    return this.node(
+                        this.resourceReference(
+                            localReference.root(),
+                            resolvedPath,
+                            field,
+                            localReference.symbolic(),
+                            localReference.rootSlot(),
+                            localReference.localSlot(),
+                            localReference.dependencies(),
+                            sourceSpan,
+                            localReference.nullable()
+                        )
+                    );
+                }
                 LocalPath resolved = resolveLocalPath(localReference.type(), path, sourceSpan);
                 return this.node(
                     new SemanticAst.Reference(
                         localReference.root(),
                         localPath,
+                        null,
+                        null,
+                        null,
                         resolved.type(),
                         localReference.nullable() || resolved.nullable(),
                         localReference.symbolic() || resolved.symbolic(),
@@ -385,26 +406,87 @@ final class LanguageCompilerVisitor {
                 sourceSpan
             );
         }
-        EnvironmentSchema.Field field = this.schema.resolve(root, path);
-        if (field == null) {
+        CompilerEnvironment.Root binding;
+        try {
+            binding = this.environment.root(root);
+        } catch (IllegalArgumentException exception) {
             throw failure(
                 LanguageDiagnostic.Category.BindingError,
                 "unknown program reference: " + root + (path.isEmpty() ? "" : "." + String.join(".", path)),
                 sourceSpan
             );
         }
+        if (path.isEmpty()) {
+            return this.node(
+                new SemanticAst.Reference(
+                    root,
+                    path,
+                    binding.schema().type(),
+                    null,
+                    null,
+                    binding.type(),
+                    binding.nullable(),
+                    binding.symbolic(),
+                    this.environment.rootSlot(root),
+                    -1,
+                    this.environment.dependency(root),
+                    sourceSpan
+                )
+            );
+        }
+        Field field = this.resolveResourceField(root, path, sourceSpan);
         return this.node(
-            new SemanticAst.Reference(
+            this.resourceReference(
                 root,
                 path,
-                field.type(),
-                field.nullable(),
-                field.symbolic(),
-                this.schema.rootSlot(root),
+                field,
+                binding.symbolic(),
+                this.environment.rootSlot(root),
                 -1,
-                this.schema.dependency(root),
-                sourceSpan
+                this.environment.dependency(root),
+                sourceSpan,
+                false
             )
+        );
+    }
+
+    private Field resolveResourceField(String root, List<String> path, LanguageDiagnostic.SourceSpan sourceSpan) {
+        try {
+            return this.environment.root(root).schema().resolve(new FieldPath(path));
+        } catch (IllegalArgumentException exception) {
+            throw failure(
+                LanguageDiagnostic.Category.BindingError,
+                "unknown program reference: " + root + "." + String.join(".", path),
+                sourceSpan
+            );
+        }
+    }
+
+    private SemanticAst.Reference resourceReference(
+        String root,
+        List<String> runtimePath,
+        Field field,
+        boolean symbolic,
+        int rootSlot,
+        int localSlot,
+        Set<String> dependencies,
+        LanguageDiagnostic.SourceSpan sourceSpan,
+        boolean inheritedNullable
+    ) {
+        ResourceType resourceType = this.environment.root(root).schema().type();
+        return new SemanticAst.Reference(
+            root,
+            runtimePath,
+            resourceType,
+            field.id(),
+            field.path(),
+            field.type(),
+            inheritedNullable || field.nullable(),
+            symbolic,
+            rootSlot,
+            localSlot,
+            dependencies,
+            sourceSpan
         );
     }
 
@@ -509,12 +591,15 @@ final class LanguageCompilerVisitor {
                     new SemanticAst.Reference(
                         "__lambda__",
                         List.of(elementName),
+                        null,
+                        null,
+                        null,
                         list.elementType(),
                         false,
                         false,
                         -1,
                         slot,
-                        this.schema.noDependencies(),
+                        this.environment.noDependencies(),
                         span(context)
                     )
                 );
@@ -650,12 +735,11 @@ final class LanguageCompilerVisitor {
             if (!(current instanceof LanguageType.StructuredType structured)) {
                 throw failure(LanguageDiagnostic.Category.BindingError, "unknown local path: " + segment, sourceSpan);
             }
-            EnvironmentSchema.Field field = structured.field(segment);
+            Field field = structured.field(segment);
             if (field == null) {
                 throw failure(LanguageDiagnostic.Category.BindingError, "unknown local path: " + segment, sourceSpan);
             }
             nullable = nullable || field.nullable();
-            symbolic = symbolic || field.symbolic();
             current = field.type();
         }
         return new LocalPath(current, nullable, symbolic);

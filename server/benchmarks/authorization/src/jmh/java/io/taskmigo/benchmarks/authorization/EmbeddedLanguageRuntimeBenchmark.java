@@ -3,9 +3,14 @@ package io.taskmigo.benchmarks.authorization;
 import static org.openjdk.jmh.annotations.Scope.Thread;
 
 import io.taskmigo.language.CompiledSource;
-import io.taskmigo.language.EnvironmentSchema;
+import io.taskmigo.language.CompilerEnvironment;
+import io.taskmigo.language.Field;
+import io.taskmigo.language.FieldId;
+import io.taskmigo.language.FieldPath;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageType;
+import io.taskmigo.language.ResourceSchema;
+import io.taskmigo.language.ResourceType;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -59,16 +64,29 @@ public class EmbeddedLanguageRuntimeBenchmark {
         @Setup
         public void setUp() {
             int size = Integer.parseInt(this.listSize);
-            EnvironmentSchema schema = new EnvironmentSchema(
-                "benchmark.runtime",
+            ResourceSchema record = ResourceSchema.of(
+                new ResourceType("benchmark.record"),
+                List.of(
+                    new Field(
+                        new FieldId("record.values"),
+                        FieldPath.parse("values"),
+                        new LanguageType.ListType(LanguageType.Scalar.NUMBER),
+                        false
+                    )
+                )
+            );
+            ResourceSchema threshold = ResourceSchema.of(new ResourceType("benchmark.threshold"), List.of());
+            CompilerEnvironment schema = CompilerEnvironment.of(
                 Map.of(
                     "record",
-                    new EnvironmentSchema.Root(
-                        field(LanguageType.Scalar.STRING, false),
-                        Map.of("values", field(new LanguageType.ListType(LanguageType.Scalar.NUMBER), true))
+                    new CompilerEnvironment.Root(
+                        record,
+                        new LanguageType.StructuredType("Record", Map.of()),
+                        false,
+                        true
                     ),
                     "threshold",
-                    new EnvironmentSchema.Root(field(LanguageType.Scalar.NUMBER, false), Map.of())
+                    new CompilerEnvironment.Root(threshold, LanguageType.Scalar.NUMBER, false, true)
                 )
             );
             this.compiled = new LanguageCompiler().compile(
@@ -78,10 +96,6 @@ public class EmbeddedLanguageRuntimeBenchmark {
             List<Integer> values = IntStream.range(0, size).boxed().toList();
             this.roots = Map.of("record", Map.of("values", values), "threshold", 0);
             this.sparseRoots = Map.of("threshold", 0);
-        }
-
-        private static EnvironmentSchema.Field field(LanguageType type, boolean symbolic) {
-            return new EnvironmentSchema.Field(type, false, symbolic);
         }
     }
 }

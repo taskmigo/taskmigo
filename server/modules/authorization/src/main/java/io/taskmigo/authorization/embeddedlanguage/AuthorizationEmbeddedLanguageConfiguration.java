@@ -1,6 +1,6 @@
 package io.taskmigo.authorization.embeddedlanguage;
 
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
 import io.taskmigo.language.LanguageCompiler;
 import java.util.List;
@@ -23,7 +23,7 @@ public class AuthorizationEmbeddedLanguageConfiguration {
     /// Provides an all-schema target resolver when an application has no transport-specific target metadata.
     @Bean
     @ConditionalOnMissingBean(ObjectAuthorizationTargetResolver.class)
-    ObjectAuthorizationTargetResolver objectAuthorizationTargetResolver(List<ObjectAuthorizationSchema<?>> schemas) {
-        return ObjectAuthorizationTargetResolver.all(schemas);
+    ObjectAuthorizationTargetResolver objectAuthorizationTargetResolver(List<ObjectAuthorizationBinding<?>> bindings) {
+        return ObjectAuthorizationTargetResolver.all(bindings);
     }
 }

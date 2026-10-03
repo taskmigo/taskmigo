@@ -1,10 +1,9 @@
 package io.taskmigo.authorization.object.application.service;
 
 import io.taskmigo.authorization.core.AuthorizationException;
-import io.taskmigo.authorization.object.ObjectAuthorizationField;
+import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
+import io.taskmigo.authorization.object.ObjectAuthorizationFieldBinding;
 import io.taskmigo.authorization.object.ObjectAuthorizationOperator;
-import io.taskmigo.authorization.object.ObjectAuthorizationPath;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
 
 /// Validates Object Authorization expression paths and operators against one logical schema.
@@ -12,7 +11,7 @@ final class ObjectAuthorizationExpressionValidator {
 
     private ObjectAuthorizationExpressionValidator() {}
 
-    static <Q> void validate(ObjectAuthorizationExpression expression, ObjectAuthorizationSchema<Q> schema) {
+    static <Q> void validate(ObjectAuthorizationExpression expression, ObjectAuthorizationBinding<Q> schema) {
         switch (expression) {
             case ObjectAuthorizationExpression.Literal _ -> {
             }
@@ -50,19 +49,20 @@ final class ObjectAuthorizationExpressionValidator {
 
     private static <Q> void validateReference(
         ObjectAuthorizationExpression.Reference reference,
-        ObjectAuthorizationSchema<Q> schema
+        ObjectAuthorizationBinding<Q> schema
     ) {
         if (reference.root().equals("object")) {
-            schema
-                .field(new ObjectAuthorizationPath(reference.path()))
-                .orElseThrow(() -> invalid("object path is not queryable"));
+            if (reference.fieldId() == null) {
+                throw invalid("object field does not have a semantic identity");
+            }
+            schema.field(reference.fieldId()).orElseThrow(() -> invalid("object field identity is unknown"));
         }
     }
 
     private static <Q> void requireOperator(
         ObjectAuthorizationExpression expression,
         ObjectAuthorizationOperator operator,
-        ObjectAuthorizationSchema<Q> schema
+        ObjectAuthorizationBinding<Q> schema
     ) {
         if (operator == ObjectAuthorizationOperator.AND || operator == ObjectAuthorizationOperator.OR) {
             return;
@@ -94,13 +94,16 @@ final class ObjectAuthorizationExpressionValidator {
     private static <Q> void requireOperator(
         ObjectAuthorizationExpression.Reference reference,
         ObjectAuthorizationOperator operator,
-        ObjectAuthorizationSchema<Q> schema
+        ObjectAuthorizationBinding<Q> schema
     ) {
-        ObjectAuthorizationField field = schema
-            .field(new ObjectAuthorizationPath(reference.path()))
-            .orElseThrow(() -> invalid("object path is not queryable"));
+        if (reference.fieldId() == null) {
+            throw invalid("object field does not have a semantic identity");
+        }
+        ObjectAuthorizationFieldBinding field = schema
+            .field(reference.fieldId())
+            .orElseThrow(() -> invalid("object field identity is unknown"));
         if (!field.operators().contains(operator)) {
-            throw invalid("operator is not supported for object path " + field.path().text());
+            throw invalid("operator is not supported for object field " + field.id().value());
         }
     }
 

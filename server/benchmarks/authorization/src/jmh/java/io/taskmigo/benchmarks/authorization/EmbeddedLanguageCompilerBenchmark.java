@@ -4,9 +4,14 @@ import static org.openjdk.jmh.annotations.Scope.Thread;
 
 import io.taskmigo.language.CompilationProfile;
 import io.taskmigo.language.CompiledSource;
-import io.taskmigo.language.EnvironmentSchema;
+import io.taskmigo.language.CompilerEnvironment;
+import io.taskmigo.language.Field;
+import io.taskmigo.language.FieldId;
+import io.taskmigo.language.FieldPath;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageType;
+import io.taskmigo.language.ResourceSchema;
+import io.taskmigo.language.ResourceType;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -57,7 +62,7 @@ public class EmbeddedLanguageCompilerBenchmark {
         private String statementCount = "1000";
 
         private final LanguageCompiler compiler = new LanguageCompiler();
-        private final EnvironmentSchema schema = schema();
+        private final CompilerEnvironment schema = schema();
         private CompilationProfile profile = CompilationProfile.program();
         private List<LanguageBenchmarkCorpus.BenchmarkCase> cases = List.of();
 
@@ -81,93 +86,101 @@ public class EmbeddedLanguageCompilerBenchmark {
         };
     }
 
-    private static EnvironmentSchema schema() {
+    private static CompilerEnvironment schema() {
         MapBuilder roots = new MapBuilder();
         roots.add(
             "principal",
             Map.of(
                 "id",
-                field(LanguageType.Scalar.STRING),
+                LanguageType.Scalar.STRING,
                 "username",
-                field(LanguageType.Scalar.STRING),
+                LanguageType.Scalar.STRING,
                 "role",
-                field(LanguageType.Scalar.STRING),
+                LanguageType.Scalar.STRING,
                 "tenantId",
-                field(LanguageType.Scalar.STRING),
+                LanguageType.Scalar.STRING,
                 "teamId",
-                field(LanguageType.Scalar.STRING),
+                LanguageType.Scalar.STRING,
                 "kind",
-                field(LanguageType.Scalar.STRING),
+                LanguageType.Scalar.STRING,
                 "active",
-                field(LanguageType.Scalar.BOOL),
+                LanguageType.Scalar.BOOL,
                 "level",
-                field(LanguageType.Scalar.NUMBER),
+                LanguageType.Scalar.NUMBER,
                 "rank",
-                field(LanguageType.Scalar.NUMBER),
+                LanguageType.Scalar.NUMBER,
                 "version",
-                field(LanguageType.Scalar.NUMBER)
+                LanguageType.Scalar.NUMBER
             )
         );
         roots.add(
             "request",
             Map.of(
                 "method",
-                field(LanguageType.Scalar.STRING),
+                LanguageType.Scalar.STRING,
                 "path",
-                field(LanguageType.Scalar.STRING),
-                "pathVariables",
-                dynamicString(),
+                LanguageType.Scalar.STRING,
+                "pathVariables.userId",
+                LanguageType.Scalar.STRING,
                 "version",
-                field(LanguageType.Scalar.NUMBER),
+                LanguageType.Scalar.NUMBER,
                 "sequence",
-                field(LanguageType.Scalar.NUMBER)
+                LanguageType.Scalar.NUMBER
             )
         );
         roots.add(
             "object",
             Map.of(
                 "ownerId",
-                field(LanguageType.Scalar.STRING),
+                LanguageType.Scalar.STRING,
                 "status",
-                field(LanguageType.Scalar.STRING),
+                LanguageType.Scalar.STRING,
                 "kind",
-                field(LanguageType.Scalar.STRING),
+                LanguageType.Scalar.STRING,
                 "tenantId",
-                field(LanguageType.Scalar.STRING),
+                LanguageType.Scalar.STRING,
                 "visibility",
-                field(LanguageType.Scalar.STRING),
+                LanguageType.Scalar.STRING,
                 "enabled",
-                field(LanguageType.Scalar.BOOL),
+                LanguageType.Scalar.BOOL,
                 "score",
-                field(LanguageType.Scalar.NUMBER),
+                LanguageType.Scalar.NUMBER,
                 "version",
-                field(LanguageType.Scalar.NUMBER),
+                LanguageType.Scalar.NUMBER,
                 "priority",
-                field(LanguageType.Scalar.NUMBER),
+                LanguageType.Scalar.NUMBER,
                 "rank",
-                field(LanguageType.Scalar.NUMBER)
+                LanguageType.Scalar.NUMBER
             )
         );
-        return new EnvironmentSchema("benchmark.authorization", roots.build());
+        return CompilerEnvironment.of(roots.build());
     }
 
-    private static EnvironmentSchema.Field field(LanguageType type) {
-        return new EnvironmentSchema.Field(type, false, true);
+    private static Field field(String owner, String path, LanguageType type) {
+        return new Field(new FieldId(owner + "." + path), FieldPath.parse(path), type, false);
     }
 
-    private static EnvironmentSchema.Field dynamicString() {
-        return new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, true, LanguageType.Scalar.STRING);
+    private static ResourceSchema resource(String name, Map<String, LanguageType> fields) {
+        return ResourceSchema.of(
+            new ResourceType("benchmark." + name),
+            fields
+                .entrySet()
+                .stream()
+                .map(entry -> field(name, entry.getKey(), entry.getValue()))
+                .toList()
+        );
     }
 
     private static final class MapBuilder {
 
-        private final Map<String, EnvironmentSchema.Root> roots = new HashMap<>();
+        private final Map<String, CompilerEnvironment.Root> roots = new HashMap<>();
 
-        private void add(String name, Map<String, EnvironmentSchema.Field> fields) {
-            this.roots.put(name, new EnvironmentSchema.Root(field(LanguageType.Scalar.STRING), fields));
+        private void add(String name, Map<String, LanguageType> fields) {
+            ResourceSchema schema = resource(name, fields);
+            this.roots.put(name, new CompilerEnvironment.Root(schema, true));
         }
 
-        private Map<String, EnvironmentSchema.Root> build() {
+        private Map<String, CompilerEnvironment.Root> build() {
             return Map.copyOf(this.roots);
         }
     }

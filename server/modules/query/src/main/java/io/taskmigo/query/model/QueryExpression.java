@@ -1,5 +1,6 @@
 package io.taskmigo.query.model;
 
+import io.taskmigo.language.FieldId;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -18,10 +19,14 @@ public sealed interface QueryExpression
 {
     record Literal(@Nullable Object value) implements QueryExpression {}
 
-    record Reference(String root, List<String> path) implements QueryExpression {
+    record Reference(String root, List<String> runtimePath, @Nullable FieldId fieldId) implements QueryExpression {
+        public Reference(String root, List<String> runtimePath) {
+            this(root, runtimePath, null);
+        }
+
         public Reference {
             Objects.requireNonNull(root);
-            path = List.copyOf(path);
+            runtimePath = List.copyOf(runtimePath);
         }
     }
 

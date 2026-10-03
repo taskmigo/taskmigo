@@ -3,9 +3,9 @@ package io.taskmigo.authorization.object.application.service;
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfile;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
+import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicates;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.port.in.api.ObjectAuthorization;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.object.domain.ObjectAuthorizationPredicateComposer;
@@ -44,7 +44,7 @@ public final class ObjectAuthorizationService implements ObjectAuthorization {
     @Override
     public <Q> ObjectAuthorizationPredicate<Q> authorize(
         AuthorizationContext context,
-        ObjectAuthorizationSchema<Q> schema
+        ObjectAuthorizationBinding<Q> binding
     ) {
         if (!(context instanceof AuthorizationOperation operation)) {
             throw new AuthorizationException("authorization context is not valid for this operation");
@@ -54,19 +54,19 @@ public final class ObjectAuthorizationService implements ObjectAuthorization {
             for (var artifact : operation.snapshot().executableStatements()) {
                 var statement = artifact.statement();
                 if (statement.scope() == Scope.OBJECT && artifact.matches(operation.method(), operation.path())) {
-                    CompiledSource policy = artifact.policy();
+                    CompiledSource policy = artifact.policy(binding.resourceType(), binding.schemaFingerprint());
                     ObjectAuthorizationExpressionValidator.validate(
                         policy.map(LanguageObjectAuthorizationExpressionVisitor.INSTANCE),
-                        schema
+                        binding
                     );
                     ObjectAuthorizationPredicate<Q> predicate = ObjectAuthorizationPredicateModels.from(
-                        schema,
+                        binding,
                         this.partial(policy, operation.snapshot().roots())
                     );
                     rules.add(new Rule<>(statement.effect(), predicate));
                 }
             }
-            return COMPOSER.compose(ObjectAuthorizationPredicateModels.constant(schema, false), rules);
+            return COMPOSER.compose(ObjectAuthorizationPredicateModels.constant(binding, false), rules);
         } catch (EmbeddedLanguageException | IllegalArgumentException exception) {
             throw new AuthorizationException("Invalid Object authorization policy: " + exception.getMessage());
         }
@@ -76,11 +76,11 @@ public final class ObjectAuthorizationService implements ObjectAuthorization {
     @Override
     public void validatePolicy(String policy, String method, String path) {
         StatementTargetPathMatcher pathMatcher = StatementTargetPathMatcher.compile(path);
-        List<ObjectAuthorizationSchema<?>> applicable = this.targetResolver.applicable(method, pathMatcher);
+        List<ObjectAuthorizationBinding<?>> applicable = this.targetResolver.applicable(method, pathMatcher);
         if (applicable.isEmpty()) {
             throw new AuthorizationException("Object Statement target matches no registered object schema route");
         }
-        for (ObjectAuthorizationSchema<?> schema : applicable) {
+        for (ObjectAuthorizationBinding<?> schema : applicable) {
             CompiledSource compiled = this.compiler.compile(
                 policy,
                 AuthorizationEmbeddedLanguageSchemas.object(schema),

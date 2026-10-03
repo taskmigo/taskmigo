@@ -4,5 +4,5 @@ package io.taskmigo.query.model;
 public interface QueryPredicateModel {
     QueryExpression expression();
 
-    String schemaIdentity();
+    String bindingIdentity();
 }

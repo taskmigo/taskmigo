@@ -3,7 +3,7 @@ package io.taskmigo.authorization.request.application.service;
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfile;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.request.application.port.out.EffectiveStatement;
 import io.taskmigo.authorization.statement.Scope;
@@ -12,14 +12,19 @@ import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import io.taskmigo.language.CompilationProfile;
 import io.taskmigo.language.CompiledSource;
+import io.taskmigo.language.CompilerEnvironment;
 import io.taskmigo.language.EmbeddedLanguageException;
-import io.taskmigo.language.EnvironmentSchema;
 import io.taskmigo.language.LanguageCompiler;
+import io.taskmigo.language.ResourceType;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /// Builds executable Statement derivatives after authoritative Statement rows and revisions have been loaded.
 public final class StatementArtifactFactory {
@@ -33,12 +38,12 @@ public final class StatementArtifactFactory {
 
     public StatementArtifactFactory(
         LanguageCompiler compiler,
-        List<ObjectAuthorizationSchema<?>> schemas,
+        List<ObjectAuthorizationBinding<?>> bindings,
         ObjectAuthorizationTargetResolver targetResolver
     ) {
         this(
             compiler,
-            schemas,
+            bindings,
             targetResolver,
             StatementArtifactCache.expireAfterAccess(CACHE_IDLE_TTL),
             StatementArtifactCache.expireAfterAccess(CACHE_IDLE_TTL)
@@ -47,7 +52,7 @@ public final class StatementArtifactFactory {
 
     StatementArtifactFactory(
         LanguageCompiler compiler,
-        List<ObjectAuthorizationSchema<?>> schemas,
+        List<ObjectAuthorizationBinding<?>> bindings,
         ObjectAuthorizationTargetResolver targetResolver,
         StatementArtifactCache<CachedTargetMatcher> targetMatchers,
         StatementArtifactCache<CachedArtifacts> derived
@@ -75,17 +80,36 @@ public final class StatementArtifactFactory {
                 continue;
             }
 
-            EnvironmentSchema schema = this.schema(statement, pathMatcher);
+            List<ObjectAuthorizationBinding<?>> applicable =
+                statement.scope() == Scope.OBJECT
+                    ? this.targetResolver.applicable(statement.target().api().method(), pathMatcher)
+                    : List.of();
+            CompilerEnvironment requestEnvironment =
+                statement.scope() == Scope.REQUEST ? AuthorizationEmbeddedLanguageSchemas.request() : null;
             CompilationProfile profile = profile(statement);
             ArtifactIdentity identity = new ArtifactIdentity(
                 effective.updatedAt(),
-                schema.fingerprint(),
+                requestEnvironment == null ? "object" : requestEnvironment.fingerprint(),
                 this.compiler.contractFingerprint(),
                 profile.fingerprint(),
                 this.applicableSchemaIdentities(statement, pathMatcher)
             );
-            DerivedArtifacts artifacts = this.derive(statement, schema, pathMatcher, profile, identity);
-            result.add(new StatementExecutionArtifact(statement, artifacts.policy(), artifacts.pathMatcher()));
+            DerivedArtifacts artifacts = this.derive(
+                statement,
+                requestEnvironment,
+                applicable,
+                pathMatcher,
+                profile,
+                identity
+            );
+            result.add(
+                new StatementExecutionArtifact(
+                    statement,
+                    artifacts.requestPolicy(),
+                    artifacts.pathMatcher(),
+                    artifacts.variants()
+                )
+            );
         }
         return List.copyOf(result);
     }
@@ -108,7 +132,8 @@ public final class StatementArtifactFactory {
 
     private DerivedArtifacts derive(
         StatementInfo statement,
-        EnvironmentSchema schema,
+        @Nullable CompilerEnvironment requestEnvironment,
+        List<ObjectAuthorizationBinding<?>> applicable,
         StatementTargetPathMatcher pathMatcher,
         CompilationProfile profile,
         ArtifactIdentity identity
@@ -118,20 +143,13 @@ public final class StatementArtifactFactory {
             identity.updatedAt(),
             cached -> cached.identity().updatedAt(),
             cached -> cached.identity().equals(identity),
-            () -> new CachedArtifacts(identity, this.compile(statement, schema, pathMatcher, profile))
+            () ->
+                new CachedArtifacts(
+                    identity,
+                    this.compile(statement, requestEnvironment, applicable, pathMatcher, profile)
+                )
         );
         return retained.artifacts();
-    }
-
-    private EnvironmentSchema schema(StatementInfo statement, StatementTargetPathMatcher pathMatcher) {
-        if (statement.scope() == Scope.REQUEST) {
-            return AuthorizationEmbeddedLanguageSchemas.request();
-        }
-        List<ObjectAuthorizationSchema<?>> applicable = this.targetResolver.applicable(
-            statement.target().api().method(),
-            pathMatcher
-        );
-        return AuthorizationEmbeddedLanguageSchemas.object(applicable);
     }
 
     private static CompilationProfile profile(StatementInfo statement) {
@@ -143,12 +161,42 @@ public final class StatementArtifactFactory {
 
     private DerivedArtifacts compile(
         StatementInfo statement,
-        EnvironmentSchema schema,
+        @Nullable CompilerEnvironment requestEnvironment,
+        List<ObjectAuthorizationBinding<?>> applicable,
         StatementTargetPathMatcher pathMatcher,
         CompilationProfile profile
     ) {
         try {
-            return new DerivedArtifacts(this.compiler.compile(statement.policy(), schema, profile), pathMatcher);
+            if (statement.scope() == Scope.REQUEST) {
+                return new DerivedArtifacts(
+                    this.compiler.compile(statement.policy(), Objects.requireNonNull(requestEnvironment), profile),
+                    pathMatcher,
+                    Map.of()
+                );
+            }
+            Map<ResourceType, StatementExecutionArtifact.Variant> variants = new HashMap<>();
+            for (ObjectAuthorizationBinding<?> binding : applicable) {
+                StatementExecutionArtifact.Variant existing = variants.get(binding.resourceType());
+                if (existing != null) {
+                    if (!existing.fingerprint().equals(binding.schemaFingerprint())) {
+                        throw new AuthorizationException(
+                            "Object Statement target resolves conflicting schemas for resource " +
+                                binding.resourceType()
+                        );
+                    }
+                    continue;
+                }
+                CompiledSource variant = this.compiler.compile(
+                    statement.policy(),
+                    AuthorizationEmbeddedLanguageSchemas.object(binding),
+                    profile
+                );
+                variants.put(
+                    binding.resourceType(),
+                    new StatementExecutionArtifact.Variant(binding.schemaFingerprint(), variant)
+                );
+            }
+            return new DerivedArtifacts(null, pathMatcher, variants);
         } catch (EmbeddedLanguageException exception) {
             throw new AuthorizationException("Invalid Statement policy: " + exception.getMessage());
         }
@@ -165,7 +213,7 @@ public final class StatementArtifactFactory {
         return this.targetResolver
             .applicable(statement.target().api().method(), pathMatcher)
             .stream()
-            .map(ObjectAuthorizationSchema::identity)
+            .map(ObjectAuthorizationBinding::identity)
             .sorted()
             .toList();
     }
@@ -188,5 +236,13 @@ public final class StatementArtifactFactory {
 
     private record CachedArtifacts(ArtifactIdentity identity, DerivedArtifacts artifacts) {}
 
-    private record DerivedArtifacts(CompiledSource policy, StatementTargetPathMatcher pathMatcher) {}
+    private record DerivedArtifacts(
+        @Nullable CompiledSource requestPolicy,
+        StatementTargetPathMatcher pathMatcher,
+        Map<ResourceType, StatementExecutionArtifact.Variant> variants
+    ) {
+        private DerivedArtifacts {
+            variants = Map.copyOf(variants);
+        }
+    }
 }

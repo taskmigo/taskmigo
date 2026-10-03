@@ -2,9 +2,14 @@ package io.taskmigo.benchmarks.authorization;
 
 import static org.openjdk.jmh.annotations.Scope.Thread;
 
-import io.taskmigo.language.EnvironmentSchema;
+import io.taskmigo.language.Field;
+import io.taskmigo.language.FieldId;
+import io.taskmigo.language.FieldPath;
 import io.taskmigo.language.LanguageType;
+import io.taskmigo.language.ResourceSchema;
+import io.taskmigo.language.ResourceType;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -24,7 +29,7 @@ public class EmbeddedLanguageSchemaBenchmark {
     /// Measures construction of a consumer-owned schema including trie indexing and one deterministic fingerprint.
     @Benchmark
     public void buildEnvironmentSchema(SchemaState state, Blackhole blackhole) {
-        blackhole.consume(new EnvironmentSchema("benchmark.schema", state.roots));
+        blackhole.consume(ResourceSchema.of(new ResourceType("benchmark.schema"), state.fields));
     }
 
     /// Holds reusable schema declarations while construction remains inside the measured operation.
@@ -34,27 +39,21 @@ public class EmbeddedLanguageSchemaBenchmark {
         @Param({ "10", "1000" })
         private String fieldCount = "10";
 
-        private Map<String, EnvironmentSchema.Root> roots = Map.of();
+        private List<Field> fields = List.of();
 
         /// Builds a flat but wide root declaration before each benchmark trial.
         @Setup
         public void setUp() {
             int count = Integer.parseInt(this.fieldCount);
-            Map<String, EnvironmentSchema.Field> fields = new LinkedHashMap<>();
+            Map<String, Field> fields = new LinkedHashMap<>();
             for (int index = 0; index < count; index++) {
-                fields.put("field" + index, new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, false));
+                String name = "field" + index;
+                fields.put(
+                    name,
+                    new Field(new FieldId("record." + name), FieldPath.parse(name), LanguageType.Scalar.STRING, false)
+                );
             }
-            this.roots = Map.of(
-                "record",
-                new EnvironmentSchema.Root(
-                    new EnvironmentSchema.Field(
-                        new LanguageType.StructuredType("BenchmarkRecord", fields),
-                        false,
-                        false
-                    ),
-                    fields
-                )
-            );
+            this.fields = List.copyOf(fields.values());
         }
     }
 }
