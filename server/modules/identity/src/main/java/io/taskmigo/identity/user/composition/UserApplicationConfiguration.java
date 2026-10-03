@@ -94,10 +94,10 @@ class UserApplicationConfiguration {
     UserRetentionService defaultUserRetentionService(
         UserCommandService users,
         ConfigurationService configuration,
-        SubjectGrantAssignmentService grantAssignments,
+        UserTombstoneService tombstones,
         TransactionRunner transactions
     ) {
-        return new DefaultUserRetentionService(users, configuration, grantAssignments, transactions);
+        return new DefaultUserRetentionService(users, configuration, tombstones, transactions);
     }
 
     @Bean
