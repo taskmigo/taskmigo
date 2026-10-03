@@ -343,6 +343,25 @@ class IdentityPackageArchitectureTest {
         identityDoesNotDependOnRoleContracts.check(classes);
     }
 
+    /// Verifies that User persistence cleanup uses repository APIs rather than application SQL.
+    ///
+    /// Given: production User persistence adapters, including OAuth cleanup.
+    /// Expect: no adapter depends on Spring JDBC execution APIs.
+    @Test
+    @DisplayName("keeps application SQL out of User persistence adapters")
+    void shouldUseRepositoryApisWhenUserPersistenceAdaptersAreInspected() {
+        // Arrange
+        ArchRule rule = noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.identity.user.adapter.out.persistence..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage("org.springframework.jdbc.core..");
+
+        // Act + Assert
+        rule.check(productionClasses());
+    }
+
     private static JavaClasses productionClasses() {
         return new ClassFileImporter()
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
