@@ -54,10 +54,7 @@ class ConfigurationApiIntegrationTest extends ApiIntegrationTestSupport {
     @ValueSource(strings = { "P0D", "P1D", "PT24H", "P30D" })
     @DisplayName("accepts supported whole-day retention durations")
     void shouldAcceptSupportedRetentionDurations(String value) {
-        this.api().patchJson(
-            "/api/v0/configuration",
-            "{\"retention\":{\"user\":\"" + value + "\"}}"
-        );
+        this.api().patchJson("/api/v0/configuration", "{\"retention\":{\"user\":\"" + value + "\"}}");
 
         String expected = value.equals("PT24H") ? "P1D" : value;
         assertThat(this.api().get("/api/v0/configuration")).contains("\"user\":\"" + expected + "\"");
@@ -74,10 +71,7 @@ class ConfigurationApiIntegrationTest extends ApiIntegrationTestSupport {
     @DisplayName("rejects unsupported retention durations")
     void shouldRejectUnsupportedRetentionDurations(String value) {
         assertThatThrownBy(() ->
-            this.api().patchJson(
-                "/api/v0/configuration",
-                "{\"retention\":{\"user\":\"" + value + "\"}}"
-            )
+            this.api().patchJson("/api/v0/configuration", "{\"retention\":{\"user\":\"" + value + "\"}}")
         ).isInstanceOf(HttpClientErrorException.BadRequest.class);
 
         assertThat(
@@ -91,9 +85,9 @@ class ConfigurationApiIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     @DisplayName("rejects unknown root and nested configuration properties")
     void shouldRejectUnknownConfigurationProperties() {
-        assertThatThrownBy(() ->
-            this.api().patchJson("/api/v0/configuration", "{\"unknown\":true}")
-        ).isInstanceOf(HttpClientErrorException.BadRequest.class);
+        assertThatThrownBy(() -> this.api().patchJson("/api/v0/configuration", "{\"unknown\":true}")).isInstanceOf(
+            HttpClientErrorException.BadRequest.class
+        );
 
         assertThatThrownBy(() ->
             this.api().patchJson("/api/v0/configuration", "{\"retention\":{\"unknown\":true}}")
@@ -111,7 +105,9 @@ class ConfigurationApiIntegrationTest extends ApiIntegrationTestSupport {
     @Test
     @DisplayName("rejects unauthenticated configuration access")
     void shouldRejectUnauthenticatedConfigurationAccess() {
-        RestClient anonymous = RestClient.builder().baseUrl("http://localhost:" + this.port()).build();
+        RestClient anonymous = RestClient.builder()
+            .baseUrl("http://localhost:" + this.port())
+            .build();
 
         int getStatus = anonymous
             .get()
@@ -146,11 +142,7 @@ class ConfigurationApiIntegrationTest extends ApiIntegrationTestSupport {
         this.api().patchJson("/api/v0/configuration", "{\"retention\":{\"user\":\"P1D\"}}");
 
         assertThat(
-            this.jdbc.queryForObject(
-                "select retained_at::text from users where id = ?",
-                String.class,
-                userId
-            )
+            this.jdbc.queryForObject("select retained_at::text from users where id = ?", String.class, userId)
         ).startsWith("2026-09-01 00:00:00");
     }
 }
