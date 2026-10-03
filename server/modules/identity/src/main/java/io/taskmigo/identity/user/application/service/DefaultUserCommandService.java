@@ -1,6 +1,7 @@
 package io.taskmigo.identity.user.application.service;
 
 import io.taskmigo.audit.model.AuditChange;
+import io.taskmigo.identity.user.application.port.in.internal.RetainedUserCandidate;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
 import io.taskmigo.identity.user.application.port.in.internal.UserMutationResult;
 import io.taskmigo.identity.user.application.port.out.UserCommandRepository;
@@ -116,8 +117,13 @@ public final class DefaultUserCommandService implements UserCommandService {
     }
 
     @Override
-    public List<UUID> retainedBefore(Instant cutoff) {
-        return this.users.retainedBefore(cutoff);
+    public List<RetainedUserCandidate> retainedCandidates(Instant cutoff, @Nullable RetainedUserCandidate after) {
+        return this.users.retainedCandidates(cutoff, after);
+    }
+
+    @Override
+    public Optional<User> claimRetainedForUpdate(UUID id) {
+        return this.users.claimRetainedForUpdate(id);
     }
 
     @Override
