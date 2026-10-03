@@ -55,11 +55,12 @@
 
 ---
 
-# Phase 1 — Correct production implementation
+## Phase 1 — Correct production implementation
 
 ### Task 1: Rebase the User aggregate and schema on TOMBSTONE semantics
 
 **Files:**
+
 - Modify: `server/modules/identity/src/main/java/io/taskmigo/identity/user/UserStatus.java`
 - Modify: `server/modules/identity/src/main/java/io/taskmigo/identity/user/domain/User.java`
 - Modify: `server/modules/identity/src/main/java/io/taskmigo/identity/user/adapter/out/persistence/UserEntity.java`
@@ -70,6 +71,7 @@
 - Modify: `server/modules/identity/src/main/java/io/taskmigo/identity/user/adapter/out/persistence/JpaUserCommandRepository.java`
 
 **Interfaces:**
+
 - Produce: `UserStatus.TOMBSTONE`; remove `PURGED`.
 - Produce: `User.tombstone(Instant tombstonedAt) -> boolean`.
 - Produce: `User.tombstonedAt() -> @Nullable Instant`.
@@ -86,12 +88,13 @@
 - [ ] Change DB checks to allow nullable PII only for `TOMBSTONE`, require `tombstoned_at` for `TOMBSTONE`, and allow nullable `retained_at` on direct tombstones.
 - [ ] Remove the physical User delete methods and JPA `deleteById` path so no lifecycle caller can bypass tombstoning.
 - [ ] Run production compilation only:
-  `cd server && ./gradlew :modules:identity:compileJava :modules:database:classes --no-daemon --console=plain`.
+      `cd server && ./gradlew :modules:identity:compileJava :modules:database:classes --no-daemon --console=plain`.
 - [ ] Commit: `Model durable user tombstones`.
 
 ### Task 2: Correct User object-policy schema and mutation policy scope
 
 **Files:**
+
 - Modify: `server/modules/identity/src/main/java/io/taskmigo/identity/user/adapter/out/persistence/UserResourceSchemas.java`
 - Modify: `server/modules/identity/src/main/java/io/taskmigo/identity/adapter/out/persistence/query/JpaObjectAuthorizationExpressionBinder.java`
 - Modify: `server/apps/migration/src/main/resources/migration/statements.yaml`
@@ -100,6 +103,7 @@
 - Modify: `server/modules/identity/src/main/java/io/taskmigo/identity/user/adapter/out/persistence/JpaUserQueryRepository.java`
 
 **Interfaces:**
+
 - Object policy exposes `object.status` as a string-level policy field backed by `UserStatus` persistence.
 - Normal User query/find/exists operations exclude `TOMBSTONE`.
 
@@ -115,12 +119,13 @@
 - [ ] Keep `TOMBSTONE` out of object-authorized normal User queries; treat it as not a normal management target rather than a retained-policy target.
 - [ ] Make `UserQueryRepository.exists` follow the same visible-user semantics so a tombstone cannot be treated as an ordinary existing User by management use cases.
 - [ ] Compile Identity + Migration:
-  `cd server && ./gradlew :modules:identity:compileJava :apps:migration:compileJava --no-daemon --console=plain`.
+      `cd server && ./gradlew :modules:identity:compileJava :apps:migration:compileJava --no-daemon --console=plain`.
 - [ ] Commit: `Align user lifecycle policies with tombstones`.
 
 ### Task 3: Add deletion-only access/session cleanup primitives
 
 **Files:**
+
 - Create: `server/modules/identity/src/main/java/io/taskmigo/identity/user/application/port/out/UserSessionStore.java`
 - Create: `server/modules/identity/src/main/java/io/taskmigo/identity/user/adapter/out/persistence/JdbcUserSessionStore.java`
 - Create: `server/modules/identity/src/main/java/io/taskmigo/identity/membership/application/port/in/internal/MembershipCleanupService.java`
@@ -129,6 +134,7 @@
 - Create: `server/modules/identity/src/main/java/io/taskmigo/identity/user/application/service/UserAccessRevocationService.java`
 
 **Interfaces:**
+
 - `UserSessionStore.revoke(String username) -> boolean`: delete matching OAuth authorizations and consents.
 - `MembershipCleanupService.removeAllForUser(UUID userId) -> boolean`: deletion-lifecycle cleanup that intentionally bypasses normal retained-user mutation checks.
 - `UserAccessRevocationService.revoke(User user) -> UserAccessRevocation`: clear sessions, direct roles/statements/groups and report which categories changed, never return removed IDs.
@@ -138,12 +144,13 @@
 - [ ] Implement shared access revocation that snapshots only category presence, revokes OAuth/session state before username can be nulled, and clears direct grants/memberships.
 - [ ] Keep cleanup idempotent so retained deletion and later tombstone can safely run it again.
 - [ ] Compile Identity:
-  `cd server && ./gradlew :modules:identity:compileJava --no-daemon --console=plain`.
+      `cd server && ./gradlew :modules:identity:compileJava --no-daemon --console=plain`.
 - [ ] Commit: `Add deletion lifecycle access revocation`.
 
 ### Task 4: Restore the #233 audit persistence/privacy contract
 
 **Files:**
+
 - Modify: `server/modules/database/src/main/resources/db/migration/V1__schema.sql`
 - Modify: `server/modules/audit/src/main/java/io/taskmigo/audit/model/AuditActor.java`
 - Modify: `server/modules/audit/src/main/java/io/taskmigo/audit/adapter/out/persistence/AuditLogEntity.java`
@@ -157,6 +164,7 @@
 - Modify: audit/identity composition as required.
 
 **Interfaces:**
+
 - Restore `AuditActor(UUID id, String username)`.
 - `AuditPrivacyService.scrubUser(UUID userId)`: caller must already own the mutation transaction.
 - `UserAuditScrubber.scrub(UUID userId)`: Identity-facing adapter to the audit privacy boundary.
@@ -167,18 +175,20 @@
 - [ ] Keep audit privacy writes transaction-mandatory so tombstone cleanup participates in the Identity caller's transaction.
 - [ ] Update `AuditController` later in Task 8 to use stored/scrubbed actor presentation; do not perform a live User lookup for audit actor username.
 - [ ] Compile Audit + Identity:
-  `cd server && ./gradlew :modules:audit:compileJava :modules:identity:compileJava --no-daemon --console=plain`.
+      `cd server && ./gradlew :modules:audit:compileJava :modules:identity:compileJava --no-daemon --console=plain`.
 - [ ] Commit: `Add user audit privacy scrubbing`.
 
 ### Task 5: Introduce one shared atomic tombstone operation
 
 **Files:**
+
 - Create: `server/modules/identity/src/main/java/io/taskmigo/identity/user/application/port/in/internal/UserTombstoneService.java`
 - Create: `server/modules/identity/src/main/java/io/taskmigo/identity/user/application/service/DefaultUserTombstoneService.java`
 - Modify: `server/modules/identity/src/main/java/io/taskmigo/identity/user/composition/UserApplicationConfiguration.java`
 - Modify: `server/modules/identity/src/main/java/io/taskmigo/identity/user/application/service/UserAuditChanges.java` only if a small helper for sensitive markers improves reuse.
 
 **Interfaces:**
+
 - `UserTombstoneService.tombstone(User target, UserMutationActor actor, Instant tombstonedAt) -> void`.
 - Caller owns one write transaction and a row lock for `target`.
 
@@ -193,12 +203,13 @@
 - [ ] If `actor.id == target.id`, write `Unknown user` as the new tombstone event's actor username so the event does not reintroduce PII after scrub.
 - [ ] Preserve `retainedAt` if the User was retained; leave it null for direct live -> TOMBSTONE.
 - [ ] Compile Identity + Audit:
-  `cd server && ./gradlew :modules:identity:compileJava :modules:audit:compileJava --no-daemon --console=plain`.
+      `cd server && ./gradlew :modules:identity:compileJava :modules:audit:compileJava --no-daemon --console=plain`.
 - [ ] Commit: `Add atomic user tombstone operation`.
 
 ### Task 6: Route Web and managed deletion through one deletion lifecycle
 
 **Files:**
+
 - Create: `server/modules/identity/src/main/java/io/taskmigo/identity/user/application/port/in/internal/UserDeletionLifecycleService.java`
 - Create: `server/modules/identity/src/main/java/io/taskmigo/identity/user/application/service/DefaultUserDeletionLifecycleService.java`
 - Modify: `server/modules/identity/src/main/java/io/taskmigo/identity/user/application/service/DefaultUserService.java`
@@ -206,6 +217,7 @@
 - Modify: corresponding composition classes.
 
 **Interfaces:**
+
 - `UserDeletionLifecycleService.delete(User target, UserMutationActor actor, Instant occurredAt) -> void`.
 - Reads current `retention.user`; non-zero retains, zero delegates to Task 5.
 
@@ -216,18 +228,20 @@
 - [ ] Make managed deletion resolve the persisted system User as actor and use the same lifecycle service; managed reconciliation of a `RETAINED` User remains rejected by `requireMutable()`.
 - [ ] Ensure DELETE accepts other existing live non-system statuses without defining new status transitions beyond deletion itself.
 - [ ] Compile Web + Migration + Identity:
-  `cd server && ./gradlew :modules:identity:compileJava :apps:web:compileJava :apps:migration:compileJava --no-daemon --console=plain`.
+      `cd server && ./gradlew :modules:identity:compileJava :apps:web:compileJava :apps:migration:compileJava --no-daemon --console=plain`.
 - [ ] Commit: `Unify user deletion lifecycle`.
 
 ### Task 7: Make retention expiry multi-worker safe and failure-isolated
 
 **Files:**
+
 - Create: `server/modules/identity/src/main/java/io/taskmigo/identity/user/application/port/in/internal/RetainedUserCandidate.java`
 - Modify: `UserCommandRepository`, `UserCommandService`, `DefaultUserCommandService`, `JpaUserRepository`, `JpaUserCommandRepository`
 - Modify: `server/modules/identity/src/main/java/io/taskmigo/identity/user/application/service/DefaultUserRetentionService.java`
 - Modify: `server/apps/worker/src/main/java/io/taskmigo/worker/adapter/in/retention/UserRetentionPurgeJob.java`
 
 **Interfaces:**
+
 - Candidate scan uses keyset order `(retainedAt, id)` so one failed id does not starve later eligible rows in the same run.
 - `claimRetainedForUpdate(UUID id) -> Optional<User>` uses PostgreSQL `FOR UPDATE SKIP LOCKED`.
 - Retention service calls Task 5 for the claimed User.
@@ -239,12 +253,13 @@
 - [ ] Resolve the persisted system User and use it as Worker tombstone audit actor.
 - [ ] Make the Worker schedule exactly hourly (`fixedDelay = 1`, `TimeUnit.HOURS`) unless an existing project convention requires an equivalent exact one-hour expression.
 - [ ] Compile Worker + Identity:
-  `cd server && ./gradlew :modules:identity:compileJava :apps:worker:compileJava --no-daemon --console=plain`.
+      `cd server && ./gradlew :modules:identity:compileJava :apps:worker:compileJava --no-daemon --console=plain`.
 - [ ] Commit: `Claim retained users safely across workers`.
 
 ### Task 8: Finish API/configuration/presentation cleanup and remove stale PURGED assumptions
 
 **Files:**
+
 - Modify: `server/apps/web/src/main/java/io/taskmigo/web/adapter/in/http/api/v0/audit/AuditController.java`
 - Modify: `server/apps/web/src/main/java/io/taskmigo/web/adapter/in/http/api/v0/auth/user/UserController.java`
 - Modify: `server/apps/web/src/main/java/io/taskmigo/web/adapter/in/http/api/v0/configuration/ConfigurationController.java` only for contract defects discovered while compiling.
@@ -253,6 +268,7 @@
 - Remove/update any stale `PURGED`, "physical purge", and old live-lookup audit presentation references.
 
 **Interfaces:**
+
 - Audit actor presentation comes from persisted `actor_username`, which becomes `Unknown user` through Task 4 scrub.
 - User API returns live states + `RETAINED`; repository filtering guarantees no `TOMBSTONE` response.
 - Configuration stays `{ retention: { user: "P<n>D" } }` through existing API envelope conventions.
@@ -263,14 +279,15 @@
 - [ ] Update retention comments/messages from "physical purge" to tombstone terminology.
 - [ ] Confirm default `P30D`, partial PATCH, unknown-property rejection, and whole-day canonicalization require no incompatible workaround.
 - [ ] Compile all production modules:
-  `cd server && ./gradlew compileJava --no-daemon --console=plain`.
+      `cd server && ./gradlew compileJava --no-daemon --console=plain`.
 - [ ] Commit: `Align APIs with user tombstone contract`.
 
-# Phase 2 — Add/repair tests after implementation is stable
+## Phase 2 — Add/repair tests after implementation is stable
 
 ### Task 9: Repair unit tests to the new contracts
 
 **Files:**
+
 - Modify: `server/modules/identity/src/test/java/io/taskmigo/identity/user/domain/UserTest.java`
 - Modify: `server/modules/identity/src/test/java/io/taskmigo/identity/user/application/service/DefaultUserServiceTest.java`
 - Modify: `server/modules/identity/src/test/java/io/taskmigo/identity/user/application/service/DefaultUserRetentionServiceTest.java`
@@ -287,12 +304,13 @@
 - [ ] Cover object-policy string `"RETAINED"` -> `UserStatus.RETAINED` persistence binding.
 - [ ] Cover audit scrub conversion of raw profile fields to sensitive markers and actor username to `Unknown user`.
 - [ ] Run:
-  `cd server && ./gradlew :modules:identity:test :modules:audit:test :modules:access-control:test --no-daemon --console=plain`.
+      `cd server && ./gradlew :modules:identity:test :modules:audit:test :modules:access-control:test --no-daemon --console=plain`.
 - [ ] Commit: `Test user tombstone domain contracts`.
 
 ### Task 10: Add real-PostgreSQL User lifecycle and audit integration coverage
 
 **Files:**
+
 - Create: `server/apps/web/src/test/java/io/taskmigo/web/adapter/in/http/api/v0/auth/user/UserDeletionLifecycleIntegrationTest.java`
 - Extend only where appropriate: `UserApiIntegrationTest.java`, `AuditApiIntegrationTest.java`, `AuditTransactionIntegrationTest.java`
 - Modify test API client helpers.
@@ -308,12 +326,13 @@
 - [ ] Scenario: historical actor username/profile audit PII is scrubbed but ids/timestamps/history survive and API returns `Unknown user`.
 - [ ] Scenario: transaction failure during tombstone rolls back User/access/session/audit scrub together and leaves the User retryable.
 - [ ] Run:
-  `cd server && ./gradlew :apps:web:test --tests '*UserDeletionLifecycleIntegrationTest' --tests '*Audit*IntegrationTest' --no-daemon --console=plain`.
+      `cd server && ./gradlew :apps:web:test --tests '*UserDeletionLifecycleIntegrationTest' --tests '*Audit*IntegrationTest' --no-daemon --console=plain`.
 - [ ] Commit: `Cover user deletion lifecycle in PostgreSQL`.
 
 ### Task 11: Add configuration API PostgreSQL integration coverage
 
 **Files:**
+
 - Create: `server/apps/web/src/test/java/io/taskmigo/web/adapter/in/http/api/v0/configuration/ConfigurationApiIntegrationTest.java`
 
 - [ ] GET with the DB row absent falls back to `P30D`.
@@ -324,12 +343,13 @@
 - [ ] Unauthorized callers cannot GET/PATCH configuration.
 - [ ] Updating retention does not modify existing Users' retainedAt.
 - [ ] Run:
-  `cd server && ./gradlew :apps:web:test --tests '*ConfigurationApiIntegrationTest' --no-daemon --console=plain`.
+      `cd server && ./gradlew :apps:web:test --tests '*ConfigurationApiIntegrationTest' --no-daemon --console=plain`.
 - [ ] Commit: `Test user retention configuration API`.
 
 ### Task 12: Add Worker concurrency, expiry, and retry integration coverage
 
 **Files:**
+
 - Create: `server/apps/web/src/test/java/io/taskmigo/UserRetentionWorkerIntegrationTest.java` or the nearest existing PostgreSQL integration-test package that can inject the Identity service without duplicating infrastructure.
 - Create/Modify: `server/apps/worker/src/test/java/io/taskmigo/worker/adapter/in/retention/UserRetentionPurgeJobTest.java`.
 
@@ -340,12 +360,13 @@
 - [ ] Worker-generated tombstone event actor is the persisted system User.
 - [ ] Schedule test pins the job interval to one hour.
 - [ ] Run:
-  `cd server && ./gradlew :apps:web:test --tests '*UserRetentionWorkerIntegrationTest' :apps:worker:test --tests '*UserRetentionPurgeJobTest' --no-daemon --console=plain`.
+      `cd server && ./gradlew :apps:web:test --tests '*UserRetentionWorkerIntegrationTest' :apps:worker:test --tests '*UserRetentionPurgeJobTest' --no-daemon --console=plain`.
 - [ ] Commit: `Test multi-worker retention expiry`.
 
 ### Task 13: Verify surviving references and E2E contract
 
 **Files:**
+
 - Modify: existing audit/User E2E tests and SDK helpers as needed.
 - Do not invent ticket/comment/approval production modules that do not exist in the repository.
 
@@ -353,11 +374,11 @@
 - [ ] Assert the tombstone row itself keeps the original UUID while all normal User API results exclude it.
 - [ ] Run TypeScript contract check: `npm --prefix e2e run typecheck`.
 - [ ] Regenerate OpenAPI and verify tracked snapshot:
-  `cd server && ./gradlew :apps:web:generateOpenApi --no-daemon --console=plain && git diff --exit-code -- apps/web/src/main/resources/static/api/docs/openapi.yaml`.
+      `cd server && ./gradlew :apps:web:generateOpenApi --no-daemon --console=plain && git diff --exit-code -- apps/web/src/main/resources/static/api/docs/openapi.yaml`.
 - [ ] If OpenAPI legitimately changes, update the snapshot and rerun the diff check.
 - [ ] Commit: `Align API contracts with tombstone lifecycle`.
 
-# Phase 3 — Adversarial review, full verification, CI repair
+## Phase 3 — Adversarial review, full verification, CI repair
 
 ### Task 14: Adversarial spec-to-diff review
 
