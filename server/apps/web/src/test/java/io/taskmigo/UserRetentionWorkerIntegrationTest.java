@@ -167,7 +167,7 @@ class UserRetentionWorkerIntegrationTest {
             """,
             id,
             "worker-test-" + id,
-            retainedAt
+            Timestamp.from(retainedAt)
         );
         return id;
     }
