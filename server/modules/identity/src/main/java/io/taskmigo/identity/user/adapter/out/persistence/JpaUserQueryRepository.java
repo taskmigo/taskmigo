@@ -10,6 +10,7 @@ import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.port.out.UserQueryRepository;
 import io.taskmigo.identity.user.domain.UserProfile;
 import io.taskmigo.query.QueryPredicate;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
@@ -77,10 +78,14 @@ public class JpaUserQueryRepository implements UserQueryRepository {
     }
 
     private static UserInfo info(UserEntity user) {
-        UserProfile profile = UserProfile.of(user.emails(), user.firstName(), user.lastName());
+        UserProfile profile = UserProfile.of(
+            user.emails(),
+            Objects.requireNonNull(user.firstName()),
+            Objects.requireNonNull(user.lastName())
+        );
         return new UserInfo(
             user.id(),
-            user.username(),
+            Objects.requireNonNull(user.username()),
             profile.firstName(),
             profile.lastName(),
             profile.emails(),
@@ -91,7 +96,11 @@ public class JpaUserQueryRepository implements UserQueryRepository {
     }
 
     private static AuthenticationInfo authentication(UserEntity user) {
-        UserProfile profile = UserProfile.of(null, user.firstName(), user.lastName());
+        UserProfile profile = UserProfile.of(
+            null,
+            Objects.requireNonNull(user.firstName()),
+            Objects.requireNonNull(user.lastName())
+        );
         return new AuthenticationInfo(
             user.id(),
             user.username(),
