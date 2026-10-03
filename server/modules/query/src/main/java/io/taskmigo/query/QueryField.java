@@ -4,7 +4,7 @@ import io.taskmigo.foundation.TypeDescriptor;
 import java.util.Objects;
 import java.util.Set;
 
-/// Describes one explicitly queryable API field.
+/// Temporary migration carrier for existing application declarations; it is removed after binding migration.
 public record QueryField(QueryPath path, TypeDescriptor type, boolean nullable, Set<QueryOperator> operators) {
     public QueryField {
         Objects.requireNonNull(path);
@@ -12,21 +12,12 @@ public record QueryField(QueryPath path, TypeDescriptor type, boolean nullable, 
         operators = Set.copyOf(operators);
     }
 
-    /// Creates a field with the standard scalar operators.
     public QueryField(QueryPath path, TypeDescriptor type, boolean nullable) {
         this(
             path,
             type,
             nullable,
-            Set.of(
-                QueryOperator.EQ,
-                QueryOperator.NE,
-                QueryOperator.GT,
-                QueryOperator.GE,
-                QueryOperator.LT,
-                QueryOperator.LE,
-                QueryOperator.IN
-            )
+            Set.of(QueryOperator.EQ, QueryOperator.NE, QueryOperator.GT, QueryOperator.GE, QueryOperator.LT, QueryOperator.LE, QueryOperator.IN)
         );
     }
 }

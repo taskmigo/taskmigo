@@ -78,7 +78,8 @@ public final class CompilerEnvironment {
         return root;
     }
 
-    String fingerprint() {
+    /// Returns the identity of root bindings and effective schema fingerprints used for compilation.
+    public String fingerprint() {
         return this.fingerprint;
     }
 

@@ -12,8 +12,8 @@ import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import io.taskmigo.language.CompilationProfile;
 import io.taskmigo.language.CompiledSource;
+import io.taskmigo.language.CompilerEnvironment;
 import io.taskmigo.language.EmbeddedLanguageException;
-import io.taskmigo.language.EnvironmentSchema;
 import io.taskmigo.language.LanguageCompiler;
 import java.time.Duration;
 import java.time.Instant;
@@ -75,7 +75,7 @@ public final class StatementArtifactFactory {
                 continue;
             }
 
-            EnvironmentSchema schema = this.schema(statement, pathMatcher);
+            CompilerEnvironment schema = this.schema(statement, pathMatcher);
             CompilationProfile profile = profile(statement);
             ArtifactIdentity identity = new ArtifactIdentity(
                 effective.updatedAt(),
@@ -108,7 +108,7 @@ public final class StatementArtifactFactory {
 
     private DerivedArtifacts derive(
         StatementInfo statement,
-        EnvironmentSchema schema,
+        CompilerEnvironment schema,
         StatementTargetPathMatcher pathMatcher,
         CompilationProfile profile,
         ArtifactIdentity identity
@@ -123,7 +123,7 @@ public final class StatementArtifactFactory {
         return retained.artifacts();
     }
 
-    private EnvironmentSchema schema(StatementInfo statement, StatementTargetPathMatcher pathMatcher) {
+    private CompilerEnvironment schema(StatementInfo statement, StatementTargetPathMatcher pathMatcher) {
         if (statement.scope() == Scope.REQUEST) {
             return AuthorizationEmbeddedLanguageSchemas.request();
         }
@@ -143,7 +143,7 @@ public final class StatementArtifactFactory {
 
     private DerivedArtifacts compile(
         StatementInfo statement,
-        EnvironmentSchema schema,
+        CompilerEnvironment schema,
         StatementTargetPathMatcher pathMatcher,
         CompilationProfile profile
     ) {

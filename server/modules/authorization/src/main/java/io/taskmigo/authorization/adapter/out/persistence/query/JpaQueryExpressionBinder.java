@@ -113,7 +113,7 @@ final class JpaQueryExpressionBinder {
         Expression<?> left = value(binary.left(), root, builder, paths, types);
         List<Expression<?>> candidates = new ArrayList<>();
         String logical =
-            binary.left() instanceof QueryExpression.Reference reference ? String.join(".", reference.path()) : null;
+            binary.left() instanceof QueryExpression.Reference reference ? String.join(".", reference.runtimePath()) : null;
         Class<?> type = logical == null ? null : types.get(logical);
         switch (binary.right()) {
             case QueryExpression.ListValue list -> list.values().forEach(item ->
@@ -157,7 +157,7 @@ final class JpaQueryExpressionBinder {
         if (!(expression instanceof QueryExpression.Reference reference)) {
             return null;
         }
-        String logical = String.join(".", reference.path());
+        String logical = String.join(".", reference.runtimePath());
         Class<?> type = types.get(logical);
         if (type == null) {
             throw failure("Persistence type is not bound: " + logical);
@@ -194,7 +194,7 @@ final class JpaQueryExpressionBinder {
             expression instanceof QueryExpression.Literal literal &&
             other instanceof QueryExpression.Reference reference
         ) {
-            return literal(coerce(literal.value(), types.get(String.join(".", reference.path()))), builder);
+            return literal(coerce(literal.value(), types.get(String.join(".", reference.runtimePath()))), builder);
         }
         return value(expression, root, builder, paths, types);
     }
@@ -262,7 +262,7 @@ final class JpaQueryExpressionBinder {
         if (!reference.root().equals("object")) {
             throw unsupported("non-object reference");
         }
-        String logical = String.join(".", reference.path());
+        String logical = String.join(".", reference.runtimePath());
         String physical = paths.get(logical);
         if (physical == null) {
             throw failure("Persistence path is not bound: " + logical);

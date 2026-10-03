@@ -2,8 +2,11 @@ package io.taskmigo.authorization.object.application.service;
 
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
+import io.taskmigo.language.FieldId;
+import io.taskmigo.language.FieldPath;
 import io.taskmigo.language.LanguageDiagnostic.SourceSpan;
 import io.taskmigo.language.LanguageType;
+import io.taskmigo.language.ResourceType;
 import io.taskmigo.language.ast.BinaryOperator;
 import io.taskmigo.language.ast.ExpressionVisitor;
 import io.taskmigo.language.ast.QuantifierOperator;
@@ -27,13 +30,16 @@ final class LanguageObjectAuthorizationExpressionVisitor implements ExpressionVi
     @Override
     public ObjectAuthorizationExpression reference(
         String root,
-        List<String> path,
+        List<String> runtimePath,
+        @Nullable ResourceType resourceType,
+        @Nullable FieldId fieldId,
+        @Nullable FieldPath fieldPath,
         LanguageType type,
         boolean nullable,
         boolean symbolic,
         SourceSpan span
     ) {
-        return new ObjectAuthorizationExpression.Reference(root, path);
+        return new ObjectAuthorizationExpression.Reference(root, runtimePath, fieldId);
     }
 
     @Override
