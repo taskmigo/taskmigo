@@ -53,9 +53,12 @@ final class ObjectAuthorizationExpressionValidator {
         ObjectAuthorizationSchema<Q> schema
     ) {
         if (reference.root().equals("object")) {
-            schema
+            ObjectAuthorizationField field = schema
                 .field(new ObjectAuthorizationPath(reference.path()))
                 .orElseThrow(() -> invalid("object path is not queryable"));
+            if (reference.fieldId() != null && !reference.fieldId().equals(field.id(schema.resourceType().value()))) {
+                throw invalid("object field identity does not match schema");
+            }
         }
     }
 

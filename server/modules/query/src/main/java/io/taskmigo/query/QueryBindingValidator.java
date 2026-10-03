@@ -122,7 +122,7 @@ final class QueryBindingValidator {
         };
     }
 
-    private static FilterByException invalid(String message) {
-        return new FilterByException(message);
+    private static IllegalArgumentException invalid(String message) {
+        return new IllegalArgumentException(message);
     }
 }
