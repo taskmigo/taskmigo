@@ -6,11 +6,13 @@ import io.taskmigo.PostgresTestConfiguration;
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
 import java.util.Objects;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.TestConstructor;
@@ -30,6 +32,7 @@ class InteractiveAuthenticationIntegrationTest {
     private final UserDetailsService userDetails;
     private final PasswordEncoder passwordEncoder;
     private final UserService users;
+    private final JdbcTemplate jdbc;
 
     @LocalServerPort
     private int port;
@@ -37,11 +40,13 @@ class InteractiveAuthenticationIntegrationTest {
     InteractiveAuthenticationIntegrationTest(
         UserDetailsService userDetails,
         PasswordEncoder passwordEncoder,
-        UserService users
+        UserService users,
+        JdbcTemplate jdbc
     ) {
         this.userDetails = userDetails;
         this.passwordEncoder = passwordEncoder;
         this.users = users;
+        this.jdbc = jdbc;
     }
 
     /**
@@ -73,6 +78,43 @@ class InteractiveAuthenticationIntegrationTest {
         assertThat(principal.getAuthorities()).extracting(Object::toString).containsExactly("ROLE_SYSTEM");
         assertThat(this.passwordEncoder.matches("integration-password", persistedHash)).isTrue();
         assertThat(this.passwordEncoder.matches("integration-password", principal.getPassword())).isTrue();
+    }
+
+    /**
+     * Verifies that a retained User cannot authenticate even while its credential is temporarily retained.
+     *
+     * Given: a RETAINED User with a valid persisted password hash.
+     * Expect: the security-facing principal is disabled and Identity reports the account inactive.
+     */
+    @Test
+    @DisplayName("disables retained users for interactive authentication")
+    void shouldDisableRetainedUserForInteractiveAuthentication() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        String username = "retained-auth-" + userId;
+        String passwordHash = this.passwordEncoder.encode("retained-password");
+        this.jdbc.update(
+            """
+            insert into users (id, username, first_name, last_name, status, retained_at, password_hash)
+            values (?, ?, 'Retained', 'User', 'RETAINED', current_timestamp, ?)
+            """,
+            userId,
+            username,
+            passwordHash
+        );
+
+        try {
+            // Act
+            var principal = this.userDetails.loadUserByUsername(username);
+            var persisted = this.users.findForAuthentication(username).orElseThrow();
+
+            // Assert
+            assertThat(principal.isEnabled()).isFalse();
+            assertThat(persisted.active()).isFalse();
+            assertThat(this.passwordEncoder.matches("retained-password", principal.getPassword())).isTrue();
+        } finally {
+            this.jdbc.update("delete from users where id = ?", userId);
+        }
     }
 
     /**
