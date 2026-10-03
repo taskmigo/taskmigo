@@ -275,14 +275,7 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
         UserDeletionLifecycleService deletion = mock(UserDeletionLifecycleService.class);
-        var service = service(
-            users,
-            grantAssignments,
-            grantQueries,
-            groups,
-            mock(UserAuditAppender.class),
-            deletion
-        );
+        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditAppender.class), deletion);
 
         // Act + Assert
         assertThatThrownBy(() -> service.deleteUser("system"))
