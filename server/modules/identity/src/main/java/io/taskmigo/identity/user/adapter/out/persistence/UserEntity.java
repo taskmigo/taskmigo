@@ -108,10 +108,10 @@ public class UserEntity {
         }
         return User.restore(
             this.id,
-            this.username,
+            java.util.Objects.requireNonNull(this.username),
             Set.copyOf(this.emails),
-            this.firstName,
-            this.lastName,
+            java.util.Objects.requireNonNull(this.firstName),
+            java.util.Objects.requireNonNull(this.lastName),
             this.status,
             this.retainedAt,
             this.tombstonedAt,
