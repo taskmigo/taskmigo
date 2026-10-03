@@ -9,7 +9,9 @@ import io.taskmigo.language.FieldId;
 import io.taskmigo.language.FieldPath;
 import io.taskmigo.language.LanguageType;
 import io.taskmigo.language.ResourceSchema;
+import io.taskmigo.language.ResourceSchemaResolver;
 import io.taskmigo.language.ResourceType;
+import io.taskmigo.language.SchemaContext;
 import io.taskmigo.language.SchemaFingerprint;
 import java.util.Collection;
 import java.util.List;
@@ -60,11 +62,22 @@ public final class AuthorizationEmbeddedLanguageSchemas {
     }
 
     private static CompilerEnvironment environment(ResourceSchema object) {
+        ResourceSchemaResolver resolver = ResourceSchemaResolver.fixed(Map.of(
+            PRINCIPAL.type(), PRINCIPAL,
+            REQUEST.type(), REQUEST,
+            object.type(), object
+        ));
         return CompilerEnvironment.of(
             Map.of(
-                "principal", new CompilerEnvironment.Root(PRINCIPAL, false),
-                "request", new CompilerEnvironment.Root(REQUEST, false),
-                "object", new CompilerEnvironment.Root(object, true)
+                "principal", new CompilerEnvironment.Root(
+                    resolver.resolve(PRINCIPAL.type(), SchemaContext.EMPTY), false
+                ),
+                "request", new CompilerEnvironment.Root(
+                    resolver.resolve(REQUEST.type(), SchemaContext.EMPTY), false
+                ),
+                "object", new CompilerEnvironment.Root(
+                    resolver.resolve(object.type(), SchemaContext.EMPTY), true
+                )
             )
         );
     }
