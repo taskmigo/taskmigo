@@ -18,6 +18,9 @@ final class SemanticExpressionMapper {
             case SemanticAst.Reference reference -> visitor.reference(
                 reference.root(),
                 reference.path(),
+                reference.resourceType(),
+                reference.fieldId(),
+                reference.fieldPath(),
                 reference.type(),
                 reference.nullable(),
                 reference.symbolic(),

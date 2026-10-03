@@ -27,19 +27,19 @@ public final class LanguageCompiler {
     /// Compiles a statement-bearing program using the fully enabled program profile.
     ///
     /// @param source canonical Language source
-    /// @param schema roots and paths visible to the source
+    /// @param environment root-to-resource bindings visible to the source
     /// @return a reusable compiled source
-    public CompiledSource compile(String source, EnvironmentSchema schema) {
-        return new CompiledSource(this.delegate.compile(source, schema));
+    public CompiledSource compile(String source, CompilerEnvironment environment) {
+        return new CompiledSource(this.delegate.compile(source, environment));
     }
 
     /// Compiles source using the supplied mode and feature profile.
     ///
     /// @param source canonical Language source
-    /// @param schema roots and paths visible to the source
+    /// @param environment root-to-resource bindings visible to the source
     /// @param profile source mode and enabled feature families
     /// @return a reusable compiled source
-    public CompiledSource compile(String source, EnvironmentSchema schema, CompilationProfile profile) {
-        return new CompiledSource(this.delegate.compile(source, schema, profile));
+    public CompiledSource compile(String source, CompilerEnvironment environment, CompilationProfile profile) {
+        return new CompiledSource(this.delegate.compile(source, environment, profile));
     }
 }

@@ -61,6 +61,11 @@ public final class CompiledSource {
         return this.program.schemaFingerprint();
     }
 
+    /// Returns every effective resource schema fingerprint used for static checking.
+    public Map<ResourceType, SchemaFingerprint> schemaFingerprints() {
+        return this.program.schemaFingerprints();
+    }
+
     /// Returns the Language/compiler contract identity used for this artifact.
     public String compilerFingerprint() {
         return this.program.compilerFingerprint();

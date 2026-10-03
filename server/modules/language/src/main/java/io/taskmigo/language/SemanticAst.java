@@ -3,6 +3,7 @@ package io.taskmigo.language;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
@@ -12,6 +13,7 @@ record SemanticAst(
     Expression expression,
     String sourceFingerprint,
     String schemaFingerprint,
+    Map<ResourceType, SchemaFingerprint> schemaFingerprints,
     String compilerFingerprint,
     CompilationMode mode,
     String profileFingerprint,
@@ -25,6 +27,7 @@ record SemanticAst(
         Objects.requireNonNull(expression);
         Objects.requireNonNull(sourceFingerprint);
         Objects.requireNonNull(schemaFingerprint);
+        schemaFingerprints = Map.copyOf(schemaFingerprints);
         Objects.requireNonNull(compilerFingerprint);
         Objects.requireNonNull(mode);
         Objects.requireNonNull(profileFingerprint);
@@ -35,17 +38,18 @@ record SemanticAst(
     }
 
     SemanticAst(Expression expression) {
-        this(expression, "", "", "", CompilationMode.PROGRAM, "", 0, 0, Set.of());
+        this(expression, "", "", Map.of(), "", CompilationMode.PROGRAM, "", 0, 0, Set.of());
     }
 
     SemanticAst(Expression expression, String sourceFingerprint, String schemaFingerprint, String compilerFingerprint) {
-        this(expression, sourceFingerprint, schemaFingerprint, compilerFingerprint, CompilationMode.PROGRAM, "");
+        this(expression, sourceFingerprint, schemaFingerprint, Map.of(), compilerFingerprint, CompilationMode.PROGRAM, "");
     }
 
     SemanticAst(
         Expression expression,
         String sourceFingerprint,
         String schemaFingerprint,
+        Map<ResourceType, SchemaFingerprint> schemaFingerprints,
         String compilerFingerprint,
         CompilationMode mode,
         String profileFingerprint
@@ -54,6 +58,7 @@ record SemanticAst(
             expression,
             sourceFingerprint,
             schemaFingerprint,
+            schemaFingerprints,
             compilerFingerprint,
             mode,
             profileFingerprint,
@@ -115,6 +120,9 @@ record SemanticAst(
     record Reference(
         String root,
         List<String> path,
+        @Nullable ResourceType resourceType,
+        @Nullable FieldId fieldId,
+        @Nullable FieldPath fieldPath,
         LanguageType type,
         boolean nullable,
         boolean symbolic,
@@ -124,7 +132,7 @@ record SemanticAst(
         LanguageDiagnostic.SourceSpan span
     ) implements Expression {
         Reference(String root, List<String> path) {
-            this(root, path, LanguageType.Scalar.STRING, false, false, -1, -1, Set.of(root), UNKNOWN_SPAN);
+            this(root, path, null, null, null, LanguageType.Scalar.STRING, false, false, -1, -1, Set.of(root), UNKNOWN_SPAN);
         }
 
         Reference(
@@ -135,7 +143,7 @@ record SemanticAst(
             boolean symbolic,
             LanguageDiagnostic.SourceSpan span
         ) {
-            this(root, path, type, nullable, symbolic, -1, -1, Set.of(root), span);
+            this(root, path, null, null, null, type, nullable, symbolic, -1, -1, Set.of(root), span);
         }
 
         Reference(
@@ -147,7 +155,7 @@ record SemanticAst(
             Set<String> dependencies,
             LanguageDiagnostic.SourceSpan span
         ) {
-            this(root, path, type, nullable, symbolic, -1, -1, dependencies, span);
+            this(root, path, null, null, null, type, nullable, symbolic, -1, -1, dependencies, span);
         }
 
         Reference {
