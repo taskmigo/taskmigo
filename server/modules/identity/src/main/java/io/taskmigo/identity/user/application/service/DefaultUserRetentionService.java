@@ -45,7 +45,8 @@ public final class DefaultUserRetentionService implements UserRetentionService {
         Instant cutoff = now.minus(retention.duration());
         UserMutationActor actor = this.transactions.read(this::systemActor);
         int tombstoned = 0;
-        @Nullable RetainedUserCandidate cursor = null;
+        @Nullable
+        RetainedUserCandidate cursor = null;
 
         while (true) {
             RetainedUserCandidate after = cursor;
@@ -59,11 +60,7 @@ public final class DefaultUserRetentionService implements UserRetentionService {
             for (RetainedUserCandidate candidate : candidates) {
                 cursor = candidate;
                 try {
-                    if (
-                        this.transactions.write(() ->
-                            this.tombstoneIfStillEligible(candidate, cutoff, actor, now)
-                        )
-                    ) {
+                    if (this.transactions.write(() -> this.tombstoneIfStillEligible(candidate, cutoff, actor, now))) {
                         tombstoned++;
                     }
                 } catch (RuntimeException exception) {
