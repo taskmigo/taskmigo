@@ -18,8 +18,10 @@ import io.taskmigo.identity.membership.application.port.in.api.MembershipService
 import io.taskmigo.identity.provisioning.IdentityProvisioningException;
 import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
 import io.taskmigo.identity.user.SystemUser;
+import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
+import io.taskmigo.identity.user.application.port.in.internal.UserDeletionLifecycleService;
 import io.taskmigo.identity.user.application.port.in.internal.UserMutationResult;
 import io.taskmigo.identity.user.application.port.out.UserAuditAppender;
 import io.taskmigo.identity.user.domain.User;
@@ -212,21 +214,32 @@ class DefaultIdentityProvisioningServiceTest {
         // Arrange
         UserCommandService users = mock(UserCommandService.class);
         User existing = user("alice");
+        User system = user("system");
         when(users.findByUsernameForUpdate("alice")).thenReturn(Optional.of(existing));
+        when(users.findByUsername(SystemUser.USERNAME)).thenReturn(Optional.of(system));
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditAppender.class));
+        UserDeletionLifecycleService deletion = mock(UserDeletionLifecycleService.class);
+        var service = service(
+            users,
+            grantAssignments,
+            grantQueries,
+            groups,
+            mock(UserAuditAppender.class),
+            deletion
+        );
 
         // Act
         boolean removed = service.deleteUser("alice");
 
         // Assert
         assertThat(removed).isTrue();
-        verify(grantAssignments).setRoles(IdentitySubjects.user(existing.id()), Set.of());
-        verify(grantAssignments).setStatements(IdentitySubjects.user(existing.id()), Set.of());
-        verify(groups).setGroupsForUser(existing.id(), Set.of());
-        verify(users).delete(existing);
+        verify(deletion).delete(
+            existing,
+            new UserMutationActor(system.id(), SystemUser.USERNAME),
+            NOW
+        );
     }
 
     /**
@@ -251,7 +264,6 @@ class DefaultIdentityProvisioningServiceTest {
 
         // Assert
         assertThat(removed).isFalse();
-        verify(users, never()).delete(any());
         verify(grantAssignments, never()).setRoles(any(), any());
         verify(grantAssignments, never()).setStatements(any(), any());
         verify(groups, never()).setGroupsForUser(any(), any());
@@ -319,11 +331,30 @@ class DefaultIdentityProvisioningServiceTest {
         MembershipService groups,
         UserAuditAppender audits
     ) {
+        return service(
+            users,
+            grantAssignments,
+            grantQueries,
+            groups,
+            audits,
+            mock(UserDeletionLifecycleService.class)
+        );
+    }
+
+    private static DefaultIdentityProvisioningService service(
+        UserCommandService users,
+        SubjectGrantAssignmentService grantAssignments,
+        SubjectGrantQueryService grantQueries,
+        MembershipService groups,
+        UserAuditAppender audits,
+        UserDeletionLifecycleService deletion
+    ) {
         return new DefaultIdentityProvisioningService(
             users,
             grantAssignments,
             grantQueries,
             groups,
+            deletion,
             audits,
             directTransactions(),
             Clock.fixed(NOW, ZoneOffset.UTC)
