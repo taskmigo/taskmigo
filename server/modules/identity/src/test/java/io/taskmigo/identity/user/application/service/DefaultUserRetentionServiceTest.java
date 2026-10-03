@@ -1,6 +1,7 @@
 package io.taskmigo.identity.user.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -11,8 +12,12 @@ import io.taskmigo.identity.configuration.ConfigurationSnapshot;
 import io.taskmigo.identity.configuration.ConfigurationSnapshot.RetentionConfiguration;
 import io.taskmigo.identity.configuration.RetentionDuration;
 import io.taskmigo.identity.configuration.application.port.in.api.ConfigurationService;
+import io.taskmigo.identity.user.SystemUser;
+import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.UserStatus;
+import io.taskmigo.identity.user.application.port.in.internal.RetainedUserCandidate;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
+import io.taskmigo.identity.user.application.port.in.internal.UserTombstoneService;
 import io.taskmigo.identity.user.domain.User;
 import java.time.Instant;
 import java.util.List;
@@ -22,64 +27,125 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentMatchers;
 
 class DefaultUserRetentionServiceTest {
 
+    private static final Instant NOW = Instant.parse("2026-10-02T00:00:00Z");
+
     /**
-     * Verifies purge eligibility is recalculated from the current retention configuration.
-     *
-     * Given: a retained User older than the current 30-day cutoff.
-     * Expect: the service re-locks and physically deletes the still-retained User.
+     * Given: an expired retained User discovered by the current retention cutoff.
+     * Expect: the service claims that User and delegates one tombstone operation using the system actor.
      */
     @Test
-    @DisplayName("purges retained users after the current retention deadline")
-    void shouldPurgeRetainedUserWhenCurrentDeadlineExpired() {
+    @DisplayName("tombstones retained users after the current retention deadline")
+    void shouldTombstoneRetainedUserWhenCurrentDeadlineExpired() {
         // Arrange
-        Instant now = Instant.parse("2026-10-02T00:00:00Z");
         Instant retainedAt = Instant.parse("2026-08-01T00:00:00Z");
+        Instant cutoff = NOW.minus(RetentionDuration.parse("P30D").duration());
         UUID userId = UUID.randomUUID();
         User user = retainedUser(userId, retainedAt);
+        RetainedUserCandidate candidate = new RetainedUserCandidate(userId, retainedAt);
+        User system = systemUser();
         UserCommandService users = mock(UserCommandService.class);
         ConfigurationService configuration = mock(ConfigurationService.class);
+        UserTombstoneService tombstones = mock(UserTombstoneService.class);
         when(configuration.get()).thenReturn(configuration("P30D"));
-        when(users.retainedBefore(now.minus(RetentionDuration.parse("P30D").duration()))).thenReturn(List.of(userId));
-        when(users.findByIdForUpdate(userId)).thenReturn(Optional.of(user));
-        var service = new DefaultUserRetentionService(users, configuration, directTransactions());
+        when(users.findByUsername(SystemUser.USERNAME)).thenReturn(Optional.of(system));
+        when(users.retainedCandidates(cutoff, null)).thenReturn(List.of(candidate));
+        when(users.claimRetainedForUpdate(userId)).thenReturn(Optional.of(user));
+        var service = new DefaultUserRetentionService(users, configuration, tombstones, directTransactions());
 
         // Act
-        int purged = service.purgeExpiredUsers(now);
+        int tombstoned = service.purgeExpiredUsers(NOW);
 
         // Assert
-        assertThat(purged).isEqualTo(1);
-        verify(users).delete(user);
+        assertThat(tombstoned).isEqualTo(1);
+        verify(tombstones).tombstone(
+            user,
+            new UserMutationActor(system.id(), SystemUser.USERNAME),
+            NOW
+        );
     }
 
     /**
-     * Verifies a stale candidate cannot be purged after another executor changes or removes it.
-     *
-     * Given: discovery returns a retained User id but the locked row is already absent.
-     * Expect: the purge is idempotent and performs no delete.
+     * Given: discovery sees a retained User but another Worker owns or changed the row before the claim.
+     * Expect: the service skips the candidate without calling the tombstone operation.
      */
     @Test
-    @DisplayName("skips candidates that disappear before the purge lock")
-    void shouldSkipCandidateWhenUserIsMissingAtLockTime() {
+    @DisplayName("skips candidates that cannot be claimed")
+    void shouldSkipCandidateWhenClaimIsUnavailable() {
         // Arrange
-        Instant now = Instant.parse("2026-10-02T00:00:00Z");
+        Instant retainedAt = Instant.parse("2026-08-01T00:00:00Z");
+        Instant cutoff = NOW.minus(RetentionDuration.parse("P30D").duration());
         UUID userId = UUID.randomUUID();
+        RetainedUserCandidate candidate = new RetainedUserCandidate(userId, retainedAt);
         UserCommandService users = mock(UserCommandService.class);
         ConfigurationService configuration = mock(ConfigurationService.class);
+        UserTombstoneService tombstones = mock(UserTombstoneService.class);
         when(configuration.get()).thenReturn(configuration("P30D"));
-        when(users.retainedBefore(now.minus(RetentionDuration.parse("P30D").duration()))).thenReturn(List.of(userId));
-        when(users.findByIdForUpdate(userId)).thenReturn(Optional.empty());
-        var service = new DefaultUserRetentionService(users, configuration, directTransactions());
+        when(users.findByUsername(SystemUser.USERNAME)).thenReturn(Optional.of(systemUser()));
+        when(users.retainedCandidates(cutoff, null)).thenReturn(List.of(candidate));
+        when(users.claimRetainedForUpdate(userId)).thenReturn(Optional.empty());
+        var service = new DefaultUserRetentionService(users, configuration, tombstones, directTransactions());
 
         // Act
-        int purged = service.purgeExpiredUsers(now);
+        int tombstoned = service.purgeExpiredUsers(NOW);
 
         // Assert
-        assertThat(purged).isZero();
-        verify(users, never()).delete(ArgumentMatchers.any());
+        assertThat(tombstoned).isZero();
+        verify(tombstones, never()).tombstone(
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.any()
+        );
+    }
+
+    /**
+     * Given: the first claimed User fails during tombstoning and a later candidate is healthy.
+     * Expect: the failed User rolls back through the transaction boundary and later candidates still run.
+     */
+    @Test
+    @DisplayName("continues after one retained user tombstone fails")
+    void shouldContinueWhenOneTombstoneFails() {
+        // Arrange
+        Instant cutoff = NOW.minus(RetentionDuration.parse("P30D").duration());
+        RetainedUserCandidate first = new RetainedUserCandidate(
+            UUID.randomUUID(),
+            Instant.parse("2026-07-01T00:00:00Z")
+        );
+        RetainedUserCandidate second = new RetainedUserCandidate(
+            UUID.randomUUID(),
+            Instant.parse("2026-08-01T00:00:00Z")
+        );
+        User firstUser = retainedUser(first.id(), first.retainedAt());
+        User secondUser = retainedUser(second.id(), second.retainedAt());
+        UserCommandService users = mock(UserCommandService.class);
+        ConfigurationService configuration = mock(ConfigurationService.class);
+        UserTombstoneService tombstones = mock(UserTombstoneService.class);
+        when(configuration.get()).thenReturn(configuration("P30D"));
+        when(users.findByUsername(SystemUser.USERNAME)).thenReturn(Optional.of(systemUser()));
+        when(users.retainedCandidates(cutoff, null)).thenReturn(List.of(first, second));
+        when(users.claimRetainedForUpdate(first.id())).thenReturn(Optional.of(firstUser));
+        when(users.claimRetainedForUpdate(second.id())).thenReturn(Optional.of(secondUser));
+        doThrow(new IllegalStateException("simulated failure"))
+            .when(tombstones)
+            .tombstone(
+                org.mockito.ArgumentMatchers.eq(firstUser),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq(NOW)
+            );
+        var service = new DefaultUserRetentionService(users, configuration, tombstones, directTransactions());
+
+        // Act
+        int tombstoned = service.purgeExpiredUsers(NOW);
+
+        // Assert
+        assertThat(tombstoned).isEqualTo(1);
+        verify(tombstones).tombstone(
+            org.mockito.ArgumentMatchers.eq(secondUser),
+            org.mockito.ArgumentMatchers.any(),
+            org.mockito.ArgumentMatchers.eq(NOW)
+        );
     }
 
     private static ConfigurationSnapshot configuration(String retention) {
@@ -87,7 +153,29 @@ class DefaultUserRetentionServiceTest {
     }
 
     private static User retainedUser(UUID id, Instant retainedAt) {
-        return User.restore(id, "retained-user", Set.of(), "Retained", "User", UserStatus.RETAINED, retainedAt, null);
+        return User.restore(
+            id,
+            "retained-user-" + id,
+            Set.of(),
+            "Retained",
+            "User",
+            UserStatus.RETAINED,
+            retainedAt,
+            null,
+            null
+        );
+    }
+
+    private static User systemUser() {
+        return User.restore(
+            UUID.randomUUID(),
+            SystemUser.USERNAME,
+            Set.of(),
+            "System",
+            "User",
+            UserStatus.ACTIVE,
+            "{bcrypt}hash"
+        );
     }
 
     private static TransactionRunner directTransactions() {
