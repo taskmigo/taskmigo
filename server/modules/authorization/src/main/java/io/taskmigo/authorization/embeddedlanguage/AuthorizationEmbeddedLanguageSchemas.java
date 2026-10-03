@@ -42,9 +42,12 @@ public final class AuthorizationEmbeddedLanguageSchemas {
 
     /// Returns object authorization roots for every logical object contract governed by a route.
     public static CompilerEnvironment object(List<? extends ObjectAuthorizationSchema<?>> schemas) {
+        if (schemas.size() == 1) {
+            return object(schemas.getFirst());
+        }
         List<Field> fields = schemas
             .stream()
-            .flatMap(schema -> schema.fields().stream().map(field -> toField(schema.objectType().getName(), field)))
+            .flatMap(schema -> schema.resourceSchema().fields().stream())
             .distinct()
             .toList();
         ResourceSchema object = schema(ResourceType.of("taskmigo:authorization:object:" + schemas), fields);
@@ -104,6 +107,11 @@ public final class AuthorizationEmbeddedLanguageSchemas {
                     return field("request", path.text(), string(), false);
                 }
                 return base.resolve(path);
+            }
+
+            @Override
+            public Collection<Field> fields() {
+                return base.fields();
             }
 
             @Override

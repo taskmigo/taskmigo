@@ -5,6 +5,7 @@ import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfil
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicates;
+import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.port.in.api.ObjectAuthorization;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
@@ -39,6 +40,19 @@ public final class ObjectAuthorizationService implements ObjectAuthorization {
     public ObjectAuthorizationService(LanguageCompiler compiler, ObjectAuthorizationTargetResolver targetResolver) {
         this.compiler = compiler;
         this.targetResolver = targetResolver;
+    }
+
+    @Override
+    public <Q> ObjectAuthorizationPredicate<Q> authorize(
+        AuthorizationContext context,
+        ObjectAuthorizationBinding<Q> binding
+    ) {
+        if (binding instanceof ObjectAuthorizationSchema<?> schema) {
+            @SuppressWarnings("unchecked")
+            ObjectAuthorizationSchema<Q> typed = (ObjectAuthorizationSchema<Q>) schema;
+            return this.authorize(context, typed);
+        }
+        throw new AuthorizationException("Object Authorization binding is not connected to an execution schema");
     }
 
     @Override

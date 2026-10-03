@@ -10,9 +10,16 @@ import io.taskmigo.language.ResourceSchema;
 import io.taskmigo.language.ResourceType;
 
 /// Defines the persistence-neutral, explicitly allow-listed object policy surface.
-public interface ObjectAuthorizationSchema<Q> {
+public interface ObjectAuthorizationSchema<Q> extends ObjectAuthorizationBinding<Q> {
     /// Returns the API contract represented by this schema.
     Class<Q> objectType();
+
+    @Override
+    default Optional<ObjectAuthorizationField> field(io.taskmigo.language.FieldId id) {
+        return this.fields().stream()
+            .filter(field -> field.id(this.resourceType().value()).equals(id))
+            .findFirst();
+    }
 
     /// Resolves one explicitly registered Object Authorization path.
     @SuppressWarnings("NullableProblems")

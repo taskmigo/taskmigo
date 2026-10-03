@@ -1,10 +1,9 @@
 package io.taskmigo.authorization.object.application.service;
 
 import io.taskmigo.authorization.core.AuthorizationException;
+import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
 import io.taskmigo.authorization.object.ObjectAuthorizationField;
 import io.taskmigo.authorization.object.ObjectAuthorizationOperator;
-import io.taskmigo.authorization.object.ObjectAuthorizationPath;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
 
 /// Validates Object Authorization expression paths and operators against one logical schema.
@@ -12,7 +11,7 @@ final class ObjectAuthorizationExpressionValidator {
 
     private ObjectAuthorizationExpressionValidator() {}
 
-    static <Q> void validate(ObjectAuthorizationExpression expression, ObjectAuthorizationSchema<Q> schema) {
+    static <Q> void validate(ObjectAuthorizationExpression expression, ObjectAuthorizationBinding<Q> schema) {
         switch (expression) {
             case ObjectAuthorizationExpression.Literal _ -> {
             }
@@ -50,14 +49,17 @@ final class ObjectAuthorizationExpressionValidator {
 
     private static <Q> void validateReference(
         ObjectAuthorizationExpression.Reference reference,
-        ObjectAuthorizationSchema<Q> schema
+        ObjectAuthorizationBinding<Q> schema
     ) {
         if (reference.root().equals("object")) {
-            ObjectAuthorizationField field = schema
-                .field(new ObjectAuthorizationPath(reference.path()))
-                .orElseThrow(() -> invalid("object path is not queryable"));
-            if (reference.fieldId() != null && !reference.fieldId().equals(field.id(schema.resourceType().value()))) {
-                throw invalid("object field identity does not match schema");
+            ObjectAuthorizationField field = reference.fieldId() == null
+                ? schema.fields().stream()
+                    .filter(candidate -> candidate.path().segments().equals(reference.path()))
+                    .findFirst()
+                    .orElseThrow(() -> invalid("object path is not queryable"))
+                : schema.field(reference.fieldId()).orElseThrow(() -> invalid("object field identity is unknown"));
+            if (reference.fieldId() != null && !field.path().segments().equals(reference.path())) {
+                throw invalid("object field identity does not match resolved path");
             }
         }
     }
@@ -65,7 +67,7 @@ final class ObjectAuthorizationExpressionValidator {
     private static <Q> void requireOperator(
         ObjectAuthorizationExpression expression,
         ObjectAuthorizationOperator operator,
-        ObjectAuthorizationSchema<Q> schema
+        ObjectAuthorizationBinding<Q> schema
     ) {
         if (operator == ObjectAuthorizationOperator.AND || operator == ObjectAuthorizationOperator.OR) {
             return;
@@ -97,11 +99,14 @@ final class ObjectAuthorizationExpressionValidator {
     private static <Q> void requireOperator(
         ObjectAuthorizationExpression.Reference reference,
         ObjectAuthorizationOperator operator,
-        ObjectAuthorizationSchema<Q> schema
+        ObjectAuthorizationBinding<Q> schema
     ) {
-        ObjectAuthorizationField field = schema
-            .field(new ObjectAuthorizationPath(reference.path()))
-            .orElseThrow(() -> invalid("object path is not queryable"));
+        ObjectAuthorizationField field = reference.fieldId() == null
+            ? schema.fields().stream()
+                .filter(candidate -> candidate.path().segments().equals(reference.path()))
+                .findFirst()
+                .orElseThrow(() -> invalid("object path is not queryable"))
+            : schema.field(reference.fieldId()).orElseThrow(() -> invalid("object field identity is unknown"));
         if (!field.operators().contains(operator)) {
             throw invalid("operator is not supported for object path " + field.path().text());
         }

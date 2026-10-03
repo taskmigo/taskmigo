@@ -17,6 +17,9 @@ public interface ResourceSchema {
     /// @throws IllegalArgumentException if the path is not declared by this schema
     Field resolve(FieldPath path);
 
+    /// Returns every semantic field declared by this resource.
+    Collection<Field> fields();
+
     /// Returns the collision-resistant identity of the complete effective schema contract.
     SchemaFingerprint fingerprint();
 
@@ -62,6 +65,11 @@ public interface ResourceSchema {
                 );
             }
             return field;
+        }
+
+        @Override
+        public Collection<Field> fields() {
+            return this.fields.values();
         }
 
         @Override
