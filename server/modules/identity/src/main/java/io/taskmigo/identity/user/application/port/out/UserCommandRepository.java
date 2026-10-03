@@ -1,11 +1,13 @@
 package io.taskmigo.identity.user.application.port.out;
 
+import io.taskmigo.identity.user.application.port.in.internal.RetainedUserCandidate;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.Username;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 
 /// Persists canonical User aggregate state for command use cases.
 public interface UserCommandRepository {
@@ -18,7 +20,9 @@ public interface UserCommandRepository {
 
     Optional<User> findByUsernameForUpdate(Username username);
 
-    List<UUID> retainedBefore(Instant cutoff);
+    List<RetainedUserCandidate> retainedCandidates(Instant cutoff, @Nullable RetainedUserCandidate after);
+
+    Optional<User> claimRetainedForUpdate(UUID id);
 
     void save(User user);
 
