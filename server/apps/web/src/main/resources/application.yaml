@@ -1,5 +1,7 @@
 ---
 spring:
+  jackson:
+    time-zone: UTC
   session:
     jdbc:
       initialize-schema: never

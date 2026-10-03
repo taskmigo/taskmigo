@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.web.adapter.in.http.api.v0.testing.ApiIntegrationTestSupport;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -124,11 +127,18 @@ class ConfigurationApiIntegrationTest extends ApiIntegrationTestSupport {
         assertThat(patchStatus).isIn(HttpStatus.UNAUTHORIZED.value(), HttpStatus.FORBIDDEN.value());
     }
 
+    /**
+     * Verifies that changing retention configuration does not rewrite a retained User's existing retention instant.
+     *
+     * Given: a retained User whose retainedAt is exactly 2026-09-01T00:00:00Z.
+     * Expect: changing the configured retention duration leaves that exact persisted instant unchanged.
+     */
     @Test
     @DisplayName("changing retention does not rewrite existing retainedAt")
     void shouldPreserveExistingRetentionTimestampWhenConfigurationChanges() {
+        // Arrange
         UUID userId = UUID.randomUUID();
-        String retainedAt = "2026-09-01T00:00:00Z";
+        Instant retainedAt = Instant.parse("2026-09-01T00:00:00Z");
         this.jdbc.update(
             """
             insert into users (id, username, first_name, last_name, status, retained_at)
@@ -136,13 +146,16 @@ class ConfigurationApiIntegrationTest extends ApiIntegrationTestSupport {
             """,
             userId,
             "retained-" + userId,
-            retainedAt
+            retainedAt.toString()
         );
 
+        // Act
         this.api().patchJson("/api/v0/configuration", "{\"retention\":{\"user\":\"P1D\"}}");
 
-        assertThat(
-            this.jdbc.queryForObject("select retained_at::text from users where id = ?", String.class, userId)
-        ).startsWith("2026-09-01 00:00:00");
+        // Assert
+        Timestamp persistedRetainedAt = Objects.requireNonNull(
+            this.jdbc.queryForObject("select retained_at from users where id = ?", Timestamp.class, userId)
+        );
+        assertThat(persistedRetainedAt.toInstant()).isEqualTo(retainedAt);
     }
 }
