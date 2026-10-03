@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 /// Builds executable Statement derivatives after authoritative Statement rows and revisions have been loaded.
 public final class StatementArtifactFactory {
@@ -161,7 +162,7 @@ public final class StatementArtifactFactory {
     ) {
         try {
             CompiledSource policy = this.compiler.compile(statement.policy(), schema, profile);
-            Map<ResourceType, StatementExecutionArtifact.Variant> variants = new java.util.HashMap<>();
+            Map<ResourceType, StatementExecutionArtifact.Variant> variants = new HashMap<>();
             for (ObjectAuthorizationSchema<?> binding : applicable) {
                 CompiledSource variant = this.compiler.compile(
                     statement.policy(),

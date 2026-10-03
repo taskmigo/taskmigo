@@ -1,9 +1,11 @@
 package io.taskmigo.authorization.object;
 
+import io.taskmigo.foundation.TypeDescriptor;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import io.taskmigo.language.Field;
+import io.taskmigo.language.FieldId;
 import io.taskmigo.language.FieldPath;
 import io.taskmigo.language.LanguageType;
 import io.taskmigo.language.ResourceSchema;
@@ -15,7 +17,7 @@ public interface ObjectAuthorizationSchema<Q> extends ObjectAuthorizationBinding
     Class<Q> objectType();
 
     @Override
-    default Optional<ObjectAuthorizationField> field(io.taskmigo.language.FieldId id) {
+    default Optional<ObjectAuthorizationField> field(FieldId id) {
         return this.fields().stream()
             .filter(field -> field.id(this.resourceType().value()).equals(id))
             .findFirst();
@@ -44,7 +46,7 @@ public interface ObjectAuthorizationSchema<Q> extends ObjectAuthorizationBinding
         )).toList());
     }
 
-    private static LanguageType languageType(io.taskmigo.foundation.TypeDescriptor type) {
+    private static LanguageType languageType(TypeDescriptor type) {
         Class<?> raw = type.rawType();
         if (raw == String.class || raw == Character.class || raw == char.class || raw == java.util.UUID.class) {
             return LanguageType.Scalar.STRING;
