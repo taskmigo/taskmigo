@@ -13,7 +13,9 @@ import io.taskmigo.language.FieldPath;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageType;
 import io.taskmigo.language.ResourceSchema;
+import io.taskmigo.language.ResourceSchemaResolver;
 import io.taskmigo.language.ResourceType;
+import io.taskmigo.language.SchemaContext;
 import io.taskmigo.language.SchemaFingerprint;
 import io.taskmigo.query.model.QueryExpression;
 import java.util.Collection;
@@ -66,8 +68,10 @@ public class FilterByCompiler {
             if (source == null || source.isBlank()) {
                 return QueryPredicateFactory.alwaysTrue(binding);
             }
+            ResourceSchema effectiveSchema = ResourceSchemaResolver.fixed(Map.of(schema.type(), schema))
+                .resolve(schema.type(), SchemaContext.EMPTY);
             CompilerEnvironment environment = CompilerEnvironment.of(
-                Map.of("object", new CompilerEnvironment.Root(schema, true))
+                Map.of("object", new CompilerEnvironment.Root(effectiveSchema, true))
             );
             CompiledSource compiled = this.compiler.compile(source, environment, PROFILE);
             if (compiled.resultType() != LanguageType.Scalar.BOOL) {
