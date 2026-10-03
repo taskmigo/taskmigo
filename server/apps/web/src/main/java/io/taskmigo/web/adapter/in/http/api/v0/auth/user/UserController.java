@@ -8,7 +8,6 @@ import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.UserMutationActor;
-import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.port.in.api.UserRegistrationService;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
 import io.taskmigo.query.FilteredQuery;
@@ -159,7 +158,7 @@ class UserController {
         String lastName,
         Set<String> emails,
         String displayName,
-        UserStatus status,
+        @Schema(allowableValues = { "ACTIVE", "SUSPENDED", "DISABLED", "RETAINED" }) String status,
         @Nullable Instant retainedAt
     ) {
         static Response from(UserInfo user) {
@@ -170,7 +169,7 @@ class UserController {
                 user.lastName(),
                 user.emails(),
                 user.displayName(),
-                user.status(),
+                user.status().name(),
                 user.retainedAt()
             );
         }

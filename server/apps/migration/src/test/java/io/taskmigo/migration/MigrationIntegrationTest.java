@@ -423,19 +423,22 @@ class MigrationIntegrationTest {
             true
         );
 
-        // Act
-        this.migration.install(
-            new InstallationPlan(
-                List.of(absentUser),
-                List.of(absentRole),
-                List.of(absentStatement),
-                List.of(absentGroup),
-                Map.of()
-            )
+        var absentPlan = new InstallationPlan(
+            List.of(absentUser),
+            List.of(absentRole),
+            List.of(absentStatement),
+            List.of(absentGroup),
+            Map.of()
         );
 
+        // Act
+        this.migration.install(absentPlan);
+        this.migration.install(absentPlan);
+
         // Assert
-        assertThat(this.users.findForAuthentication(username)).isEmpty();
+        assertThat(this.users.findForAuthentication(username)).hasValueSatisfying(authentication ->
+            assertThat(authentication.active()).isFalse()
+        );
         assertThat(this.groups.deleteGroup(groupCode)).isFalse();
         assertThatThrownBy(() -> this.authorizationProvisioning.requireRole(roleCode)).hasMessageContaining(
             "Managed authorization Role does not exist"

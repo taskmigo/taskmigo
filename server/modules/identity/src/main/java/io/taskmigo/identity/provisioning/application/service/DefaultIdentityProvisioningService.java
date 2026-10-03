@@ -14,6 +14,7 @@ import io.taskmigo.identity.provisioning.application.port.in.api.IdentityProvisi
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserException;
 import io.taskmigo.identity.user.UserMutationActor;
+import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
 import io.taskmigo.identity.user.application.port.in.internal.UserDeletionLifecycleService;
 import io.taskmigo.identity.user.application.port.in.internal.UserMutationResult;
@@ -165,7 +166,7 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
         } catch (UserRuleViolation exception) {
             throw provisioningFailure(exception);
         }
-        if (existing == null) {
+        if (existing == null || existing.status() == UserStatus.RETAINED) {
             return false;
         }
 

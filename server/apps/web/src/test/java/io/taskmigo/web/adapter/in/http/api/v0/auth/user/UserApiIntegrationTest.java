@@ -21,6 +21,7 @@ import io.taskmigo.web.adapter.in.http.api.v0.testing.TaskmigoApiClient.Statemen
 import io.taskmigo.web.adapter.in.http.api.v0.testing.TaskmigoApiClient.StatementTarget;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -314,7 +315,9 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
     @DisplayName("denies deletion of the system user through policy")
     void shouldDenySystemUserDeletionThroughPolicy() {
         // Arrange
-        UUID systemUserId = this.jdbc.queryForObject("select id from users where username = ?", UUID.class, "system");
+        UUID systemUserId = Objects.requireNonNull(
+            this.jdbc.queryForObject("select id from users where username = ?", UUID.class, "system")
+        );
 
         // Act + Assert
         assertThatThrownBy(() -> this.api().users().delete(systemUserId)).isInstanceOf(

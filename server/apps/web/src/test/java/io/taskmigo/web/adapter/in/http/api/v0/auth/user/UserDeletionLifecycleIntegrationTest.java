@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -136,13 +137,13 @@ class UserDeletionLifecycleIntegrationTest extends ApiIntegrationTestSupport {
             );
         assertThat(replacement).isNotEqualTo(managed.id());
 
-        Map<String, Object> historicalAudit = this.jdbc.queryForMap(
+        Map<String, @Nullable Object> historicalAudit = this.jdbc.queryForMap(
             "select actor_id, actor_username, changes_json from audit_logs where id = ?",
             historicalAuditId
         );
         assertThat(historicalAudit.get("actor_id")).isEqualTo(managed.id());
         assertThat(historicalAudit.get("actor_username")).isEqualTo("Unknown user");
-        assertThat(historicalAudit.get("changes_json").toString())
+        assertThat(Objects.requireNonNull(historicalAudit.get("changes_json")).toString())
             .doesNotContain("Lifecycle", managed.email(), managed.username())
             .contains("\"sensitive\":true");
 
@@ -260,7 +261,7 @@ class UserDeletionLifecycleIntegrationTest extends ApiIntegrationTestSupport {
         return id;
     }
 
-    private Map<String, Object> userRow(UUID userId) {
+    private Map<String, @Nullable Object> userRow(UUID userId) {
         return this.jdbc.queryForMap(
             """
             select id, username, first_name, last_name, status, retained_at, tombstoned_at, password_hash
