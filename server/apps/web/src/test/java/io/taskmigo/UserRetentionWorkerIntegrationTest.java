@@ -8,6 +8,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -185,20 +186,22 @@ class UserRetentionWorkerIntegrationTest {
 
     private UserStatus status(UUID userId) {
         return UserStatus.valueOf(
-            this.jdbc.queryForObject("select status from users where id = ?", String.class, userId)
+            Objects.requireNonNull(
+                this.jdbc.queryForObject("select status from users where id = ?", String.class, userId)
+            )
         );
     }
 
     private Instant retainedAt(UUID userId) {
-        return this.jdbc
-            .queryForObject("select retained_at from users where id = ?", Timestamp.class, userId)
-            .toInstant();
+        return Objects.requireNonNull(
+            this.jdbc.queryForObject("select retained_at from users where id = ?", Timestamp.class, userId)
+        ).toInstant();
     }
 
     private Instant tombstonedAt(UUID userId) {
-        return this.jdbc
-            .queryForObject("select tombstoned_at from users where id = ?", Timestamp.class, userId)
-            .toInstant();
+        return Objects.requireNonNull(
+            this.jdbc.queryForObject("select tombstoned_at from users where id = ?", Timestamp.class, userId)
+        ).toInstant();
     }
 
     private void installAuditFailure(UUID userId) {
