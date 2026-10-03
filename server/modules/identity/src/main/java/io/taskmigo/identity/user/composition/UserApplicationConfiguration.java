@@ -74,8 +74,7 @@ class UserApplicationConfiguration {
         UserCommandService commands,
         SubjectGrantQueryService grantQueries,
         SubjectGrantAssignmentService grantAssignments,
-        MembershipService memberships,
-        ConfigurationService configuration,
+        UserDeletionLifecycleService deletion,
         UserAuditAppender audits,
         TransactionRunner transactions
     ) {
@@ -84,8 +83,7 @@ class UserApplicationConfiguration {
             commands,
             grantQueries,
             grantAssignments,
-            memberships,
-            configuration,
+            deletion,
             audits,
             transactions,
             Clock.systemUTC()

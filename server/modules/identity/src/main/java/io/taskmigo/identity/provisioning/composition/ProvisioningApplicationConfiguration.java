@@ -3,7 +3,6 @@ package io.taskmigo.identity.provisioning.composition;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantQueryService;
 import io.taskmigo.identity.application.port.out.TransactionRunner;
-import io.taskmigo.identity.configuration.application.port.in.api.ConfigurationService;
 import io.taskmigo.identity.group.application.port.in.internal.GroupCommandService;
 import io.taskmigo.identity.group.application.port.out.GroupHierarchyRepository;
 import io.taskmigo.identity.membership.application.port.in.api.MembershipService;
@@ -12,6 +11,7 @@ import io.taskmigo.identity.provisioning.application.port.in.api.IdentityProvisi
 import io.taskmigo.identity.provisioning.application.service.DefaultGroupProvisioningService;
 import io.taskmigo.identity.provisioning.application.service.DefaultIdentityProvisioningService;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
+import io.taskmigo.identity.user.application.port.in.internal.UserDeletionLifecycleService;
 import io.taskmigo.identity.user.application.port.out.UserAuditAppender;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
@@ -37,7 +37,7 @@ class ProvisioningApplicationConfiguration {
         SubjectGrantAssignmentService grantAssignments,
         SubjectGrantQueryService grantQueries,
         MembershipService memberships,
-        ConfigurationService configuration,
+        UserDeletionLifecycleService deletion,
         UserAuditAppender audits,
         TransactionRunner transactions
     ) {
@@ -46,7 +46,7 @@ class ProvisioningApplicationConfiguration {
             grantAssignments,
             grantQueries,
             memberships,
-            configuration,
+            deletion,
             audits,
             transactions,
             Clock.systemUTC()

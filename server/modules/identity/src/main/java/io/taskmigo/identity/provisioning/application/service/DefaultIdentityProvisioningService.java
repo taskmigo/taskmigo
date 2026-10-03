@@ -7,14 +7,15 @@ import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantAss
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantQueryService;
 import io.taskmigo.identity.application.port.out.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;
-import io.taskmigo.identity.configuration.application.port.in.api.ConfigurationService;
 import io.taskmigo.identity.membership.application.port.in.api.MembershipService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningException;
 import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
 import io.taskmigo.identity.provisioning.application.port.in.api.IdentityProvisioningService;
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserException;
+import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
+import io.taskmigo.identity.user.application.port.in.internal.UserDeletionLifecycleService;
 import io.taskmigo.identity.user.application.port.in.internal.UserMutationResult;
 import io.taskmigo.identity.user.application.port.out.UserAuditAppender;
 import io.taskmigo.identity.user.domain.User;
@@ -36,7 +37,7 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
     private final SubjectGrantAssignmentService grantAssignments;
     private final SubjectGrantQueryService grantQueries;
     private final MembershipService memberships;
-    private final ConfigurationService configuration;
+    private final UserDeletionLifecycleService deletion;
     private final UserAuditAppender audits;
     private final TransactionRunner transactions;
     private final Clock clock;
@@ -46,7 +47,7 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
         SubjectGrantAssignmentService grantAssignments,
         SubjectGrantQueryService grantQueries,
         MembershipService memberships,
-        ConfigurationService configuration,
+        UserDeletionLifecycleService deletion,
         UserAuditAppender audits,
         TransactionRunner transactions,
         Clock clock
@@ -55,7 +56,7 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
         this.grantAssignments = grantAssignments;
         this.grantQueries = grantQueries;
         this.memberships = memberships;
-        this.configuration = configuration;
+        this.deletion = deletion;
         this.audits = audits;
         this.transactions = transactions;
         this.clock = clock;
@@ -154,7 +155,7 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
             .orElseThrow(() ->
                 new IllegalStateException("System User must exist before managed User updates are audited")
             );
-        return new AuditActor(system.id());
+        return new AuditActor(system.id(), system.username().value());
     }
 
     private boolean deleteUserInTransaction(String username) {
@@ -167,33 +168,22 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
         if (existing == null) {
             return false;
         }
+
         try {
             existing.requireManagedDeletionAllowed();
+            User system = this.users
+                .findByUsername(SystemUser.USERNAME)
+                .orElseThrow(() ->
+                    new IllegalStateException("System User must exist before managed User deletion is audited")
+                );
+            this.deletion.delete(
+                existing,
+                new UserMutationActor(system.id(), system.username().value()),
+                this.clock.instant()
+            );
         } catch (UserRuleViolation exception) {
             throw provisioningFailure(exception);
         }
-
-        this.grantAssignments.setRoles(IdentitySubjects.user(existing.id()), Set.of());
-        this.grantAssignments.setStatements(IdentitySubjects.user(existing.id()), Set.of());
-        this.memberships.setGroupsForUser(existing.id(), Set.of());
-
-        var now = this.clock.instant();
-        String beforeStatus = existing.status().name();
-        existing.retain(now);
-        if (this.configuration.get().retention().user().immediate()) {
-            existing.purge();
-        }
-        this.users.save(existing);
-        this.audits.append(
-            new AuditEvent(
-                UUID.randomUUID(),
-                ENTITY_TYPE,
-                existing.id(),
-                this.systemActor(),
-                now,
-                List.of(AuditChange.visible("status", beforeStatus, existing.status().name()))
-            )
-        );
         return true;
     }
 
