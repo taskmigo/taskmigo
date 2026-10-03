@@ -193,12 +193,10 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
     }
 
     private static RuntimeException provisioningFailure(UserRuleViolation exception) {
-        if (
-            exception.reason() == UserRuleViolation.Reason.SYSTEM_INITIAL_PASSWORD_REQUIRED ||
-            exception.reason() == UserRuleViolation.Reason.SYSTEM_USER_DELETION_FORBIDDEN
-        ) {
-            return new IdentityProvisioningException(exception.detail());
-        }
-        return new UserException(UserException.Type.INVALID_INPUT, exception.detail(), exception);
+        return switch (exception.reason()) {
+            case SYSTEM_INITIAL_PASSWORD_REQUIRED, SYSTEM_USER_DELETION_FORBIDDEN ->
+                new IdentityProvisioningException(exception.detail());
+            default -> new UserException(UserException.Type.INVALID_INPUT, exception.detail(), exception);
+        };
     }
 }
