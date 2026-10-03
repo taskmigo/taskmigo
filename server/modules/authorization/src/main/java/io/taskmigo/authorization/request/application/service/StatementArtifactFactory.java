@@ -15,11 +15,13 @@ import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.CompilerEnvironment;
 import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.LanguageCompiler;
+import io.taskmigo.language.ResourceType;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /// Builds executable Statement derivatives after authoritative Statement rows and revisions have been loaded.
 public final class StatementArtifactFactory {
@@ -75,6 +77,9 @@ public final class StatementArtifactFactory {
                 continue;
             }
 
+            List<ObjectAuthorizationSchema<?>> applicable = statement.scope() == Scope.OBJECT
+                ? this.targetResolver.applicable(statement.target().api().method(), pathMatcher)
+                : List.of();
             CompilerEnvironment schema = this.schema(statement, pathMatcher);
             CompilationProfile profile = profile(statement);
             ArtifactIdentity identity = new ArtifactIdentity(
@@ -84,8 +89,13 @@ public final class StatementArtifactFactory {
                 profile.fingerprint(),
                 this.applicableSchemaIdentities(statement, pathMatcher)
             );
-            DerivedArtifacts artifacts = this.derive(statement, schema, pathMatcher, profile, identity);
-            result.add(new StatementExecutionArtifact(statement, artifacts.policy(), artifacts.pathMatcher()));
+            DerivedArtifacts artifacts = this.derive(statement, schema, applicable, pathMatcher, profile, identity);
+            result.add(new StatementExecutionArtifact(
+                statement,
+                artifacts.policy(),
+                artifacts.pathMatcher(),
+                artifacts.variants()
+            ));
         }
         return List.copyOf(result);
     }
@@ -109,6 +119,7 @@ public final class StatementArtifactFactory {
     private DerivedArtifacts derive(
         StatementInfo statement,
         CompilerEnvironment schema,
+        List<ObjectAuthorizationSchema<?>> applicable,
         StatementTargetPathMatcher pathMatcher,
         CompilationProfile profile,
         ArtifactIdentity identity
@@ -118,7 +129,7 @@ public final class StatementArtifactFactory {
             identity.updatedAt(),
             cached -> cached.identity().updatedAt(),
             cached -> cached.identity().equals(identity),
-            () -> new CachedArtifacts(identity, this.compile(statement, schema, pathMatcher, profile))
+            () -> new CachedArtifacts(identity, this.compile(statement, schema, applicable, pathMatcher, profile))
         );
         return retained.artifacts();
     }
@@ -144,11 +155,25 @@ public final class StatementArtifactFactory {
     private DerivedArtifacts compile(
         StatementInfo statement,
         CompilerEnvironment schema,
+        List<ObjectAuthorizationSchema<?>> applicable,
         StatementTargetPathMatcher pathMatcher,
         CompilationProfile profile
     ) {
         try {
-            return new DerivedArtifacts(this.compiler.compile(statement.policy(), schema, profile), pathMatcher);
+            CompiledSource policy = this.compiler.compile(statement.policy(), schema, profile);
+            Map<ResourceType, StatementExecutionArtifact.Variant> variants = new java.util.HashMap<>();
+            for (ObjectAuthorizationSchema<?> binding : applicable) {
+                CompiledSource variant = this.compiler.compile(
+                    statement.policy(),
+                    AuthorizationEmbeddedLanguageSchemas.object(binding),
+                    profile
+                );
+                variants.put(
+                    binding.resourceType(),
+                    new StatementExecutionArtifact.Variant(binding.schemaFingerprint(), variant)
+                );
+            }
+            return new DerivedArtifacts(policy, pathMatcher, variants);
         } catch (EmbeddedLanguageException exception) {
             throw new AuthorizationException("Invalid Statement policy: " + exception.getMessage());
         }
@@ -188,5 +213,13 @@ public final class StatementArtifactFactory {
 
     private record CachedArtifacts(ArtifactIdentity identity, DerivedArtifacts artifacts) {}
 
-    private record DerivedArtifacts(CompiledSource policy, StatementTargetPathMatcher pathMatcher) {}
+    private record DerivedArtifacts(
+        CompiledSource policy,
+        StatementTargetPathMatcher pathMatcher,
+        Map<ResourceType, StatementExecutionArtifact.Variant> variants
+    ) {
+        private DerivedArtifacts {
+            variants = Map.copyOf(variants);
+        }
+    }
 }
