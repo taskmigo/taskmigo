@@ -13,11 +13,10 @@ import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantAss
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantQueryService;
 import io.taskmigo.identity.application.port.out.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;
-import io.taskmigo.identity.configuration.application.port.in.api.ConfigurationService;
-import io.taskmigo.identity.membership.application.port.in.api.MembershipService;
 import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
+import io.taskmigo.identity.user.application.port.in.internal.UserDeletionLifecycleService;
 import io.taskmigo.identity.user.application.port.out.UserAuditAppender;
 import io.taskmigo.identity.user.application.port.out.UserQueryRepository;
 import io.taskmigo.identity.user.domain.User;
@@ -210,8 +209,7 @@ class DefaultUserServiceTest {
             commands,
             queries,
             assignments,
-            Mockito.mock(MembershipService.class),
-            Mockito.mock(ConfigurationService.class),
+            Mockito.mock(UserDeletionLifecycleService.class),
             audits,
             directTransactions(),
             Clock.fixed(NOW, ZoneOffset.UTC)
