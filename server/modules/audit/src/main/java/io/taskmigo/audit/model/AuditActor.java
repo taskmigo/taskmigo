@@ -5,4 +5,5 @@ import java.util.UUID;
 /// Captures the authenticated actor at the time an audited mutation occurs.
 ///
 /// @param id stable actor identifier
-public record AuditActor(UUID id) {}
+/// @param username actor username captured with the mutation and privacy-scrubbed on tombstone
+public record AuditActor(UUID id, String username) {}

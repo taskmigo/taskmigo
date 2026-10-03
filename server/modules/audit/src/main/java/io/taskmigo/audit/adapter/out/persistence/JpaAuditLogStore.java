@@ -7,6 +7,8 @@ import io.taskmigo.audit.model.AuditChange;
 import io.taskmigo.audit.model.AuditLog;
 import io.taskmigo.foundation.OffsetPage;
 import java.util.Arrays;
+import java.util.Set;
+import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -19,6 +21,8 @@ import tools.jackson.databind.json.JsonMapper;
 public class JpaAuditLogStore implements AuditLogStore {
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
+    private static final String UNKNOWN_USER = "Unknown user";
+    private static final Set<String> USER_PII_FIELDS = Set.of("username", "firstName", "lastName", "emails");
 
     private final JpaAuditLogRepository logs;
 
@@ -34,6 +38,7 @@ public class JpaAuditLogStore implements AuditLogStore {
                 event.entityType(),
                 event.entityId(),
                 event.actor().id(),
+                event.actor().username(),
                 event.occurredAt(),
                 this.writeChanges(event.changes().toArray(AuditChange[]::new))
             )
@@ -56,10 +61,40 @@ public class JpaAuditLogStore implements AuditLogStore {
             entity.id,
             entity.entityType,
             entity.entityId,
-            new AuditActor(entity.actorId),
+            new AuditActor(entity.actorId, entity.actorUsername),
             entity.occurredAt,
             Arrays.asList(this.readChanges(entity.changesJson))
         );
+    }
+
+    @Override
+    public void scrubUser(UUID userId) {
+        var actorLogs = this.logs.findAllByActorId(userId);
+        actorLogs.forEach(log -> log.actorUsername = UNKNOWN_USER);
+
+        var userLogs = this.logs.findAllByEntityTypeAndEntityId("user", userId);
+        for (AuditLogEntity log : userLogs) {
+            AuditChange[] changes = this.readChanges(log.changesJson);
+            boolean changed = false;
+            for (int index = 0; index < changes.length; index++) {
+                AuditChange change = changes[index];
+                if (USER_PII_FIELDS.contains(change.field()) && !change.sensitive()) {
+                    changes[index] = AuditChange.sensitive(change.field());
+                    changed = true;
+                }
+            }
+            if (changed) {
+                log.changesJson = this.writeChanges(changes);
+            }
+        }
+
+        if (!actorLogs.isEmpty()) {
+            this.logs.saveAll(actorLogs);
+        }
+        if (!userLogs.isEmpty()) {
+            this.logs.saveAll(userLogs);
+        }
+        this.logs.flush();
     }
 
     private String writeChanges(AuditChange[] changes) {

@@ -24,6 +24,8 @@ class AuditLogEntity {
     @Column(name = "actor_id", nullable = false)
     UUID actorId;
 
+    @Column(name = "actor_username", nullable = false, length = 100)
+    String actorUsername;
 
     @Column(name = "occurred_at", nullable = false)
     Instant occurredAt;
@@ -36,6 +38,7 @@ class AuditLogEntity {
         this.entityType = "";
         this.entityId = new UUID(0, 0);
         this.actorId = new UUID(0, 0);
+        this.actorUsername = "";
         this.occurredAt = Instant.EPOCH;
         this.changesJson = "[]";
     }
@@ -45,6 +48,7 @@ class AuditLogEntity {
         String entityType,
         UUID entityId,
         UUID actorId,
+        String actorUsername,
         Instant occurredAt,
         String changesJson
     ) {
@@ -52,6 +56,7 @@ class AuditLogEntity {
         this.entityType = Objects.requireNonNull(entityType);
         this.entityId = Objects.requireNonNull(entityId);
         this.actorId = Objects.requireNonNull(actorId);
+        this.actorUsername = Objects.requireNonNull(actorUsername);
         this.occurredAt = Objects.requireNonNull(occurredAt);
         this.changesJson = Objects.requireNonNull(changesJson);
     }
