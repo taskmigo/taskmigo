@@ -369,7 +369,7 @@ final class LanguageCompilerVisitor {
                     resolvedPath.addAll(path);
                     Field field = this.resolveResourceField(localReference.root(), resolvedPath, sourceSpan);
                     return this.node(
-                        resourceReference(
+                        this.resourceReference(
                             localReference.root(),
                             resolvedPath,
                             field,
@@ -436,7 +436,7 @@ final class LanguageCompilerVisitor {
         }
         Field field = this.resolveResourceField(root, path, sourceSpan);
         return this.node(
-            resourceReference(
+            this.resourceReference(
                 root,
                 path,
                 field,

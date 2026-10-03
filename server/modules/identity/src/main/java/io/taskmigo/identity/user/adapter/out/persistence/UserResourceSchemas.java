@@ -21,9 +21,11 @@ import io.taskmigo.query.QueryFieldBinding;
 import io.taskmigo.query.QueryOperator;
 import io.taskmigo.query.QueryPath;
 import io.taskmigo.query.StaticQueryBinding;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -94,13 +96,13 @@ public class UserResourceSchemas {
     }
 
     private static List<QueryFieldBinding> queryFields(String... paths) {
-        return java.util.Arrays.stream(paths)
+        return Arrays.stream(paths)
             .map(path -> new QueryFieldBinding(id(path), QueryPath.parse(path), QUERY_OPERATORS))
             .toList();
     }
 
     private static List<ObjectAuthorizationFieldBinding> objectFields(String... paths) {
-        return java.util.Arrays.stream(paths)
+        return Arrays.stream(paths)
             .map(path -> new ObjectAuthorizationFieldBinding(id(path), path, OBJECT_OPERATORS))
             .toList();
     }
@@ -110,7 +112,7 @@ public class UserResourceSchemas {
     }
 
     private static Map<FieldId, Class<?>> queryTypes() {
-        return Map.of(id("id"), java.util.UUID.class, id("username"), String.class, id("firstName"), String.class, id("lastName"), String.class);
+        return Map.of(id("id"), UUID.class, id("username"), String.class, id("firstName"), String.class, id("lastName"), String.class);
     }
 
     private static Map<FieldId, String> objectPaths() {
@@ -122,7 +124,7 @@ public class UserResourceSchemas {
 
     private static Map<FieldId, Class<?>> objectTypes() {
         return Map.of(
-            id("id"), java.util.UUID.class, id("username"), String.class, id("firstName"), String.class,
+            id("id"), UUID.class, id("username"), String.class, id("firstName"), String.class,
             id("lastName"), String.class, id("status"), UserStatus.class, id("retainedAt"), String.class
         );
     }

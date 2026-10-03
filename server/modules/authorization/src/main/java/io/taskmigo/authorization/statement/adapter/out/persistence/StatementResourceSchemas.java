@@ -20,10 +20,12 @@ import io.taskmigo.query.QueryFieldBinding;
 import io.taskmigo.query.QueryOperator;
 import io.taskmigo.query.QueryPath;
 import io.taskmigo.query.StaticQueryBinding;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -97,13 +99,13 @@ public class StatementResourceSchemas {
     }
 
     private static List<QueryFieldBinding> queryFields(String... paths) {
-        return java.util.Arrays.stream(paths)
+        return Arrays.stream(paths)
             .map(path -> new QueryFieldBinding(id(path), QueryPath.parse(path), QUERY_OPERATORS))
             .toList();
     }
 
     private static List<ObjectAuthorizationFieldBinding> objectFields(String... paths) {
-        return java.util.Arrays.stream(paths)
+        return Arrays.stream(paths)
             .map(path -> new ObjectAuthorizationFieldBinding(id(path), physicalPath(path), OBJECT_OPERATORS))
             .toList();
     }
@@ -117,7 +119,7 @@ public class StatementResourceSchemas {
 
     private static Map<FieldId, Class<?>> types() {
         return Map.of(
-            id("id"), java.util.UUID.class, id("code"), String.class, id("description"), String.class,
+            id("id"), UUID.class, id("code"), String.class, id("description"), String.class,
             id("target.api.method"), String.class, id("target.api.path"), String.class
         );
     }
