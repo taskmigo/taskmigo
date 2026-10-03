@@ -1,5 +1,6 @@
 package io.taskmigo.identity.user.application.port.in.internal;
 
+import io.taskmigo.identity.user.application.port.out.RetainedUserCandidate;
 import io.taskmigo.identity.user.domain.User;
 import java.time.Instant;
 import java.util.Collection;
