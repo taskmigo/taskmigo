@@ -120,7 +120,7 @@ public class EmbeddedLanguageCompilerBenchmark {
                 LanguageType.Scalar.STRING,
                 "path",
                 LanguageType.Scalar.STRING,
-                "pathVariables",
+                "pathVariables.userId",
                 LanguageType.Scalar.STRING,
                 "version",
                 LanguageType.Scalar.NUMBER,

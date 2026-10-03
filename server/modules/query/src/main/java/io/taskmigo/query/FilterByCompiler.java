@@ -1,29 +1,19 @@
 package io.taskmigo.query;
 
-import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.language.CompilationFeature;
 import io.taskmigo.language.CompilationMode;
 import io.taskmigo.language.CompilationProfile;
 import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.CompilerEnvironment;
 import io.taskmigo.language.EmbeddedLanguageException;
-import io.taskmigo.language.Field;
-import io.taskmigo.language.FieldId;
-import io.taskmigo.language.FieldPath;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageType;
 import io.taskmigo.language.ResourceSchema;
 import io.taskmigo.language.ResourceSchemaResolver;
-import io.taskmigo.language.ResourceType;
 import io.taskmigo.language.SchemaContext;
-import io.taskmigo.language.SchemaFingerprint;
 import io.taskmigo.query.model.QueryExpression;
-import java.util.Collection;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 

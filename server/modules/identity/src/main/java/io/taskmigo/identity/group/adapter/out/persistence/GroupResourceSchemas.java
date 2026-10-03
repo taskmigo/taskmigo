@@ -20,9 +20,11 @@ import io.taskmigo.query.QueryFieldBinding;
 import io.taskmigo.query.QueryOperator;
 import io.taskmigo.query.QueryPath;
 import io.taskmigo.query.StaticQueryBinding;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -91,13 +93,13 @@ public class GroupResourceSchemas {
     }
 
     private static List<QueryFieldBinding> queryFields(String... paths) {
-        return java.util.Arrays.stream(paths)
+        return Arrays.stream(paths)
             .map(path -> new QueryFieldBinding(id(path), QueryPath.parse(path), QUERY_OPERATORS))
             .toList();
     }
 
     private static List<ObjectAuthorizationFieldBinding> objectFields(String... paths) {
-        return java.util.Arrays.stream(paths)
+        return Arrays.stream(paths)
             .map(path -> new ObjectAuthorizationFieldBinding(id(path), path, OBJECT_OPERATORS))
             .toList();
     }
@@ -107,6 +109,6 @@ public class GroupResourceSchemas {
     }
 
     private static Map<FieldId, Class<?>> types() {
-        return Map.of(id("id"), java.util.UUID.class, id("code"), String.class, id("displayName"), String.class, id("description"), String.class);
+        return Map.of(id("id"), UUID.class, id("code"), String.class, id("displayName"), String.class, id("description"), String.class);
     }
 }

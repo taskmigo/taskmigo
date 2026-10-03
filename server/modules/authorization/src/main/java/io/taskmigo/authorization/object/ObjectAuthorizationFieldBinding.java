@@ -12,7 +12,7 @@ public record ObjectAuthorizationFieldBinding(
 ) {
     public ObjectAuthorizationFieldBinding {
         Objects.requireNonNull(id);
-        if (executionPath == null || executionPath.isBlank()) {
+        if (Objects.requireNonNull(executionPath).isBlank()) {
             throw new IllegalArgumentException("execution path must not be blank");
         }
         operators = Set.copyOf(operators);
