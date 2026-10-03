@@ -13,7 +13,10 @@ import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
 import io.taskmigo.identity.provisioning.application.port.in.api.IdentityProvisioningService;
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserException;
+import io.taskmigo.identity.user.UserMutationActor;
+import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
+import io.taskmigo.identity.user.application.port.in.internal.UserDeletionLifecycleService;
 import io.taskmigo.identity.user.application.port.in.internal.UserMutationResult;
 import io.taskmigo.identity.user.application.port.out.UserAuditAppender;
 import io.taskmigo.identity.user.domain.User;
@@ -35,6 +38,7 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
     private final SubjectGrantAssignmentService grantAssignments;
     private final SubjectGrantQueryService grantQueries;
     private final MembershipService memberships;
+    private final UserDeletionLifecycleService deletion;
     private final UserAuditAppender audits;
     private final TransactionRunner transactions;
     private final Clock clock;
@@ -44,6 +48,7 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
         SubjectGrantAssignmentService grantAssignments,
         SubjectGrantQueryService grantQueries,
         MembershipService memberships,
+        UserDeletionLifecycleService deletion,
         UserAuditAppender audits,
         TransactionRunner transactions,
         Clock clock
@@ -52,6 +57,7 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
         this.grantAssignments = grantAssignments;
         this.grantQueries = grantQueries;
         this.memberships = memberships;
+        this.deletion = deletion;
         this.audits = audits;
         this.transactions = transactions;
         this.clock = clock;
@@ -150,7 +156,7 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
             .orElseThrow(() ->
                 new IllegalStateException("System User must exist before managed User updates are audited")
             );
-        return new AuditActor(system.id(), SystemUser.USERNAME);
+        return new AuditActor(system.id(), system.username().value());
     }
 
     private boolean deleteUserInTransaction(String username) {
@@ -160,19 +166,25 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
         } catch (UserRuleViolation exception) {
             throw provisioningFailure(exception);
         }
-        if (existing == null) {
+        if (existing == null || existing.status() == UserStatus.RETAINED) {
             return false;
         }
+
         try {
             existing.requireManagedDeletionAllowed();
+            User system = this.users
+                .findByUsername(SystemUser.USERNAME)
+                .orElseThrow(() ->
+                    new IllegalStateException("System User must exist before managed User deletion is audited")
+                );
+            this.deletion.delete(
+                existing,
+                new UserMutationActor(system.id(), system.username().value()),
+                this.clock.instant()
+            );
         } catch (UserRuleViolation exception) {
             throw provisioningFailure(exception);
         }
-
-        this.grantAssignments.setRoles(IdentitySubjects.user(existing.id()), Set.of());
-        this.grantAssignments.setStatements(IdentitySubjects.user(existing.id()), Set.of());
-        this.memberships.setGroupsForUser(existing.id(), Set.of());
-        this.users.delete(existing);
         return true;
     }
 
@@ -181,12 +193,11 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
     }
 
     private static RuntimeException provisioningFailure(UserRuleViolation exception) {
-        if (
-            exception.reason() == UserRuleViolation.Reason.SYSTEM_INITIAL_PASSWORD_REQUIRED ||
-            exception.reason() == UserRuleViolation.Reason.SYSTEM_USER_DELETION_FORBIDDEN
-        ) {
-            return new IdentityProvisioningException(exception.detail());
-        }
-        return new UserException(UserException.Type.INVALID_INPUT, exception.detail(), exception);
+        return switch (exception.reason()) {
+            case SYSTEM_INITIAL_PASSWORD_REQUIRED, SYSTEM_USER_DELETION_FORBIDDEN -> new IdentityProvisioningException(
+                exception.detail()
+            );
+            default -> new UserException(UserException.Type.INVALID_INPUT, exception.detail(), exception);
+        };
     }
 }

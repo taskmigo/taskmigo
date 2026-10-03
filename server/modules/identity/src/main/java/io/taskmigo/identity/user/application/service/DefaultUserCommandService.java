@@ -3,9 +3,11 @@ package io.taskmigo.identity.user.application.service;
 import io.taskmigo.audit.model.AuditChange;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
 import io.taskmigo.identity.user.application.port.in.internal.UserMutationResult;
+import io.taskmigo.identity.user.application.port.out.RetainedUserCandidate;
 import io.taskmigo.identity.user.application.port.out.UserCommandRepository;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.Username;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -100,6 +102,11 @@ public final class DefaultUserCommandService implements UserCommandService {
     }
 
     @Override
+    public Optional<User> findByIdForUpdate(UUID id) {
+        return this.users.findByIdForUpdate(id);
+    }
+
+    @Override
     public Optional<User> findByUsername(@Nullable String username) {
         return this.users.findByUsername(Username.of(username));
     }
@@ -110,8 +117,18 @@ public final class DefaultUserCommandService implements UserCommandService {
     }
 
     @Override
-    public void delete(User user) {
-        this.users.delete(user);
+    public List<RetainedUserCandidate> retainedCandidates(Instant cutoff, @Nullable RetainedUserCandidate after) {
+        return this.users.retainedCandidates(cutoff, after);
+    }
+
+    @Override
+    public Optional<User> claimRetainedForUpdate(UUID id) {
+        return this.users.claimRetainedForUpdate(id);
+    }
+
+    @Override
+    public void save(User user) {
+        this.users.save(user);
     }
 
     private static List<String> ordered(Collection<String> values) {

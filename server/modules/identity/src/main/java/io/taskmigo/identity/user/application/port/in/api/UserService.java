@@ -11,9 +11,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-/// Defines the published inbound port for User queries and direct grant assignments.
+/// Defines the published inbound port for User queries, lifecycle, and direct grant assignments.
 public interface UserService {
     UserInfo require(UUID id);
+    Optional<UserInfo> find(UUID id);
     Optional<AuthenticationInfo> findForAuthentication(String username);
     OffsetPage<UserInfo> list(
         int page,
@@ -23,5 +24,12 @@ public interface UserService {
     );
     Set<UUID> roleIds(UUID userId);
     void setStatements(UUID userId, Collection<UUID> statementIds, UserMutationActor actor);
+    boolean setStatements(
+        UUID userId,
+        Collection<UUID> statementIds,
+        ObjectAuthorizationPredicate<UserInfo> authorization,
+        UserMutationActor actor
+    );
     void setRoles(UUID userId, Collection<UUID> roleIds, UserMutationActor actor);
+    boolean delete(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization, UserMutationActor actor);
 }

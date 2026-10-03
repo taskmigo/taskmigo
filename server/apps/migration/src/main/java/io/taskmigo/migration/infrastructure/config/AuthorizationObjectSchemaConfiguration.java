@@ -27,6 +27,8 @@ class AuthorizationObjectSchemaConfiguration {
     ) {
         List<Route> routes = List.of(
             new Route("GET", "/api/v0/users", users),
+            new Route("DELETE", "/api/v0/users/{userId}", users),
+            new Route("PATCH", "/api/v0/users/{userId}/statements", users),
             new Route("GET", "/api/v0/groups", groups),
             new Route("GET", "/api/v0/roles", roles),
             new Route("GET", "/api/v0/statements", statements)

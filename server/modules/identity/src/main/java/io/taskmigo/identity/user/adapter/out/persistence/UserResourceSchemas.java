@@ -9,6 +9,7 @@ import io.taskmigo.identity.adapter.out.persistence.query.JpaQueryPredicateBinde
 import io.taskmigo.identity.adapter.out.persistence.query.ObjectAuthorizationPredicateBinder;
 import io.taskmigo.identity.adapter.out.persistence.query.QueryPredicateBinder;
 import io.taskmigo.identity.user.UserInfo;
+import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.query.QueryField;
 import io.taskmigo.query.QueryPath;
 import io.taskmigo.query.QuerySchema;
@@ -50,7 +51,9 @@ public class UserResourceSchemas {
                 objectField("id", UUID_TYPE),
                 objectField("username", STRING_TYPE),
                 objectField("firstName", STRING_TYPE),
-                objectField("lastName", STRING_TYPE)
+                objectField("lastName", STRING_TYPE),
+                objectField("status", STRING_TYPE),
+                objectNullable("retainedAt")
             )
         );
     }
@@ -58,13 +61,18 @@ public class UserResourceSchemas {
     /// Registers the trusted User query-to-entity mapping.
     @Bean
     QueryPredicateBinder<UserInfo, UserEntity> userQueryPredicateBinder() {
-        return new JpaQueryPredicateBinder<>(UserInfo.class, UserEntity.class, paths(), types());
+        return new JpaQueryPredicateBinder<>(UserInfo.class, UserEntity.class, queryPaths(), queryTypes());
     }
 
     /// Registers the trusted User object-policy-to-entity mapping.
     @Bean
     ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> userObjectAuthorizationPredicateBinder() {
-        return new JpaObjectAuthorizationPredicateBinder<>(UserInfo.class, UserEntity.class, paths(), types());
+        return new JpaObjectAuthorizationPredicateBinder<>(
+            UserInfo.class,
+            UserEntity.class,
+            objectPaths(),
+            objectTypes()
+        );
     }
 
     private static QueryField field(String path, TypeDescriptor type) {
@@ -75,12 +83,52 @@ public class UserResourceSchemas {
         return new ObjectAuthorizationField(ObjectAuthorizationPath.parse(path), type, false);
     }
 
-    private static Map<String, String> paths() {
+    private static ObjectAuthorizationField objectNullable(String path) {
+        return new ObjectAuthorizationField(ObjectAuthorizationPath.parse(path), STRING_TYPE, true);
+    }
+
+
+
+    private static Map<String, String> queryPaths() {
         return Map.of("id", "id", "username", "username", "firstName", "firstName", "lastName", "lastName");
     }
 
-    private static Map<String, Class<?>> types() {
+    private static Map<String, Class<?>> queryTypes() {
         return Map.of("id", UUID.class, "username", String.class, "firstName", String.class, "lastName", String.class);
+    }
+
+    private static Map<String, String> objectPaths() {
+        return Map.of(
+            "id",
+            "id",
+            "username",
+            "username",
+            "firstName",
+            "firstName",
+            "lastName",
+            "lastName",
+            "status",
+            "status",
+            "retainedAt",
+            "retainedAt"
+        );
+    }
+
+    private static Map<String, Class<?>> objectTypes() {
+        return Map.of(
+            "id",
+            UUID.class,
+            "username",
+            String.class,
+            "firstName",
+            String.class,
+            "lastName",
+            String.class,
+            "status",
+            UserStatus.class,
+            "retainedAt",
+            String.class
+        );
     }
 
     private static QuerySchema<UserInfo> schema(Class<UserInfo> type, Collection<QueryField> fields) {
@@ -93,10 +141,7 @@ public class UserResourceSchemas {
 
             @Override
             public Optional<QueryField> field(QueryPath path) {
-                return declared
-                    .stream()
-                    .filter(field -> field.path().equals(path))
-                    .findFirst();
+                return declared.stream().filter(field -> field.path().equals(path)).findFirst();
             }
 
             @Override
@@ -119,10 +164,7 @@ public class UserResourceSchemas {
 
             @Override
             public Optional<ObjectAuthorizationField> field(ObjectAuthorizationPath path) {
-                return declared
-                    .stream()
-                    .filter(field -> field.path().equals(path))
-                    .findFirst();
+                return declared.stream().filter(field -> field.path().equals(path)).findFirst();
             }
 
             @Override

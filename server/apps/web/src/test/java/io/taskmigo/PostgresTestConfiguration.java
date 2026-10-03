@@ -53,12 +53,35 @@ public class PostgresTestConfiguration {
                 "/api/v0/statements"
             );
             UUID auditAccess = objectStatement(authorization, "system_audit_full_access", "/api/v0/audit/.*");
+            UUID userStatementMutation = objectStatement(
+                authorization,
+                "system_user_statement_mutation",
+                "PATCH",
+                "/api/v0/users/.*/statements",
+                "object.retainedAt == null"
+            );
+            UUID userDelete = objectStatement(
+                authorization,
+                "system_user_delete",
+                "DELETE",
+                "/api/v0/users/.*",
+                "object.retainedAt == null && object.username != \"system\""
+            );
             UUID roleId = authorization
                 .reconcileRole(
                     "system-operator",
                     "System Operator",
                     "Highest-privilege integration-test role.",
-                    List.of(fullAccess, usersAccess, rolesAccess, groupsAccess, statementsAccess, auditAccess)
+                    List.of(
+                        fullAccess,
+                        usersAccess,
+                        rolesAccess,
+                        groupsAccess,
+                        statementsAccess,
+                        auditAccess,
+                        userStatementMutation,
+                        userDelete
+                    )
                 )
                 .id();
             identity.reconcileUser(
@@ -93,15 +116,25 @@ public class PostgresTestConfiguration {
     }
 
     private static UUID objectStatement(AuthorizationProvisioningService authorization, String code, String path) {
+        return objectStatement(authorization, code, "GET", path, "true");
+    }
+
+    private static UUID objectStatement(
+        AuthorizationProvisioningService authorization,
+        String code,
+        String method,
+        String path,
+        String policy
+    ) {
         return authorization
             .reconcileStatement(
                 code,
-                "Allows the system administrator to view every object.",
+                "Allows the system administrator to access matching objects.",
                 Effect.ALLOW,
                 Scope.OBJECT,
-                "GET",
+                method,
                 path,
-                "true"
+                policy
             )
             .id();
     }

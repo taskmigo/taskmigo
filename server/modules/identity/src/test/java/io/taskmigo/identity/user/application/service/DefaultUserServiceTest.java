@@ -14,13 +14,17 @@ import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantQue
 import io.taskmigo.identity.application.port.out.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.user.UserMutationActor;
+import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
+import io.taskmigo.identity.user.application.port.in.internal.UserDeletionLifecycleService;
 import io.taskmigo.identity.user.application.port.out.UserAuditAppender;
 import io.taskmigo.identity.user.application.port.out.UserQueryRepository;
+import io.taskmigo.identity.user.domain.User;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -53,7 +57,7 @@ class DefaultUserServiceTest {
         SubjectGrantAssignmentService assignments = Mockito.mock(SubjectGrantAssignmentService.class);
         UserAuditAppender audits = Mockito.mock(UserAuditAppender.class);
         SubjectRef subject = IdentitySubjects.user(userId);
-        when(commands.lock(userId)).thenReturn(true);
+        when(commands.findByIdForUpdate(userId)).thenReturn(Optional.of(activeUser(userId)));
         when(queries.statementIds(subject)).thenReturn(Set.of(beforeId));
         DefaultUserService service = service(users, commands, queries, assignments, audits);
 
@@ -62,7 +66,7 @@ class DefaultUserServiceTest {
 
         // Assert
         var order = inOrder(commands, queries, assignments, audits);
-        order.verify(commands).lock(userId);
+        order.verify(commands).findByIdForUpdate(userId);
         order.verify(queries).statementIds(subject);
         order.verify(assignments).setStatements(subject, Set.of(afterId));
         ArgumentCaptor<AuditEvent> event = ArgumentCaptor.forClass(AuditEvent.class);
@@ -100,7 +104,7 @@ class DefaultUserServiceTest {
         SubjectGrantAssignmentService assignments = Mockito.mock(SubjectGrantAssignmentService.class);
         UserAuditAppender audits = Mockito.mock(UserAuditAppender.class);
         SubjectRef subject = IdentitySubjects.user(userId);
-        when(commands.lock(userId)).thenReturn(true);
+        when(commands.findByIdForUpdate(userId)).thenReturn(Optional.of(activeUser(userId)));
         when(queries.statementIds(subject)).thenReturn(Set.of(statementId));
         DefaultUserService service = service(users, commands, queries, assignments, audits);
 
@@ -108,7 +112,7 @@ class DefaultUserServiceTest {
         service.setStatements(userId, List.of(statementId), new UserMutationActor(UUID.randomUUID(), "operator"));
 
         // Assert
-        verify(commands).lock(userId);
+        verify(commands).findByIdForUpdate(userId);
         verify(assignments, never()).setStatements(any(), any());
         verify(audits, never()).append(any());
     }
@@ -133,7 +137,7 @@ class DefaultUserServiceTest {
         SubjectGrantAssignmentService assignments = Mockito.mock(SubjectGrantAssignmentService.class);
         UserAuditAppender audits = Mockito.mock(UserAuditAppender.class);
         SubjectRef subject = IdentitySubjects.user(userId);
-        when(commands.lock(userId)).thenReturn(true);
+        when(commands.findByIdForUpdate(userId)).thenReturn(Optional.of(activeUser(userId)));
         when(queries.roleIds(subject)).thenReturn(Set.of(beforeId));
         DefaultUserService service = service(users, commands, queries, assignments, audits);
 
@@ -142,7 +146,7 @@ class DefaultUserServiceTest {
 
         // Assert
         var order = inOrder(commands, queries, assignments, audits);
-        order.verify(commands).lock(userId);
+        order.verify(commands).findByIdForUpdate(userId);
         order.verify(queries).roleIds(subject);
         order.verify(assignments).setRoles(subject, Set.of(afterId));
         ArgumentCaptor<AuditEvent> event = ArgumentCaptor.forClass(AuditEvent.class);
@@ -180,7 +184,7 @@ class DefaultUserServiceTest {
         SubjectGrantAssignmentService assignments = Mockito.mock(SubjectGrantAssignmentService.class);
         UserAuditAppender audits = Mockito.mock(UserAuditAppender.class);
         SubjectRef subject = IdentitySubjects.user(userId);
-        when(commands.lock(userId)).thenReturn(true);
+        when(commands.findByIdForUpdate(userId)).thenReturn(Optional.of(activeUser(userId)));
         when(queries.roleIds(subject)).thenReturn(Set.of(roleId));
         DefaultUserService service = service(users, commands, queries, assignments, audits);
 
@@ -188,7 +192,7 @@ class DefaultUserServiceTest {
         service.setRoles(userId, List.of(roleId), new UserMutationActor(UUID.randomUUID(), "operator"));
 
         // Assert
-        verify(commands).lock(userId);
+        verify(commands).findByIdForUpdate(userId);
         verify(assignments, never()).setRoles(any(), any());
         verify(audits, never()).append(any());
     }
@@ -205,10 +209,15 @@ class DefaultUserServiceTest {
             commands,
             queries,
             assignments,
+            Mockito.mock(UserDeletionLifecycleService.class),
             audits,
             directTransactions(),
             Clock.fixed(NOW, ZoneOffset.UTC)
         );
+    }
+
+    private static User activeUser(UUID id) {
+        return User.restore(id, "test-user", Set.of(), "Test", "User", UserStatus.ACTIVE, null);
     }
 
     private static TransactionRunner directTransactions() {

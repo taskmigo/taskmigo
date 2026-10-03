@@ -352,7 +352,6 @@ class MigrationIntegrationTest {
             .singleElement()
             .satisfies(row -> {
                 assertThat(row.get("actor_id")).isEqualTo(systemUserId);
-                assertThat(row.get("actor_username")).isEqualTo(SystemUser.USERNAME);
                 assertThat(Objects.requireNonNull(row.get("changes_json")).toString()).contains(
                     "firstName",
                     "Before",
@@ -424,19 +423,22 @@ class MigrationIntegrationTest {
             true
         );
 
-        // Act
-        this.migration.install(
-            new InstallationPlan(
-                List.of(absentUser),
-                List.of(absentRole),
-                List.of(absentStatement),
-                List.of(absentGroup),
-                Map.of()
-            )
+        var absentPlan = new InstallationPlan(
+            List.of(absentUser),
+            List.of(absentRole),
+            List.of(absentStatement),
+            List.of(absentGroup),
+            Map.of()
         );
 
+        // Act
+        this.migration.install(absentPlan);
+        this.migration.install(absentPlan);
+
         // Assert
-        assertThat(this.users.findForAuthentication(username)).isEmpty();
+        assertThat(this.users.findForAuthentication(username)).hasValueSatisfying(authentication ->
+            assertThat(authentication.active()).isFalse()
+        );
         assertThat(this.groups.deleteGroup(groupCode)).isFalse();
         assertThatThrownBy(() -> this.authorizationProvisioning.requireRole(roleCode)).hasMessageContaining(
             "Managed authorization Role does not exist"
@@ -614,7 +616,7 @@ class MigrationIntegrationTest {
 
     private List<Map<String, @Nullable Object>> auditRows(UUID userId) {
         return this.jdbc.queryForList(
-            "select actor_id, actor_username, changes_json from audit_logs where entity_type = 'user' and entity_id = ?",
+            "select actor_id, changes_json from audit_logs where entity_type = 'user' and entity_id = ?",
             userId
         );
     }

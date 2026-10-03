@@ -1,13 +1,28 @@
+CREATE TABLE application_configuration (
+    configuration_key VARCHAR(100) PRIMARY KEY,
+    configuration_value VARCHAR(1000) NOT NULL
+);
+
+INSERT INTO application_configuration (configuration_key, configuration_value)
+VALUES ('retention.user', 'P30D');
+
 CREATE TABLE users (
     id UUID PRIMARY KEY,
-    username VARCHAR(100) NOT NULL,
-    first_name VARCHAR(100) NOT NULL,
-    last_name VARCHAR(100) NOT NULL,
+    username VARCHAR(100),
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
     status VARCHAR(16) NOT NULL,
+    retained_at timestamptz(3),
+    tombstoned_at timestamptz(3),
     password_hash VARCHAR(255),
     CONSTRAINT uk_users_username UNIQUE (username),
-    CONSTRAINT ck_users_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DISABLED')),
-    CONSTRAINT ck_users_names CHECK (btrim(first_name) <> '' AND btrim(last_name) <> '')
+    CONSTRAINT ck_users_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DISABLED', 'RETAINED', 'TOMBSTONE')),
+    CONSTRAINT ck_users_identity CHECK ((status = 'TOMBSTONE' AND username IS NULL AND first_name IS NULL AND last_name IS NULL AND password_hash IS NULL) OR (status <> 'TOMBSTONE' AND username IS NOT NULL AND first_name IS NOT NULL AND last_name IS NOT NULL AND btrim(first_name) <> '' AND btrim(last_name) <> '')),
+    CONSTRAINT ck_users_lifecycle_timestamps CHECK (
+        (status = 'RETAINED' AND retained_at IS NOT NULL AND tombstoned_at IS NULL)
+        OR (status = 'TOMBSTONE' AND tombstoned_at IS NOT NULL)
+        OR (status NOT IN ('RETAINED', 'TOMBSTONE') AND retained_at IS NULL AND tombstoned_at IS NULL)
+    )
 );
 
 CREATE TABLE user_emails (
@@ -196,3 +211,24 @@ CREATE TABLE audit_logs (
     changes_json TEXT NOT NULL
 );
 CREATE INDEX ix_audit_logs_entity_order ON audit_logs (entity_type, occurred_at DESC, id DESC);
+
+-- Spring Session JDBC PostgreSQL schema; the principal index stores the immutable User UUID.
+CREATE TABLE spring_session (
+    primary_id CHAR(36) NOT NULL PRIMARY KEY,
+    session_id CHAR(36) NOT NULL,
+    creation_time BIGINT NOT NULL,
+    last_access_time BIGINT NOT NULL,
+    max_inactive_interval INT NOT NULL,
+    expiry_time BIGINT NOT NULL,
+    principal_name VARCHAR(100)
+);
+CREATE UNIQUE INDEX spring_session_ix1 ON spring_session (session_id);
+CREATE INDEX spring_session_ix2 ON spring_session (expiry_time);
+CREATE INDEX spring_session_ix3 ON spring_session (principal_name);
+
+CREATE TABLE spring_session_attributes (
+    session_primary_id CHAR(36) NOT NULL REFERENCES spring_session(primary_id) ON DELETE CASCADE,
+    attribute_name VARCHAR(200) NOT NULL,
+    attribute_bytes BYTEA NOT NULL,
+    PRIMARY KEY (session_primary_id, attribute_name)
+);

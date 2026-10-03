@@ -64,8 +64,9 @@ public final class DefaultMembershipService implements MembershipService {
     }
 
     private void requireLocked(UUID userId) {
-        if (!this.users.lock(userId)) {
-            throw new UserException(UserException.Type.NOT_FOUND, "User not found");
-        }
+        var user = this.users
+            .findByIdForUpdate(userId)
+            .orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"));
+        user.requireMutable();
     }
 }

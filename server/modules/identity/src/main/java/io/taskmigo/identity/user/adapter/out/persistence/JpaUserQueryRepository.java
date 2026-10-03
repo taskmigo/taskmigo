@@ -6,14 +6,16 @@ import io.taskmigo.identity.adapter.out.persistence.query.ObjectAuthorizationPre
 import io.taskmigo.identity.adapter.out.persistence.query.QueryPredicateBinder;
 import io.taskmigo.identity.user.AuthenticationInfo;
 import io.taskmigo.identity.user.UserInfo;
+import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.port.out.UserQueryRepository;
 import io.taskmigo.identity.user.domain.UserProfile;
-import io.taskmigo.identity.user.domain.UserStatus;
 import io.taskmigo.query.QueryPredicate;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 /// Reads User projections directly from JPA without hydrating the mutation aggregate.
@@ -36,7 +38,13 @@ public class JpaUserQueryRepository implements UserQueryRepository {
 
     @Override
     public Optional<UserInfo> find(UUID id) {
-        return this.users.findById(id).map(JpaUserQueryRepository::info);
+        return this.users.findById(id).filter(user -> user.status() != UserStatus.TOMBSTONE).map(JpaUserQueryRepository::info);
+    }
+
+    @Override
+    public Optional<UserInfo> find(UUID id, ObjectAuthorizationPredicate<UserInfo> authorization) {
+        Specification<UserEntity> idMatch = (root, query, builder) -> builder.and(builder.equal(root.get("id"), id), builder.notEqual(root.get("status"), UserStatus.TOMBSTONE));
+        return this.users.findOne(idMatch.and(this.objectBinder.bind(authorization))).map(JpaUserQueryRepository::info);
     }
 
     @Override
@@ -46,7 +54,7 @@ public class JpaUserQueryRepository implements UserQueryRepository {
 
     @Override
     public boolean exists(UUID id) {
-        return this.users.existsById(id);
+        return this.users.findById(id).filter(user -> user.status() != UserStatus.TOMBSTONE).isPresent();
     }
 
     @Override
@@ -57,8 +65,9 @@ public class JpaUserQueryRepository implements UserQueryRepository {
         ObjectAuthorizationPredicate<UserInfo> authorization
     ) {
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
+        Specification<UserEntity> visible = (root, query, builder) -> builder.notEqual(root.get("status"), UserStatus.TOMBSTONE);
         var result = this.users.findAll(
-            this.queryBinder.bind(filter).and(this.objectBinder.bind(authorization)),
+            visible.and(this.queryBinder.bind(filter)).and(this.objectBinder.bind(authorization)),
             pageable
         );
         return new OffsetPage<>(
@@ -69,22 +78,32 @@ public class JpaUserQueryRepository implements UserQueryRepository {
     }
 
     private static UserInfo info(UserEntity user) {
-        UserProfile profile = UserProfile.of(user.emails(), user.firstName(), user.lastName());
+        UserProfile profile = UserProfile.of(
+            user.emails(),
+            Objects.requireNonNull(user.firstName()),
+            Objects.requireNonNull(user.lastName())
+        );
         return new UserInfo(
             user.id(),
-            user.username(),
+            Objects.requireNonNull(user.username()),
             profile.firstName(),
             profile.lastName(),
             profile.emails(),
-            profile.displayName()
+            profile.displayName(),
+            user.status(),
+            user.retainedAt()
         );
     }
 
     private static AuthenticationInfo authentication(UserEntity user) {
-        UserProfile profile = UserProfile.of(null, user.firstName(), user.lastName());
+        UserProfile profile = UserProfile.of(
+            null,
+            Objects.requireNonNull(user.firstName()),
+            Objects.requireNonNull(user.lastName())
+        );
         return new AuthenticationInfo(
             user.id(),
-            user.username(),
+            Objects.requireNonNull(user.username()),
             profile.displayName(),
             UserStatus.ACTIVE.equals(user.status()),
             user.passwordHash()

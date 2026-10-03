@@ -21,6 +21,7 @@ import io.taskmigo.web.adapter.in.http.api.v0.testing.TaskmigoApiClient.Statemen
 import io.taskmigo.web.adapter.in.http.api.v0.testing.TaskmigoApiClient.StatementTarget;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -302,6 +303,84 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
             sharedStatementName
         );
         assertThat(names).doesNotHaveDuplicates();
+    }
+
+    /**
+     * Verifies that the persisted lifecycle policy protects the reserved system User through the public API.
+     *
+     * Given: the reserved system User and an authenticated caller otherwise allowed to delete Users.
+     * Expect: the object policy denies DELETE and the system User remains persisted.
+     */
+    @Test
+    @DisplayName("denies deletion of the system user through policy")
+    void shouldDenySystemUserDeletionThroughPolicy() {
+        // Arrange
+        UUID systemUserId = Objects.requireNonNull(
+            this.jdbc.queryForObject("select id from users where username = ?", UUID.class, "system")
+        );
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.api().users().delete(systemUserId)).isInstanceOf(
+            HttpClientErrorException.Forbidden.class
+        );
+        assertThat(
+            this.jdbc.queryForObject("select count(*) from users where id = ?", Integer.class, systemUserId)
+        ).isOne();
+    }
+
+    /**
+     * Verifies that a retained User cannot be deleted again and that the original retention clock is immutable.
+     *
+     * Given: an active User deleted once through the public API with non-zero retention configured.
+     * Expect: a second DELETE is denied by object policy and retainedAt remains exactly unchanged.
+     */
+    @Test
+    @DisplayName("denies repeated deletion of a retained user without resetting retainedAt")
+    void shouldDenyRepeatedRetainedUserDeletionWithoutResettingRetainedAt() {
+        // Arrange
+        UUID userId = this.create("repeated-delete-" + UUID.randomUUID(), Set.of(), Set.of());
+
+        // Act
+        this.api().users().delete(userId);
+        var retained = this.users.require(userId);
+        assertThat(retained.retainedAt()).isNotNull();
+
+        assertThatThrownBy(() -> this.api().users().delete(userId)).isInstanceOf(
+            HttpClientErrorException.Forbidden.class
+        );
+
+        // Assert
+        var afterRepeatedDelete = this.users.require(userId);
+        assertThat(afterRepeatedDelete.status()).isEqualTo(retained.status());
+        assertThat(afterRepeatedDelete.retainedAt()).isEqualTo(retained.retainedAt());
+    }
+
+    /**
+     * Verifies retained User statement mutation is denied by the persisted object policy.
+     *
+     * Given: an active User transitioned to RETAINED and a valid direct Statement.
+     * Expect: PATCH statements returns HTTP 403 and no direct Statement binding is created.
+     */
+    @Test
+    @DisplayName("denies statement mutation of a retained user through policy")
+    void shouldDenyRetainedUserStatementMutationThroughPolicy() {
+        // Arrange
+        UUID userId = this.create("retained-statements-" + UUID.randomUUID(), Set.of(), Set.of());
+        UUID statementId = this.createStatement("retained-statement-" + UUID.randomUUID());
+        this.api().users().delete(userId);
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.api().users().replaceStatements(userId, List.of(statementId))).isInstanceOf(
+            HttpClientErrorException.Forbidden.class
+        );
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from subject_statement_bindings where subject_type = ? and subject_id = ?",
+                Integer.class,
+                "identity:user",
+                userId
+            )
+        ).isZero();
     }
 
     private UUID create(String username, Collection<UUID> roleIds, Collection<UUID> groupIds) {

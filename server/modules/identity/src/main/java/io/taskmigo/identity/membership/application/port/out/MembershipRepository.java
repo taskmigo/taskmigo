@@ -10,4 +10,6 @@ public interface MembershipRepository {
     void remove(UUID groupId, UUID userId);
 
     List<UUID> groupsForUser(UUID userId);
+
+    boolean removeAllForUser(UUID userId);
 }

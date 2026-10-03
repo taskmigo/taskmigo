@@ -27,7 +27,6 @@ public final class StatementArtifactFactory {
     private static final Duration CACHE_IDLE_TTL = Duration.ofHours(1);
 
     private final LanguageCompiler compiler;
-    private final EnvironmentSchema objectSchema;
     private final ObjectAuthorizationTargetResolver targetResolver;
     private final StatementArtifactCache<CachedTargetMatcher> targetMatchers;
     private final StatementArtifactCache<CachedArtifacts> derived;
@@ -54,7 +53,6 @@ public final class StatementArtifactFactory {
         StatementArtifactCache<CachedArtifacts> derived
     ) {
         this.compiler = compiler;
-        this.objectSchema = AuthorizationEmbeddedLanguageSchemas.object(List.copyOf(schemas));
         this.targetResolver = targetResolver;
         this.targetMatchers = targetMatchers;
         this.derived = derived;
@@ -77,7 +75,7 @@ public final class StatementArtifactFactory {
                 continue;
             }
 
-            EnvironmentSchema schema = this.schema(statement);
+            EnvironmentSchema schema = this.schema(statement, pathMatcher);
             CompilationProfile profile = profile(statement);
             ArtifactIdentity identity = new ArtifactIdentity(
                 effective.updatedAt(),
@@ -125,8 +123,15 @@ public final class StatementArtifactFactory {
         return retained.artifacts();
     }
 
-    private EnvironmentSchema schema(StatementInfo statement) {
-        return statement.scope() == Scope.REQUEST ? AuthorizationEmbeddedLanguageSchemas.request() : this.objectSchema;
+    private EnvironmentSchema schema(StatementInfo statement, StatementTargetPathMatcher pathMatcher) {
+        if (statement.scope() == Scope.REQUEST) {
+            return AuthorizationEmbeddedLanguageSchemas.request();
+        }
+        List<ObjectAuthorizationSchema<?>> applicable = this.targetResolver.applicable(
+            statement.target().api().method(),
+            pathMatcher
+        );
+        return AuthorizationEmbeddedLanguageSchemas.object(applicable);
     }
 
     private static CompilationProfile profile(StatementInfo statement) {

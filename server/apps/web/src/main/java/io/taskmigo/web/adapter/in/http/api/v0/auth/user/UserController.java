@@ -1,6 +1,7 @@
 package io.taskmigo.web.adapter.in.http.api.v0.auth.user;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
@@ -22,6 +23,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.net.URI;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -32,7 +34,9 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -80,6 +84,21 @@ class UserController {
         );
     }
 
+    @DeleteMapping("/users/{userId}")
+    @Operation(summary = "Delete a user")
+    @OpenApiNotFound
+    @ResponseStatus(HttpStatus.OK)
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> delete(
+        @PathVariable UUID userId,
+        @Parameter(hidden = true) ObjectAuthorizationPredicate<UserInfo> authorization,
+        JwtAuthenticationToken authentication
+    ) {
+        if (!this.users.delete(userId, authorization, actor(authentication))) {
+            throw new AccessDeniedException("User lifecycle policy denied deletion");
+        }
+        return this.responses.ok("resource.user.deleted", "User deleted");
+    }
+
     @PatchMapping(value = "/users/{userId}/statements", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Replace a user's direct statements")
     @OpenApiNotFound
@@ -88,13 +107,18 @@ class UserController {
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setStatements(
         @PathVariable UUID userId,
         @Valid @RequestBody StatementAssignmentRequest request,
+        @Parameter(hidden = true) ObjectAuthorizationPredicate<UserInfo> authorization,
         JwtAuthenticationToken authentication
     ) {
-        this.users.setStatements(
+        boolean allowed = this.users.setStatements(
             userId,
             request.statementIds() == null ? Set.of() : request.statementIds(),
+            authorization,
             actor(authentication)
         );
+        if (!allowed) {
+            throw new AccessDeniedException("User lifecycle policy denied mutation");
+        }
         return this.responses.ok("resource.user.statements.updated", "User statements updated");
     }
 
@@ -133,7 +157,9 @@ class UserController {
         String firstName,
         String lastName,
         Set<String> emails,
-        String displayName
+        String displayName,
+        @Schema(allowableValues = { "ACTIVE", "SUSPENDED", "DISABLED", "RETAINED" }) String status,
+        @Nullable Instant retainedAt
     ) {
         static Response from(UserInfo user) {
             return new Response(
@@ -142,7 +168,9 @@ class UserController {
                 user.firstName(),
                 user.lastName(),
                 user.emails(),
-                user.displayName()
+                user.displayName(),
+                user.status().name(),
+                user.retainedAt()
             );
         }
     }

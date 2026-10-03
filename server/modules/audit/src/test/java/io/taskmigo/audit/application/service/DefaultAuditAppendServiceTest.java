@@ -65,7 +65,7 @@ class DefaultAuditAppendServiceTest {
             UUID.randomUUID(),
             "user",
             UUID.randomUUID(),
-            new AuditActor(UUID.randomUUID(), "operator"),
+            new AuditActor(UUID.randomUUID(), "actor"),
             Instant.parse("2026-09-28T00:00:00Z"),
             List.of(AuditChange.visible("displayName", "Before", "After"))
         );

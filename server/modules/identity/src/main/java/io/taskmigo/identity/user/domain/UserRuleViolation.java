@@ -13,6 +13,7 @@ public final class UserRuleViolation extends RuntimeException {
         RESERVED_SYSTEM_USERNAME,
         SYSTEM_INITIAL_PASSWORD_REQUIRED,
         SYSTEM_USER_DELETION_FORBIDDEN,
+        RETAINED_USER_READ_ONLY,
     }
 
     private final Reason reason;
@@ -49,5 +50,9 @@ public final class UserRuleViolation extends RuntimeException {
 
     static UserRuleViolation systemUserDeletionForbidden() {
         return new UserRuleViolation(Reason.SYSTEM_USER_DELETION_FORBIDDEN, "The system user cannot be deleted");
+    }
+
+    static UserRuleViolation retainedUserReadOnly() {
+        return new UserRuleViolation(Reason.RETAINED_USER_READ_ONLY, "Retained users are read-only");
     }
 }

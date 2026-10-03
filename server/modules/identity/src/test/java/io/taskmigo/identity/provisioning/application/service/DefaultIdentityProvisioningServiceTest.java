@@ -18,12 +18,14 @@ import io.taskmigo.identity.membership.application.port.in.api.MembershipService
 import io.taskmigo.identity.provisioning.IdentityProvisioningException;
 import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
 import io.taskmigo.identity.user.SystemUser;
+import io.taskmigo.identity.user.UserMutationActor;
+import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
+import io.taskmigo.identity.user.application.port.in.internal.UserDeletionLifecycleService;
 import io.taskmigo.identity.user.application.port.in.internal.UserMutationResult;
 import io.taskmigo.identity.user.application.port.out.UserAuditAppender;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.UserRuleViolation;
-import io.taskmigo.identity.user.domain.UserStatus;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -201,10 +203,10 @@ class DefaultIdentityProvisioningServiceTest {
     }
 
     /**
-     * Verifies that deletion clears external state before deleting the canonical User aggregate.
+     * Verifies that managed deletion delegates to the shared User deletion lifecycle.
      *
      * Given: a non-system managed User resolved by the shared User command path.
-     * Expect: grants and memberships are cleared, then the aggregate is deleted and removal is reported.
+     * Expect: provisioning delegates the locked User to the shared lifecycle with the system actor.
      */
     @Test
     @DisplayName("deletes an existing managed user through the shared command path")
@@ -212,21 +214,21 @@ class DefaultIdentityProvisioningServiceTest {
         // Arrange
         UserCommandService users = mock(UserCommandService.class);
         User existing = user("alice");
+        User system = user("system");
         when(users.findByUsernameForUpdate("alice")).thenReturn(Optional.of(existing));
+        when(users.findByUsername(SystemUser.USERNAME)).thenReturn(Optional.of(system));
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditAppender.class));
+        UserDeletionLifecycleService deletion = mock(UserDeletionLifecycleService.class);
+        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditAppender.class), deletion);
 
         // Act
         boolean removed = service.deleteUser("alice");
 
         // Assert
         assertThat(removed).isTrue();
-        verify(grantAssignments).setRoles(IdentitySubjects.user(existing.id()), Set.of());
-        verify(grantAssignments).setStatements(IdentitySubjects.user(existing.id()), Set.of());
-        verify(groups).setGroupsForUser(existing.id(), Set.of());
-        verify(users).delete(existing);
+        verify(deletion).delete(existing, new UserMutationActor(system.id(), SystemUser.USERNAME), NOW);
     }
 
     /**
@@ -251,7 +253,6 @@ class DefaultIdentityProvisioningServiceTest {
 
         // Assert
         assertThat(removed).isFalse();
-        verify(users, never()).delete(any());
         verify(grantAssignments, never()).setRoles(any(), any());
         verify(grantAssignments, never()).setStatements(any(), any());
         verify(groups, never()).setGroupsForUser(any(), any());
@@ -273,13 +274,14 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditAppender.class));
+        UserDeletionLifecycleService deletion = mock(UserDeletionLifecycleService.class);
+        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditAppender.class), deletion);
 
         // Act + Assert
         assertThatThrownBy(() -> service.deleteUser("system"))
             .isInstanceOf(IdentityProvisioningException.class)
             .hasMessageContaining("system user cannot be deleted");
-        verify(users, never()).delete(any());
+        verify(deletion, never()).delete(any(), any(), any());
         verify(grantAssignments, never()).setRoles(any(), any());
         verify(grantAssignments, never()).setStatements(any(), any());
         verify(groups, never()).setGroupsForUser(any(), any());
@@ -319,11 +321,23 @@ class DefaultIdentityProvisioningServiceTest {
         MembershipService groups,
         UserAuditAppender audits
     ) {
+        return service(users, grantAssignments, grantQueries, groups, audits, mock(UserDeletionLifecycleService.class));
+    }
+
+    private static DefaultIdentityProvisioningService service(
+        UserCommandService users,
+        SubjectGrantAssignmentService grantAssignments,
+        SubjectGrantQueryService grantQueries,
+        MembershipService groups,
+        UserAuditAppender audits,
+        UserDeletionLifecycleService deletion
+    ) {
         return new DefaultIdentityProvisioningService(
             users,
             grantAssignments,
             grantQueries,
             groups,
+            deletion,
             audits,
             directTransactions(),
             Clock.fixed(NOW, ZoneOffset.UTC)

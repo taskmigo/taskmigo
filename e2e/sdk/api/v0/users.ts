@@ -24,6 +24,8 @@ export const userInfoSchema = z.strictObject({
   lastName: z.string(),
   emails: z.array(z.string()),
   displayName: z.string(),
+  status: z.enum(["ACTIVE", "SUSPENDED", "DISABLED", "RETAINED"]),
+  retainedAt: z.iso.datetime().nullable(),
 });
 
 export const createUserResponseSchema = successApiResponseSchema(

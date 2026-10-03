@@ -7,6 +7,7 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
+import io.taskmigo.web.adapter.in.security.session.UserSessionPrincipal;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties;
 import org.springframework.context.annotation.Bean;
@@ -39,11 +40,14 @@ class AuthorizationServerConfiguration {
                 throw new UsernameNotFoundException("User has no interactive credential");
             }
 
-            return User.withUsername(user.username())
-                .password(passwordHash)
-                .roles(SystemUser.USERNAME.equals(user.username()) ? "SYSTEM" : "USER")
-                .disabled(!user.active())
-                .build();
+            return new UserSessionPrincipal(
+                user.id(),
+                User.withUsername(user.username())
+                    .password(passwordHash)
+                    .roles(SystemUser.USERNAME.equals(user.username()) ? "SYSTEM" : "USER")
+                    .disabled(!user.active())
+                    .build()
+            );
         };
     }
 
@@ -76,10 +80,13 @@ class AuthorizationServerConfiguration {
             if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
                 context.getClaims().subject(context.getRegisteredClient().getClientId());
                 context.getClaims().claim("principal_type", "service");
-                userService.findForAuthentication(SystemUser.USERNAME).ifPresent(user -> {
-                    context.getClaims().claim("user_id", user.id().toString());
-                    context.getClaims().claim("principal_username", user.username());
-                });
+                userService
+                    .findForAuthentication(SystemUser.USERNAME)
+                    .filter(user -> user.active())
+                    .ifPresent(user -> {
+                        context.getClaims().claim("user_id", user.id().toString());
+                        context.getClaims().claim("principal_username", user.username());
+                    });
                 return;
             }
 
@@ -87,11 +94,14 @@ class AuthorizationServerConfiguration {
             if (authorization == null) {
                 return;
             }
-            userService.findForAuthentication(authorization.getPrincipalName()).ifPresent(user -> {
-                context.getClaims().claim("principal_type", "user");
-                context.getClaims().claim("user_id", user.id().toString());
-                context.getClaims().claim("principal_username", user.username());
-            });
+            userService
+                .findForAuthentication(authorization.getPrincipalName())
+                .filter(user -> user.active())
+                .ifPresent(user -> {
+                    context.getClaims().claim("principal_type", "user");
+                    context.getClaims().claim("user_id", user.id().toString());
+                    context.getClaims().claim("principal_username", user.username());
+                });
         };
     }
 }

@@ -58,7 +58,7 @@ class AuditController {
         }
         OffsetPage<AuditLog> logs = this.audits.list(entityType, pagination.getPage(), pagination.getPageSize());
         return this.responses.ok(
-            logs.items().stream().map(Response::from).toList(),
+            logs.items().stream().map(this::response).toList(),
             new ApiResponse.OffsetPagination(pagination, logs),
             "resource.audit.listed",
             "Audit logs listed"
@@ -73,17 +73,17 @@ class AuditController {
         ActorResponse actor,
         Instant occurredAt,
         List<ChangeResponse> changes
-    ) {
-        static Response from(AuditLog log) {
-            return new Response(
-                log.id(),
-                log.entityType(),
-                log.entityId(),
-                ActorResponse.from(log.actor()),
-                log.occurredAt(),
-                log.changes().stream().map(ChangeResponse::from).toList()
-            );
-        }
+    ) {}
+
+    private Response response(AuditLog log) {
+        return new Response(
+            log.id(),
+            log.entityType(),
+            log.entityId(),
+            ActorResponse.from(log.actor()),
+            log.occurredAt(),
+            log.changes().stream().map(ChangeResponse::from).toList()
+        );
     }
 
     @Schema(name = "AuditActor")
