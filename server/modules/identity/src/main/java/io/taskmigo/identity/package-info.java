@@ -5,6 +5,7 @@
         "audit :: append-input",
         "audit :: events",
         "audit :: model",
+        "audit :: privacy-input",
         "database :: criteria",
         "query",
         "query :: model",
