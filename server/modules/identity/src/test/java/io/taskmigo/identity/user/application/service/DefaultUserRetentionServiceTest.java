@@ -91,11 +91,7 @@ class DefaultUserRetentionServiceTest {
 
         // Assert
         assertThat(tombstoned).isZero();
-        verify(tombstones, never()).tombstone(
-            any(),
-            any(),
-            any()
-        );
+        verify(tombstones, never()).tombstone(any(), any(), any());
     }
 
     /**
@@ -127,11 +123,7 @@ class DefaultUserRetentionServiceTest {
         when(users.claimRetainedForUpdate(second.id())).thenReturn(Optional.of(secondUser));
         doThrow(new IllegalStateException("simulated failure"))
             .when(tombstones)
-            .tombstone(
-                eq(firstUser),
-                any(),
-                eq(NOW)
-            );
+            .tombstone(eq(firstUser), any(), eq(NOW));
         var service = new DefaultUserRetentionService(users, configuration, tombstones, directTransactions());
 
         // Act
@@ -139,11 +131,7 @@ class DefaultUserRetentionServiceTest {
 
         // Assert
         assertThat(tombstoned).isEqualTo(1);
-        verify(tombstones).tombstone(
-            eq(secondUser),
-            any(),
-            eq(NOW)
-        );
+        verify(tombstones).tombstone(eq(secondUser), any(), eq(NOW));
     }
 
     private static ConfigurationSnapshot configuration(String retention) {

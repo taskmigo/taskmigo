@@ -61,9 +61,7 @@ class RequestAuthorizationManagerTest {
             .build();
         JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt, List.of(), "alice");
         UserService users = mock(UserService.class);
-        when(users.require(userId)).thenReturn(
-            new UserInfo(userId, "alice", "Alice", "User", Set.of(), "Alice User")
-        );
+        when(users.require(userId)).thenReturn(new UserInfo(userId, "alice", "Alice", "User", Set.of(), "Alice User"));
         RequestAuthorizationManager manager = new RequestAuthorizationManager(authorization, users);
 
         // Act
@@ -107,9 +105,7 @@ class RequestAuthorizationManagerTest {
             .build();
         JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt, List.of());
         UserService users = mock(UserService.class);
-        when(users.require(userId)).thenReturn(
-            new UserInfo(userId, "alice", "Alice", "User", Set.of(), "Alice User")
-        );
+        when(users.require(userId)).thenReturn(new UserInfo(userId, "alice", "Alice", "User", Set.of(), "Alice User"));
         RequestAuthorizationManager manager = new RequestAuthorizationManager(authorization, users);
 
         // Act
@@ -187,9 +183,7 @@ class RequestAuthorizationManagerTest {
             .build();
         JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt, List.of());
         UserService users = mock(UserService.class);
-        when(users.require(userId)).thenReturn(
-            new UserInfo(userId, "alice", "Alice", "User", Set.of(), "Alice User")
-        );
+        when(users.require(userId)).thenReturn(new UserInfo(userId, "alice", "Alice", "User", Set.of(), "Alice User"));
         RequestAuthorizationManager manager = new RequestAuthorizationManager(authorization, users);
 
         // Act
