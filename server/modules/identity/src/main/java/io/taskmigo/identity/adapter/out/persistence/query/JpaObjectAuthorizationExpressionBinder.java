@@ -293,36 +293,26 @@ final class JpaObjectAuthorizationExpressionBinder {
         if (value == null || type == null || type.isInstance(value)) {
             return value;
         }
-        if (type == UUID.class && value instanceof String text) {
-            return UUID.fromString(text);
-        }
-        if (type.isEnum() && value instanceof String text) {
-            Object[] constants = type.getEnumConstants();
-            if (constants == null) {
-                throw failure("Persistence enum constants are unavailable for " + type.getSimpleName());
-            }
-            for (Object constant : constants) {
-                if (((Enum<?>) constant).name().equals(text)) {
-                    return constant;
+        return switch (value) {
+            case String text when type == UUID.class -> UUID.fromString(text);
+            case String text when type.isEnum() -> {
+                Object[] constants = type.getEnumConstants();
+                if (constants == null) {
+                    throw failure("Persistence enum constants are unavailable for " + type.getSimpleName());
                 }
+                for (Object constant : constants) {
+                    if (((Enum<?>) constant).name().equals(text)) {
+                        yield constant;
+                    }
+                }
+                throw failure("Predicate enum value is not valid for " + type.getSimpleName());
             }
-            throw failure("Predicate enum value is not valid for " + type.getSimpleName());
-        }
-        if (value instanceof Number number) {
-            if (type == Integer.class || type == int.class) {
-                return number.intValue();
-            }
-            if (type == Long.class || type == long.class) {
-                return number.longValue();
-            }
-            if (type == Double.class || type == double.class) {
-                return number.doubleValue();
-            }
-            if (type == Float.class || type == float.class) {
-                return number.floatValue();
-            }
-        }
-        throw failure("Predicate value has incompatible persistence type");
+            case Number number when type == Integer.class || type == int.class -> number.intValue();
+            case Number number when type == Long.class || type == long.class -> number.longValue();
+            case Number number when type == Double.class || type == double.class -> number.doubleValue();
+            case Number number when type == Float.class || type == float.class -> number.floatValue();
+            default -> throw failure("Predicate value has incompatible persistence type");
+        };
     }
 
     private static IllegalArgumentException unsupported(String kind) {
