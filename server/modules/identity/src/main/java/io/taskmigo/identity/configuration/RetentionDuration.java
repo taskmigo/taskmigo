@@ -27,7 +27,7 @@ public record RetentionDuration(Duration duration) {
         return this.duration.toDays();
     }
 
-    /// Returns whether retention requires immediate physical purge.
+    /// Returns whether deletion must tombstone the User immediately.
     public boolean immediate() {
         return this.duration.isZero();
     }
