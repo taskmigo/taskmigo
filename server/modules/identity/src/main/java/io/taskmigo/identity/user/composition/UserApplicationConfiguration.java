@@ -10,6 +10,7 @@ import io.taskmigo.identity.membership.application.port.in.internal.MembershipCl
 import io.taskmigo.identity.user.application.port.in.api.UserRegistrationService;
 import io.taskmigo.identity.user.application.port.in.api.UserRetentionService;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
+import io.taskmigo.identity.user.application.port.in.api.UserSessionLifecycleService;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
 import io.taskmigo.identity.user.application.port.in.internal.UserDeletionLifecycleService;
 import io.taskmigo.identity.user.application.port.in.internal.UserTombstoneService;
@@ -22,6 +23,7 @@ import io.taskmigo.identity.user.application.service.DefaultUserCommandService;
 import io.taskmigo.identity.user.application.service.DefaultUserDeletionLifecycleService;
 import io.taskmigo.identity.user.application.service.DefaultUserRetentionService;
 import io.taskmigo.identity.user.application.service.DefaultUserService;
+import io.taskmigo.identity.user.application.service.DefaultUserSessionLifecycleService;
 import io.taskmigo.identity.user.application.service.DefaultUserTombstoneService;
 import io.taskmigo.identity.user.application.service.UserAccessRevocationService;
 import io.taskmigo.identity.user.application.service.UserRegistrationApplicationService;
@@ -66,6 +68,11 @@ class UserApplicationConfiguration {
     @Bean
     UserCommandService defaultUserCommandService(UserCommandRepository users) {
         return new DefaultUserCommandService(users);
+    }
+
+    @Bean
+    UserSessionLifecycleService userSessionLifecycleService(UserCommandService users, TransactionRunner transactions) {
+        return new DefaultUserSessionLifecycleService(users, transactions);
     }
 
     @Bean

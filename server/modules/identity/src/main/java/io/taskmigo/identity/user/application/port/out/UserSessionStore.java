@@ -1,6 +1,8 @@
 package io.taskmigo.identity.user.application.port.out;
 
-/// Removes persisted authorization-server session state owned by one User identity.
+import java.util.UUID;
+
+/// Removes persisted HTTP sessions and OAuth state owned by one stable User identity.
 public interface UserSessionStore {
-    boolean revoke(String username);
+    boolean revoke(UUID userId, String username);
 }

@@ -7,6 +7,7 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
+import io.taskmigo.web.adapter.in.security.session.UserSessionPrincipal;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.security.oauth2.server.authorization.autoconfigure.servlet.OAuth2AuthorizationServerProperties;
 import org.springframework.context.annotation.Bean;
@@ -39,11 +40,14 @@ class AuthorizationServerConfiguration {
                 throw new UsernameNotFoundException("User has no interactive credential");
             }
 
-            return User.withUsername(user.username())
-                .password(passwordHash)
-                .roles(SystemUser.USERNAME.equals(user.username()) ? "SYSTEM" : "USER")
-                .disabled(!user.active())
-                .build();
+            return new UserSessionPrincipal(
+                user.id(),
+                User.withUsername(user.username())
+                    .password(passwordHash)
+                    .roles(SystemUser.USERNAME.equals(user.username()) ? "SYSTEM" : "USER")
+                    .disabled(!user.active())
+                    .build()
+            );
         };
     }
 

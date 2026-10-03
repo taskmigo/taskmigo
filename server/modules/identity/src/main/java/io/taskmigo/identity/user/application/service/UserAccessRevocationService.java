@@ -33,7 +33,7 @@ public final class UserAccessRevocationService {
         SubjectRef subject = IdentitySubjects.user(user.id());
         boolean roles = !this.grantQueries.roleIds(subject).isEmpty();
         boolean statements = !this.grantQueries.statementIds(subject).isEmpty();
-        boolean sessions = this.sessions.revoke(user.username().value());
+        boolean sessions = this.sessions.revoke(user.id(), user.username().value());
 
         this.grantAssignments.setRoles(subject, Set.of());
         this.grantAssignments.setStatements(subject, Set.of());
