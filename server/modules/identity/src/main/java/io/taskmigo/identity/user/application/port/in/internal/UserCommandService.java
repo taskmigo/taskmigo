@@ -34,7 +34,9 @@ public interface UserCommandService {
 
     Optional<User> findByUsernameForUpdate(@Nullable String username);
 
-    List<UUID> retainedBefore(Instant cutoff);
+    List<RetainedUserCandidate> retainedCandidates(Instant cutoff, @Nullable RetainedUserCandidate after);
+
+    Optional<User> claimRetainedForUpdate(UUID id);
 
     void save(User user);
 
