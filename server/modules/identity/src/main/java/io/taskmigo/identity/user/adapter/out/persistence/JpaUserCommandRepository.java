@@ -1,13 +1,13 @@
 package io.taskmigo.identity.user.adapter.out.persistence;
 
 import io.taskmigo.identity.user.UserException;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
 import io.taskmigo.identity.user.UserStatus;
-import io.taskmigo.identity.user.application.port.in.internal.RetainedUserCandidate;
+import io.taskmigo.identity.user.application.port.out.RetainedUserCandidate;
 import io.taskmigo.identity.user.application.port.out.UserCommandRepository;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.Username;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;

@@ -1,4 +1,4 @@
-package io.taskmigo.identity.user.application.port.in.internal;
+package io.taskmigo.identity.user.application.port.out;
 
 import java.time.Instant;
 import java.util.UUID;
