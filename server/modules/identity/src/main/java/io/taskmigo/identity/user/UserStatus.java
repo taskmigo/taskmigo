@@ -6,5 +6,5 @@ public enum UserStatus {
     SUSPENDED,
     DISABLED,
     RETAINED,
-    PURGED,
+    TOMBSTONE,
 }

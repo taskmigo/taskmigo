@@ -16,6 +16,7 @@ public final class User {
     private @Nullable UserProfile profile;
     private UserStatus status;
     private @Nullable Instant retainedAt;
+    private @Nullable Instant tombstonedAt;
     private UserCredential credential;
 
     private User(
@@ -24,6 +25,7 @@ public final class User {
         @Nullable UserProfile profile,
         UserStatus status,
         @Nullable Instant retainedAt,
+        @Nullable Instant tombstonedAt,
         UserCredential credential
     ) {
         this.id = Objects.requireNonNull(id);
@@ -31,18 +33,25 @@ public final class User {
         this.profile = profile;
         this.status = Objects.requireNonNull(status);
         this.retainedAt = retainedAt;
+        this.tombstonedAt = tombstonedAt;
         this.credential = Objects.requireNonNull(credential);
-        if ((status == UserStatus.RETAINED || status == UserStatus.PURGED) && retainedAt == null) {
-            throw new IllegalArgumentException("RETAINED and PURGED users must have retainedAt");
+        if (status == UserStatus.RETAINED && retainedAt == null) {
+            throw new IllegalArgumentException("RETAINED users must have retainedAt");
         }
-        if (status != UserStatus.RETAINED && status != UserStatus.PURGED && retainedAt != null) {
-            throw new IllegalArgumentException("Only RETAINED or PURGED users may have retainedAt");
+        if (status != UserStatus.RETAINED && status != UserStatus.TOMBSTONE && retainedAt != null) {
+            throw new IllegalArgumentException("Only RETAINED or TOMBSTONE users may have retainedAt");
         }
-        if (status == UserStatus.PURGED && (username != null || profile != null || credential.initialized())) {
-            throw new IllegalArgumentException("PURGED users cannot retain identity, profile, or credential data");
+        if (status == UserStatus.TOMBSTONE && tombstonedAt == null) {
+            throw new IllegalArgumentException("TOMBSTONE users must have tombstonedAt");
         }
-        if (status != UserStatus.PURGED && (username == null || profile == null)) {
-            throw new IllegalArgumentException("Non-PURGED users require identity and profile data");
+        if (status != UserStatus.TOMBSTONE && tombstonedAt != null) {
+            throw new IllegalArgumentException("Only TOMBSTONE users may have tombstonedAt");
+        }
+        if (status == UserStatus.TOMBSTONE && (username != null || profile != null || credential.initialized())) {
+            throw new IllegalArgumentException("TOMBSTONE users cannot retain identity, profile, or credential data");
+        }
+        if (status != UserStatus.TOMBSTONE && (username == null || profile == null)) {
+            throw new IllegalArgumentException("Non-TOMBSTONE users require identity and profile data");
         }
     }
 
@@ -63,6 +72,7 @@ public final class User {
             normalizedUsername,
             UserProfile.of(emails, firstName, lastName),
             UserStatus.ACTIVE,
+            null,
             null,
             UserCredential.empty()
         );
@@ -88,6 +98,7 @@ public final class User {
             profile,
             UserStatus.ACTIVE,
             null,
+            null,
             UserCredential.initial(initialPasswordHash)
         );
     }
@@ -101,6 +112,7 @@ public final class User {
         String lastName,
         UserStatus status,
         @Nullable Instant retainedAt,
+        @Nullable Instant tombstonedAt,
         @Nullable String passwordHash
     ) {
         return new User(
@@ -109,6 +121,7 @@ public final class User {
             UserProfile.of(emails, firstName, lastName),
             status,
             retainedAt,
+            tombstonedAt,
             UserCredential.initial(passwordHash)
         );
     }
@@ -123,7 +136,7 @@ public final class User {
         UserStatus status,
         @Nullable String passwordHash
     ) {
-        return restore(id, username, emails, firstName, lastName, status, null, passwordHash);
+        return restore(id, username, emails, firstName, lastName, status, null, null, passwordHash);
     }
 
     public UUID id() {
@@ -131,11 +144,11 @@ public final class User {
     }
 
     public Username username() {
-        return Objects.requireNonNull(this.username, "PURGED user has no username");
+        return Objects.requireNonNull(this.username, "TOMBSTONE user has no username");
     }
 
     public UserProfile profile() {
-        return Objects.requireNonNull(this.profile, "PURGED user has no profile");
+        return Objects.requireNonNull(this.profile, "TOMBSTONE user has no profile");
     }
 
     public UserStatus status() {
@@ -146,13 +159,25 @@ public final class User {
         return this.retainedAt;
     }
 
+    public @Nullable Instant tombstonedAt() {
+        return this.tombstonedAt;
+    }
+
     public UserCredential credential() {
         return this.credential;
     }
 
     /// Reconstitutes a persisted tombstone without recreating identifying data.
-    public static User restorePurged(UUID id, Instant retainedAt) {
-        return new User(id, null, null, UserStatus.PURGED, retainedAt, UserCredential.empty());
+    public static User restoreTombstone(UUID id, @Nullable Instant retainedAt, Instant tombstonedAt) {
+        return new User(
+            id,
+            null,
+            null,
+            UserStatus.TOMBSTONE,
+            retainedAt,
+            Objects.requireNonNull(tombstonedAt),
+            UserCredential.empty()
+        );
     }
 
     /// Reconciles normalized profile state and reports whether canonical User state changed.
@@ -184,7 +209,7 @@ public final class User {
     /// Moves an ordinary User into retained read-only state, preserving the first retention timestamp.
     public boolean retain(Instant retainedAt) {
         this.requireManagedDeletionAllowed();
-        if (this.status == UserStatus.RETAINED || this.status == UserStatus.PURGED) {
+        if (this.status == UserStatus.RETAINED || this.status == UserStatus.TOMBSTONE) {
             return false;
         }
         this.status = UserStatus.RETAINED;
@@ -193,23 +218,22 @@ public final class User {
     }
 
     /// Permanently removes identifying and credential data while preserving the stable User identifier.
-    public boolean purge() {
-        if (this.status == UserStatus.PURGED) {
+    public boolean tombstone(Instant tombstonedAt) {
+        this.requireManagedDeletionAllowed();
+        if (this.status == UserStatus.TOMBSTONE) {
             return false;
-        }
-        if (this.status != UserStatus.RETAINED) {
-            throw UserRuleViolation.retainedUserReadOnly();
         }
         this.username = null;
         this.profile = null;
         this.credential = UserCredential.empty();
-        this.status = UserStatus.PURGED;
+        this.status = UserStatus.TOMBSTONE;
+        this.tombstonedAt = Objects.requireNonNull(tombstonedAt);
         return true;
     }
 
-    /// Enforces that lifecycle/profile/access mutations cannot target a retained or purged User.
+    /// Enforces that lifecycle/profile/access mutations cannot target a retained or tombstone User.
     public void requireMutable() {
-        if (this.status == UserStatus.RETAINED || this.status == UserStatus.PURGED) {
+        if (this.status == UserStatus.RETAINED || this.status == UserStatus.TOMBSTONE) {
             throw UserRuleViolation.retainedUserReadOnly();
         }
     }

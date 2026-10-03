@@ -53,6 +53,10 @@ public class UserEntity {
     Instant retainedAt;
 
     @Nullable
+    @Column(name = "tombstoned_at")
+    Instant tombstonedAt;
+
+    @Nullable
     @Column(name = "password_hash")
     String passwordHash;
 
@@ -66,6 +70,7 @@ public class UserEntity {
         @Nullable String lastName,
         UserStatus status,
         @Nullable Instant retainedAt,
+        @Nullable Instant tombstonedAt,
         @Nullable String passwordHash
     ) {
         this.id = id;
@@ -75,25 +80,31 @@ public class UserEntity {
         this.lastName = lastName;
         this.status = status;
         this.retainedAt = retainedAt;
+        this.tombstonedAt = tombstonedAt;
         this.passwordHash = passwordHash;
     }
 
     static UserEntity from(User user) {
         return new UserEntity(
             user.id(),
-            user.status() == UserStatus.PURGED ? null : user.username().value(),
-            user.status() == UserStatus.PURGED ? Set.of() : user.profile().emails(),
-            user.status() == UserStatus.PURGED ? null : user.profile().firstName(),
-            user.status() == UserStatus.PURGED ? null : user.profile().lastName(),
+            user.status() == UserStatus.TOMBSTONE ? null : user.username().value(),
+            user.status() == UserStatus.TOMBSTONE ? Set.of() : user.profile().emails(),
+            user.status() == UserStatus.TOMBSTONE ? null : user.profile().firstName(),
+            user.status() == UserStatus.TOMBSTONE ? null : user.profile().lastName(),
             user.status(),
             user.retainedAt(),
+            user.tombstonedAt(),
             user.credential().passwordHash()
         );
     }
 
     User toDomain() {
-        if (this.status == UserStatus.PURGED) {
-            return User.restorePurged(this.id, java.util.Objects.requireNonNull(this.retainedAt));
+        if (this.status == UserStatus.TOMBSTONE) {
+            return User.restoreTombstone(
+                this.id,
+                this.retainedAt,
+                java.util.Objects.requireNonNull(this.tombstonedAt)
+            );
         }
         return User.restore(
             this.id,
@@ -103,6 +114,7 @@ public class UserEntity {
             this.lastName,
             this.status,
             this.retainedAt,
+            this.tombstonedAt,
             this.passwordHash
         );
     }
@@ -137,6 +149,11 @@ public class UserEntity {
     @Nullable
     Instant retainedAt() {
         return this.retainedAt;
+    }
+
+    @Nullable
+    Instant tombstonedAt() {
+        return this.tombstonedAt;
     }
 
     @Nullable

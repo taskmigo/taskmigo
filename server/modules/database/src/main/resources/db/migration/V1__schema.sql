@@ -13,11 +13,16 @@ CREATE TABLE users (
     last_name VARCHAR(100),
     status VARCHAR(16) NOT NULL,
     retained_at timestamptz(3),
+    tombstoned_at timestamptz(3),
     password_hash VARCHAR(255),
     CONSTRAINT uk_users_username UNIQUE (username),
-    CONSTRAINT ck_users_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DISABLED', 'RETAINED', 'PURGED')),
-    CONSTRAINT ck_users_identity CHECK ((status = 'PURGED' AND username IS NULL AND first_name IS NULL AND last_name IS NULL AND password_hash IS NULL) OR (status <> 'PURGED' AND username IS NOT NULL AND first_name IS NOT NULL AND last_name IS NOT NULL AND btrim(first_name) <> '' AND btrim(last_name) <> '')),
-    CONSTRAINT ck_users_retained_at CHECK ((status IN ('RETAINED', 'PURGED')) = (retained_at IS NOT NULL))
+    CONSTRAINT ck_users_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DISABLED', 'RETAINED', 'TOMBSTONE')),
+    CONSTRAINT ck_users_identity CHECK ((status = 'TOMBSTONE' AND username IS NULL AND first_name IS NULL AND last_name IS NULL AND password_hash IS NULL) OR (status <> 'TOMBSTONE' AND username IS NOT NULL AND first_name IS NOT NULL AND last_name IS NOT NULL AND btrim(first_name) <> '' AND btrim(last_name) <> '')),
+    CONSTRAINT ck_users_lifecycle_timestamps CHECK (
+        (status = 'RETAINED' AND retained_at IS NOT NULL AND tombstoned_at IS NULL)
+        OR (status = 'TOMBSTONE' AND tombstoned_at IS NOT NULL)
+        OR (status NOT IN ('RETAINED', 'TOMBSTONE') AND retained_at IS NULL AND tombstoned_at IS NULL)
+    )
 );
 
 CREATE TABLE user_emails (
