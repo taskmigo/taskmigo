@@ -73,8 +73,7 @@ class AuditController {
         ActorResponse actor,
         Instant occurredAt,
         List<ChangeResponse> changes
-    ) {
-    }
+    ) {}
 
     private Response response(AuditLog log) {
         return new Response(
