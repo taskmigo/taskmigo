@@ -37,13 +37,13 @@ final class EmbeddedLanguageCompiler {
         return this.compilerFingerprint;
     }
 
-    SemanticAst compile(String source, EnvironmentSchema schema) {
-        return this.compile(source, schema, CompilationProfile.program());
+    SemanticAst compile(String source, CompilerEnvironment environment) {
+        return this.compile(source, environment, CompilationProfile.program());
     }
 
-    SemanticAst compile(String source, EnvironmentSchema schema, CompilationProfile profile) {
+    SemanticAst compile(String source, CompilerEnvironment environment, CompilationProfile profile) {
         Objects.requireNonNull(source);
-        Objects.requireNonNull(schema);
+        Objects.requireNonNull(environment);
         Objects.requireNonNull(profile);
         if (source.length() > this.limits.maxSourceCharacters()) {
             throw failure(
@@ -81,7 +81,7 @@ final class EmbeddedLanguageCompiler {
         EmbeddedLanguageParser parser = new EmbeddedLanguageParser(tokens);
         parser.removeErrorListeners();
         parser.addErrorListener(errors);
-        LanguageCompilerVisitor visitor = new LanguageCompilerVisitor(schema, this.limits, profile);
+        LanguageCompilerVisitor visitor = new LanguageCompilerVisitor(environment, this.limits, profile);
         SemanticAst.Expression expression;
         if (profile.mode() == CompilationMode.PROGRAM) {
             EmbeddedLanguageParser.ProgramContext program = parser.program();
@@ -99,11 +99,12 @@ final class EmbeddedLanguageCompiler {
         return new SemanticAst(
             expression,
             LanguageFingerprint.of(source),
-            schema.fingerprint(),
+            environment.fingerprint(),
+            environment.schemaFingerprints(),
             this.compilerFingerprint,
             profile.mode(),
             profile.fingerprint(),
-            schema.rootCount(),
+            environment.rootCount(),
             visitor.localSlotCount(),
             RequiredRoots.from(expression)
         );

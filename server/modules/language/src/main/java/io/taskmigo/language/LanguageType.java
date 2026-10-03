@@ -22,7 +22,7 @@ public sealed interface LanguageType permits LanguageType.Scalar, LanguageType.L
     }
 
     /// A schema-defined structured value with statically declared properties.
-    record StructuredType(String name, Map<String, EnvironmentSchema.Field> fields) implements LanguageType {
+    record StructuredType(String name, Map<String, Field> fields) implements LanguageType {
         public StructuredType {
             Objects.requireNonNull(name);
             if (name.isBlank()) {
@@ -32,7 +32,7 @@ public sealed interface LanguageType permits LanguageType.Scalar, LanguageType.L
         }
 
         /// Returns the schema field for a statically declared property.
-        public EnvironmentSchema.@Nullable Field field(String property) {
+        public @Nullable Field field(String property) {
             return this.fields.get(property);
         }
     }

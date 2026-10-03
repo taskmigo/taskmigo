@@ -1,5 +1,9 @@
 package io.taskmigo.language;
 
+import static io.taskmigo.language.LanguageTestEnvironment.environment;
+import static io.taskmigo.language.LanguageTestEnvironment.field;
+import static io.taskmigo.language.LanguageTestEnvironment.resource;
+import static io.taskmigo.language.LanguageTestEnvironment.value;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -11,16 +15,13 @@ import org.junit.jupiter.api.Test;
 
 class AlphaSixLanguageTest {
 
-    private final EnvironmentSchema schema = new EnvironmentSchema(
-        "alpha6",
+    private final CompilerEnvironment schema = environment(
         Map.of(
             "record",
-            new EnvironmentSchema.Root(
-                new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, true),
-                Map.of(
-                    "emails",
-                    new EnvironmentSchema.Field(new LanguageType.ListType(LanguageType.Scalar.STRING), false, true)
-                )
+            resource(
+                "test:alpha6",
+                true,
+                field("emails", new LanguageType.ListType(LanguageType.Scalar.STRING), false)
             )
         )
     );
@@ -74,15 +75,8 @@ class AlphaSixLanguageTest {
     @DisplayName("should preserve float decimal semantics when evaluating numeric input")
     void shouldPreserveFloatDecimalSemanticsWhenEvaluatingNumericInput() {
         // Arrange
-        EnvironmentSchema numericSchema = new EnvironmentSchema(
-            "numeric",
-            Map.of(
-                "number",
-                new EnvironmentSchema.Root(
-                    new EnvironmentSchema.Field(LanguageType.Scalar.NUMBER, false, false),
-                    Map.of()
-                )
-            )
+        CompilerEnvironment numericSchema = environment(
+            Map.of("number", value("test:number", LanguageType.Scalar.NUMBER, false))
         );
         CompiledSource source = new LanguageCompiler().compile(
             "number == 0.1",

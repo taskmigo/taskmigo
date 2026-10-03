@@ -32,8 +32,8 @@ final class EmbeddedLanguageEvaluator {
     }
 
     @Nullable
-    Object evaluate(SemanticAst program, EnvironmentSchema schema, Map<String, ?> roots) {
-        if (!program.schemaFingerprint().isEmpty() && !program.schemaFingerprint().equals(schema.fingerprint())) {
+    Object evaluate(SemanticAst program, CompilerEnvironment environment, Map<String, ?> roots) {
+        if (!program.schemaFingerprint().isEmpty() && !program.schemaFingerprint().equals(environment.fingerprint())) {
             throw failure("compiled program schema does not match the evaluation schema", program.expression().span());
         }
         return this.evaluate(program, roots);
@@ -194,9 +194,9 @@ final class EmbeddedLanguageEvaluator {
     }
 
     private static boolean matchesFields(Map<?, ?> values, LanguageType.StructuredType type) {
-        for (Map.Entry<String, EnvironmentSchema.Field> entry : type.fields().entrySet()) {
+        for (Map.Entry<String, Field> entry : type.fields().entrySet()) {
             Object nested = values.get(entry.getKey());
-            EnvironmentSchema.Field field = entry.getValue();
+            Field field = entry.getValue();
             if (nested != null) {
                 if (!matchesType(nested, field.type())) {
                     return false;

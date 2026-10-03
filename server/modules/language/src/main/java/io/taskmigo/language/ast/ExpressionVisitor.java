@@ -1,7 +1,10 @@
 package io.taskmigo.language.ast;
 
+import io.taskmigo.language.FieldId;
+import io.taskmigo.language.FieldPath;
 import io.taskmigo.language.LanguageDiagnostic.SourceSpan;
 import io.taskmigo.language.LanguageType;
+import io.taskmigo.language.ResourceType;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -9,7 +12,17 @@ import org.jspecify.annotations.Nullable;
 public interface ExpressionVisitor<R> {
     R literal(@Nullable Object value, LanguageType type, SourceSpan span);
 
-    R reference(String root, List<String> path, LanguageType type, boolean nullable, boolean symbolic, SourceSpan span);
+    R reference(
+        String root,
+        List<String> runtimePath,
+        @Nullable ResourceType resourceType,
+        @Nullable FieldId fieldId,
+        @Nullable FieldPath fieldPath,
+        LanguageType type,
+        boolean nullable,
+        boolean symbolic,
+        SourceSpan span
+    );
 
     R list(List<R> values, LanguageType type, SourceSpan span);
 
