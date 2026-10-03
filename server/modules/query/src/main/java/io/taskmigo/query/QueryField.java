@@ -1,6 +1,7 @@
 package io.taskmigo.query;
 
 import io.taskmigo.foundation.TypeDescriptor;
+import io.taskmigo.language.FieldId;
 import java.util.Objects;
 import java.util.Set;
 
@@ -10,6 +11,11 @@ public record QueryField(QueryPath path, TypeDescriptor type, boolean nullable, 
         Objects.requireNonNull(path);
         Objects.requireNonNull(type);
         operators = Set.copyOf(operators);
+    }
+
+    /// Returns the stable semantic field identity for an owning resource type.
+    public FieldId id(String resourceType) {
+        return FieldId.of("field:" + resourceType + ":" + this.path.text());
     }
 
     public QueryField(QueryPath path, TypeDescriptor type, boolean nullable) {
