@@ -48,9 +48,7 @@ public final class ObjectAuthorizationService implements ObjectAuthorization {
         ObjectAuthorizationBinding<Q> binding
     ) {
         if (binding instanceof ObjectAuthorizationSchema<?> schema) {
-            @SuppressWarnings("unchecked")
-            ObjectAuthorizationSchema<Q> typed = (ObjectAuthorizationSchema<Q>) schema;
-            return this.authorize(context, typed);
+            return this.authorize(context, castSchema(schema));
         }
         throw new AuthorizationException("Object Authorization binding is not connected to an execution schema");
     }
@@ -86,6 +84,10 @@ public final class ObjectAuthorizationService implements ObjectAuthorization {
         } catch (EmbeddedLanguageException | IllegalArgumentException exception) {
             throw new AuthorizationException("Invalid Object authorization policy: " + exception.getMessage());
         }
+    }
+
+    private static <Q> ObjectAuthorizationSchema<Q> castSchema(ObjectAuthorizationSchema<?> schema) {
+        return (ObjectAuthorizationSchema<Q>) schema;
     }
 
     /// Validates an object policy independently against every schema governed by its target.

@@ -15,11 +15,6 @@ public record ObjectAuthorizationField(
         operators = Set.copyOf(operators);
     }
 
-    /// Returns the stable semantic identity used by compiled Object Authorization references.
-    public FieldId id(String resourceType) {
-        return FieldId.of("field:" + resourceType + ":" + this.path().text());
-    }
-
     /// Creates a field with the standard scalar comparison operators.
     public ObjectAuthorizationField(ObjectAuthorizationPath path, TypeDescriptor type, boolean nullable) {
         this(
@@ -36,5 +31,10 @@ public record ObjectAuthorizationField(
                 ObjectAuthorizationOperator.IN
             )
         );
+    }
+
+    /// Returns the stable semantic identity used by compiled Object Authorization references.
+    public FieldId id(String resourceType) {
+        return FieldId.of("field:" + resourceType + ":" + this.path().text());
     }
 }

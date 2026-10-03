@@ -13,11 +13,6 @@ public record QueryField(QueryPath path, TypeDescriptor type, boolean nullable, 
         operators = Set.copyOf(operators);
     }
 
-    /// Returns the stable semantic field identity for an owning resource type.
-    public FieldId id(String resourceType) {
-        return FieldId.of("field:" + resourceType + ":" + this.path.text());
-    }
-
     public QueryField(QueryPath path, TypeDescriptor type, boolean nullable) {
         this(
             path,
@@ -25,5 +20,10 @@ public record QueryField(QueryPath path, TypeDescriptor type, boolean nullable, 
             nullable,
             Set.of(QueryOperator.EQ, QueryOperator.NE, QueryOperator.GT, QueryOperator.GE, QueryOperator.LT, QueryOperator.LE, QueryOperator.IN)
         );
+    }
+
+    /// Returns the stable semantic field identity for an owning resource type.
+    public FieldId id(String resourceType) {
+        return FieldId.of("field:" + resourceType + ":" + this.path.text());
     }
 }
