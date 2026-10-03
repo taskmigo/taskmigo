@@ -92,14 +92,18 @@ public final class SpringMvcObjectAuthorizationTargetResolver
             throw new IllegalStateException("A handler may declare only one ObjectAuthorizationPredicate");
         }
         Class<?> objectType = this.objectType(predicateParameters.getFirst());
+        List<ObjectAuthorizationBinding<?>> matches = this.bindings
+            .stream()
+            .filter(candidate -> candidate.objectType().equals(objectType))
+            .toList();
+        if (matches.isEmpty()) {
+            throw new IllegalStateException("No Object Authorization binding registered for " + objectType.getName());
+        }
+        if (matches.size() != 1) {
+            throw new IllegalStateException("multiple Object Authorization bindings registered for " + objectType.getName());
+        }
         return Optional.of(
-            this.bindings
-                .stream()
-                .filter(candidate -> candidate.objectType().equals(objectType))
-                .findFirst()
-                .orElseThrow(() ->
-                    new IllegalStateException("No Object Authorization binding registered for " + objectType.getName())
-                )
+            matches.getFirst()
         );
     }
 

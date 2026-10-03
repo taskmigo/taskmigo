@@ -47,13 +47,19 @@ public final class ObjectAuthorizationPredicateArgumentResolver implements Handl
         if (objectType == null) {
             throw new IllegalStateException("ObjectAuthorizationPredicate must declare an object type");
         }
-        ObjectAuthorizationBinding<?> binding = this.bindings
+        List<ObjectAuthorizationBinding<?>> matches = this.bindings
             .stream()
             .filter(candidate -> candidate.objectType().equals(objectType))
-            .findFirst()
-            .orElseThrow(() ->
-                new IllegalStateException("No Object Authorization binding registered for " + objectType.getName())
+            .toList();
+        if (matches.isEmpty()) {
+            throw new IllegalStateException("No Object Authorization binding registered for " + objectType.getName());
+        }
+        if (matches.size() != 1) {
+            throw new IllegalStateException(
+                "multiple Object Authorization bindings registered for " + objectType.getName()
             );
+        }
+        ObjectAuthorizationBinding<?> binding = matches.getFirst();
         Object value = webRequest.getAttribute(AuthorizationContext.ATTRIBUTE, RequestAttributes.SCOPE_REQUEST);
         if (!(value instanceof AuthorizationContext context)) {
             throw new IllegalStateException("authorization context is missing for object access");
