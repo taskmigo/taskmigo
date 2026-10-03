@@ -2,8 +2,8 @@ package io.taskmigo.identity.user.application.service;
 
 import io.taskmigo.audit.model.AuditChange;
 import io.taskmigo.identity.user.application.port.in.internal.UserCommandService;
-import io.taskmigo.identity.user.application.port.out.RetainedUserCandidate;
 import io.taskmigo.identity.user.application.port.in.internal.UserMutationResult;
+import io.taskmigo.identity.user.application.port.out.RetainedUserCandidate;
 import io.taskmigo.identity.user.application.port.out.UserCommandRepository;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.Username;
