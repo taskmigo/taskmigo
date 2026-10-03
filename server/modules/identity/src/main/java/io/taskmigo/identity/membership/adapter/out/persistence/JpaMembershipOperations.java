@@ -39,4 +39,17 @@ public class JpaMembershipOperations implements MembershipRepository {
     public List<UUID> groupsForUser(UUID userId) {
         return this.memberships.findGroupIdsByUserId(userId);
     }
+
+    @Override
+    public boolean removeAllForUser(UUID userId) {
+        List<UUID> groupIds = this.memberships.findGroupIdsByUserId(userId);
+        if (groupIds.isEmpty()) {
+            return false;
+        }
+        this.memberships.deleteAllById(
+            groupIds.stream().map(groupId -> new GroupMembershipId(groupId, userId)).toList()
+        );
+        this.memberships.flush();
+        return true;
+    }
 }
