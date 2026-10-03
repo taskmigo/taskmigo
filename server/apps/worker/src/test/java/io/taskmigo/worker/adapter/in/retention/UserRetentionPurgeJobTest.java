@@ -26,10 +26,7 @@ class UserRetentionPurgeJobTest {
         // Arrange
         Instant now = Instant.parse("2026-10-03T00:00:00Z");
         UserRetentionService retention = mock(UserRetentionService.class);
-        UserRetentionPurgeJob job = new UserRetentionPurgeJob(
-            retention,
-            Clock.fixed(now, ZoneOffset.UTC)
-        );
+        UserRetentionPurgeJob job = new UserRetentionPurgeJob(retention, Clock.fixed(now, ZoneOffset.UTC));
 
         // Act
         job.purgeExpiredUsers();
