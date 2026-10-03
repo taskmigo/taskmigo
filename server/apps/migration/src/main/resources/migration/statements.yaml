@@ -54,24 +54,24 @@
   policy: object.username == "system"
   absent: false
 
-- code: user_mutation_object_allow
-  description: Allows authorized operators to target User mutation objects.
+- code: user_delete_object_allow
+  description: Allows authorized operators to target User deletion objects.
   effect: allow
   scope: object
   target:
     api:
-      method: "*"
+      method: DELETE
       path: /api/v0/users/.*
   policy: true
   absent: false
 
-- code: user_mutation_deny_retained
-  description: Prevents mutation or repeated deletion of retained Users.
+- code: user_delete_deny_retained
+  description: Prevents repeated deletion of retained Users.
   effect: deny
   scope: object
   target:
     api:
-      method: "*"
+      method: DELETE
       path: /api/v0/users/.*
   policy: object.status == "RETAINED"
   absent: false
@@ -85,4 +85,26 @@
       method: DELETE
       path: /api/v0/users/.*
   policy: object.username == "system"
+  absent: false
+
+- code: user_statement_mutation_object_allow
+  description: Allows authorized operators to target direct User statement mutations.
+  effect: allow
+  scope: object
+  target:
+    api:
+      method: PATCH
+      path: /api/v0/users/.*/statements
+  policy: true
+  absent: false
+
+- code: user_statement_mutation_deny_retained
+  description: Prevents direct statement mutation of retained Users.
+  effect: deny
+  scope: object
+  target:
+    api:
+      method: PATCH
+      path: /api/v0/users/.*/statements
+  policy: object.status == "RETAINED"
   absent: false

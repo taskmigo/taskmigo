@@ -37,12 +37,12 @@ public class JpaUserQueryRepository implements UserQueryRepository {
 
     @Override
     public Optional<UserInfo> find(UUID id) {
-        return this.users.findById(id).filter(user -> user.status() != UserStatus.PURGED).map(JpaUserQueryRepository::info);
+        return this.users.findById(id).filter(user -> user.status() != UserStatus.TOMBSTONE).map(JpaUserQueryRepository::info);
     }
 
     @Override
     public Optional<UserInfo> find(UUID id, ObjectAuthorizationPredicate<UserInfo> authorization) {
-        Specification<UserEntity> idMatch = (root, query, builder) -> builder.and(builder.equal(root.get("id"), id), builder.notEqual(root.get("status"), UserStatus.PURGED));
+        Specification<UserEntity> idMatch = (root, query, builder) -> builder.and(builder.equal(root.get("id"), id), builder.notEqual(root.get("status"), UserStatus.TOMBSTONE));
         return this.users.findOne(idMatch.and(this.objectBinder.bind(authorization))).map(JpaUserQueryRepository::info);
     }
 
@@ -53,7 +53,7 @@ public class JpaUserQueryRepository implements UserQueryRepository {
 
     @Override
     public boolean exists(UUID id) {
-        return this.users.existsById(id);
+        return this.users.findById(id).filter(user -> user.status() != UserStatus.TOMBSTONE).isPresent();
     }
 
     @Override
@@ -64,7 +64,7 @@ public class JpaUserQueryRepository implements UserQueryRepository {
         ObjectAuthorizationPredicate<UserInfo> authorization
     ) {
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
-        Specification<UserEntity> visible = (root, query, builder) -> builder.notEqual(root.get("status"), UserStatus.PURGED);
+        Specification<UserEntity> visible = (root, query, builder) -> builder.notEqual(root.get("status"), UserStatus.TOMBSTONE);
         var result = this.users.findAll(
             visible.and(this.queryBinder.bind(filter)).and(this.objectBinder.bind(authorization)),
             pageable

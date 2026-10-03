@@ -9,6 +9,7 @@ import io.taskmigo.identity.adapter.out.persistence.query.JpaQueryPredicateBinde
 import io.taskmigo.identity.adapter.out.persistence.query.ObjectAuthorizationPredicateBinder;
 import io.taskmigo.identity.adapter.out.persistence.query.QueryPredicateBinder;
 import io.taskmigo.identity.user.UserInfo;
+import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.query.QueryField;
 import io.taskmigo.query.QueryPath;
 import io.taskmigo.query.QuerySchema;
@@ -51,6 +52,7 @@ public class UserResourceSchemas {
                 objectField("username", STRING_TYPE),
                 objectField("firstName", STRING_TYPE),
                 objectField("lastName", STRING_TYPE),
+                objectField("status", STRING_TYPE),
                 objectNullable("retainedAt")
             )
         );
@@ -105,6 +107,8 @@ public class UserResourceSchemas {
             "firstName",
             "lastName",
             "lastName",
+            "status",
+            "status",
             "retainedAt",
             "retainedAt"
         );
@@ -120,6 +124,8 @@ public class UserResourceSchemas {
             String.class,
             "lastName",
             String.class,
+            "status",
+            UserStatus.class,
             "retainedAt",
             String.class
         );

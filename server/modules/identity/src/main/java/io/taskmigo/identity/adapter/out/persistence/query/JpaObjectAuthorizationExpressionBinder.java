@@ -296,6 +296,14 @@ final class JpaObjectAuthorizationExpressionBinder {
         if (type == UUID.class && value instanceof String text) {
             return UUID.fromString(text);
         }
+        if (type.isEnum() && value instanceof String text) {
+            for (Object constant : type.getEnumConstants()) {
+                if (((Enum<?>) constant).name().equals(text)) {
+                    return constant;
+                }
+            }
+            throw failure("Predicate enum value is not valid for " + type.getSimpleName());
+        }
         if (value instanceof Number number) {
             if (type == Integer.class || type == int.class) {
                 return number.intValue();
