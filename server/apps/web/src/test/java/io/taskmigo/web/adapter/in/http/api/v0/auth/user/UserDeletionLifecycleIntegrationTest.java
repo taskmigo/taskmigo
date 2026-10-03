@@ -13,6 +13,7 @@ import io.taskmigo.web.adapter.in.http.api.v0.testing.TaskmigoApiClient.Statemen
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -145,7 +146,8 @@ class UserDeletionLifecycleIntegrationTest extends ApiIntegrationTestSupport {
             .doesNotContain("Lifecycle", managed.email(), managed.username())
             .contains("\"sensitive\":true");
 
-        String tombstoneAudit = this.jdbc.queryForObject(
+        String tombstoneAudit = Objects.requireNonNull(
+            this.jdbc.queryForObject(
             """
             select changes_json
             from audit_logs
@@ -157,6 +159,7 @@ class UserDeletionLifecycleIntegrationTest extends ApiIntegrationTestSupport {
             """,
             String.class,
             managed.id()
+            )
         );
         assertThat(tombstoneAudit)
             .contains(
@@ -299,11 +302,12 @@ class UserDeletionLifecycleIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     private int count(String sql, Object value) {
-        return this.jdbc.queryForObject(sql, Integer.class, value);
+        return Objects.requireNonNull(this.jdbc.queryForObject(sql, Integer.class, value));
     }
 
     private String lifecycleAuditChanges(UUID userId, String status) {
-        return this.jdbc.queryForObject(
+        return Objects.requireNonNull(
+            this.jdbc.queryForObject(
             """
             select changes_json
             from audit_logs
@@ -316,6 +320,7 @@ class UserDeletionLifecycleIntegrationTest extends ApiIntegrationTestSupport {
             String.class,
             userId,
             "%" + status + "%"
+            )
         );
     }
 
