@@ -68,7 +68,9 @@ public final class ObjectAuthorizationService implements ObjectAuthorization {
             for (var artifact : operation.snapshot().executableStatements()) {
                 var statement = artifact.statement();
                 if (statement.scope() == Scope.OBJECT && artifact.matches(operation.method(), operation.path())) {
-                    CompiledSource policy = artifact.policy();
+                    CompiledSource policy = artifact.statement().scope() == Scope.OBJECT
+                        ? artifact.policy(schema.resourceType(), schema.schemaFingerprint())
+                        : artifact.policy();
                     ObjectAuthorizationExpressionValidator.validate(
                         policy.map(LanguageObjectAuthorizationExpressionVisitor.INSTANCE),
                         schema
