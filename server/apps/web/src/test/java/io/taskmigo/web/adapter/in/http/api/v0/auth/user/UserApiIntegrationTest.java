@@ -352,6 +352,34 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
         assertThat(afterRepeatedDelete.retainedAt()).isEqualTo(retained.retainedAt());
     }
 
+    /**
+     * Verifies retained User statement mutation is denied by the persisted object policy.
+     *
+     * Given: an active User transitioned to RETAINED and a valid direct Statement.
+     * Expect: PATCH statements returns HTTP 403 and no direct Statement binding is created.
+     */
+    @Test
+    @DisplayName("denies statement mutation of a retained user through policy")
+    void shouldDenyRetainedUserStatementMutationThroughPolicy() {
+        // Arrange
+        UUID userId = this.create("retained-statements-" + UUID.randomUUID(), Set.of(), Set.of());
+        UUID statementId = this.createStatement("retained-statement-" + UUID.randomUUID());
+        this.api().users().delete(userId);
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.api().users().replaceStatements(userId, List.of(statementId))).isInstanceOf(
+            HttpClientErrorException.Forbidden.class
+        );
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from subject_statement_bindings where subject_type = ? and subject_id = ?",
+                Integer.class,
+                "identity:user",
+                userId
+            )
+        ).isZero();
+    }
+
     private UUID create(String username, Collection<UUID> roleIds, Collection<UUID> groupIds) {
         return this.api()
             .users()

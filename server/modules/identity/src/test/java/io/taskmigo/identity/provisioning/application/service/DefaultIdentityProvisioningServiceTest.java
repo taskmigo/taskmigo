@@ -203,10 +203,10 @@ class DefaultIdentityProvisioningServiceTest {
     }
 
     /**
-     * Verifies that deletion clears external state before deleting the canonical User aggregate.
+     * Verifies that managed deletion delegates to the shared User deletion lifecycle.
      *
      * Given: a non-system managed User resolved by the shared User command path.
-     * Expect: grants and memberships are cleared, then the aggregate is deleted and removal is reported.
+     * Expect: provisioning delegates the locked User to the shared lifecycle with the system actor.
      */
     @Test
     @DisplayName("deletes an existing managed user through the shared command path")
@@ -274,13 +274,21 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditAppender.class));
+        UserDeletionLifecycleService deletion = mock(UserDeletionLifecycleService.class);
+        var service = service(
+            users,
+            grantAssignments,
+            grantQueries,
+            groups,
+            mock(UserAuditAppender.class),
+            deletion
+        );
 
         // Act + Assert
         assertThatThrownBy(() -> service.deleteUser("system"))
             .isInstanceOf(IdentityProvisioningException.class)
             .hasMessageContaining("system user cannot be deleted");
-        verify(users, never()).delete(any());
+        verify(deletion, never()).delete(any(), any(), any());
         verify(grantAssignments, never()).setRoles(any(), any());
         verify(grantAssignments, never()).setStatements(any(), any());
         verify(groups, never()).setGroupsForUser(any(), any());
