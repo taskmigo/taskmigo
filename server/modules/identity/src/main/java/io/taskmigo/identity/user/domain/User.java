@@ -52,7 +52,9 @@ public final class User {
                     throw new IllegalArgumentException("TOMBSTONE users must have tombstonedAt");
                 }
                 if (username != null || profile != null || credential.initialized()) {
-                    throw new IllegalArgumentException("TOMBSTONE users cannot retain identity, profile, or credential data");
+                    throw new IllegalArgumentException(
+                        "TOMBSTONE users cannot retain identity, profile, or credential data"
+                    );
                 }
             }
             default -> {
