@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.port.in.api.UserRetentionService;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -189,11 +190,15 @@ class UserRetentionWorkerIntegrationTest {
     }
 
     private Instant retainedAt(UUID userId) {
-        return this.jdbc.queryForObject("select retained_at from users where id = ?", Instant.class, userId);
+        return this.jdbc
+            .queryForObject("select retained_at from users where id = ?", Timestamp.class, userId)
+            .toInstant();
     }
 
     private Instant tombstonedAt(UUID userId) {
-        return this.jdbc.queryForObject("select tombstoned_at from users where id = ?", Instant.class, userId);
+        return this.jdbc
+            .queryForObject("select tombstoned_at from users where id = ?", Timestamp.class, userId)
+            .toInstant();
     }
 
     private void installAuditFailure(UUID userId) {
