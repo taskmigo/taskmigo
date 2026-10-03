@@ -39,5 +39,4 @@ public interface UserCommandService {
     Optional<User> claimRetainedForUpdate(UUID id);
 
     void save(User user);
-
 }
