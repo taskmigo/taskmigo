@@ -673,6 +673,103 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+  /api/v0/configuration:
+    get:
+      tags:
+      - Configuration
+      summary: Get application configuration
+      operationId: get
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseApplicationConfigurationBasicMeta"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+    patch:
+      tags:
+      - Configuration
+      summary: Update application configuration
+      operationId: update
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchApplicationConfiguration"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseApplicationConfigurationBasicMeta"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
   /api/v0/audit/{entityType}/logs:
     get:
       tags:
@@ -745,12 +842,70 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+  /api/v0/users/{userId}:
+    delete:
+      tags:
+      - User
+      summary: Delete a user
+      operationId: delete
+      parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
   /api/v0/statements/{statementId}:
     delete:
       tags:
       - Statement
       summary: Delete an authorization statement
-      operationId: delete
+      operationId: delete_1
       parameters:
       - name: statementId
         in: path
@@ -1066,6 +1221,59 @@ components:
             type: string
             format: uuid
           uniqueItems: true
+    PatchApplicationConfiguration:
+      type: object
+      properties:
+        retention:
+          $ref: "#/components/schemas/PatchRetentionConfiguration"
+          writeOnly: true
+    PatchRetentionConfiguration:
+      type: object
+      properties:
+        user:
+          type: string
+          writeOnly: true
+    ApiResponseApplicationConfigurationBasicMeta:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the request completed successfully
+        statusCode:
+          type: integer
+          format: int32
+          description: HTTP status code of the response
+        message:
+          $ref: "#/components/schemas/Message"
+          description: Machine-readable and human-readable outcome message
+        error:
+          type: "null"
+          $ref: "#/components/schemas/Error"
+          description: Error details when the request fails
+        meta:
+          $ref: "#/components/schemas/BasicMeta"
+          description: Execution and pagination metadata
+        data:
+          type: "null"
+          $ref: "#/components/schemas/ApplicationConfiguration"
+          description: Response payload
+      required:
+      - data
+      - error
+      - message
+      - meta
+      - statusCode
+      - success
+    ApplicationConfiguration:
+      type: object
+      properties:
+        retention:
+          $ref: "#/components/schemas/RetentionConfiguration"
+    RetentionConfiguration:
+      type: object
+      properties:
+        user:
+          type: string
     FilteredQueryUserInfo:
       type: object
       properties:
@@ -1194,6 +1402,16 @@ components:
           uniqueItems: true
         displayName:
           type: string
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - SUSPENDED
+          - DISABLED
+          - RETAINED
+        retainedAt:
+          type: string
+          format: date-time
     FilteredQueryStatementInfo:
       type: object
       properties:
