@@ -60,11 +60,7 @@ class DefaultUserRetentionServiceTest {
 
         // Assert
         assertThat(tombstoned).isEqualTo(1);
-        verify(tombstones).tombstone(
-            user,
-            new UserMutationActor(system.id(), SystemUser.USERNAME),
-            NOW
-        );
+        verify(tombstones).tombstone(user, new UserMutationActor(system.id(), SystemUser.USERNAME), NOW);
     }
 
     /**
