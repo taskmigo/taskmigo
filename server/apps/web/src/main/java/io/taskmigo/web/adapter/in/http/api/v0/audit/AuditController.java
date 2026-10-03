@@ -11,7 +11,6 @@ import io.taskmigo.audit.model.AuditLog;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.user.UserInfo;
-import io.taskmigo.identity.user.application.port.in.api.UserService;
 import io.taskmigo.web.adapter.in.http.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponseFactory;
@@ -39,15 +38,10 @@ import org.springframework.web.bind.annotation.RestController;
 class AuditController {
 
     private final AuditQueryService audits;
-    private static final String UNKNOWN_USER = "Unknown user";
-
-    private final AuditQueryService audits;
-    private final UserService users;
     private final ApiResponseFactory responses;
 
-    AuditController(AuditQueryService audits, UserService users, ApiResponseFactory responses) {
+    AuditController(AuditQueryService audits, ApiResponseFactory responses) {
         this.audits = audits;
-        this.users = users;
         this.responses = responses;
     }
 
@@ -87,17 +81,18 @@ class AuditController {
             log.id(),
             log.entityType(),
             log.entityId(),
-            new ActorResponse(
-                log.actor().id(),
-                this.users.find(log.actor().id()).map(UserInfo::username).orElse(UNKNOWN_USER)
-            ),
+            ActorResponse.from(log.actor()),
             log.occurredAt(),
             log.changes().stream().map(ChangeResponse::from).toList()
         );
     }
 
     @Schema(name = "AuditActor")
-    record ActorResponse(UUID id, String username) {}
+    record ActorResponse(UUID id, String username) {
+        static ActorResponse from(AuditActor actor) {
+            return new ActorResponse(actor.id(), actor.username());
+        }
+    }
 
     @Schema(name = "AuditChange")
     record ChangeResponse(String field, @Nullable Object before, @Nullable Object after, boolean sensitive) {
