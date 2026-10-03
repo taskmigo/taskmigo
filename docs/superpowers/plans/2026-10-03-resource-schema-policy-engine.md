@@ -36,6 +36,7 @@
 ### Task 1: Semantic resource schema and resolved Language IR
 
 **Files:**
+
 - Create: `server/modules/language/src/main/java/io/taskmigo/language/ResourceType.java`
 - Create: `server/modules/language/src/main/java/io/taskmigo/language/FieldId.java`
 - Create: `server/modules/language/src/main/java/io/taskmigo/language/FieldPath.java`
@@ -51,6 +52,7 @@
 - Test: `server/modules/language/src/test/java/io/taskmigo/language/{ResourceSchemaTest,EmbeddedLanguageCompilerTest,LanguageConformanceTest,AlphaSixLanguageTest}.java`
 
 **Interfaces:**
+
 - Produces: `ResourceSchema.type()`, `ResourceSchema.resolve(FieldPath)`, `ResourceSchema.fingerprint()`; `ResourceSchemaResolver.resolve(ResourceType, SchemaContext)`; `CompilerEnvironment` root bindings; expression visitor references containing `ResourceType`, `FieldId`, canonical `FieldPath`, type, and nullability.
 - Consumes: existing `LanguageType`, compiler profiles, source spans, evaluator root maps, and slot/dependency machinery.
 
@@ -89,6 +91,7 @@
 ### Task 2: FieldId-based query execution bindings
 
 **Files:**
+
 - Create: `server/modules/query/src/main/java/io/taskmigo/query/QueryBinding.java`
 - Create or modify: `server/modules/query/src/main/java/io/taskmigo/query/QueryFieldBinding.java`
 - Modify: `server/modules/query/src/main/java/io/taskmigo/query/{FilterByCompiler,QueryPredicateFactory,DefaultQueryPredicates}.java`
@@ -98,6 +101,7 @@
 - Delete: `server/modules/query/src/test/java/io/taskmigo/query/{QuerySchemaIdentityTest,QuerySchemaValidatorTest}.java`
 
 **Interfaces:**
+
 - Consumes: Task 1 `ResourceSchema`, `SchemaFingerprint`, `ResourceType`, `FieldId`, `CompilerEnvironment`, and resolved visitor references.
 - Produces: `QueryBinding<Q>` compatibility metadata and `FieldId`-to-execution-field binding; opaque query expressions/predicates containing semantic field identities.
 
@@ -132,6 +136,7 @@
 ### Task 3: Shared semantic Object Authorization model
 
 **Files:**
+
 - Create: `server/modules/authorization/src/main/java/io/taskmigo/authorization/object/ObjectAuthorizationBinding.java`
 - Modify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/object/application/port/in/api/ObjectAuthorization.java`
 - Modify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/object/application/port/out/ObjectAuthorizationTargetResolver.java`
@@ -143,6 +148,7 @@
 - Delete: `server/modules/authorization/src/test/java/io/taskmigo/authorization/object/ObjectAuthorizationSchemaIdentityTest.java`
 
 **Interfaces:**
+
 - Consumes: Task 1 semantic schemas/resolved IR and Task 2 binding conventions.
 - Produces: route-resolvable `ObjectAuthorizationBinding<Q>` with `ResourceSchema`; predicates and residual expressions keyed by `FieldId` plus `SchemaFingerprint`.
 
@@ -177,6 +183,7 @@
 ### Task 4: Per-resource Statement artifacts and fingerprint-safe caching
 
 **Files:**
+
 - Modify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/request/application/service/StatementArtifactFactory.java`
 - Modify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/statement/StatementExecutionArtifact.java`
 - Modify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/request/application/model/AuthorizationOperation.java`
@@ -185,6 +192,7 @@
 - Test: `server/modules/authorization/src/test/java/io/taskmigo/authorization/object/application/service/ObjectAuthorizationServiceTest.java`
 
 **Interfaces:**
+
 - Consumes: Task 3 target bindings, schemas, and Object Authorization service.
 - Produces: request-policy artifact or immutable object-policy variants keyed by `ResourceType` and `SchemaFingerprint`; cache identity including the sorted effective schema set.
 
@@ -215,6 +223,7 @@
 ### Task 5: Migrate static resources and persistence adapters
 
 **Files:**
+
 - Modify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/{role,statement}/adapter/out/persistence/*ResourceSchemas.java`
 - Modify: `server/modules/identity/src/main/java/io/taskmigo/identity/{group,user}/adapter/out/persistence/*ResourceSchemas.java`
 - Modify: `server/modules/{authorization,identity}/src/main/java/io/taskmigo/**/adapter/out/persistence/query/{JpaQueryPredicateBinder,JpaObjectAuthorizationPredicateBinder,QueryPredicateBinder,ObjectAuthorizationPredicateBinder}.java`
@@ -222,6 +231,7 @@
 - Test: corresponding authorization and identity persistence/query binder tests.
 
 **Interfaces:**
+
 - Consumes: Tasks 1–4 resource schemas, query bindings, object bindings, predicates, and expressions.
 - Produces: one static `ResourceSchema` per Role, Statement, Group, and User surface; JPA execution mappings keyed only by stable `FieldId` values.
 
@@ -265,6 +275,7 @@
 ### Task 6: Spring HTTP and migration application integration
 
 **Files:**
+
 - Modify: `server/apps/web/src/main/java/io/taskmigo/web/adapter/in/http/support/query/FilteredQueryArgumentResolver.java`
 - Modify: `server/apps/web/src/main/java/io/taskmigo/web/adapter/in/http/support/objectauthorization/ObjectAuthorizationPredicateArgumentResolver.java`
 - Modify: `server/apps/web/src/main/java/io/taskmigo/web/adapter/out/objectauthorization/SpringMvcObjectAuthorizationTargetResolver.java`
@@ -274,6 +285,7 @@
 - Test: relevant filtered-query resolver and migration context tests.
 
 **Interfaces:**
+
 - Consumes: static application bindings from Task 5 and target-resolution contracts from Task 3.
 - Produces: Spring generic application binding to `ObjectAuthorizationPredicate<T>` and filtered-query parameters without treating `Class<T>` as semantic identity.
 
@@ -307,11 +319,13 @@
 ### Task 7: Benchmarks, architecture, and removed-contract audit
 
 **Files:**
+
 - Modify: `server/benchmarks/authorization/src/jmh/java/io/taskmigo/benchmarks/authorization/{EmbeddedLanguageCompilerBenchmark,EmbeddedLanguageRuntimeBenchmark,EmbeddedLanguageSchemaBenchmark}.java`
 - Modify: architecture tests under `server/testing/architecture/src/test/java/` only if public package boundaries change.
 - Test: relevant module architecture tests and compile tasks.
 
 **Interfaces:**
+
 - Consumes: final public contracts from Tasks 1–6.
 - Produces: compile-valid benchmark fixtures and architecture enforcement with no references to removed schema APIs.
 
@@ -342,10 +356,12 @@
 ### Task 8: Final review, local verification, PR, and CI
 
 **Files:**
+
 - Modify: `.github/pull_request_template.md` only if the target branch template itself requires a task-scoped correction; otherwise read it and update PR metadata only.
 - Modify: implementation files from Tasks 1–7 only for blocker or required integration fixes found by review/verification.
 
 **Interfaces:**
+
 - Consumes: complete coherent migration.
 - Produces: reviewer-ready history, current PR metadata, and green required checks.
 

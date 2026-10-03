@@ -165,7 +165,10 @@ class FilterByCompilerTest {
 
             @Override
             public Optional<QueryFieldBinding> field(FieldId id) {
-                return bindings.stream().filter(field -> field.id().equals(id)).findFirst();
+                return bindings
+                    .stream()
+                    .filter(field -> field.id().equals(id))
+                    .findFirst();
             }
 
             @Override

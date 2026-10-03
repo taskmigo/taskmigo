@@ -54,11 +54,7 @@ final class QueryBindingValidator {
         }
     }
 
-    private static void requireOperator(
-        QueryExpression expression,
-        QueryOperator operator,
-        QueryBinding<?> binding
-    ) {
+    private static void requireOperator(QueryExpression expression, QueryOperator operator, QueryBinding<?> binding) {
         if (operator == QueryOperator.AND || operator == QueryOperator.OR) {
             return;
         }
@@ -76,7 +72,9 @@ final class QueryBindingValidator {
                     }
                 }
             }
-            case QueryExpression.ListValue list -> list.values().forEach(value -> requireOperator(value, operator, binding));
+            case QueryExpression.ListValue list -> list.values().forEach(value ->
+                requireOperator(value, operator, binding)
+            );
             case QueryExpression.Unary unary -> requireOperator(unary.operand(), operator, binding);
             case QueryExpression.Length length -> requireOperator(length.operand(), operator, binding);
             case QueryExpression.Binary binary -> {

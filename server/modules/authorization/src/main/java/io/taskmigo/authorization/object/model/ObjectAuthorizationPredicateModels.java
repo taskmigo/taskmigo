@@ -25,15 +25,15 @@ public final class ObjectAuthorizationPredicateModels {
         ObjectAuthorizationPredicate<?> predicate,
         boolean value
     ) {
-        return wrap(schemaIdentity(predicate), new ObjectAuthorizationExpression.Literal(value));
+        return wrap(bindingIdentity(predicate), new ObjectAuthorizationExpression.Literal(value));
     }
 
     public static <Q> ObjectAuthorizationPredicate<Q> wrap(
-        String schemaIdentity,
+        String bindingIdentity,
         ObjectAuthorizationExpression expression
     ) {
         return new LogicalObjectAuthorizationPredicate<>(
-            Objects.requireNonNull(schemaIdentity),
+            Objects.requireNonNull(bindingIdentity),
             Objects.requireNonNull(expression)
         );
     }
@@ -45,12 +45,12 @@ public final class ObjectAuthorizationPredicateModels {
         return model;
     }
 
-    public static String schemaIdentity(ObjectAuthorizationPredicate<?> predicate) {
-        return model(predicate).schemaIdentity();
+    public static String bindingIdentity(ObjectAuthorizationPredicate<?> predicate) {
+        return model(predicate).bindingIdentity();
     }
 
     private record LogicalObjectAuthorizationPredicate<Q>(
-        String schemaIdentity,
+        String bindingIdentity,
         ObjectAuthorizationExpression expression
     ) implements ObjectAuthorizationPredicate<Q>, ObjectAuthorizationPredicateModel {
         @Override

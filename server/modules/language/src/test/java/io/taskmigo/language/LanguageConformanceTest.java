@@ -26,10 +26,7 @@ class LanguageConformanceTest {
     void shouldDropRequiredRootWhenShortCircuitFoldingRemovesReference() {
         // Arrange
         CompilerEnvironment schema = environment(
-            Map.of(
-                "request",
-                resource("test:folded-request", false, field("flag", LanguageType.Scalar.BOOL, false))
-            )
+            Map.of("request", resource("test:folded-request", false, field("flag", LanguageType.Scalar.BOOL, false)))
         );
 
         // Act

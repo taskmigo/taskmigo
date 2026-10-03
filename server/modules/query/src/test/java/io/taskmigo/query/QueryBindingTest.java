@@ -39,7 +39,9 @@ class QueryBindingTest {
         );
 
         QueryPredicate<TicketQuery> predicate = new FilterByCompiler().compile(SCHEMA, binding, "object.priority >= 3");
-        QueryExpression.Binary expression = (QueryExpression.Binary) QueryPredicateFactory.model(predicate).expression();
+        QueryExpression.Binary expression = (QueryExpression.Binary) QueryPredicateFactory.model(
+            predicate
+        ).expression();
         QueryExpression.Reference reference = (QueryExpression.Reference) expression.left();
 
         assertThat(reference.fieldId()).isEqualTo(PRIORITY);
@@ -97,8 +99,9 @@ class QueryBindingTest {
             )
         );
 
-        assertThatThrownBy(() -> new FilterByCompiler().compile(SCHEMA, binding, "object.priority >= 3"))
-            .isInstanceOf(FilterByException.class);
+        assertThatThrownBy(() -> new FilterByCompiler().compile(SCHEMA, binding, "object.priority >= 3")).isInstanceOf(
+            FilterByException.class
+        );
     }
 
     @Test
@@ -111,10 +114,7 @@ class QueryBindingTest {
         assertThat(predicate.isAlwaysTrue()).isTrue();
     }
 
-    private static QueryBinding<TicketQuery> binding(
-        SchemaFingerprint fingerprint,
-        QueryFieldBinding... fields
-    ) {
+    private static QueryBinding<TicketQuery> binding(SchemaFingerprint fingerprint, QueryFieldBinding... fields) {
         List<QueryFieldBinding> declarations = List.of(fields);
         return new QueryBinding<>() {
             @Override
@@ -134,7 +134,10 @@ class QueryBindingTest {
 
             @Override
             public Optional<QueryFieldBinding> field(FieldId id) {
-                return declarations.stream().filter(field -> field.id().equals(id)).findFirst();
+                return declarations
+                    .stream()
+                    .filter(field -> field.id().equals(id))
+                    .findFirst();
             }
 
             @Override

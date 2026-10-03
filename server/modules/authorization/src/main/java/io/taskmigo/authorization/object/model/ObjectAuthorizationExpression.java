@@ -18,8 +18,11 @@ public sealed interface ObjectAuthorizationExpression
 {
     record Literal(@Nullable Object value) implements ObjectAuthorizationExpression {}
 
-    record Reference(String root, List<String> path, @Nullable FieldId fieldId)
-        implements ObjectAuthorizationExpression {
+    record Reference(
+        String root,
+        List<String> path,
+        @Nullable FieldId fieldId
+    ) implements ObjectAuthorizationExpression {
         public Reference(String root, List<String> path) {
             this(root, path, null);
         }

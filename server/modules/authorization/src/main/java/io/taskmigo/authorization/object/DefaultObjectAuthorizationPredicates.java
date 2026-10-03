@@ -71,7 +71,7 @@ final class DefaultObjectAuthorizationPredicates implements ObjectAuthorizationP
             return ObjectAuthorizationPredicateModels.constantLike(predicate, true);
         }
         return ObjectAuthorizationPredicateModels.wrap(
-            ObjectAuthorizationPredicateModels.schemaIdentity(predicate),
+            ObjectAuthorizationPredicateModels.bindingIdentity(predicate),
             new ObjectAuthorizationExpression.Unary(
                 ObjectAuthorizationExpression.UnaryOperator.NOT,
                 ObjectAuthorizationPredicateModels.model(predicate).expression()
@@ -85,7 +85,7 @@ final class DefaultObjectAuthorizationPredicates implements ObjectAuthorizationP
         ObjectAuthorizationPredicate<Q> right
     ) {
         return ObjectAuthorizationPredicateModels.wrap(
-            ObjectAuthorizationPredicateModels.schemaIdentity(left),
+            ObjectAuthorizationPredicateModels.bindingIdentity(left),
             new ObjectAuthorizationExpression.Binary(
                 operator,
                 ObjectAuthorizationPredicateModels.model(left).expression(),
@@ -95,8 +95,8 @@ final class DefaultObjectAuthorizationPredicates implements ObjectAuthorizationP
     }
 
     private static void requireCompatible(ObjectAuthorizationPredicate<?> left, ObjectAuthorizationPredicate<?> right) {
-        String leftIdentity = ObjectAuthorizationPredicateModels.schemaIdentity(left);
-        String rightIdentity = ObjectAuthorizationPredicateModels.schemaIdentity(right);
+        String leftIdentity = ObjectAuthorizationPredicateModels.bindingIdentity(left);
+        String rightIdentity = ObjectAuthorizationPredicateModels.bindingIdentity(right);
         if (!leftIdentity.isEmpty() && !rightIdentity.isEmpty() && !leftIdentity.equals(rightIdentity)) {
             throw new IllegalArgumentException("Object Authorization Predicates belong to incompatible schemas");
         }

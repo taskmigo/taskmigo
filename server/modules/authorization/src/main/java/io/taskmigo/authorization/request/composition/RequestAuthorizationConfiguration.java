@@ -1,6 +1,6 @@
 package io.taskmigo.authorization.request.composition;
 
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.request.application.port.in.api.RequestAuthorization;
 import io.taskmigo.authorization.request.application.port.out.EffectiveStatementResolver;
@@ -17,10 +17,10 @@ class RequestAuthorizationConfiguration {
     @Bean
     StatementArtifactFactory statementArtifactFactory(
         LanguageCompiler compiler,
-        List<ObjectAuthorizationSchema<?>> schemas,
+        List<ObjectAuthorizationBinding<?>> bindings,
         ObjectAuthorizationTargetResolver targetResolver
     ) {
-        return new StatementArtifactFactory(compiler, schemas, targetResolver);
+        return new StatementArtifactFactory(compiler, bindings, targetResolver);
     }
 
     @Bean

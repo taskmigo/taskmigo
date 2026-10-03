@@ -9,7 +9,6 @@ import java.util.Optional;
 
 /// Binds a semantic object resource to the trusted execution metadata used by Object Authorization.
 public interface ObjectAuthorizationBinding<Q> {
-
     /// Returns the application object contract represented by this binding.
     Class<Q> objectType();
 
@@ -17,10 +16,10 @@ public interface ObjectAuthorizationBinding<Q> {
     ResourceSchema resourceSchema();
 
     /// Resolves an executable field by its semantic identity.
-    Optional<ObjectAuthorizationField> field(FieldId id);
+    Optional<ObjectAuthorizationFieldBinding> field(FieldId id);
 
     /// Returns every field accepted by this execution target.
-    Collection<ObjectAuthorizationField> fields();
+    Collection<ObjectAuthorizationFieldBinding> fields();
 
     /// Returns the semantic resource identity accepted by this binding.
     default ResourceType resourceType() {

@@ -29,6 +29,7 @@ public interface ResourceSchema {
     }
 
     final class ImmutableResourceSchema implements ResourceSchema {
+
         private final ResourceType type;
         private final Map<FieldPath, Field> fields;
         private final SchemaFingerprint fingerprint;

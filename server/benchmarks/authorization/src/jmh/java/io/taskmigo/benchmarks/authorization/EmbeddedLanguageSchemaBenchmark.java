@@ -48,8 +48,10 @@ public class EmbeddedLanguageSchemaBenchmark {
             Map<String, Field> fields = new LinkedHashMap<>();
             for (int index = 0; index < count; index++) {
                 String name = "field" + index;
-                fields.put(name, new Field(new FieldId("record." + name), FieldPath.parse(name),
-                    LanguageType.Scalar.STRING, false));
+                fields.put(
+                    name,
+                    new Field(new FieldId("record." + name), FieldPath.parse(name), LanguageType.Scalar.STRING, false)
+                );
             }
             this.fields = List.copyOf(fields.values());
         }

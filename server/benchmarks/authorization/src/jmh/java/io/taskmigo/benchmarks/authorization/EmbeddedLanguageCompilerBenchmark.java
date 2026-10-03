@@ -157,18 +157,17 @@ public class EmbeddedLanguageCompilerBenchmark {
     }
 
     private static Field field(String owner, String path, LanguageType type) {
-        return new Field(
-            new FieldId(owner + "." + path),
-            FieldPath.parse(path),
-            type,
-            false
-        );
+        return new Field(new FieldId(owner + "." + path), FieldPath.parse(path), type, false);
     }
 
     private static ResourceSchema resource(String name, Map<String, LanguageType> fields) {
         return ResourceSchema.of(
             new ResourceType("benchmark." + name),
-            fields.entrySet().stream().map(entry -> field(name, entry.getKey(), entry.getValue())).toList()
+            fields
+                .entrySet()
+                .stream()
+                .map(entry -> field(name, entry.getKey(), entry.getValue()))
+                .toList()
         );
     }
 

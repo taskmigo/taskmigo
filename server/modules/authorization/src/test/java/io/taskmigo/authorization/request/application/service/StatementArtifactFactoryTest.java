@@ -6,6 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.github.benmanes.caffeine.cache.Ticker;
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfile;
+import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
+import io.taskmigo.authorization.object.ObjectAuthorizationFieldBinding;
+import io.taskmigo.authorization.object.ObjectAuthorizationOperator;
+import io.taskmigo.authorization.object.StaticObjectAuthorizationBinding;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.request.application.port.out.EffectiveStatement;
 import io.taskmigo.authorization.statement.ApiInfo;
@@ -15,11 +19,18 @@ import io.taskmigo.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.TargetInfo;
 import io.taskmigo.language.CompilationMode;
+import io.taskmigo.language.Field;
+import io.taskmigo.language.FieldId;
+import io.taskmigo.language.FieldPath;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageContract;
+import io.taskmigo.language.LanguageType;
+import io.taskmigo.language.ResourceSchema;
+import io.taskmigo.language.ResourceType;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.DisplayName;
@@ -32,6 +43,54 @@ class StatementArtifactFactoryTest {
         List.of(),
         ObjectAuthorizationTargetResolver.all(List.of())
     );
+
+    /**
+     * Verifies object policies compile independently for resources that expose the same path.
+     *
+     * Given: two target bindings with `object.name` but distinct semantic field identities.
+     * Expect: one artifact contains a variant for each resource instead of constructing an ambiguous union schema.
+     */
+    @Test
+    @DisplayName("compiles an object policy separately for equal paths with distinct identities")
+    void shouldCompileSeparateVariantsWhenObjectBindingsSharePathWithDifferentIds() {
+        // Arrange
+        ObjectAuthorizationBinding<FirstObject> first = binding(
+            FirstObject.class,
+            "test:first-object",
+            "field:test:first-object:name"
+        );
+        ObjectAuthorizationBinding<SecondObject> second = binding(
+            SecondObject.class,
+            "test:second-object",
+            "field:test:second-object:name"
+        );
+        StatementArtifactFactory objectFactory = new StatementArtifactFactory(
+            new LanguageCompiler(),
+            List.of(first, second),
+            ObjectAuthorizationTargetResolver.all(List.of(first, second))
+        );
+        EffectiveStatement statement = effective(
+            new StatementInfo(
+                UUID.randomUUID(),
+                "shared_path",
+                null,
+                Effect.ALLOW,
+                Scope.OBJECT,
+                new TargetInfo(new ApiInfo("GET", "/api/v0/objects")),
+                "object.name == \"alice\""
+            ),
+            Instant.EPOCH
+        );
+
+        // Act
+        StatementExecutionArtifact artifact = objectFactory
+            .build(List.of(statement), "GET", "/api/v0/objects")
+            .getFirst();
+
+        // Assert
+        assertThat(artifact.policy(first.resourceType(), first.schemaFingerprint())).isNotNull();
+        assertThat(artifact.policy(second.resourceType(), second.schemaFingerprint())).isNotNull();
+    }
 
     /**
      * Verifies that persisted Statement revisions control cross-operation derivative reuse.
@@ -172,6 +231,16 @@ class StatementArtifactFactoryTest {
     @DisplayName("compiles object statements with the object expression profile")
     void shouldUseObjectExpressionProfileWhenObjectStatementIsCompiled() {
         // Arrange
+        ObjectAuthorizationBinding<FirstObject> binding = binding(
+            FirstObject.class,
+            "test:first-object",
+            "field:test:first-object:name"
+        );
+        StatementArtifactFactory objectFactory = new StatementArtifactFactory(
+            new LanguageCompiler(),
+            List.of(binding),
+            ObjectAuthorizationTargetResolver.all(List.of(binding))
+        );
         StatementInfo statement = new StatementInfo(
             UUID.randomUUID(),
             "object_policy",
@@ -184,13 +253,14 @@ class StatementArtifactFactoryTest {
         EffectiveStatement effective = effective(statement, Instant.EPOCH);
 
         // Act
-        StatementExecutionArtifact artifact = this.factory.build(List.of(effective), "GET", "/api/v0/users").getFirst();
+        StatementExecutionArtifact artifact = objectFactory
+            .build(List.of(effective), "GET", "/api/v0/users")
+            .getFirst();
+        var policy = artifact.policy(binding.resourceType(), binding.schemaFingerprint());
 
         // Assert
-        assertThat(artifact.policy().mode()).isEqualTo(CompilationMode.EXPRESSION);
-        assertThat(artifact.policy().profileFingerprint()).isEqualTo(
-            AuthorizationCompilationProfile.objectPolicy().fingerprint()
-        );
+        assertThat(policy.mode()).isEqualTo(CompilationMode.EXPRESSION);
+        assertThat(policy.profileFingerprint()).isEqualTo(AuthorizationCompilationProfile.objectPolicy().fingerprint());
     }
 
     /**
@@ -203,6 +273,16 @@ class StatementArtifactFactoryTest {
     @DisplayName("rejects program control flow in object statements")
     void shouldRejectProgramControlFlowWhenObjectStatementUsesExpressionMode() {
         // Arrange
+        ObjectAuthorizationBinding<FirstObject> binding = binding(
+            FirstObject.class,
+            "test:first-object",
+            "field:test:first-object:name"
+        );
+        StatementArtifactFactory objectFactory = new StatementArtifactFactory(
+            new LanguageCompiler(),
+            List.of(binding),
+            ObjectAuthorizationTargetResolver.all(List.of(binding))
+        );
         StatementInfo invalid = new StatementInfo(
             UUID.randomUUID(),
             "object_conditional",
@@ -215,7 +295,7 @@ class StatementArtifactFactoryTest {
         EffectiveStatement effective = effective(invalid, Instant.EPOCH);
 
         // Act + Assert
-        assertThatThrownBy(() -> this.factory.build(List.of(effective), "GET", "/api/v0/users"))
+        assertThatThrownBy(() -> objectFactory.build(List.of(effective), "GET", "/api/v0/users"))
             .isInstanceOf(AuthorizationException.class)
             .hasMessageContaining("Invalid Statement policy");
     }
@@ -351,4 +431,21 @@ class StatementArtifactFactoryTest {
             "return true;"
         );
     }
+
+    private static <Q> ObjectAuthorizationBinding<Q> binding(Class<Q> objectType, String resourceType, String fieldId) {
+        FieldId id = FieldId.of(fieldId);
+        ResourceSchema schema = ResourceSchema.of(
+            ResourceType.of(resourceType),
+            List.of(new Field(id, FieldPath.parse("name"), LanguageType.Scalar.STRING, false))
+        );
+        return new StaticObjectAuthorizationBinding<>(
+            objectType,
+            schema,
+            List.of(new ObjectAuthorizationFieldBinding(id, "name", Set.of(ObjectAuthorizationOperator.EQ)))
+        );
+    }
+
+    private static final class FirstObject {}
+
+    private static final class SecondObject {}
 }

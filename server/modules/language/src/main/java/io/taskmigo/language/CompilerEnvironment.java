@@ -8,6 +8,7 @@ import java.util.Set;
 
 /// Binds Language root names to authoritative semantic resource schemas for one compilation.
 public final class CompilerEnvironment {
+
     private final Map<String, Root> roots;
     private final DependencyCatalog dependencies;
     private final Map<ResourceType, SchemaFingerprint> schemaFingerprints;
@@ -102,12 +103,7 @@ public final class CompilerEnvironment {
     /// Associates one compiler root with its semantic schema and partial-evaluation behavior.
     public record Root(ResourceSchema schema, LanguageType type, boolean nullable, boolean symbolic) {
         public Root(ResourceSchema schema, boolean symbolic) {
-            this(
-                schema,
-                new LanguageType.StructuredType(schema.type().value(), Map.of()),
-                false,
-                symbolic
-            );
+            this(schema, new LanguageType.StructuredType(schema.type().value(), Map.of()), false, symbolic);
         }
 
         public Root {
