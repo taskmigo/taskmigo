@@ -1,8 +1,8 @@
 package io.taskmigo.query;
 
-import io.taskmigo.language.LanguageDiagnostic.SourceSpan;
 import io.taskmigo.language.FieldId;
 import io.taskmigo.language.FieldPath;
+import io.taskmigo.language.LanguageDiagnostic.SourceSpan;
 import io.taskmigo.language.LanguageType;
 import io.taskmigo.language.ResourceType;
 import io.taskmigo.language.ast.BinaryOperator;

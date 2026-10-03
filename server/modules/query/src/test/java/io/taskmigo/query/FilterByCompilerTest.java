@@ -10,6 +10,7 @@ import io.taskmigo.language.LanguageType;
 import io.taskmigo.language.ResourceSchema;
 import io.taskmigo.language.ResourceType;
 import io.taskmigo.language.SchemaFingerprint;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -143,9 +144,9 @@ class FilterByCompilerTest {
     @SafeVarargs
     private static <Q> Surface<Q> surface(Class<Q> queryType, String resource, Declaration... declarations) {
         ResourceType resourceType = ResourceType.of(resource);
-        List<Field> fields = java.util.Arrays.stream(declarations).map(Declaration::field).toList();
+        List<Field> fields = Arrays.stream(declarations).map(Declaration::field).toList();
         ResourceSchema schema = ResourceSchema.of(resourceType, fields);
-        List<QueryFieldBinding> bindings = java.util.Arrays.stream(declarations).map(Declaration::binding).toList();
+        List<QueryFieldBinding> bindings = Arrays.stream(declarations).map(Declaration::binding).toList();
         QueryBinding<Q> binding = new QueryBinding<>() {
             @Override
             public Class<Q> queryType() {
