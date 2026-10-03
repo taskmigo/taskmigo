@@ -4,6 +4,6 @@ import java.time.Instant;
 
 /// Defines background User-retention lifecycle maintenance.
 public interface UserRetentionService {
-    /// Physically removes retained Users whose current retention deadline has expired.
+    /// Tombstones retained Users whose current retention deadline has expired.
     int purgeExpiredUsers(Instant now);
 }
