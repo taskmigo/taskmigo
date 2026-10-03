@@ -57,11 +57,13 @@ class ConfigurationController {
     ResponseEntity<ApiResponse<Response, ApiResponse.BasicMeta>> update(@RequestBody PatchRequest request) {
         request.requireKnownProperties();
         RetentionPatch retention = request.retention();
+        if (retention != null) {
+            retention.requireKnownProperties();
+        }
         ConfigurationSnapshot snapshot;
         if (retention == null || retention.user() == null) {
             snapshot = this.configuration.get();
         } else {
-            retention.requireKnownProperties();
             try {
                 snapshot = this.configuration.updateUserRetention(RetentionDuration.parse(retention.user()));
             } catch (IllegalArgumentException exception) {
