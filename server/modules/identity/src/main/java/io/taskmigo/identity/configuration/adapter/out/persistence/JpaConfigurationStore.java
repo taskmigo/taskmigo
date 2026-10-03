@@ -10,7 +10,7 @@ public class JpaConfigurationStore implements ConfigurationStore {
 
     private final JpaConfigurationRepository configurations;
 
-    public JpaConfigurationStore(JpaConfigurationRepository configurations) {
+    JpaConfigurationStore(JpaConfigurationRepository configurations) {
         this.configurations = configurations;
     }
 
