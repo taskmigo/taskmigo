@@ -38,5 +38,4 @@ public interface UserCommandService {
 
     void save(User user);
 
-    void delete(User user);
 }

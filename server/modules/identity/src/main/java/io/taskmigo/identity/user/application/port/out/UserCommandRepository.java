@@ -22,5 +22,4 @@ public interface UserCommandRepository {
 
     void save(User user);
 
-    void delete(User user);
 }

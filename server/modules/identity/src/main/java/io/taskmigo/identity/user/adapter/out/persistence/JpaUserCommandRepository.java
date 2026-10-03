@@ -63,9 +63,4 @@ public class JpaUserCommandRepository implements UserCommandRepository {
         }
     }
 
-    @Override
-    public void delete(User user) {
-        this.users.deleteById(user.id());
-        this.users.flush();
-    }
 }
