@@ -12,6 +12,7 @@ import io.taskmigo.authorization.request.AuthorizationRequest;
 import io.taskmigo.authorization.request.RequestAuthorizationResult;
 import io.taskmigo.authorization.request.application.port.in.api.RequestAuthorization;
 import io.taskmigo.identity.user.UserInfo;
+import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -114,6 +115,50 @@ class RequestAuthorizationManagerTest {
 
         // Assert
         assertThat(decision.isGranted()).isFalse();
+    }
+
+    /**
+     * Verifies that a JWT issued before User deletion cannot continue authorizing requests.
+     *
+     * Given: a structurally valid pre-existing User JWT whose persisted User is now RETAINED.
+     * Expect: the manager denies before evaluating Request Authorization.
+     */
+    @Test
+    @DisplayName("denies pre-existing tokens for retained users")
+    void shouldDenyRequestWhenPersistedUserIsRetained() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        HttpServletRequest request = mock(HttpServletRequest.class);
+        RequestAuthorizationContext context = new RequestAuthorizationContext(request, Map.of());
+        RequestAuthorization authorization = mock(RequestAuthorization.class);
+        Jwt jwt = Jwt.withTokenValue("token")
+            .header("alg", "none")
+            .claim("principal_type", "user")
+            .claim("user_id", userId.toString())
+            .claim("principal_username", "alice")
+            .build();
+        JwtAuthenticationToken authentication = new JwtAuthenticationToken(jwt, List.of(), "alice");
+        UserService users = mock(UserService.class);
+        when(users.require(userId)).thenReturn(
+            new UserInfo(
+                userId,
+                "alice",
+                "Alice",
+                "User",
+                java.util.Set.of(),
+                "Alice User",
+                UserStatus.RETAINED,
+                java.time.Instant.parse("2026-10-03T00:00:00Z")
+            )
+        );
+        RequestAuthorizationManager manager = new RequestAuthorizationManager(authorization, users);
+
+        // Act
+        AuthorizationDecision decision = manager.authorize(() -> authentication, context);
+
+        // Assert
+        assertThat(decision.isGranted()).isFalse();
+        verify(authorization, Mockito.never()).authorize(any(), any());
     }
 
     /**
