@@ -3,115 +3,124 @@ package io.taskmigo.authorization.embeddedlanguage;
 import io.taskmigo.authorization.object.ObjectAuthorizationField;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.foundation.TypeDescriptor;
-import io.taskmigo.language.EnvironmentSchema;
-import io.taskmigo.language.LanguageContract;
+import io.taskmigo.language.CompilerEnvironment;
+import io.taskmigo.language.Field;
+import io.taskmigo.language.FieldId;
+import io.taskmigo.language.FieldPath;
 import io.taskmigo.language.LanguageType;
+import io.taskmigo.language.ResourceSchema;
+import io.taskmigo.language.ResourceType;
+import io.taskmigo.language.SchemaFingerprint;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-/// Builds the consumer-owned Language schemas used by authorization.
+/// Builds compiler root bindings from semantic authorization resources.
 public final class AuthorizationEmbeddedLanguageSchemas {
 
-    private static final EnvironmentSchema REQUEST = new EnvironmentSchema(
-        "taskmigo.authorization.request.0.3.2",
-        Map.of(
-            "principal",
-            root(Map.of("id", string(), "username", string())),
-            "request",
-            root(Map.of("method", string(), "path", string(), "pathVariables", dynamicString()))
-        )
+    private static final ResourceSchema PRINCIPAL = schema(
+        ResourceType.of("taskmigo:authorization:principal"),
+        List.of(field("principal", "id", string(), false), field("principal", "username", string(), false))
     );
-    private static final ConcurrentMap<String, EnvironmentSchema> OBJECTS = new ConcurrentHashMap<>();
+    private static final ResourceSchema REQUEST = dynamicRequestSchema();
+    private static final ConcurrentMap<String, CompilerEnvironment> OBJECTS = new ConcurrentHashMap<>();
 
     private AuthorizationEmbeddedLanguageSchemas() {}
 
-    /// Returns the reusable request-only schema required by the authorization specification.
-    public static EnvironmentSchema request() {
-        return REQUEST;
-    }
-
-    /// Returns an object schema containing the fields registered by all logical object contracts.
-    public static EnvironmentSchema object(List<? extends ObjectAuthorizationSchema<?>> schemas) {
-        Map<String, EnvironmentSchema.Field> fields = new HashMap<>();
-        for (ObjectAuthorizationSchema<?> schema : schemas) {
-            for (ObjectAuthorizationField field : schema.fields()) {
-                String first = field.path().segments().getFirst();
-                fields.putIfAbsent(first, field.path().segments().size() == 1 ? field(field) : nested(schema, first));
-            }
-        }
-        return new EnvironmentSchema(
-            "taskmigo.authorization.object." +
-                LanguageContract.VERSION +
-                ":" +
-                schemas.stream().map(ObjectAuthorizationSchema::identity).sorted().toList(),
+    /// Returns the reusable request roots required by authorization policies.
+    public static CompilerEnvironment request() {
+        return CompilerEnvironment.of(
             Map.of(
-                "principal",
-                root(Map.of("id", string(), "username", string())),
-                "request",
-                root(Map.of("method", string(), "path", string(), "pathVariables", dynamicString())),
-                "object",
-                root(fields)
+                "principal", new CompilerEnvironment.Root(PRINCIPAL, false),
+                "request", new CompilerEnvironment.Root(REQUEST, false)
             )
         );
     }
 
-    /// Returns a cached object schema derived from an authorization-owned logical object schema.
-    public static <Q> EnvironmentSchema object(ObjectAuthorizationSchema<Q> schema) {
-        return OBJECTS.computeIfAbsent(schema.identity(), ignored -> buildObject(schema));
+    /// Returns object authorization roots for every logical object contract governed by a route.
+    public static CompilerEnvironment object(List<? extends ObjectAuthorizationSchema<?>> schemas) {
+        List<Field> fields = schemas
+            .stream()
+            .flatMap(schema -> schema.fields().stream().map(field -> toField(schema.objectType().getName(), field)))
+            .distinct()
+            .toList();
+        ResourceSchema object = schema(ResourceType.of("taskmigo:authorization:object:" + schemas), fields);
+        return environment(object);
     }
 
-    private static <Q> EnvironmentSchema buildObject(ObjectAuthorizationSchema<Q> schema) {
-        Map<String, EnvironmentSchema.Field> fields = new HashMap<>();
-        for (ObjectAuthorizationField field : schema.fields()) {
-            String first = field.path().segments().getFirst();
-            fields.put(first, field.path().segments().size() == 1 ? field(field) : nested(schema, first));
-        }
-        return new EnvironmentSchema(
-            "taskmigo.authorization.object." + LanguageContract.VERSION + ":" + schema.identity(),
+    /// Returns cached object authorization roots for one logical resource contract.
+    public static <Q> CompilerEnvironment object(ObjectAuthorizationSchema<Q> schema) {
+        return OBJECTS.computeIfAbsent(schema.identity(), ignored -> environment(objectSchema(schema)));
+    }
+
+    private static CompilerEnvironment environment(ResourceSchema object) {
+        return CompilerEnvironment.of(
             Map.of(
-                "principal",
-                root(Map.of("id", string(), "username", string())),
-                "request",
-                root(Map.of("method", string(), "path", string(), "pathVariables", dynamicString())),
-                "object",
-                new EnvironmentSchema.Root(
-                    new EnvironmentSchema.Field(
-                        new LanguageType.StructuredType(schema.objectType().getName(), fields),
-                        false,
-                        true
-                    ),
-                    fields
-                )
+                "principal", new CompilerEnvironment.Root(PRINCIPAL, false),
+                "request", new CompilerEnvironment.Root(REQUEST, false),
+                "object", new CompilerEnvironment.Root(object, true)
             )
         );
     }
 
-    private static EnvironmentSchema.Field field(ObjectAuthorizationField field) {
-        return new EnvironmentSchema.Field(languageType(field.type()), field.nullable(), true);
+    private static <Q> ResourceSchema objectSchema(ObjectAuthorizationSchema<Q> schema) {
+        return schema(
+            ResourceType.of("taskmigo:authorization:object:" + schema.objectType().getName()),
+            schema.fields()
+                .stream()
+                .map(field -> toField(schema.objectType().getName(), field))
+                .toList()
+        );
     }
 
-    private static <Q> EnvironmentSchema.Field nested(ObjectAuthorizationSchema<Q> schema, String prefix) {
-        List<String> prefixSegments = List.of(prefix.split("\\."));
-        Map<String, EnvironmentSchema.Field> children = new HashMap<>();
-        for (ObjectAuthorizationField field : schema.fields()) {
-            List<String> segments = field.path().segments();
-            if (
-                segments.size() > prefixSegments.size() &&
-                segments.subList(0, prefixSegments.size()).equals(prefixSegments)
-            ) {
-                String child = segments.get(prefixSegments.size());
-                children.put(
-                    child,
-                    segments.size() == prefixSegments.size() + 1 ? field(field) : nested(schema, prefix + "." + child)
-                );
+    private static Field toField(String owner, ObjectAuthorizationField field) {
+        return field(
+            owner,
+            field.path().text(),
+            languageType(field.type()),
+            field.nullable()
+        );
+    }
+
+    private static Field field(String owner, String path, LanguageType type, boolean nullable) {
+        return new Field(FieldId.of("field:" + owner + ":" + path), FieldPath.parse(path), type, nullable);
+    }
+
+    private static ResourceSchema schema(ResourceType type, Collection<Field> fields) {
+        return ResourceSchema.of(type, fields);
+    }
+
+    private static ResourceSchema dynamicRequestSchema() {
+        ResourceSchema base = schema(
+            ResourceType.of("taskmigo:authorization:request"),
+            List.of(field("request", "method", string(), false), field("request", "path", string(), false))
+        );
+        return new ResourceSchema() {
+            @Override
+            public ResourceType type() {
+                return base.type();
             }
-        }
-        return new EnvironmentSchema.Field(new LanguageType.StructuredType(prefix, children), false, true);
+
+            @Override
+            public Field resolve(FieldPath path) {
+                if (path.segments().size() >= 2 && path.segments().getFirst().equals("pathVariables")) {
+                    return field("request", path.text(), string(), false);
+                }
+                return base.resolve(path);
+            }
+
+            @Override
+            public SchemaFingerprint fingerprint() {
+                return base.fingerprint();
+            }
+        };
+    }
+
+    private static LanguageType string() {
+        return LanguageType.Scalar.STRING;
     }
 
     private static LanguageType languageType(TypeDescriptor type) {
@@ -132,17 +141,5 @@ public final class AuthorizationEmbeddedLanguageSchemas {
             return new LanguageType.ListType(languageType(elementType));
         }
         return new LanguageType.StructuredType(raw.getName(), Map.of());
-    }
-
-    private static EnvironmentSchema.Root root(Map<String, EnvironmentSchema.Field> fields) {
-        return new EnvironmentSchema.Root(string(), fields);
-    }
-
-    private static EnvironmentSchema.Field string() {
-        return new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, false);
-    }
-
-    private static EnvironmentSchema.Field dynamicString() {
-        return new EnvironmentSchema.Field(LanguageType.Scalar.STRING, false, false, LanguageType.Scalar.STRING);
     }
 }

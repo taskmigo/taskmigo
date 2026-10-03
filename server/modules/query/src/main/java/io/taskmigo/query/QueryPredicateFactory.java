@@ -9,17 +9,17 @@ final class QueryPredicateFactory {
 
     private QueryPredicateFactory() {}
 
-    static <Q> QueryPredicate<Q> from(QuerySchema<Q> schema, QueryExpression expression) {
-        Objects.requireNonNull(schema);
-        return new LogicalQueryPredicate<>(schema.identity(), Objects.requireNonNull(expression));
+    static <Q> QueryPredicate<Q> from(QueryBinding<Q> binding, QueryExpression expression) {
+        Objects.requireNonNull(binding);
+        return new LogicalQueryPredicate<>(binding.identity(), Objects.requireNonNull(expression));
     }
 
-    static <Q> QueryPredicate<Q> alwaysTrue(QuerySchema<Q> schema) {
-        return from(schema, new QueryExpression.Literal(true));
+    static <Q> QueryPredicate<Q> alwaysTrue(QueryBinding<Q> binding) {
+        return from(binding, new QueryExpression.Literal(true));
     }
 
-    static <Q> QueryPredicate<Q> alwaysFalse(QuerySchema<Q> schema) {
-        return from(schema, new QueryExpression.Literal(false));
+    static <Q> QueryPredicate<Q> alwaysFalse(QueryBinding<Q> binding) {
+        return from(binding, new QueryExpression.Literal(false));
     }
 
     static QueryPredicateModel model(QueryPredicate<?> predicate) {
