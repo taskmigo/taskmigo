@@ -1,7 +1,7 @@
 package io.taskmigo.authorization.object.model;
 
-import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
+import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import java.util.Objects;
 
 /// Creates and exposes the trusted logical model behind opaque Object Authorization predicates.

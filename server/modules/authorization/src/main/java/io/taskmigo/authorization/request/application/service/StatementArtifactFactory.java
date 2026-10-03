@@ -20,9 +20,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 
 /// Builds executable Statement derivatives after authoritative Statement rows and revisions have been loaded.
 public final class StatementArtifactFactory {
