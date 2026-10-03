@@ -2,6 +2,7 @@ package io.taskmigo.identity.user.adapter.out.persistence;
 
 import io.taskmigo.identity.user.UserException;
 import io.taskmigo.identity.user.UserStatus;
+import io.taskmigo.identity.user.application.port.in.internal.RetainedUserCandidate;
 import io.taskmigo.identity.user.application.port.out.UserCommandRepository;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.Username;
@@ -9,6 +10,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
 
@@ -43,15 +45,22 @@ public class JpaUserCommandRepository implements UserCommandRepository {
     }
 
     @Override
-    public List<UUID> retainedBefore(Instant cutoff) {
-        return this.users
-            .findTop100ByStatusAndRetainedAtLessThanEqualOrderByRetainedAtAsc(
+    public List<RetainedUserCandidate> retainedCandidates(Instant cutoff, @Nullable RetainedUserCandidate after) {
+        List<UserEntity> candidates = after == null
+            ? this.users.findTop100ByStatusAndRetainedAtLessThanEqualOrderByRetainedAtAscIdAsc(
                 UserStatus.RETAINED,
                 cutoff
             )
+            : this.users.findRetainedCandidatesAfter(cutoff, after.retainedAt(), after.id());
+        return candidates
             .stream()
-            .map(UserEntity::id)
+            .map(user -> new RetainedUserCandidate(user.id(), java.util.Objects.requireNonNull(user.retainedAt())))
             .toList();
+    }
+
+    @Override
+    public Optional<User> claimRetainedForUpdate(UUID id) {
+        return this.users.findRetainedByIdForUpdateSkipLocked(id).map(UserEntity::toDomain);
     }
 
     @Override
