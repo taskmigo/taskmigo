@@ -49,8 +49,8 @@ public class FilterByCompiler {
 
     /// Compiles blank input as an always-true predicate and rejects incompatible schemas or execution bindings.
     public <Q> QueryPredicate<Q> compile(ResourceSchema schema, QueryBinding<Q> binding, @Nullable String source) {
+        requireCompatible(schema, binding);
         try {
-            requireCompatible(schema, binding);
             if (source == null || source.isBlank()) {
                 return QueryPredicateFactory.alwaysTrue(binding);
             }
