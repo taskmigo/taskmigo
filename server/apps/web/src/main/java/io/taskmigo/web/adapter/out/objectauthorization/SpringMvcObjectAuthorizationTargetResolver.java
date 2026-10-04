@@ -69,7 +69,7 @@ public final class SpringMvcObjectAuthorizationTargetResolver
         return this.routes
             .stream()
             .filter(route -> route.matches(method, pathMatcher))
-            .map(route -> this.bindings.resolve(route.objectType(), context))
+            .<ObjectAuthorizationBinding<?>>map(route -> this.bindings.resolve(route.objectType(), context))
             .distinct()
             .toList();
     }
