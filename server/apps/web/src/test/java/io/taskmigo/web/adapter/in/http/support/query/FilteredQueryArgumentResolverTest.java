@@ -46,7 +46,12 @@ class FilteredQueryArgumentResolverTest {
         Method method = TestController.class.getDeclaredMethod("list", FilteredQuery.class);
         MethodParameter parameter = new MethodParameter(method, 0);
         SchemaContext schemaContext = new SchemaContext(Map.of("templateId", "incident"));
-        AuthorizationContext authorizationContext = () -> schemaContext;
+        AuthorizationContext authorizationContext = new AuthorizationContext() {
+            @Override
+            public SchemaContext schemaContext() {
+                return schemaContext;
+            }
+        };
         QueryBindingResolver.Resolution resolution = new QueryBindingResolver.Resolution(this.schema, this.binding);
         when(this.bindings.resolve(TestQuery.class, schemaContext)).thenReturn(resolution);
         when(this.filters.compileUntyped(this.schema, this.binding, "object.priority >= 3")).thenReturn(this.predicate);

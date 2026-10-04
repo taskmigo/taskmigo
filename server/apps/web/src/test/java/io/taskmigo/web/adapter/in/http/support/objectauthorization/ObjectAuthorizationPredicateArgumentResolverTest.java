@@ -41,7 +41,12 @@ class ObjectAuthorizationPredicateArgumentResolverTest {
         Method method = TestController.class.getDeclaredMethod("list", ObjectAuthorizationPredicate.class);
         MethodParameter parameter = new MethodParameter(method, 0);
         SchemaContext schemaContext = new SchemaContext(Map.of("templateId", "incident"));
-        AuthorizationContext context = () -> schemaContext;
+        AuthorizationContext context = new AuthorizationContext() {
+            @Override
+            public SchemaContext schemaContext() {
+                return schemaContext;
+            }
+        };
         when(this.bindings.resolve(TestObject.class, schemaContext)).thenReturn(this.binding);
         when(this.authorization.authorize(context, this.binding)).thenReturn(this.predicate);
         MockHttpServletRequest request = new MockHttpServletRequest();
