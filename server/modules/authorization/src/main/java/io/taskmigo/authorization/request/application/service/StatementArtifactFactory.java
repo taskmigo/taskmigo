@@ -1,5 +1,6 @@
 package io.taskmigo.authorization.request.application.service;
 
+import com.google.common.hash.Hashing;
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfile;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
@@ -16,6 +17,7 @@ import io.taskmigo.language.CompilerEnvironment;
 import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.SchemaContext;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -100,6 +102,7 @@ public final class StatementArtifactFactory {
             CompilationProfile profile = profile(statement);
             ArtifactIdentity identity = new ArtifactIdentity(
                 effective.updatedAt(),
+                sourceFingerprint(statement.policy()),
                 requestEnvironment == null ? "object" : requestEnvironment.fingerprint(),
                 this.compiler.contractFingerprint(),
                 profile.fingerprint(),
@@ -207,6 +210,10 @@ public final class StatementArtifactFactory {
         }
     }
 
+    private static String sourceFingerprint(String source) {
+        return Hashing.sha256().hashString(source, StandardCharsets.UTF_8).toString();
+    }
+
     private static boolean methodMatches(StatementInfo statement, String requestMethod) {
         return statement.target().api().method().equals("*") || statement.target().api().method().equals(requestMethod);
     }
@@ -217,6 +224,7 @@ public final class StatementArtifactFactory {
 
     private record ArtifactIdentity(
         Instant updatedAt,
+        String sourceFingerprint,
         String schemaFingerprint,
         String compilerFingerprint,
         String profileFingerprint,
