@@ -11,7 +11,6 @@ import java.util.Objects;
 /// Resolves the execution binding compatible with the effective semantic schema for one application query surface.
 @FunctionalInterface
 public interface QueryBindingResolver {
-
     /// Resolves one effective schema and its exact compatible execution binding.
     Resolution resolve(Class<?> queryType, SchemaContext context);
 
