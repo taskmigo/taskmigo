@@ -36,7 +36,6 @@ class RequestAuthorizationServiceTest {
         this.statements,
         new StatementArtifactFactory(
             new LanguageCompiler(),
-            List.of(),
             ObjectAuthorizationTargetResolver.all(List.of())
         )
     );
