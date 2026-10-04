@@ -554,7 +554,7 @@ class StatementArtifactFactoryTest {
     private static Object objectEnvironmentCache() throws ReflectiveOperationException {
         java.lang.reflect.Field cacheField = AuthorizationEmbeddedLanguageSchemas.class.getDeclaredField("OBJECTS");
         cacheField.setAccessible(true);
-        return cacheField.get(null);
+        return java.util.Objects.requireNonNull(cacheField.get(null));
     }
 
     private static void clearObjectEnvironmentCache(Object cache) {
