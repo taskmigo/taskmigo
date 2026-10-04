@@ -23,6 +23,21 @@ class ResourceSchemaTest {
     }
 
     @Test
+    @DisplayName("distinguishes schemas whose canonical field components contain delimiters")
+    void shouldDistinguishFingerprintWhenFieldComponentsContainDelimiters() {
+        ResourceSchema first = ResourceSchema.of(
+            USER,
+            List.of(field("a:b", "c", LanguageType.Scalar.STRING, false))
+        );
+        ResourceSchema second = ResourceSchema.of(
+            USER,
+            List.of(field("a", "b:c", LanguageType.Scalar.STRING, false))
+        );
+
+        assertThat(first.fingerprint()).isNotEqualTo(second.fingerprint());
+    }
+
+    @Test
     @DisplayName("produces different fingerprints when semantic field contracts change")
     void shouldProduceDifferentFingerprintWhenSemanticFieldContractChanges() {
         ResourceSchema baseline = ResourceSchema.of(USER, List.of(NAME));
