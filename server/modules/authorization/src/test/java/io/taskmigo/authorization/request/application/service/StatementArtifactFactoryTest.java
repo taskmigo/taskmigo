@@ -115,12 +115,16 @@ class StatementArtifactFactoryTest {
         ObjectAuthorizationBinding<FirstObject> required = new StaticObjectAuthorizationBinding<>(
             FirstObject.class,
             requiredSchema,
-            List.of(new ObjectAuthorizationFieldBinding(id, "name", String.class, Set.of(ObjectAuthorizationOperator.EQ)))
+            List.of(
+                new ObjectAuthorizationFieldBinding(id, "name", String.class, Set.of(ObjectAuthorizationOperator.EQ))
+            )
         );
         ObjectAuthorizationBinding<SecondObject> nullable = new StaticObjectAuthorizationBinding<>(
             SecondObject.class,
             nullableSchema,
-            List.of(new ObjectAuthorizationFieldBinding(id, "name", String.class, Set.of(ObjectAuthorizationOperator.EQ)))
+            List.of(
+                new ObjectAuthorizationFieldBinding(id, "name", String.class, Set.of(ObjectAuthorizationOperator.EQ))
+            )
         );
         StatementArtifactFactory objectFactory = new StatementArtifactFactory(
             new LanguageCompiler(),
@@ -499,7 +503,9 @@ class StatementArtifactFactoryTest {
         return new StaticObjectAuthorizationBinding<>(
             objectType,
             schema,
-            List.of(new ObjectAuthorizationFieldBinding(id, "name", String.class, Set.of(ObjectAuthorizationOperator.EQ)))
+            List.of(
+                new ObjectAuthorizationFieldBinding(id, "name", String.class, Set.of(ObjectAuthorizationOperator.EQ))
+            )
         );
     }
 
