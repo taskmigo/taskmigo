@@ -131,18 +131,15 @@ class RuntimePersistenceBindingIntegrationTest {
         return new AnnotationConfigApplicationContext(UserResourceSchemas.class, RuntimeBindings.class);
     }
 
-    @SuppressWarnings("unchecked")
     private static QueryPredicate<UserInfo> queryPredicate(QueryBindingResolver.Resolution resolution) {
         return (QueryPredicate<UserInfo>) new FilterByCompiler()
             .compileUntyped(resolution.schema(), resolution.binding(), "object.runtimeAlias == \"alias\"");
     }
 
-    @SuppressWarnings("unchecked")
     private static QueryPredicateBinder<UserInfo, UserEntity> queryBinder(AnnotationConfigApplicationContext context) {
         return (QueryPredicateBinder<UserInfo, UserEntity>) context.getBean("userQueryPredicateBinder");
     }
 
-    @SuppressWarnings("unchecked")
     private static ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> objectBinder(
         AnnotationConfigApplicationContext context
     ) {
