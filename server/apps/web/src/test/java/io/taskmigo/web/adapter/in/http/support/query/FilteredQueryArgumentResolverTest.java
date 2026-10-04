@@ -1,6 +1,7 @@
 package io.taskmigo.web.adapter.in.http.support.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.request.AuthorizationContext;
@@ -54,7 +55,9 @@ class FilteredQueryArgumentResolverTest {
         };
         QueryBindingResolver.Resolution resolution = new QueryBindingResolver.Resolution(this.schema, this.binding);
         when(this.bindings.resolve(TestQuery.class, schemaContext)).thenReturn(resolution);
-        when(this.filters.compileUntyped(this.schema, this.binding, "object.priority >= 3")).thenReturn(this.predicate);
+        doReturn(this.predicate)
+            .when(this.filters)
+            .compileUntyped(this.schema, this.binding, "object.priority >= 3");
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute(AuthorizationContext.ATTRIBUTE, authorizationContext);
         request.setParameter("filterBy", "object.priority >= 3");

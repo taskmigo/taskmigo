@@ -1,6 +1,7 @@
 package io.taskmigo.web.adapter.in.http.support.objectauthorization;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
@@ -47,7 +48,7 @@ class ObjectAuthorizationPredicateArgumentResolverTest {
                 return schemaContext;
             }
         };
-        when(this.bindings.resolve(TestObject.class, schemaContext)).thenReturn(this.binding);
+        doReturn(this.binding).when(this.bindings).resolve(TestObject.class, schemaContext);
         when(this.authorization.authorize(context, this.binding)).thenReturn(this.predicate);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute(AuthorizationContext.ATTRIBUTE, context);

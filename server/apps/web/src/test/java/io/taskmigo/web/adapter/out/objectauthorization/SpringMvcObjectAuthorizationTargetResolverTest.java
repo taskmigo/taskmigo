@@ -1,6 +1,7 @@
 package io.taskmigo.web.adapter.out.objectauthorization;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
@@ -58,7 +59,7 @@ class SpringMvcObjectAuthorizationTargetResolverTest {
         when(this.version.getVersion()).thenReturn("0");
         when(this.mapping.getPatternValues()).thenReturn(Set.of("/api/v{version}/objects"));
         when(this.mapping.getMethodsCondition()).thenReturn(new RequestMethodsRequestCondition(RequestMethod.GET));
-        when(this.bindings.resolve(TestObject.class, schemaContext)).thenReturn(this.binding);
+        doReturn(this.binding).when(this.bindings).resolve(TestObject.class, schemaContext);
         SpringMvcObjectAuthorizationTargetResolver resolver = new SpringMvcObjectAuthorizationTargetResolver(
             this.handlerMappings,
             this.bindings
