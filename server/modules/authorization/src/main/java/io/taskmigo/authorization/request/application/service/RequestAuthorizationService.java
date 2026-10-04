@@ -19,6 +19,7 @@ import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.EmbeddedLanguageException;
+import io.taskmigo.language.SchemaContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -47,8 +48,33 @@ public final class RequestAuthorizationService implements RequestAuthorization {
             Map.of("method", request.method(), "path", request.path(), "pathVariables", request.pathVariables())
         );
         try {
-            AuthorizationSnapshot snapshot = this.snapshot(principal.id(), request.method(), request.path(), roots);
-            AuthorizationOperation operation = new AuthorizationOperation(snapshot, request.method(), request.path());
+            SchemaContext schemaContext = new SchemaContext(
+                Map.of(
+                    "principalId",
+                    principal.id(),
+                    "principalUsername",
+                    principal.username(),
+                    "requestMethod",
+                    request.method(),
+                    "requestPath",
+                    request.path(),
+                    "pathVariables",
+                    request.pathVariables()
+                )
+            );
+            AuthorizationSnapshot snapshot = this.snapshot(
+                principal.id(),
+                request.method(),
+                request.path(),
+                roots,
+                schemaContext
+            );
+            AuthorizationOperation operation = new AuthorizationOperation(
+                snapshot,
+                request.method(),
+                request.path(),
+                schemaContext
+            );
             boolean granted = this.authorize(operation.snapshot(), operation.method(), operation.path()).allowed();
             return new RequestAuthorizationResult(granted, operation);
         } catch (AuthorizationException exception) {
@@ -113,8 +139,22 @@ public final class RequestAuthorizationService implements RequestAuthorization {
     /// @param roots the approved principal and request values for the operation
     /// @return an immutable authorization snapshot
     AuthorizationSnapshot snapshot(UUID userId, String method, String path, Map<String, ?> roots) {
+        return this.snapshot(userId, method, path, roots, SchemaContext.EMPTY);
+    }
+
+    AuthorizationSnapshot snapshot(
+        UUID userId,
+        String method,
+        String path,
+        Map<String, ?> roots,
+        SchemaContext schemaContext
+    ) {
         List<EffectiveStatement> effectiveStatements = this.statements.resolve(userId);
-        return new AuthorizationSnapshot(userId, this.artifacts.build(effectiveStatements, method, path), roots);
+        return new AuthorizationSnapshot(
+            userId,
+            this.artifacts.build(effectiveStatements, method, path, schemaContext),
+            roots
+        );
     }
 
     private static Evaluation evaluate(CompiledSource policy, Map<String, ?> roots) {

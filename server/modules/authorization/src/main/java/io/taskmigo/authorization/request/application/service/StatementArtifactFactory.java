@@ -15,6 +15,7 @@ import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.CompilerEnvironment;
 import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.LanguageCompiler;
+import io.taskmigo.language.SchemaContext;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -68,6 +69,17 @@ public final class StatementArtifactFactory {
         String requestMethod,
         String requestPath
     ) {
+        return this.build(statements, requestMethod, requestPath, SchemaContext.EMPTY);
+    }
+
+    /// Builds artifacts against the effective resource schemas selected for this authorization operation.
+    public List<StatementExecutionArtifact> build(
+        Collection<EffectiveStatement> statements,
+        String requestMethod,
+        String requestPath,
+        SchemaContext schemaContext
+    ) {
+        Objects.requireNonNull(schemaContext);
         List<StatementExecutionArtifact> result = new ArrayList<>();
         for (EffectiveStatement effective : statements) {
             StatementInfo statement = effective.statement();
@@ -81,7 +93,7 @@ public final class StatementArtifactFactory {
 
             List<ObjectAuthorizationBinding<?>> applicable =
                 statement.scope() == Scope.OBJECT
-                    ? this.targetResolver.applicable(statement.target().api().method(), pathMatcher)
+                    ? this.targetResolver.applicable(statement.target().api().method(), pathMatcher, schemaContext)
                     : List.of();
             CompilerEnvironment requestEnvironment =
                 statement.scope() == Scope.REQUEST ? AuthorizationEmbeddedLanguageSchemas.request() : null;
@@ -91,7 +103,7 @@ public final class StatementArtifactFactory {
                 requestEnvironment == null ? "object" : requestEnvironment.fingerprint(),
                 this.compiler.contractFingerprint(),
                 profile.fingerprint(),
-                this.applicableSchemaIdentities(statement, pathMatcher)
+                applicable.stream().map(ObjectAuthorizationBinding::identity).sorted().toList()
             );
             DerivedArtifacts artifacts = this.derive(
                 statement,
@@ -197,18 +209,6 @@ public final class StatementArtifactFactory {
 
     private static boolean methodMatches(StatementInfo statement, String requestMethod) {
         return statement.target().api().method().equals("*") || statement.target().api().method().equals(requestMethod);
-    }
-
-    private List<String> applicableSchemaIdentities(StatementInfo statement, StatementTargetPathMatcher pathMatcher) {
-        if (statement.scope() != Scope.OBJECT) {
-            return List.of();
-        }
-        return this.targetResolver
-            .applicable(statement.target().api().method(), pathMatcher)
-            .stream()
-            .map(ObjectAuthorizationBinding::identity)
-            .sorted()
-            .toList();
     }
 
     private record TargetMatcherIdentity(Instant updatedAt, String expression) {}
