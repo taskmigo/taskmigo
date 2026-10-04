@@ -76,9 +76,10 @@ RUN addgroup -S -g 10001 taskmigo \
 
 WORKDIR /app
 
-ENV JAVA_HOME=/opt/java \
+ENV TZ=UTC \
+    JAVA_HOME=/opt/java \
     PATH=/opt/java/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
-    JAVA_TOOL_OPTIONS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+    JAVA_TOOL_OPTIONS="-Duser.timezone=UTC -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
 
 FROM runtime AS migration
 
