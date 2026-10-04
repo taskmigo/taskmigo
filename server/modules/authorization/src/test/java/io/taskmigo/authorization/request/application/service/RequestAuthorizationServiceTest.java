@@ -34,10 +34,7 @@ class RequestAuthorizationServiceTest {
     private final EffectiveStatementResolver statements = mock(EffectiveStatementResolver.class);
     private final RequestAuthorizationService service = new RequestAuthorizationService(
         this.statements,
-        new StatementArtifactFactory(
-            new LanguageCompiler(),
-            ObjectAuthorizationTargetResolver.all(List.of())
-        )
+        new StatementArtifactFactory(new LanguageCompiler(), ObjectAuthorizationTargetResolver.all(List.of()))
     );
 
     /**
