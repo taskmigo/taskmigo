@@ -23,7 +23,6 @@ import io.taskmigo.query.StaticQueryBinding;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -81,13 +80,17 @@ public class StatementResourceSchemas {
     }
 
     @Bean
-    QueryPredicateBinder<StatementInfo, StatementEntity> statementQueryPredicateBinder() {
-        return new JpaQueryPredicateBinder<>(StatementInfo.class, StatementEntity.class, paths(), types());
+    QueryPredicateBinder<StatementInfo, StatementEntity> statementQueryPredicateBinder(
+        @Qualifier("statementQueryBinding") QueryBinding<StatementInfo> binding
+    ) {
+        return new JpaQueryPredicateBinder<>(StatementEntity.class, binding, types());
     }
 
     @Bean
-    ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> statementObjectAuthorizationPredicateBinder() {
-        return new JpaObjectAuthorizationPredicateBinder<>(StatementInfo.class, StatementEntity.class, paths(), types());
+    ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> statementObjectAuthorizationPredicateBinder(
+        @Qualifier("statementObjectAuthorizationBinding") ObjectAuthorizationBinding<StatementInfo> binding
+    ) {
+        return new JpaObjectAuthorizationPredicateBinder<>(StatementEntity.class, binding, types());
     }
 
     private static Field field(String path, LanguageType type, boolean nullable) {
@@ -100,7 +103,7 @@ public class StatementResourceSchemas {
 
     private static List<QueryFieldBinding> queryFields(String... paths) {
         return Arrays.stream(paths)
-            .map(path -> new QueryFieldBinding(id(path), QueryPath.parse(path), QUERY_OPERATORS))
+            .map(path -> new QueryFieldBinding(id(path), QueryPath.parse(physicalPath(path)), QUERY_OPERATORS))
             .toList();
     }
 
@@ -108,13 +111,6 @@ public class StatementResourceSchemas {
         return Arrays.stream(paths)
             .map(path -> new ObjectAuthorizationFieldBinding(id(path), physicalPath(path), OBJECT_OPERATORS))
             .toList();
-    }
-
-    private static Map<FieldId, String> paths() {
-        return Map.of(
-            id("id"), "id", id("code"), "code", id("description"), "description",
-            id("target.api.method"), "method", id("target.api.path"), "path"
-        );
     }
 
     private static Map<FieldId, Class<?>> types() {
@@ -125,6 +121,10 @@ public class StatementResourceSchemas {
     }
 
     private static String physicalPath(String semanticPath) {
-        return Objects.requireNonNull(paths().get(id(semanticPath)));
+        return switch (semanticPath) {
+            case "target.api.method" -> "method";
+            case "target.api.path" -> "path";
+            default -> semanticPath;
+        };
     }
 }

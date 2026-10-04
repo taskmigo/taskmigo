@@ -75,13 +75,17 @@ public class GroupResourceSchemas {
     }
 
     @Bean
-    QueryPredicateBinder<GroupInfo, GroupEntity> groupQueryPredicateBinder() {
-        return new JpaQueryPredicateBinder<>(GroupInfo.class, GroupEntity.class, paths(), types());
+    QueryPredicateBinder<GroupInfo, GroupEntity> groupQueryPredicateBinder(
+        @Qualifier("groupQueryBinding") QueryBinding<GroupInfo> binding
+    ) {
+        return new JpaQueryPredicateBinder<>(GroupEntity.class, binding, types());
     }
 
     @Bean
-    ObjectAuthorizationPredicateBinder<GroupInfo, GroupEntity> groupObjectAuthorizationPredicateBinder() {
-        return new JpaObjectAuthorizationPredicateBinder<>(GroupInfo.class, GroupEntity.class, paths(), types());
+    ObjectAuthorizationPredicateBinder<GroupInfo, GroupEntity> groupObjectAuthorizationPredicateBinder(
+        @Qualifier("groupObjectAuthorizationBinding") ObjectAuthorizationBinding<GroupInfo> binding
+    ) {
+        return new JpaObjectAuthorizationPredicateBinder<>(GroupEntity.class, binding, types());
     }
 
     private static Field field(String path, LanguageType type, boolean nullable) {
@@ -102,10 +106,6 @@ public class GroupResourceSchemas {
         return Arrays.stream(paths)
             .map(path -> new ObjectAuthorizationFieldBinding(id(path), path, OBJECT_OPERATORS))
             .toList();
-    }
-
-    private static Map<FieldId, String> paths() {
-        return Map.of(id("id"), "id", id("code"), "code", id("displayName"), "displayName", id("description"), "description");
     }
 
     private static Map<FieldId, Class<?>> types() {

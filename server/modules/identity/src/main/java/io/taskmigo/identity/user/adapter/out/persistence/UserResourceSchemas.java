@@ -78,13 +78,17 @@ public class UserResourceSchemas {
     }
 
     @Bean
-    QueryPredicateBinder<UserInfo, UserEntity> userQueryPredicateBinder() {
-        return new JpaQueryPredicateBinder<>(UserInfo.class, UserEntity.class, queryPaths(), queryTypes());
+    QueryPredicateBinder<UserInfo, UserEntity> userQueryPredicateBinder(
+        @Qualifier("userQueryBinding") QueryBinding<UserInfo> binding
+    ) {
+        return new JpaQueryPredicateBinder<>(UserEntity.class, binding, queryTypes());
     }
 
     @Bean
-    ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> userObjectAuthorizationPredicateBinder() {
-        return new JpaObjectAuthorizationPredicateBinder<>(UserInfo.class, UserEntity.class, objectPaths(), objectTypes());
+    ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> userObjectAuthorizationPredicateBinder(
+        @Qualifier("userObjectAuthorizationBinding") ObjectAuthorizationBinding<UserInfo> binding
+    ) {
+        return new JpaObjectAuthorizationPredicateBinder<>(UserEntity.class, binding, objectTypes());
     }
 
     private static Field field(String path, LanguageType type, boolean nullable) {
@@ -107,19 +111,8 @@ public class UserResourceSchemas {
             .toList();
     }
 
-    private static Map<FieldId, String> queryPaths() {
-        return Map.of(id("id"), "id", id("username"), "username", id("firstName"), "firstName", id("lastName"), "lastName");
-    }
-
     private static Map<FieldId, Class<?>> queryTypes() {
         return Map.of(id("id"), UUID.class, id("username"), String.class, id("firstName"), String.class, id("lastName"), String.class);
-    }
-
-    private static Map<FieldId, String> objectPaths() {
-        return Map.of(
-            id("id"), "id", id("username"), "username", id("firstName"), "firstName",
-            id("lastName"), "lastName", id("status"), "status", id("retainedAt"), "retainedAt"
-        );
     }
 
     private static Map<FieldId, Class<?>> objectTypes() {

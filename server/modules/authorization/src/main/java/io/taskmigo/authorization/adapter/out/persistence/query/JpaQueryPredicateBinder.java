@@ -1,30 +1,40 @@
 package io.taskmigo.authorization.adapter.out.persistence.query;
 
 import io.taskmigo.language.FieldId;
+import io.taskmigo.query.QueryBinding;
+import io.taskmigo.query.QueryFieldBinding;
 import io.taskmigo.query.QueryPredicate;
 import io.taskmigo.query.model.QueryPredicateModel;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import org.springframework.data.jpa.domain.Specification;
 
-/// Creates an Access Control-owned Query Predicate binder for a flat or nested entity mapping.
+/// Creates a resource-owned Query Predicate binder from the selected execution binding.
 public final class JpaQueryPredicateBinder<Q, E> implements QueryPredicateBinder<Q, E> {
 
     private final Class<Q> queryType;
     private final Class<E> domainType;
+    private final QueryBinding<Q> binding;
     private final Map<FieldId, String> paths;
     private final Map<FieldId, Class<?>> types;
 
-    /// Creates a binder with explicit logical-to-physical paths and physical value types.
-    public JpaQueryPredicateBinder(
-        Class<Q> queryType,
-        Class<E> domainType,
-        Map<FieldId, String> paths,
-        Map<FieldId, Class<?>> types
-    ) {
-        this.queryType = queryType;
-        this.domainType = domainType;
-        this.paths = Map.copyOf(paths);
+    /// Creates a binder whose physical paths come only from the selected Query execution binding.
+    public JpaQueryPredicateBinder(Class<E> domainType, QueryBinding<Q> binding, Map<FieldId, Class<?>> types) {
+        this.domainType = Objects.requireNonNull(domainType);
+        this.binding = Objects.requireNonNull(binding);
+        this.queryType = binding.queryType();
         this.types = Map.copyOf(types);
+        HashMap<FieldId, String> declaredPaths = new HashMap<>();
+        for (QueryFieldBinding field : binding.fields()) {
+            if (!this.types.containsKey(field.id())) {
+                throw new IllegalArgumentException("Persistence type is not bound: " + field.id().value());
+            }
+            if (declaredPaths.putIfAbsent(field.id(), field.executionPath().text()) != null) {
+                throw new IllegalArgumentException("duplicate persistence field binding: " + field.id().value());
+            }
+        }
+        this.paths = Map.copyOf(declaredPaths);
     }
 
     @Override
@@ -41,6 +51,9 @@ public final class JpaQueryPredicateBinder<Q, E> implements QueryPredicateBinder
     public Specification<E> bind(QueryPredicate<Q> predicate) {
         if (!(predicate instanceof QueryPredicateModel model)) {
             throw new IllegalArgumentException("unsupported Query Predicate implementation");
+        }
+        if (!this.binding.identity().equals(model.bindingIdentity())) {
+            throw new IllegalArgumentException("Query Predicate belongs to an incompatible execution binding");
         }
         return JpaQueryExpressionBinder.bind(model.expression(), this.paths, this.types);
     }

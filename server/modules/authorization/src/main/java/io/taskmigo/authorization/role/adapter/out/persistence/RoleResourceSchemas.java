@@ -75,13 +75,17 @@ public class RoleResourceSchemas {
     }
 
     @Bean
-    QueryPredicateBinder<RoleInfo, RoleEntity> roleQueryPredicateBinder() {
-        return new JpaQueryPredicateBinder<>(RoleInfo.class, RoleEntity.class, paths(), types());
+    QueryPredicateBinder<RoleInfo, RoleEntity> roleQueryPredicateBinder(
+        @Qualifier("roleQueryBinding") QueryBinding<RoleInfo> binding
+    ) {
+        return new JpaQueryPredicateBinder<>(RoleEntity.class, binding, types());
     }
 
     @Bean
-    ObjectAuthorizationPredicateBinder<RoleInfo, RoleEntity> roleObjectAuthorizationPredicateBinder() {
-        return new JpaObjectAuthorizationPredicateBinder<>(RoleInfo.class, RoleEntity.class, paths(), types());
+    ObjectAuthorizationPredicateBinder<RoleInfo, RoleEntity> roleObjectAuthorizationPredicateBinder(
+        @Qualifier("roleObjectAuthorizationBinding") ObjectAuthorizationBinding<RoleInfo> binding
+    ) {
+        return new JpaObjectAuthorizationPredicateBinder<>(RoleEntity.class, binding, types());
     }
 
     private static Field field(String path, LanguageType type, boolean nullable) {
@@ -102,10 +106,6 @@ public class RoleResourceSchemas {
         return Arrays.stream(paths)
             .map(path -> new ObjectAuthorizationFieldBinding(id(path), path, OBJECT_OPERATORS))
             .toList();
-    }
-
-    private static Map<FieldId, String> paths() {
-        return Map.of(id("id"), "id", id("code"), "code", id("displayName"), "displayName", id("description"), "description");
     }
 
     private static Map<FieldId, Class<?>> types() {
