@@ -189,8 +189,21 @@ class FilterByCompilerTest {
         FieldId fieldId = FieldId.of(id);
         return new Declaration(
             new Field(fieldId, FieldPath.parse(path), type, nullable),
-            new QueryFieldBinding(fieldId, QueryPath.parse(path), operators)
+            new QueryFieldBinding(fieldId, QueryPath.parse(path), executionType(type), operators)
         );
+    }
+
+    private static Class<?> executionType(LanguageType type) {
+        if (type == LanguageType.Scalar.STRING) {
+            return String.class;
+        }
+        if (type == LanguageType.Scalar.NUMBER) {
+            return Number.class;
+        }
+        if (type == LanguageType.Scalar.BOOL) {
+            return Boolean.class;
+        }
+        return Object.class;
     }
 
     private record Declaration(Field field, QueryFieldBinding binding) {}

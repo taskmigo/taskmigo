@@ -51,6 +51,23 @@ class ObjectAuthorizationBindingResolverTest {
         assertThat(resolved).isSameAs(nullableBinding);
     }
 
+    @Test
+    @DisplayName("resolves the object binding by exact predicate identity")
+    void shouldResolveObjectBindingWhenPredicateCarriesRuntimeIdentity() {
+        ResourceSchema required = schema(false);
+        ResourceSchema nullable = schema(true);
+        ObjectAuthorizationBinding<TestObject> requiredBinding = binding(required);
+        ObjectAuthorizationBinding<TestObject> nullableBinding = binding(nullable);
+        ObjectAuthorizationBindingResolver resolver = ObjectAuthorizationBindingResolver.registered(
+            List.of(requiredBinding, nullableBinding),
+            (type, context) -> required
+        );
+
+        ObjectAuthorizationBinding<?> resolved = resolver.resolve(TestObject.class, nullableBinding.identity());
+
+        assertThat(resolved).isSameAs(nullableBinding);
+    }
+
     private static ResourceSchema schema(boolean nullable) {
         return ResourceSchema.of(
             TICKET,

@@ -52,6 +52,23 @@ class QueryBindingResolverTest {
         assertThat(resolution.binding()).isSameAs(nullableBinding);
     }
 
+    @Test
+    @DisplayName("resolves the query binding by exact predicate identity")
+    void shouldResolveQueryBindingWhenPredicateCarriesRuntimeIdentity() {
+        ResourceSchema required = schema(false);
+        ResourceSchema nullable = schema(true);
+        QueryBinding<TestQuery> requiredBinding = binding(required);
+        QueryBinding<TestQuery> nullableBinding = binding(nullable);
+        QueryBindingResolver resolver = QueryBindingResolver.registered(
+            List.of(requiredBinding, nullableBinding),
+            (type, context) -> required
+        );
+
+        QueryBinding<?> resolved = resolver.resolve(TestQuery.class, nullableBinding.identity());
+
+        assertThat(resolved).isSameAs(nullableBinding);
+    }
+
     private static ResourceSchema schema(boolean nullable) {
         return ResourceSchema.of(
             TICKET,

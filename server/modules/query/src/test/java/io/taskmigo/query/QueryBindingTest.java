@@ -35,7 +35,7 @@ class QueryBindingTest {
     void shouldCompileStableFieldIdentityWhenSchemaIsCreatedAtRuntime() {
         QueryBinding<TicketQuery> binding = binding(
             SCHEMA.fingerprint(),
-            new QueryFieldBinding(PRIORITY, QueryPath.parse("priorityValue"), Set.of(QueryOperator.GE))
+            new QueryFieldBinding(PRIORITY, QueryPath.parse("priorityValue"), Number.class, Set.of(QueryOperator.GE))
         );
 
         QueryPredicate<TicketQuery> predicate = new FilterByCompiler().compile(SCHEMA, binding, "object.priority >= 3");
@@ -56,7 +56,7 @@ class QueryBindingTest {
         );
         QueryBinding<TicketQuery> binding = binding(
             SCHEMA.fingerprint(),
-            new QueryFieldBinding(PRIORITY, QueryPath.parse("priorityValue"), Set.of(QueryOperator.GE))
+            new QueryFieldBinding(PRIORITY, QueryPath.parse("priorityValue"), Number.class, Set.of(QueryOperator.GE))
         );
 
         assertThatThrownBy(() -> new FilterByCompiler().compile(changed, binding, "object.priority >= 3"))
@@ -79,7 +79,7 @@ class QueryBindingTest {
     void shouldRejectOperatorWhenExecutionBindingDoesNotSupportIt() {
         QueryBinding<TicketQuery> binding = binding(
             SCHEMA.fingerprint(),
-            new QueryFieldBinding(PRIORITY, QueryPath.parse("priorityValue"), Set.of(QueryOperator.EQ))
+            new QueryFieldBinding(PRIORITY, QueryPath.parse("priorityValue"), Number.class, Set.of(QueryOperator.EQ))
         );
 
         assertThatThrownBy(() -> new FilterByCompiler().compile(SCHEMA, binding, "object.priority >= 3"))
@@ -95,6 +95,7 @@ class QueryBindingTest {
             new QueryFieldBinding(
                 FieldId.of("field:other:priority"),
                 QueryPath.parse("priorityValue"),
+                Number.class,
                 Set.of(QueryOperator.GE)
             )
         );

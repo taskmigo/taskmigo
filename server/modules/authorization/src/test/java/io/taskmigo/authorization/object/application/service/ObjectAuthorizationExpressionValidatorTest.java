@@ -102,7 +102,7 @@ class ObjectAuthorizationExpressionValidatorTest {
         return new StaticObjectAuthorizationBinding<>(
             TestObject.class,
             schema,
-            List.of(new ObjectAuthorizationFieldBinding(AMOUNT, "amount", operators))
+            List.of(new ObjectAuthorizationFieldBinding(AMOUNT, "amount", Number.class, operators))
         );
     }
 

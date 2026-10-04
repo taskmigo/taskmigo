@@ -118,13 +118,12 @@ class JpaUnaryPlusExpressionBinderTest {
         QueryBinding<TestQuery> binding = new StaticQueryBinding<>(
             TestQuery.class,
             schema,
-            List.of(new QueryFieldBinding(AMOUNT, QueryPath.parse("storedAmount"), Set.of(QueryOperator.EQ)))
+            List.of(new QueryFieldBinding(AMOUNT, QueryPath.parse("storedAmount"), Integer.class, Set.of(QueryOperator.EQ)))
         );
         var predicate = new FilterByCompiler().compile(schema, binding, "object.amount == 1");
         JpaQueryPredicateBinder<TestQuery, TestEntity> binder = new JpaQueryPredicateBinder<>(
             TestEntity.class,
-            binding,
-            Map.of(AMOUNT, Integer.class)
+            binding
         );
 
         Specification<TestEntity> specification = binder.bind(predicate);
@@ -149,6 +148,7 @@ class JpaUnaryPlusExpressionBinderTest {
                 new ObjectAuthorizationFieldBinding(
                     AMOUNT,
                     "storedAmount",
+                    Integer.class,
                     Set.of(ObjectAuthorizationOperator.EQ)
                 )
             )
@@ -162,11 +162,7 @@ class JpaUnaryPlusExpressionBinderTest {
             )
         );
         JpaObjectAuthorizationPredicateBinder<TestQuery, TestEntity> binder =
-            new JpaObjectAuthorizationPredicateBinder<>(
-                TestEntity.class,
-                binding,
-                Map.of(AMOUNT, Integer.class)
-            );
+            new JpaObjectAuthorizationPredicateBinder<>(TestEntity.class, binding);
 
         Specification<TestEntity> specification = binder.bind(predicate);
 

@@ -369,6 +369,7 @@ class ObjectAuthorizationServiceTest {
                 new ObjectAuthorizationFieldBinding(
                     id,
                     path,
+                    String.class,
                     Set.of(
                         ObjectAuthorizationOperator.EQ,
                         ObjectAuthorizationOperator.NE,

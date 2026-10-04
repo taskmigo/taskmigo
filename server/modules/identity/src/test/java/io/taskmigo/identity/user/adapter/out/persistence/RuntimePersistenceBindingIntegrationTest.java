@@ -57,7 +57,14 @@ class RuntimePersistenceBindingIntegrationTest {
     private static final QueryBinding<UserInfo> RUNTIME_QUERY_BINDING = new StaticQueryBinding<>(
         UserInfo.class,
         RUNTIME_SCHEMA,
-        List.of(new QueryFieldBinding(RUNTIME_ALIAS, QueryPath.parse("lastName"), Set.of(QueryOperator.EQ)))
+        List.of(
+            new QueryFieldBinding(
+                RUNTIME_ALIAS,
+                QueryPath.parse("lastName"),
+                String.class,
+                Set.of(QueryOperator.EQ)
+            )
+        )
     );
     private static final ObjectAuthorizationBinding<UserInfo> RUNTIME_OBJECT_BINDING =
         new StaticObjectAuthorizationBinding<>(
@@ -67,6 +74,7 @@ class RuntimePersistenceBindingIntegrationTest {
                 new ObjectAuthorizationFieldBinding(
                     RUNTIME_ALIAS,
                     "lastName",
+                    String.class,
                     Set.of(ObjectAuthorizationOperator.EQ)
                 )
             )
@@ -84,12 +92,8 @@ class RuntimePersistenceBindingIntegrationTest {
         try (AnnotationConfigApplicationContext context = context()) {
             QueryBindingResolver bindings = context.getBean(QueryBindingResolver.class);
             QueryBindingResolver.Resolution resolution = bindings.resolve(UserInfo.class, RUNTIME_CONTEXT);
-            @SuppressWarnings("unchecked")
-            QueryPredicate<UserInfo> predicate = (QueryPredicate<UserInfo>) new FilterByCompiler()
-                .compileUntyped(resolution.schema(), resolution.binding(), "object.runtimeAlias == \"alias\"");
-            @SuppressWarnings("unchecked")
-            QueryPredicateBinder<UserInfo, UserEntity> binder =
-                (QueryPredicateBinder<UserInfo, UserEntity>) context.getBean("userQueryPredicateBinder");
+            QueryPredicate<UserInfo> predicate = queryPredicate(resolution);
+            QueryPredicateBinder<UserInfo, UserEntity> binder = queryBinder(context);
 
             Specification<UserEntity> specification = binder.bind(predicate);
 
@@ -115,11 +119,7 @@ class RuntimePersistenceBindingIntegrationTest {
                     new ObjectAuthorizationExpression.Literal("alias")
                 )
             );
-            @SuppressWarnings("unchecked")
-            ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> binder =
-                (ObjectAuthorizationPredicateBinder<UserInfo, UserEntity>) context.getBean(
-                    "userObjectAuthorizationPredicateBinder"
-                );
+            ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> binder = objectBinder(context);
 
             Specification<UserEntity> specification = binder.bind(predicate);
 
@@ -131,14 +131,32 @@ class RuntimePersistenceBindingIntegrationTest {
         return new AnnotationConfigApplicationContext(UserResourceSchemas.class, RuntimeBindings.class);
     }
 
+    @SuppressWarnings("unchecked")
+    private static QueryPredicate<UserInfo> queryPredicate(QueryBindingResolver.Resolution resolution) {
+        return (QueryPredicate<UserInfo>) new FilterByCompiler()
+            .compileUntyped(resolution.schema(), resolution.binding(), "object.runtimeAlias == \"alias\"");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static QueryPredicateBinder<UserInfo, UserEntity> queryBinder(AnnotationConfigApplicationContext context) {
+        return (QueryPredicateBinder<UserInfo, UserEntity>) context.getBean("userQueryPredicateBinder");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> objectBinder(
+        AnnotationConfigApplicationContext context
+    ) {
+        return (ObjectAuthorizationPredicateBinder<UserInfo, UserEntity>) context.getBean(
+            "userObjectAuthorizationPredicateBinder"
+        );
+    }
+
     private static void assertBindsLastName(Specification<UserEntity> specification) {
-        @SuppressWarnings("unchecked")
-        Root<UserEntity> root = mock(Root.class);
-        CriteriaQuery<?> query = mock(CriteriaQuery.class);
-        CriteriaBuilder builder = mock(CriteriaBuilder.class);
-        @SuppressWarnings("unchecked")
-        Expression<Object> lastName = (Expression<Object>) root.get("lastName");
-        Predicate expected = mock(Predicate.class);
+        Root<UserEntity> root = mock();
+        CriteriaQuery<?> query = mock();
+        CriteriaBuilder builder = mock();
+        Expression<?> lastName = root.get("lastName");
+        Predicate expected = mock();
         when(builder.equal(lastName, builder.literal("alias"))).thenReturn(expected);
 
         assertThat(specification.toPredicate(root, query, builder)).isSameAs(expected);
@@ -161,6 +179,7 @@ class RuntimePersistenceBindingIntegrationTest {
                     throw new IllegalStateException("no runtime query binding");
                 }
 
+                @Override
                 public QueryBinding<?> resolve(Class<?> queryType, String bindingIdentity) {
                     if (queryType.equals(UserInfo.class) && RUNTIME_QUERY_BINDING.identity().equals(bindingIdentity)) {
                         return RUNTIME_QUERY_BINDING;
@@ -184,6 +203,7 @@ class RuntimePersistenceBindingIntegrationTest {
                     throw new IllegalStateException("no runtime object binding");
                 }
 
+                @Override
                 public ObjectAuthorizationBinding<?> resolve(Class<?> objectType, String bindingIdentity) {
                     if (
                         objectType.equals(UserInfo.class) &&

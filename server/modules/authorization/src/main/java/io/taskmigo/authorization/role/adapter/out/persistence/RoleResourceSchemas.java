@@ -5,6 +5,7 @@ import io.taskmigo.authorization.adapter.out.persistence.query.JpaQueryPredicate
 import io.taskmigo.authorization.adapter.out.persistence.query.ObjectAuthorizationPredicateBinder;
 import io.taskmigo.authorization.adapter.out.persistence.query.QueryPredicateBinder;
 import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
+import io.taskmigo.authorization.object.ObjectAuthorizationBindingResolver;
 import io.taskmigo.authorization.object.ObjectAuthorizationFieldBinding;
 import io.taskmigo.authorization.object.ObjectAuthorizationOperator;
 import io.taskmigo.authorization.object.StaticObjectAuthorizationBinding;
@@ -16,15 +17,16 @@ import io.taskmigo.language.LanguageType;
 import io.taskmigo.language.ResourceSchema;
 import io.taskmigo.language.ResourceType;
 import io.taskmigo.query.QueryBinding;
+import io.taskmigo.query.QueryBindingResolver;
 import io.taskmigo.query.QueryFieldBinding;
 import io.taskmigo.query.QueryOperator;
 import io.taskmigo.query.QueryPath;
 import io.taskmigo.query.StaticQueryBinding;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -76,16 +78,18 @@ public class RoleResourceSchemas {
 
     @Bean
     QueryPredicateBinder<RoleInfo, RoleEntity> roleQueryPredicateBinder(
-        @Qualifier("roleQueryBinding") QueryBinding<RoleInfo> binding
+        @Qualifier("roleQueryBinding") QueryBinding<RoleInfo> binding,
+        ObjectProvider<QueryBindingResolver> bindings
     ) {
-        return new JpaQueryPredicateBinder<>(RoleEntity.class, binding, types());
+        return new JpaQueryPredicateBinder<>(RoleEntity.class, binding, bindings.getIfAvailable());
     }
 
     @Bean
     ObjectAuthorizationPredicateBinder<RoleInfo, RoleEntity> roleObjectAuthorizationPredicateBinder(
-        @Qualifier("roleObjectAuthorizationBinding") ObjectAuthorizationBinding<RoleInfo> binding
+        @Qualifier("roleObjectAuthorizationBinding") ObjectAuthorizationBinding<RoleInfo> binding,
+        ObjectProvider<ObjectAuthorizationBindingResolver> bindings
     ) {
-        return new JpaObjectAuthorizationPredicateBinder<>(RoleEntity.class, binding, types());
+        return new JpaObjectAuthorizationPredicateBinder<>(RoleEntity.class, binding, bindings.getIfAvailable());
     }
 
     private static Field field(String path, LanguageType type, boolean nullable) {
@@ -98,17 +102,17 @@ public class RoleResourceSchemas {
 
     private static List<QueryFieldBinding> queryFields(String... paths) {
         return Arrays.stream(paths)
-            .map(path -> new QueryFieldBinding(id(path), QueryPath.parse(path), QUERY_OPERATORS))
+            .map(path -> new QueryFieldBinding(id(path), QueryPath.parse(path), valueType(path), QUERY_OPERATORS))
             .toList();
     }
 
     private static List<ObjectAuthorizationFieldBinding> objectFields(String... paths) {
         return Arrays.stream(paths)
-            .map(path -> new ObjectAuthorizationFieldBinding(id(path), path, OBJECT_OPERATORS))
+            .map(path -> new ObjectAuthorizationFieldBinding(id(path), path, valueType(path), OBJECT_OPERATORS))
             .toList();
     }
 
-    private static Map<FieldId, Class<?>> types() {
-        return Map.of(id("id"), UUID.class, id("code"), String.class, id("displayName"), String.class, id("description"), String.class);
+    private static Class<?> valueType(String path) {
+        return "id".equals(path) ? UUID.class : String.class;
     }
 }
