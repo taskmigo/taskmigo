@@ -2,6 +2,7 @@
 @ApplicationModule(
     allowedDependencies = {
         "foundation",
+        "foundation :: jackson",
         "authorization :: object",
         "authorization :: object-target-resolution-port",
         "authorization :: provisioning",

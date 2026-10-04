@@ -1,5 +1,6 @@
 package io.taskmigo.migration.bootstrap;
 
+import io.taskmigo.foundation.jackson.TaskmigoJackson;
 import io.taskmigo.migration.application.model.InstallationPlan;
 import java.io.IOException;
 import java.util.LinkedHashMap;
@@ -31,7 +32,7 @@ public final class MigrationResourceLoader {
     private static final String RESOURCE_PREFIX = "migration/";
 
     private final Environment environment;
-    private final YAMLMapper yaml = YAMLMapper.builder().build();
+    private final YAMLMapper yaml = TaskmigoJackson.configure(YAMLMapper.builder()).build();
     private final YamlPropertySourceLoader propertySourceLoader = new YamlPropertySourceLoader();
 
     public MigrationResourceLoader(Environment environment) {
