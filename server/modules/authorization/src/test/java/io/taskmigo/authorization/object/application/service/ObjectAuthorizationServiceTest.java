@@ -48,7 +48,6 @@ class ObjectAuthorizationServiceTest {
     private final ObjectAuthorizationBinding<TestObject> schema = schema();
     private final StatementArtifactFactory artifacts = new StatementArtifactFactory(
         new LanguageCompiler(),
-        List.of(this.schema),
         ObjectAuthorizationTargetResolver.all(List.of(this.schema))
     );
     private final ObjectAuthorizationService service = new ObjectAuthorizationService(
