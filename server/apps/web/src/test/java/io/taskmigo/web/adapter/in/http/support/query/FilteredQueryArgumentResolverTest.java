@@ -55,9 +55,7 @@ class FilteredQueryArgumentResolverTest {
         };
         QueryBindingResolver.Resolution resolution = new QueryBindingResolver.Resolution(this.schema, this.binding);
         when(this.bindings.resolve(TestQuery.class, schemaContext)).thenReturn(resolution);
-        doReturn(this.predicate)
-            .when(this.filters)
-            .compileUntyped(this.schema, this.binding, "object.priority >= 3");
+        doReturn(this.predicate).when(this.filters).compileUntyped(this.schema, this.binding, "object.priority >= 3");
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute(AuthorizationContext.ATTRIBUTE, authorizationContext);
         request.setParameter("filterBy", "object.priority >= 3");
