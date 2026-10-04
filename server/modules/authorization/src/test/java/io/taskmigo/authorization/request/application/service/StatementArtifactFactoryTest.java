@@ -44,7 +44,6 @@ class StatementArtifactFactoryTest {
 
     private final StatementArtifactFactory factory = new StatementArtifactFactory(
         new LanguageCompiler(),
-        List.of(),
         ObjectAuthorizationTargetResolver.all(List.of())
     );
 
@@ -70,7 +69,6 @@ class StatementArtifactFactoryTest {
         );
         StatementArtifactFactory objectFactory = new StatementArtifactFactory(
             new LanguageCompiler(),
-            List.of(first, second),
             ObjectAuthorizationTargetResolver.all(List.of(first, second))
         );
         EffectiveStatement statement = effective(
@@ -132,7 +130,6 @@ class StatementArtifactFactoryTest {
         );
         StatementArtifactFactory objectFactory = new StatementArtifactFactory(
             new LanguageCompiler(),
-            List.of(required, nullable),
             ObjectAuthorizationTargetResolver.all(List.of(required, nullable))
         );
         EffectiveStatement statement = effective(
@@ -305,7 +302,6 @@ class StatementArtifactFactoryTest {
         Ticker ticker = nanos::get;
         StatementArtifactFactory expiringFactory = new StatementArtifactFactory(
             new LanguageCompiler(),
-            List.of(),
             ObjectAuthorizationTargetResolver.all(List.of()),
             StatementArtifactCache.expireAfterAccess(Duration.ofMinutes(5), ticker),
             StatementArtifactCache.expireAfterAccess(Duration.ofMinutes(5), ticker)
@@ -374,7 +370,6 @@ class StatementArtifactFactoryTest {
         );
         StatementArtifactFactory objectFactory = new StatementArtifactFactory(
             new LanguageCompiler(),
-            List.of(binding),
             ObjectAuthorizationTargetResolver.all(List.of(binding))
         );
         StatementInfo statement = new StatementInfo(
@@ -416,7 +411,6 @@ class StatementArtifactFactoryTest {
         );
         StatementArtifactFactory objectFactory = new StatementArtifactFactory(
             new LanguageCompiler(),
-            List.of(binding),
             ObjectAuthorizationTargetResolver.all(List.of(binding))
         );
         StatementInfo invalid = new StatementInfo(
