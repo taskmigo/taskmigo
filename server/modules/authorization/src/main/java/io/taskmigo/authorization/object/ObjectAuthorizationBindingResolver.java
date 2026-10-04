@@ -28,7 +28,9 @@ public interface ObjectAuthorizationBindingResolver {
                 .filter(binding -> binding.objectType().equals(objectType))
                 .toList();
             if (candidates.isEmpty()) {
-                throw new IllegalStateException("No Object Authorization binding registered for " + objectType.getName());
+                throw new IllegalStateException(
+                    "No Object Authorization binding registered for " + objectType.getName()
+                );
             }
             List<ResourceType> resourceTypes = candidates
                 .stream()
@@ -53,7 +55,8 @@ public interface ObjectAuthorizationBindingResolver {
             }
             if (compatible.size() != 1) {
                 throw new IllegalStateException(
-                    "multiple Object Authorization bindings registered for effective resource schema " + schema.type().value()
+                    "multiple Object Authorization bindings registered for effective resource schema " +
+                        schema.type().value()
                 );
             }
             return compatible.getFirst();
