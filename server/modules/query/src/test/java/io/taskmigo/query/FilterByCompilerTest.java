@@ -118,6 +118,22 @@ class FilterByCompilerTest {
     }
 
     @Test
+    @DisplayName("should surface incompatible query bindings as configuration errors")
+    void shouldSurfaceIncompatibleBindingAsConfigurationError() {
+        Surface<CustomerQuery> changed = surface(
+            CustomerQuery.class,
+            "resource:customer",
+            declaration("field:customer:name", "name", LanguageType.Scalar.STRING, true, Set.of(QueryOperator.EQ))
+        );
+
+        assertThatThrownBy(() ->
+            new FilterByCompiler().compile(changed.schema(), this.customer.binding(), "object.name == \"Phong\"")
+        )
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("query binding is incompatible");
+    }
+
+    @Test
     @DisplayName("should reject predicate composition when schema identities differ")
     void shouldRejectPredicateCompositionWhenSchemaIdentitiesDiffer() {
         QueryPredicate<CustomerQuery> left = new FilterByCompiler().compile(
