@@ -48,7 +48,6 @@ class RequestAuthorizationResultTypeTest {
             resolver,
             new StatementArtifactFactory(
                 new LanguageCompiler(),
-                List.of(),
                 ObjectAuthorizationTargetResolver.all(List.of())
             )
         );
