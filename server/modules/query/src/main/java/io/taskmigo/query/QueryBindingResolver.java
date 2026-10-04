@@ -23,15 +23,14 @@ public interface QueryBindingResolver {
         List<QueryBinding<?>> declared = List.copyOf(bindings);
         Objects.requireNonNull(schemas);
         return (queryType, context) -> {
-            List<QueryBinding<?>> candidates = declared.stream().filter(binding -> binding.queryType().equals(queryType)).toList();
+            List<QueryBinding<?>> candidates = declared
+                .stream()
+                .filter(binding -> binding.queryType().equals(queryType))
+                .toList();
             if (candidates.isEmpty()) {
                 throw new IllegalStateException("No query binding registered for " + queryType.getName());
             }
-            List<ResourceType> resourceTypes = candidates
-                .stream()
-                .map(QueryBinding::resourceType)
-                .distinct()
-                .toList();
+            List<ResourceType> resourceTypes = candidates.stream().map(QueryBinding::resourceType).distinct().toList();
             if (resourceTypes.size() != 1) {
                 throw new IllegalStateException("multiple resource types registered for query " + queryType.getName());
             }
