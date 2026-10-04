@@ -79,40 +79,43 @@ public interface ResourceSchema {
         }
 
         private String canonicalForm() {
-            StringBuilder value = new StringBuilder(this.type.value());
-            new TreeMap<>(this.fields).forEach((path, field) ->
-                value
-                    .append('|')
-                    .append(field.id().value())
-                    .append(':')
-                    .append(path.text())
-                    .append(':')
-                    .append(canonical(field.type()))
-                    .append(':')
-                    .append(field.nullable())
-            );
+            StringBuilder value = new StringBuilder("RESOURCE");
+            appendComponent(value, this.type.value());
+            new TreeMap<>(this.fields).forEach((path, field) -> {
+                value.append("FIELD");
+                appendComponent(value, field.id().value());
+                appendComponent(value, path.text());
+                appendComponent(value, canonical(field.type()));
+                value.append(field.nullable() ? '1' : '0');
+            });
             return value.toString();
         }
 
         private static String canonical(LanguageType type) {
             if (type instanceof LanguageType.Scalar scalar) {
-                return scalar.name();
+                StringBuilder value = new StringBuilder("SCALAR");
+                appendComponent(value, scalar.name());
+                return value.toString();
             }
             if (type instanceof LanguageType.ListType list) {
-                return "LIST<" + canonical(list.elementType()) + ">";
+                StringBuilder value = new StringBuilder("LIST");
+                appendComponent(value, canonical(list.elementType()));
+                return value.toString();
             }
             LanguageType.StructuredType structured = (LanguageType.StructuredType) type;
-            StringBuilder value = new StringBuilder("STRUCT<").append(structured.name());
-            new TreeMap<>(structured.fields()).forEach((name, field) ->
-                value
-                    .append('|')
-                    .append(name)
-                    .append(':')
-                    .append(canonical(field.type()))
-                    .append(':')
-                    .append(field.nullable())
-            );
-            return value.append('>').toString();
+            StringBuilder value = new StringBuilder("STRUCT");
+            appendComponent(value, structured.name());
+            new TreeMap<>(structured.fields()).forEach((name, field) -> {
+                value.append("FIELD");
+                appendComponent(value, name);
+                appendComponent(value, canonical(field.type()));
+                value.append(field.nullable() ? '1' : '0');
+            });
+            return value.toString();
+        }
+
+        private static void appendComponent(StringBuilder value, String component) {
+            value.append(component.length()).append(':').append(component);
         }
     }
 }
