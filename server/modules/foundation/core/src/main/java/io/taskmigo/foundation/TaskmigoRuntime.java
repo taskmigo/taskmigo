@@ -13,6 +13,7 @@ public final class TaskmigoRuntime {
     private TaskmigoRuntime() {}
 
     /// Forces both the declared and effective JVM default timezone to UTC.
+    // java.time does not provide an API for changing the process-wide default timezone.
     public static void initialize() {
         System.setProperty("user.timezone", UTC);
         TimeZone.setDefault(TimeZone.getTimeZone(UTC));

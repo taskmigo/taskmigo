@@ -8,6 +8,7 @@ COPY --chmod=755 gradlew ./
 COPY gradle ./gradle
 COPY settings.gradle.kts build.gradle.kts ./
 COPY modules/foundation/core/build.gradle.kts modules/foundation/core/build.gradle.kts
+COPY modules/foundation/jackson/build.gradle.kts modules/foundation/jackson/build.gradle.kts
 COPY modules/foundation/spring/build.gradle.kts modules/foundation/spring/build.gradle.kts
 COPY modules/language/build.gradle.kts modules/language/build.gradle.kts
 COPY modules/query/build.gradle.kts modules/query/build.gradle.kts
@@ -28,6 +29,7 @@ RUN --mount=type=cache,id=taskmigo-gradle,target=/root/.gradle,sharing=locked \
         :apps:worker:dependencies
 
 COPY modules/foundation/core/src modules/foundation/core/src
+COPY modules/foundation/jackson/src modules/foundation/jackson/src
 COPY modules/foundation/spring/src modules/foundation/spring/src
 COPY modules/language/src modules/language/src
 COPY modules/query/src modules/query/src
