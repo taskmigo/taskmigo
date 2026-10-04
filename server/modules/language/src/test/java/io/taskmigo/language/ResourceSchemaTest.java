@@ -25,14 +25,8 @@ class ResourceSchemaTest {
     @Test
     @DisplayName("distinguishes schemas whose canonical field components contain delimiters")
     void shouldDistinguishFingerprintWhenFieldComponentsContainDelimiters() {
-        ResourceSchema first = ResourceSchema.of(
-            USER,
-            List.of(field("a:b", "c", LanguageType.Scalar.STRING, false))
-        );
-        ResourceSchema second = ResourceSchema.of(
-            USER,
-            List.of(field("a", "b:c", LanguageType.Scalar.STRING, false))
-        );
+        ResourceSchema first = ResourceSchema.of(USER, List.of(field("a:b", "c", LanguageType.Scalar.STRING, false)));
+        ResourceSchema second = ResourceSchema.of(USER, List.of(field("a", "b:c", LanguageType.Scalar.STRING, false)));
 
         assertThat(first.fingerprint()).isNotEqualTo(second.fingerprint());
     }
