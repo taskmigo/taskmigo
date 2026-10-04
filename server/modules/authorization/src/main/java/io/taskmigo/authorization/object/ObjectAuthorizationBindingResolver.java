@@ -11,7 +11,6 @@ import java.util.Objects;
 /// Resolves the Object Authorization binding compatible with the effective semantic schema for one application surface.
 @FunctionalInterface
 public interface ObjectAuthorizationBindingResolver {
-
     /// Resolves the exact compatible Object Authorization binding for the supplied application type and schema context.
     ObjectAuthorizationBinding<?> resolve(Class<?> objectType, SchemaContext context);
 
