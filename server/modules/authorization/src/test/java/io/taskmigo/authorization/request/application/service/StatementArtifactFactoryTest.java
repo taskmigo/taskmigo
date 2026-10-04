@@ -93,6 +93,64 @@ class StatementArtifactFactoryTest {
     }
 
     /**
+     * Verifies one logical resource can retain policy variants for multiple effective schema fingerprints.
+     *
+     * Given: one Statement target resolves two snapshots of the same resource type with different nullability.
+     * Expect: the artifact keeps both exact resource-type/fingerprint variants without treating them as a conflict.
+     */
+    @Test
+    @DisplayName("compiles object policy variants for multiple fingerprints of one resource")
+    void shouldCompileSeparateVariantsWhenSameResourceHasDifferentFingerprints() {
+        // Arrange
+        ResourceType type = ResourceType.of("test:runtime-object");
+        FieldId id = FieldId.of("field:test:runtime-object:name");
+        ResourceSchema requiredSchema = ResourceSchema.of(
+            type,
+            List.of(new Field(id, FieldPath.parse("name"), LanguageType.Scalar.STRING, false))
+        );
+        ResourceSchema nullableSchema = ResourceSchema.of(
+            type,
+            List.of(new Field(id, FieldPath.parse("name"), LanguageType.Scalar.STRING, true))
+        );
+        ObjectAuthorizationBinding<FirstObject> required = new StaticObjectAuthorizationBinding<>(
+            FirstObject.class,
+            requiredSchema,
+            List.of(new ObjectAuthorizationFieldBinding(id, "name", Set.of(ObjectAuthorizationOperator.EQ)))
+        );
+        ObjectAuthorizationBinding<SecondObject> nullable = new StaticObjectAuthorizationBinding<>(
+            SecondObject.class,
+            nullableSchema,
+            List.of(new ObjectAuthorizationFieldBinding(id, "name", Set.of(ObjectAuthorizationOperator.EQ)))
+        );
+        StatementArtifactFactory objectFactory = new StatementArtifactFactory(
+            new LanguageCompiler(),
+            List.of(required, nullable),
+            ObjectAuthorizationTargetResolver.all(List.of(required, nullable))
+        );
+        EffectiveStatement statement = effective(
+            new StatementInfo(
+                UUID.randomUUID(),
+                "runtime_schema",
+                null,
+                Effect.ALLOW,
+                Scope.OBJECT,
+                new TargetInfo(new ApiInfo("GET", "/api/v0/objects")),
+                "object.name == \"alice\""
+            ),
+            Instant.EPOCH
+        );
+
+        // Act
+        StatementExecutionArtifact artifact = objectFactory
+            .build(List.of(statement), "GET", "/api/v0/objects")
+            .getFirst();
+
+        // Assert
+        assertThat(artifact.policy(type, required.schemaFingerprint())).isNotNull();
+        assertThat(artifact.policy(type, nullable.schemaFingerprint())).isNotNull();
+    }
+
+    /**
      * Verifies that persisted Statement revisions control cross-operation derivative reuse.
      *
      * Given: one Statement loaded twice with the same `updated_at` and once with a newer revision.
