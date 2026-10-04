@@ -46,10 +46,7 @@ class RequestAuthorizationResultTypeTest {
         when(resolver.resolve(userId)).thenReturn(List.of(new EffectiveStatement(statement, Instant.EPOCH)));
         RequestAuthorizationService service = new RequestAuthorizationService(
             resolver,
-            new StatementArtifactFactory(
-                new LanguageCompiler(),
-                ObjectAuthorizationTargetResolver.all(List.of())
-            )
+            new StatementArtifactFactory(new LanguageCompiler(), ObjectAuthorizationTargetResolver.all(List.of()))
         );
 
         // Act
