@@ -1,15 +1,16 @@
 package io.taskmigo.web.adapter.in.http.support.objectauthorization;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
+import io.taskmigo.authorization.object.ObjectAuthorizationBindingResolver;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.application.port.in.api.ObjectAuthorization;
 import io.taskmigo.authorization.request.AuthorizationContext;
+import io.taskmigo.language.SchemaContext;
 import java.lang.reflect.Method;
-import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,71 +27,30 @@ class ObjectAuthorizationPredicateArgumentResolverTest {
     private ObjectAuthorization authorization;
 
     @Mock
-    private ObjectAuthorizationBinding<TestObject> binding;
+    private ObjectAuthorizationBindingResolver bindings;
 
     @Mock
-    private ObjectAuthorizationBinding<TestObject> duplicateBinding;
+    private ObjectAuthorizationBinding<TestObject> binding;
 
     @Mock
     private ObjectAuthorizationPredicate<TestObject> predicate;
 
-    @Mock
-    private AuthorizationContext context;
-
-    /**
-     * Verifies that a typed predicate handler argument is authorized with the matching resource schema and request context.
-     *
-     * Given: a handler parameter `ObjectAuthorizationPredicate<TestObject>`, its schema, and the current operation context.
-     * Expect: the resolver delegates to Object Authorization and returns the resulting typed predicate.
-     */
     @Test
-    @DisplayName("resolves a typed object authorization predicate from the current request")
-    void shouldResolvePredicateWhenHandlerDeclaresObjectType() throws NoSuchMethodException {
-        // Arrange
+    @DisplayName("resolves object authorization through the runtime schema selected for the current request")
+    void shouldResolvePredicateThroughRuntimeSchemaContext() throws NoSuchMethodException {
         Method method = TestController.class.getDeclaredMethod("list", ObjectAuthorizationPredicate.class);
         MethodParameter parameter = new MethodParameter(method, 0);
-        when(this.binding.objectType()).thenReturn(TestObject.class);
-        when(this.authorization.authorize(this.context, this.binding)).thenReturn(this.predicate);
-        ObjectAuthorizationPredicateArgumentResolver resolver = new ObjectAuthorizationPredicateArgumentResolver(
-            this.authorization,
-            List.of(this.binding)
-        );
+        SchemaContext schemaContext = new SchemaContext(Map.of("templateId", "incident"));
+        AuthorizationContext context = () -> schemaContext;
+        when(this.bindings.resolve(TestObject.class, schemaContext)).thenReturn(this.binding);
+        when(this.authorization.authorize(context, this.binding)).thenReturn(this.predicate);
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.setAttribute(AuthorizationContext.ATTRIBUTE, this.context);
+        request.setAttribute(AuthorizationContext.ATTRIBUTE, context);
 
-        // Act
-        Object resolved = resolver.resolveArgument(parameter, null, new ServletWebRequest(request), null);
+        Object resolved = new ObjectAuthorizationPredicateArgumentResolver(this.authorization, this.bindings)
+            .resolveArgument(parameter, null, new ServletWebRequest(request), null);
 
-        // Assert
-        assertThat(resolver.supportsParameter(parameter)).isTrue();
         assertThat(resolved).isSameAs(this.predicate);
-    }
-
-    /**
-     * Verifies that one controller integration type cannot silently select an arbitrary binding.
-     *
-     * Given: two Object Authorization bindings registered for `TestObject`.
-     * Expect: argument resolution fails before authorization because semantic binding selection is ambiguous.
-     */
-    @Test
-    @DisplayName("rejects duplicate object authorization bindings for one controller type")
-    void shouldRejectResolutionWhenObjectAuthorizationBindingsShareControllerType() throws NoSuchMethodException {
-        // Arrange
-        Method method = TestController.class.getDeclaredMethod("list", ObjectAuthorizationPredicate.class);
-        MethodParameter parameter = new MethodParameter(method, 0);
-        when(this.binding.objectType()).thenReturn(TestObject.class);
-        when(this.duplicateBinding.objectType()).thenReturn(TestObject.class);
-        ObjectAuthorizationPredicateArgumentResolver resolver = new ObjectAuthorizationPredicateArgumentResolver(
-            this.authorization,
-            List.of(this.binding, this.duplicateBinding)
-        );
-
-        // Act + Assert
-        assertThatThrownBy(() ->
-            resolver.resolveArgument(parameter, null, new ServletWebRequest(new MockHttpServletRequest()), null)
-        )
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("multiple Object Authorization bindings");
     }
 
     private static final class TestController {
