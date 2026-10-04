@@ -79,6 +79,17 @@ jobs:
         run: |
           COUNT=$(jq '[.runs[]?.results[]?] | length' "$SARIF_FILE")
 
+          jq -r '
+            .runs[]?.results[]?
+            | [
+                .ruleId,
+                (.locations[0].physicalLocation.artifactLocation.uri // "?"),
+                (.locations[0].physicalLocation.region.startLine // 0),
+                (.message.text // "")
+              ]
+            | @tsv
+          ' "$SARIF_FILE"
+
           {
             echo "## Qodana results"
             echo
