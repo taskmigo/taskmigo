@@ -1,5 +1,7 @@
 package io.taskmigo.authorization.embeddedlanguage;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
 import io.taskmigo.language.CompilerEnvironment;
 import io.taskmigo.language.Field;
@@ -14,8 +16,6 @@ import io.taskmigo.language.SchemaFingerprint;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 /// Builds compiler root bindings from semantic authorization resources.
 public final class AuthorizationEmbeddedLanguageSchemas {
@@ -25,7 +25,10 @@ public final class AuthorizationEmbeddedLanguageSchemas {
         List.of(field("principal", "id", string(), false), field("principal", "username", string(), false))
     );
     private static final ResourceSchema REQUEST = dynamicRequestSchema();
-    private static final ConcurrentMap<String, CompilerEnvironment> OBJECTS = new ConcurrentHashMap<>();
+    private static final long OBJECT_ENVIRONMENT_CACHE_MAX_SIZE = 1_024;
+    private static final Cache<String, CompilerEnvironment> OBJECTS = Caffeine.newBuilder()
+        .maximumSize(OBJECT_ENVIRONMENT_CACHE_MAX_SIZE)
+        .build();
 
     private AuthorizationEmbeddedLanguageSchemas() {}
 
@@ -43,7 +46,7 @@ public final class AuthorizationEmbeddedLanguageSchemas {
 
     /// Returns cached object authorization roots for one logical resource contract.
     public static <Q> CompilerEnvironment object(ObjectAuthorizationBinding<Q> schema) {
-        return OBJECTS.computeIfAbsent(schema.identity(), ignored -> environment(objectSchema(schema)));
+        return OBJECTS.get(schema.identity(), ignored -> environment(objectSchema(schema)));
     }
 
     private static CompilerEnvironment environment(ResourceSchema object) {
