@@ -272,7 +272,6 @@ class RequestAuthorizationServiceTest {
             userId,
             new StatementArtifactFactory(
                 new LanguageCompiler(),
-                List.of(),
                 ObjectAuthorizationTargetResolver.all(List.of())
             ).build(statements, "GET", "/api/v0/users"),
             Map.of("request", Map.of("method", "GET"))
