@@ -4,8 +4,24 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
+import io.taskmigo.authorization.object.ObjectAuthorizationFieldBinding;
+import io.taskmigo.authorization.object.ObjectAuthorizationOperator;
+import io.taskmigo.authorization.object.StaticObjectAuthorizationBinding;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
+import io.taskmigo.authorization.object.model.ObjectAuthorizationPredicateModels;
+import io.taskmigo.language.Field;
 import io.taskmigo.language.FieldId;
+import io.taskmigo.language.FieldPath;
+import io.taskmigo.language.LanguageType;
+import io.taskmigo.language.ResourceSchema;
+import io.taskmigo.language.ResourceType;
+import io.taskmigo.query.FilterByCompiler;
+import io.taskmigo.query.QueryBinding;
+import io.taskmigo.query.QueryFieldBinding;
+import io.taskmigo.query.QueryOperator;
+import io.taskmigo.query.QueryPath;
+import io.taskmigo.query.StaticQueryBinding;
 import io.taskmigo.query.model.QueryExpression;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
@@ -14,6 +30,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +42,7 @@ import org.springframework.data.jpa.domain.Specification;
 @ExtendWith(MockitoExtension.class)
 class JpaUnaryPlusExpressionBinderTest {
 
+    private static final ResourceType RESOURCE = ResourceType.of("resource:test");
     private static final FieldId AMOUNT = FieldId.of("field:test:amount");
 
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
@@ -87,6 +105,85 @@ class JpaUnaryPlusExpressionBinderTest {
         assertBindsAsIdentity(specification);
     }
 
+    /**
+     * Verifies the JPA query binder consumes the execution path from the selected QueryBinding.
+     */
+    @Test
+    @DisplayName("should translate query fields through the selected execution binding")
+    void shouldTranslateQueryFieldThroughSelectedExecutionBinding() {
+        ResourceSchema schema = ResourceSchema.of(
+            RESOURCE,
+            List.of(new Field(AMOUNT, FieldPath.parse("amount"), LanguageType.Scalar.NUMBER, false))
+        );
+        QueryBinding<TestQuery> binding = new StaticQueryBinding<>(
+            TestQuery.class,
+            schema,
+            List.of(new QueryFieldBinding(AMOUNT, QueryPath.parse("storedAmount"), Set.of(QueryOperator.EQ)))
+        );
+        var predicate = new FilterByCompiler().compile(schema, binding, "object.amount == 1");
+        JpaQueryPredicateBinder<TestQuery, TestEntity> binder = new JpaQueryPredicateBinder<>(
+            TestEntity.class,
+            binding,
+            Map.of(AMOUNT, Integer.class)
+        );
+
+        Specification<TestEntity> specification = binder.bind(predicate);
+
+        assertBindsStoredAmount(specification);
+    }
+
+    /**
+     * Verifies the JPA Object Authorization binder consumes the execution path from the selected object binding.
+     */
+    @Test
+    @DisplayName("should translate object authorization fields through the selected execution binding")
+    void shouldTranslateObjectAuthorizationFieldThroughSelectedExecutionBinding() {
+        ResourceSchema schema = ResourceSchema.of(
+            RESOURCE,
+            List.of(new Field(AMOUNT, FieldPath.parse("amount"), LanguageType.Scalar.NUMBER, false))
+        );
+        ObjectAuthorizationBinding<TestQuery> binding = new StaticObjectAuthorizationBinding<>(
+            TestQuery.class,
+            schema,
+            List.of(
+                new ObjectAuthorizationFieldBinding(
+                    AMOUNT,
+                    "storedAmount",
+                    Set.of(ObjectAuthorizationOperator.EQ)
+                )
+            )
+        );
+        var predicate = ObjectAuthorizationPredicateModels.from(
+            binding,
+            new ObjectAuthorizationExpression.Binary(
+                ObjectAuthorizationExpression.BinaryOperator.EQUAL,
+                new ObjectAuthorizationExpression.Reference("object", List.of("amount"), AMOUNT),
+                new ObjectAuthorizationExpression.Literal(1)
+            )
+        );
+        JpaObjectAuthorizationPredicateBinder<TestQuery, TestEntity> binder =
+            new JpaObjectAuthorizationPredicateBinder<>(
+                TestEntity.class,
+                binding,
+                Map.of(AMOUNT, Integer.class)
+            );
+
+        Specification<TestEntity> specification = binder.bind(predicate);
+
+        assertBindsStoredAmount(specification);
+    }
+
+    private void assertBindsStoredAmount(Specification<TestEntity> specification) {
+        Root<TestEntity> root = this.root;
+        CriteriaQuery<?> query = mock(CriteriaQuery.class);
+        CriteriaBuilder builder = mock(CriteriaBuilder.class);
+        Expression<?> amount = root.get("storedAmount");
+        Predicate expected = mock(Predicate.class);
+        when(builder.equal(amount, builder.literal(1))).thenReturn(expected);
+
+        assertThat(specification.toPredicate(root, query, builder)).isSameAs(expected);
+    }
+
     private void assertBindsAsIdentity(Specification<TestEntity> specification) {
         Root<TestEntity> root = this.root;
         CriteriaQuery<?> query = mock(CriteriaQuery.class);
@@ -97,6 +194,8 @@ class JpaUnaryPlusExpressionBinderTest {
 
         assertThat(specification.toPredicate(root, query, builder)).isSameAs(expected);
     }
+
+    private static final class TestQuery {}
 
     private static final class TestEntity {}
 }
