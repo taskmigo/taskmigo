@@ -1,90 +1,111 @@
-# Shared Jackson Contract Design
+# UTC Runtime and Jackson Contract Design
 
 ## Context
 
-Taskmigo treats UTC as a non-configurable server runtime invariant. The server currently has several independent Jackson construction paths:
+Taskmigo treats UTC as a non-configurable server invariant. Issue #238 showed that the previous implementation did not make that invariant explicit across process bootstrap, Jackson configuration, Hibernate/JDBC behavior, and PostgreSQL sessions.
 
-- Spring Boot creates the Web `JsonMapper`.
-- `OAuthPersistenceConfiguration` builds a dedicated `JsonMapper` with Spring Security modules and a restricted polymorphic type validator.
-- `JpaAuditLogStore` builds a dedicated plain `JsonMapper`.
-- `MigrationResourceLoader` builds a dedicated `YAMLMapper`.
+The first implementation attempted to self-correct a non-UTC JVM by calling `TimeZone.setDefault(...)` and hard-applied Jackson's mapper timezone through `MapperBuilder.defaultTimeZone(TimeZone)`. Those APIs require the legacy `java.util.TimeZone` type.
 
-A Web-only `spring.jackson.time-zone=UTC` property configures only Spring Boot-managed mappers and can be overridden through external configuration. It therefore does not establish a Taskmigo-wide Jackson invariant.
+The desired contract is stricter and simpler:
 
-Spring Boot 4.1 uses Jackson 3 as its preferred/default Jackson implementation and exposes `JsonMapperBuilderCustomizer` for builder customization. Jackson 3 mapper configuration is builder-based.
+- Taskmigo production code must not mutate the JVM default timezone.
+- A server started with a non-UTC effective JVM timezone must fail fast.
+- Application boundaries that can be configured independently must declare UTC explicitly.
+- Absolute application timestamps remain `Instant`.
+- Taskmigo production code must not require a Qodana exception for legacy date/time APIs.
 
 ## Goals
 
-1. Establish one reusable Taskmigo Jackson policy for JSON and YAML mapper builders.
-2. Make UTC a hard Jackson invariant rather than an operator-selectable Spring property.
-3. Apply the same policy to Spring Boot-managed and manually-created mappers.
-4. Preserve purpose-specific mapper configuration, especially OAuth security modules and YAML support.
-5. Keep `foundation:core` free of Jackson and Spring dependencies.
-6. Avoid introducing a shared singleton `JsonMapper` that couples unrelated serialization use cases.
+1. Make a non-UTC JVM configuration a startup error instead of silently correcting it.
+2. Keep Taskmigo production code on `java.time` APIs and remove `java.util.TimeZone` usage introduced by this feature.
+3. Keep Spring Boot-managed Jackson explicitly configured as UTC and reject any effective non-UTC external override.
+4. Keep manually-created OAuth, Audit, and Migration mappers free of application-global timezone mutation or legacy timezone configuration.
+5. Make PostgreSQL application sessions explicitly request UTC for every new connection, rather than relying only on the JVM default inherited when the connection is created.
+6. Preserve `Instant` + PostgreSQL `timestamptz` as the absolute timestamp model.
+7. Preserve OAuth security modules, Audit JSON structure, Migration YAML behavior, and existing persisted data.
 
 ## Non-goals
 
-- Replacing purpose-specific OAuth Jackson modules or polymorphic type validation.
-- Converting YAML parsing to JSON.
-- Moving business DTOs, serializers, or persistence models into Foundation.
-- Supporting an operator-configurable server serialization timezone.
-- Introducing Jackson 2 APIs. Spring Boot 4.1/Jackson 3 APIs are the target.
+- Dynamically changing the server timezone while the process is running.
+- Supporting an operator-selectable server timezone.
+- Masking a bad deployment by silently rewriting its timezone.
+- Introducing Spring Cloud refresh or runtime configuration rebinding.
+- Replacing purpose-specific OAuth serialization modules or polymorphic validation.
+- Changing API or persisted timestamp schemas.
 
-## Module Boundary
+## Runtime Invariant
 
-Add:
+### Deployment defaults
 
-`server/modules/foundation/jackson`
+Taskmigo's server container continues to declare UTC operational defaults:
 
-with Gradle path:
-
-`:modules:foundation:jackson`
-
-The module owns Taskmigo-wide Jackson defaults and Spring Boot integration for those defaults.
-
-It may depend on:
-
-- Jackson 3 databind.
-- Spring Boot autoconfigure APIs required to contribute a `JsonMapperBuilderCustomizer`.
-
-It must not depend on bounded-context modules such as Identity, Audit, Authorization, Query, Web, Worker, or Migration.
-
-`foundation:core` remains framework- and serialization-library-neutral.
-
-## Shared Builder Policy
-
-The module exposes a small public utility, `TaskmigoJackson`, that applies Taskmigo's common settings to an existing Jackson 3 `MapperBuilder`.
-
-Conceptually:
-
-```java
-TaskmigoJackson.configure(JsonMapper.builder())
-TaskmigoJackson.configure(YAMLMapper.builder())
+```text
+TZ=UTC
+-Duser.timezone=UTC
 ```
 
-The method configures the supplied builder and returns that builder for normal chaining.
+These are deployment defaults, not the correctness boundary by themselves.
 
-The initial shared invariant is:
+### Startup validation
 
-- Jackson default timezone is UTC.
+`TaskmigoRuntime` becomes a validator rather than a mutator.
 
-The API is intentionally builder-oriented. Callers remain responsible for format-specific or security-specific configuration before building the mapper.
+Production code checks:
 
-Jackson 3 already defaults its mapper timezone to UTC, but Taskmigo must set UTC explicitly so the application contract is independent of library defaults and remains stable when other customization is introduced.
+```java
+ZoneId.systemDefault().normalized().equals(ZoneOffset.UTC)
+```
 
-## Spring Boot Integration
+If the effective JVM timezone is not UTC, startup fails with an error that includes the actual timezone.
 
-The module contributes an auto-configuration that provides a `JsonMapperBuilderCustomizer`.
+The validator must not call:
 
-The customizer:
+- `TimeZone.setDefault(...)`
+- `TimeZone.getDefault()`
+- `System.setProperty("user.timezone", ...)`
 
-- Applies the same `TaskmigoJackson` builder policy.
-- Runs after Spring Boot's own Jackson property customizer.
-- Re-applies UTC last so external values such as `SPRING_JACKSON_TIME_ZONE=Asia/Ho_Chi_Minh` cannot change Taskmigo's effective JSON timezone.
+The existing highest-precedence `ApplicationStartingEvent` listener remains the enforcement point so an invalid runtime fails before the Spring Environment or ApplicationContext is created.
 
-The module must use Jackson 3 / Spring Boot 4.1 APIs. It must not use deprecated Jackson 2 customization APIs.
+The validator may expose a package-private pure helper that accepts a `ZoneId` so non-UTC behavior can be tested without mutating global JVM state.
 
-Because the shared customizer is authoritative, remove the Web-only:
+## Runtime Mutation After Startup
+
+Spring Boot configuration and operating-system environment variables are not continuously rebound by core Spring Boot. Taskmigo therefore validates the effective configuration at startup.
+
+The JVM default timezone is different: third-party code could still mutate that global state through legacy JDK APIs after startup. Taskmigo does not attempt to continuously rewrite or police global JVM state.
+
+Instead, Taskmigo minimizes the impact of any later external mutation by making important boundaries independent of the JVM default:
+
+1. Domain/application absolute timestamps use `Instant`.
+2. Worker clocks use `Clock.systemUTC()`.
+3. Hibernate JDBC timezone remains explicitly UTC.
+4. PostgreSQL connections explicitly request a UTC session timezone.
+5. Spring-managed Jackson explicitly receives UTC from Boot configuration and a non-UTC external override is rejected at startup.
+6. Production code keeps Qodana's legacy date/time inspection enabled with no feature-specific exclusions.
+
+Dynamic runtime code that intentionally mutates the JVM default remains unsupported. The design prevents normal Taskmigo code and operator configuration from silently creating mixed-timezone behavior.
+
+## Jackson Contract
+
+### Why the builder-level TimeZone policy is removed
+
+Jackson 3 currently defaults mapper timezone to UTC, but `MapperBuilder.defaultTimeZone(...)` still requires `java.util.TimeZone`.
+
+Taskmigo's absolute application timestamps are `Instant`, whose meaning does not depend on a mapper's local timezone. Therefore Taskmigo does not need to force a legacy mapper timezone onto every manually-created mapper.
+
+The shared `TaskmigoJackson.configure(...)` builder utility is removed.
+
+Manual mappers continue to own only their purpose-specific configuration:
+
+- OAuth keeps Spring Security modules and the restricted `UserSessionPrincipal` polymorphic validator.
+- Audit keeps its dedicated JSON mapper.
+- Migration keeps its dedicated YAML mapper.
+
+Their existing behavior tests remain compatibility gates.
+
+### Spring Boot-managed Jackson
+
+Web restores an explicit application default:
 
 ```yaml
 spring:
@@ -92,107 +113,179 @@ spring:
     time-zone: UTC
 ```
 
-That property is not a security or correctness boundary because Spring configuration is externally overrideable.
+External Spring configuration can override application YAML, so the property alone is not the invariant.
 
-## Consumer Migration
+`:modules:foundation:jackson` remains as the shared Spring Boot Jackson policy module, but its responsibility changes from mutating a mapper builder to validating effective configuration.
 
-### Web HTTP JSON
+A listener registered for `ApplicationEnvironmentPreparedEvent` reads the effective:
 
-`apps:web` depends on `foundation:jackson`.
+```text
+spring.jackson.time-zone
+```
 
-Spring Boot continues to own the Web `JsonMapper` lifecycle. Taskmigo does not define a replacement mapper bean.
+Behavior:
 
-The shared `JsonMapperBuilderCustomizer` hard-applies the common Taskmigo policy.
+- property absent: accepted; Jackson 3's default remains UTC,
+- property present and UTC-equivalent: accepted,
+- property present and non-UTC: fail startup with a clear error.
 
-### OAuth persistence mapper
+UTC equivalence is determined with `ZoneId`/`ZoneOffset`, not `java.util.TimeZone`.
 
-`OAuthPersistenceConfiguration.authorizationMapper()` keeps its dedicated mapper and existing Spring Security modules / type validator.
+This validation runs before the ApplicationContext creates the Boot-managed `JsonMapper`.
 
-Its builder must pass through `TaskmigoJackson.configure(...)` before `build()`.
+The previous `JsonMapperBuilderCustomizer`, `TaskmigoJacksonAutoConfiguration`, and builder-level timezone enforcement are removed.
 
-The shared policy must not weaken or broaden the existing allowed polymorphic subtypes.
+## PostgreSQL and Hibernate
 
-### Audit persistence mapper
+Hibernate retains:
 
-`JpaAuditLogStore` keeps a dedicated mapper, but its builder must pass through `TaskmigoJackson.configure(...)`.
+```yaml
+hibernate:
+  jdbc:
+    time_zone: UTC
+```
 
-`modules:audit` therefore takes a dependency on `foundation:jackson` rather than constructing a policy-free mapper.
+That setting protects JDBC temporal conversion but does not by itself define the PostgreSQL session timezone.
 
-### Migration YAML mapper
+Each datasource connection must also request a PostgreSQL UTC session through the JDBC driver's connection properties, using PostgreSQL's startup `options` property rather than production SQL statements.
 
-`MigrationResourceLoader` keeps a dedicated `YAMLMapper`.
+Conceptually:
 
-Its builder must pass through `TaskmigoJackson.configure(...)`, proving that the common policy is format-agnostic at the mapper-builder level.
+```yaml
+spring:
+  datasource:
+    hikari:
+      data-source-properties:
+        options: "-c TimeZone=UTC"
+```
 
-`apps:migration` depends on `foundation:jackson`.
+This preserves the repository rule against raw/native production SQL and ensures connections created after startup do not derive their PostgreSQL session timezone from a later-mutated JVM default.
 
-## Runtime Interaction with UTC Bootstrap
+The existing integration assertion:
 
-The Jackson module complements, but does not replace, the process-wide UTC invariant implemented by `TaskmigoRuntime` and enforced from the Spring Boot `ApplicationStartingEvent`.
+```sql
+show time zone
+```
 
-The layers are intentionally redundant:
+remains a test-only boundary check and must continue to resolve to UTC.
 
-1. Container defaults to UTC.
-2. Spring Boot starting listener hard-enforces JVM UTC.
-3. Jackson builders hard-apply UTC.
-4. Hibernate JDBC conversion hard-applies UTC.
-5. PostgreSQL connections inherit the effective JVM UTC and are verified by integration tests.
+## Module Boundaries
 
-A future regression in one layer should not silently change another layer's timezone contract.
+### foundation:core
+
+`foundation:core` owns the framework-neutral JVM runtime validator.
+
+It remains free of Spring and Jackson dependencies.
+
+### foundation:spring
+
+`foundation:spring` owns the Spring Boot starting listener that invokes the runtime validator.
+
+It does not gain a Jackson dependency.
+
+### foundation:jackson
+
+`foundation:jackson` owns only the Spring Boot Jackson configuration invariant.
+
+It may depend on Spring Boot APIs required to observe `ApplicationEnvironmentPreparedEvent`.
+
+It must not depend on bounded-context modules such as Authorization, Audit, Database, Identity, Query, Web, Worker, or Migration.
+
+It no longer exposes a mapper-builder utility and does not depend on Jackson databind merely to set a timezone.
+
+### Consumers
+
+- Web depends on `foundation:jackson` because it owns the Spring-managed HTTP JSON mapper.
+- Audit no longer depends on `foundation:jackson` only for timezone configuration.
+- Migration no longer depends on `foundation:jackson` only for YAML timezone configuration.
+- OAuth's dedicated mapper no longer invokes a shared builder timezone policy.
 
 ## Testing
 
-### Shared builder policy
+### JVM runtime validator
 
-A `foundation:jackson` test deliberately changes the JVM default timezone to a non-UTC zone, applies `TaskmigoJackson` to a mapper builder, and verifies the resulting mapper's configured timezone is UTC.
+Tests cover the pure validation behavior without mutating JVM global state:
 
-The test must restore global JVM state in `finally`.
+- `ZoneOffset.UTC` is accepted.
+- `Asia/Ho_Chi_Minh` is rejected with a clear startup-invariant message.
 
-### Spring override resistance
+A Spring listener test verifies the normal UTC bootstrap path remains valid.
 
-An auto-configuration test starts a minimal Spring Boot context with:
+### Jackson configuration validation
 
-`spring.jackson.time-zone=Asia/Ho_Chi_Minh`
+A Spring Boot test starts a minimal application with:
 
-and verifies the auto-configured Jackson 3 `JsonMapper` still uses UTC.
+```text
+spring.jackson.time-zone=Asia/Ho_Chi_Minh
+```
 
-This proves external Spring configuration cannot override the Taskmigo invariant.
+and expects startup to fail before the ApplicationContext is created.
 
-### Existing consumers
+A corresponding UTC configuration starts successfully.
 
-Existing OAuth, Audit, Migration, and Web tests remain green after migrating their builders. No behavior-specific security modules or YAML semantics may regress.
+The tests must not call legacy `TimeZone` APIs.
 
-### Server regression suite
+### PostgreSQL boundary
 
-The existing runtime UTC tests from issue #238 remain separate:
+Integration coverage verifies:
 
-- process/JVM invariant,
-- PostgreSQL session UTC,
+1. the datasource connection property explicitly contains the UTC PostgreSQL startup option, and
+2. an application-owned PostgreSQL session reports an effective UTC timezone.
+
+### Consumer compatibility
+
+Existing tests remain green:
+
+- OAuth principal JSON round-trip and subtype restrictions,
+- Audit privacy scrub JSON structure,
+- Migration YAML credentials/placeholders and browser-auth-disabled behavior,
 - exact retained `Instant` preservation.
 
-Jackson tests must not replace those boundary-specific tests.
+### Static quality gates
 
-## Dependency and Architecture Rules
+Qodana's `UseOfObsoleteDateTimeApi` inspection remains enabled with no Taskmigo UTC feature exclusions.
 
-- `foundation:core` must continue to reject dependencies on Jackson.
-- `foundation:jackson` must not depend on higher-level Taskmigo capabilities.
-- Consumers opt in by depending on `foundation:jackson`; `foundation:spring` does not gain a mandatory dependency on Jackson.
-- Do not expose a global mutable `ObjectMapper` or `JsonMapper` singleton.
-- Do not add Jackson 2 APIs.
+No production class added or changed by this feature may use `java.util.TimeZone`.
+
+## Failure Semantics
+
+A deployment such as:
+
+```text
+-Duser.timezone=Asia/Ho_Chi_Minh
+```
+
+must fail during the earliest Spring Boot startup event.
+
+An effective configuration such as:
+
+```text
+SPRING_JACKSON_TIME_ZONE=Asia/Ho_Chi_Minh
+```
+
+must fail during environment preparation before mapper creation.
+
+Taskmigo does not silently rewrite either value.
 
 ## Compatibility and Risk
 
-No API or persisted-data schema changes are intended.
+No external API or database schema changes are intended.
 
-Potential serialization compatibility risk is limited to mapper settings that become shared in the future. For this change, UTC is the only common setting, so existing JSON/YAML structural representation must remain unchanged.
+The main operational change is deliberate fail-fast behavior: a deployment that previously started with a non-UTC JVM or non-UTC Spring Jackson timezone will now refuse to start.
 
-OAuth mapper security configuration is explicitly preserved and is a review-critical area.
+The PostgreSQL JDBC startup option changes only the timezone of application sessions; persisted `timestamptz` instants remain unchanged.
+
+Removing builder-level timezone configuration is safe for Taskmigo's absolute temporal model because application timestamps are `Instant`, while existing consumer serialization tests protect purpose-specific structures.
 
 ## Success Criteria
 
-- One `foundation:jackson` module owns the shared Jackson builder policy.
-- Spring Boot-managed Web JSON cannot be changed away from UTC by external Jackson timezone configuration.
-- All manually-created production JSON/YAML mappers apply the same common policy.
-- OAuth-specific security modules and validator remain unchanged.
-- `foundation:core` remains Jackson-free.
-- All server CI checks pass.
+- Taskmigo production code introduced by this feature contains no `java.util.TimeZone` usage.
+- A non-UTC effective JVM timezone fails startup instead of being rewritten.
+- A non-UTC effective `spring.jackson.time-zone` fails startup.
+- Web declares UTC explicitly for Spring Boot-managed Jackson.
+- OAuth, Audit, and Migration retain their existing serialization behavior without a shared legacy timezone builder policy.
+- PostgreSQL connections explicitly request UTC independently of the JVM default.
+- Hibernate JDBC conversion remains UTC.
+- No feature-specific Qodana exclusion is required for legacy date/time APIs.
+- Existing runtime, serialization, persistence, and integration tests pass.
+- All required CI checks pass.
