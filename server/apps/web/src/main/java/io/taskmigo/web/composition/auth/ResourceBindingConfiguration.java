@@ -36,10 +36,7 @@ class ResourceBindingConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(QueryBindingResolver.class)
-    QueryBindingResolver queryBindingResolver(
-        List<QueryBinding<?>> bindings,
-        ResourceSchemaResolver schemas
-    ) {
+    QueryBindingResolver queryBindingResolver(List<QueryBinding<?>> bindings, ResourceSchemaResolver schemas) {
         return QueryBindingResolver.registered(bindings, schemas);
     }
 

@@ -52,8 +52,10 @@ class ObjectAuthorizationPredicateArgumentResolverTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute(AuthorizationContext.ATTRIBUTE, context);
 
-        Object resolved = new ObjectAuthorizationPredicateArgumentResolver(this.authorization, this.bindings)
-            .resolveArgument(parameter, null, new ServletWebRequest(request), null);
+        Object resolved = new ObjectAuthorizationPredicateArgumentResolver(
+            this.authorization,
+            this.bindings
+        ).resolveArgument(parameter, null, new ServletWebRequest(request), null);
 
         assertThat(resolved).isSameAs(this.predicate);
     }

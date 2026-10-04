@@ -59,8 +59,12 @@ class FilteredQueryArgumentResolverTest {
         request.setAttribute(AuthorizationContext.ATTRIBUTE, authorizationContext);
         request.setParameter("filterBy", "object.priority >= 3");
 
-        Object resolved = new FilteredQueryArgumentResolver(this.bindings, this.filters)
-            .resolveArgument(parameter, null, new ServletWebRequest(request), null);
+        Object resolved = new FilteredQueryArgumentResolver(this.bindings, this.filters).resolveArgument(
+            parameter,
+            null,
+            new ServletWebRequest(request),
+            null
+        );
 
         assertThat(((FilteredQuery<?>) resolved).predicate()).isSameAs(this.predicate);
     }

@@ -47,11 +47,7 @@ public final class FilteredQueryArgumentResolver implements HandlerMethodArgumen
         );
         QueryBindingResolver.Resolution resolution = this.bindings.resolve(queryType, schemaContext(webRequest));
         return new FilteredQuery<>(
-            this.filters.compileUntyped(
-                resolution.schema(),
-                resolution.binding(),
-                webRequest.getParameter("filterBy")
-            )
+            this.filters.compileUntyped(resolution.schema(), resolution.binding(), webRequest.getParameter("filterBy"))
         );
     }
 

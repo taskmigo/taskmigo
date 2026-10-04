@@ -11,7 +11,6 @@ public record AuthorizationOperation(
     String path,
     SchemaContext schemaContext
 ) implements AuthorizationContext {
-
     /// Creates an operation without additional runtime schema inputs.
     public AuthorizationOperation(AuthorizationSnapshot snapshot, String method, String path) {
         this(snapshot, method, path, SchemaContext.EMPTY);
