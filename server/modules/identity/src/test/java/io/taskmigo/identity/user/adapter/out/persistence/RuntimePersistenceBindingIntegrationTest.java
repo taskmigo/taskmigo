@@ -38,6 +38,7 @@ import jakarta.persistence.criteria.Root;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -45,6 +46,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.domain.Specification;
 
+@NullMarked
 class RuntimePersistenceBindingIntegrationTest {
 
     private static final ResourceType USER = ResourceType.of("taskmigo:user");
