@@ -15,7 +15,6 @@ import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.CompilerEnvironment;
 import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.LanguageCompiler;
-import io.taskmigo.language.ResourceType;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -174,16 +173,13 @@ public final class StatementArtifactFactory {
                     Map.of()
                 );
             }
-            Map<ResourceType, StatementExecutionArtifact.Variant> variants = new HashMap<>();
+            Map<StatementExecutionArtifact.VariantKey, StatementExecutionArtifact.Variant> variants = new HashMap<>();
             for (ObjectAuthorizationBinding<?> binding : applicable) {
-                StatementExecutionArtifact.Variant existing = variants.get(binding.resourceType());
-                if (existing != null) {
-                    if (!existing.fingerprint().equals(binding.schemaFingerprint())) {
-                        throw new AuthorizationException(
-                            "Object Statement target resolves conflicting schemas for resource " +
-                                binding.resourceType()
-                        );
-                    }
+                StatementExecutionArtifact.VariantKey key = new StatementExecutionArtifact.VariantKey(
+                    binding.resourceType(),
+                    binding.schemaFingerprint()
+                );
+                if (variants.containsKey(key)) {
                     continue;
                 }
                 CompiledSource variant = this.compiler.compile(
@@ -191,10 +187,7 @@ public final class StatementArtifactFactory {
                     AuthorizationEmbeddedLanguageSchemas.object(binding),
                     profile
                 );
-                variants.put(
-                    binding.resourceType(),
-                    new StatementExecutionArtifact.Variant(binding.schemaFingerprint(), variant)
-                );
+                variants.put(key, new StatementExecutionArtifact.Variant(variant));
             }
             return new DerivedArtifacts(null, pathMatcher, variants);
         } catch (EmbeddedLanguageException exception) {
@@ -239,7 +232,7 @@ public final class StatementArtifactFactory {
     private record DerivedArtifacts(
         @Nullable CompiledSource requestPolicy,
         StatementTargetPathMatcher pathMatcher,
-        Map<ResourceType, StatementExecutionArtifact.Variant> variants
+        Map<StatementExecutionArtifact.VariantKey, StatementExecutionArtifact.Variant> variants
     ) {
         private DerivedArtifacts {
             variants = Map.copyOf(variants);

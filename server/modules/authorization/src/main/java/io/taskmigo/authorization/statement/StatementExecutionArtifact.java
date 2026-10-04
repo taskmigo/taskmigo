@@ -11,7 +11,7 @@ public record StatementExecutionArtifact(
     StatementInfo statement,
     @Nullable CompiledSource requestPolicy,
     StatementTargetPathMatcher pathMatcher,
-    Map<ResourceType, Variant> variants
+    Map<VariantKey, Variant> variants
 ) {
     public StatementExecutionArtifact(
         StatementInfo statement,
@@ -35,15 +35,18 @@ public record StatementExecutionArtifact(
 
     /// Selects the compiled policy variant whose resource schema is exactly compatible with the caller.
     public CompiledSource policy(ResourceType resourceType, SchemaFingerprint fingerprint) {
-        Variant variant = this.variants.get(resourceType);
-        if (variant == null || !variant.fingerprint().equals(fingerprint)) {
+        Variant variant = this.variants.get(new VariantKey(resourceType, fingerprint));
+        if (variant == null) {
             throw new IllegalArgumentException("no compatible Object Authorization policy variant");
         }
         return variant.policy();
     }
 
-    /// Identifies one immutable resource-specific compiled policy.
-    public record Variant(SchemaFingerprint fingerprint, CompiledSource policy) {}
+    /// Identifies one exact resource-schema compilation variant.
+    public record VariantKey(ResourceType resourceType, SchemaFingerprint fingerprint) {}
+
+    /// Holds one immutable resource-specific compiled policy.
+    public record Variant(CompiledSource policy) {}
 
     /// Tests the request target using the matcher prepared when the operation snapshot was built.
     public boolean matches(String requestMethod, String requestPath) {
