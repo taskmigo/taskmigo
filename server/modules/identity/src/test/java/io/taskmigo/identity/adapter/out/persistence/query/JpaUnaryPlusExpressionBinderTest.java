@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
+import io.taskmigo.authorization.object.ObjectAuthorizationBindingResolver;
 import io.taskmigo.authorization.object.ObjectAuthorizationFieldBinding;
 import io.taskmigo.authorization.object.ObjectAuthorizationOperator;
 import io.taskmigo.authorization.object.StaticObjectAuthorizationBinding;
@@ -15,9 +16,11 @@ import io.taskmigo.language.FieldId;
 import io.taskmigo.language.FieldPath;
 import io.taskmigo.language.LanguageType;
 import io.taskmigo.language.ResourceSchema;
+import io.taskmigo.language.ResourceSchemaResolver;
 import io.taskmigo.language.ResourceType;
 import io.taskmigo.query.FilterByCompiler;
 import io.taskmigo.query.QueryBinding;
+import io.taskmigo.query.QueryBindingResolver;
 import io.taskmigo.query.QueryFieldBinding;
 import io.taskmigo.query.QueryOperator;
 import io.taskmigo.query.QueryPath;
@@ -163,6 +166,108 @@ class JpaUnaryPlusExpressionBinderTest {
         );
         JpaObjectAuthorizationPredicateBinder<TestQuery, TestEntity> binder =
             new JpaObjectAuthorizationPredicateBinder<>(TestEntity.class, binding);
+
+        Specification<TestEntity> specification = binder.bind(predicate);
+
+        assertBindsStoredAmount(specification);
+    }
+
+    /**
+     * Verifies persistence translation selects the Query execution binding carried by the runtime predicate.
+     *
+     * Given: one query type has two schema fingerprints whose bindings use different physical paths.
+     * Expect: a predicate compiled for the runtime schema is translated with that schema's physical path.
+     */
+    @Test
+    @DisplayName("should translate query predicates with the runtime-selected execution binding")
+    void shouldTranslateQueryPredicateWithRuntimeSelectedExecutionBinding() {
+        ResourceSchema startupSchema = ResourceSchema.of(
+            RESOURCE,
+            List.of(new Field(AMOUNT, FieldPath.parse("amount"), LanguageType.Scalar.NUMBER, false))
+        );
+        ResourceSchema runtimeSchema = ResourceSchema.of(
+            RESOURCE,
+            List.of(new Field(AMOUNT, FieldPath.parse("amount"), LanguageType.Scalar.NUMBER, true))
+        );
+        QueryBinding<TestQuery> startupBinding = new StaticQueryBinding<>(
+            TestQuery.class,
+            startupSchema,
+            List.of(new QueryFieldBinding(AMOUNT, QueryPath.parse("amount"), Set.of(QueryOperator.EQ)))
+        );
+        QueryBinding<TestQuery> runtimeBinding = new StaticQueryBinding<>(
+            TestQuery.class,
+            runtimeSchema,
+            List.of(new QueryFieldBinding(AMOUNT, QueryPath.parse("storedAmount"), Set.of(QueryOperator.EQ)))
+        );
+        QueryBindingResolver bindings = QueryBindingResolver.registered(
+            List.of(startupBinding, runtimeBinding),
+            (type, context) -> runtimeSchema
+        );
+        var predicate = new FilterByCompiler().compile(runtimeSchema, runtimeBinding, "object.amount == 1");
+        JpaQueryPredicateBinder<TestQuery, TestEntity> binder = new JpaQueryPredicateBinder<>(
+            TestQuery.class,
+            TestEntity.class,
+            bindings,
+            Map.of(AMOUNT, Integer.class)
+        );
+
+        Specification<TestEntity> specification = binder.bind(predicate);
+
+        assertBindsStoredAmount(specification);
+    }
+
+    /**
+     * Verifies persistence translation selects the Object Authorization binding carried by the runtime predicate.
+     *
+     * Given: one object type has two schema fingerprints whose bindings use different physical paths.
+     * Expect: a predicate compiled for the runtime schema is translated with that schema's physical path.
+     */
+    @Test
+    @DisplayName("should translate object predicates with the runtime-selected execution binding")
+    void shouldTranslateObjectPredicateWithRuntimeSelectedExecutionBinding() {
+        ResourceSchema startupSchema = ResourceSchema.of(
+            RESOURCE,
+            List.of(new Field(AMOUNT, FieldPath.parse("amount"), LanguageType.Scalar.NUMBER, false))
+        );
+        ResourceSchema runtimeSchema = ResourceSchema.of(
+            RESOURCE,
+            List.of(new Field(AMOUNT, FieldPath.parse("amount"), LanguageType.Scalar.NUMBER, true))
+        );
+        ObjectAuthorizationBinding<TestQuery> startupBinding = new StaticObjectAuthorizationBinding<>(
+            TestQuery.class,
+            startupSchema,
+            List.of(new ObjectAuthorizationFieldBinding(AMOUNT, "amount", Set.of(ObjectAuthorizationOperator.EQ)))
+        );
+        ObjectAuthorizationBinding<TestQuery> runtimeBinding = new StaticObjectAuthorizationBinding<>(
+            TestQuery.class,
+            runtimeSchema,
+            List.of(
+                new ObjectAuthorizationFieldBinding(
+                    AMOUNT,
+                    "storedAmount",
+                    Set.of(ObjectAuthorizationOperator.EQ)
+                )
+            )
+        );
+        ObjectAuthorizationBindingResolver bindings = ObjectAuthorizationBindingResolver.registered(
+            List.of(startupBinding, runtimeBinding),
+            (type, context) -> runtimeSchema
+        );
+        var predicate = ObjectAuthorizationPredicateModels.from(
+            runtimeBinding,
+            new ObjectAuthorizationExpression.Binary(
+                ObjectAuthorizationExpression.BinaryOperator.EQUAL,
+                new ObjectAuthorizationExpression.Reference("object", List.of("amount"), AMOUNT),
+                new ObjectAuthorizationExpression.Literal(1)
+            )
+        );
+        JpaObjectAuthorizationPredicateBinder<TestQuery, TestEntity> binder =
+            new JpaObjectAuthorizationPredicateBinder<>(
+                TestQuery.class,
+                TestEntity.class,
+                bindings,
+                Map.of(AMOUNT, Integer.class)
+            );
 
         Specification<TestEntity> specification = binder.bind(predicate);
 
