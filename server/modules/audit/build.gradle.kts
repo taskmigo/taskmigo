@@ -13,11 +13,11 @@ dependencies {
 
     implementation(platform(libs.spring.boot.bom))
     api(project(":modules:foundation:core"))
+    implementation(project(":modules:foundation:jackson"))
     implementation(project(":modules:database"))
 
     implementation(libs.spring.boot.core.starter)
     implementation(libs.spring.boot.starter.data.jpa)
-    implementation(libs.jackson.databind)
 
     testImplementation(libs.spring.boot.starter.test)
 }

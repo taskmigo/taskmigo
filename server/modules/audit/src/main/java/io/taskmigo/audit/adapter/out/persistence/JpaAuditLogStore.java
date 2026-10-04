@@ -6,6 +6,7 @@ import io.taskmigo.audit.model.AuditActor;
 import io.taskmigo.audit.model.AuditChange;
 import io.taskmigo.audit.model.AuditLog;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.foundation.jackson.TaskmigoJackson;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.UUID;
@@ -20,7 +21,7 @@ import tools.jackson.databind.json.JsonMapper;
 @ConditionalOnProperty(prefix = "taskmigo.audit", name = "enabled", havingValue = "true")
 public class JpaAuditLogStore implements AuditLogStore {
 
-    private static final JsonMapper JSON = JsonMapper.builder().build();
+    private static final JsonMapper JSON = TaskmigoJackson.configure(JsonMapper.builder()).build();
     private static final String UNKNOWN_USER = "Unknown user";
     private static final Set<String> USER_PII_FIELDS = Set.of("username", "firstName", "lastName", "emails");
 

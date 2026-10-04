@@ -2,6 +2,7 @@ package io.taskmigo.web.composition.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tngtech.archunit.core.importer.ClassFileImporter;
 import io.taskmigo.web.adapter.in.security.session.UserSessionPrincipal;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -72,6 +73,28 @@ class SessionPrincipalSerializationTest {
         assertThat(restoredPrincipal.userId()).isEqualTo(principal.userId());
         assertThat(restoredPrincipal.getUsername()).isEqualTo("alice");
         assertThat(restoredPrincipal.getPassword()).isNull();
+    }
+
+    /// Verifies that OAuth persistence does not rely on Jackson's library default for Taskmigo-wide settings.
+    /// Given: the dedicated OAuth mapper is constructed by application composition code.
+    /// Expect: its construction path explicitly depends on the shared Taskmigo Jackson policy.
+    @Test
+    @DisplayName("applies the shared Taskmigo Jackson policy to OAuth persistence")
+    void shouldApplySharedTaskmigoJacksonPolicyWhenOAuthMapperIsConstructed() {
+        // Arrange
+        var configuration = new ClassFileImporter()
+            .importClasses(OAuthPersistenceConfiguration.class)
+            .get(OAuthPersistenceConfiguration.class);
+
+        // Act
+        var dependencies = configuration
+            .getDirectDependenciesFromSelf()
+            .stream()
+            .map(dependency -> dependency.getTargetClass().getName())
+            .toList();
+
+        // Assert
+        assertThat(dependencies).contains("io.taskmigo.foundation.jackson.TaskmigoJackson");
     }
 
     private static UserSessionPrincipal principal() {

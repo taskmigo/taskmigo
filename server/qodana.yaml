@@ -180,6 +180,13 @@ exclude:
     paths:
       - modules/language/src/main/java/io/taskmigo/language/LanguageCompilerVisitor.java
 
+  # The runtime boundary must change the JVM default timezone, and Jackson 3's builder API still accepts TimeZone.
+  # Scope the legacy-date inspection exception to exactly those unavoidable compatibility boundaries.
+  - name: UseOfObsoleteDateTimeApi
+    paths:
+      - modules/foundation/core/src/main/java/io/taskmigo/foundation/TaskmigoRuntime.java
+      - modules/foundation/jackson/src/main/java/io/taskmigo/foundation/jackson/TaskmigoJackson.java
+
   # Preserve mandatory braces for every control-flow statement.
   - name: SingleStatementInBlock
 

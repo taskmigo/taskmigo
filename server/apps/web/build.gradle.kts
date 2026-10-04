@@ -20,6 +20,7 @@ dependencies {
     testImplementation(libs.archunit.junit5)
     testImplementation(project(":testing:architecture"))
 
+    implementation(project(":modules:foundation:jackson"))
     implementation(project(":modules:foundation:spring"))
     implementation(project(":modules:query"))
     implementation(project(":modules:audit"))

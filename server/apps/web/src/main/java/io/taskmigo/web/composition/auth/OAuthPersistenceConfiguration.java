@@ -1,5 +1,6 @@
 package io.taskmigo.web.composition.auth;
 
+import io.taskmigo.foundation.jackson.TaskmigoJackson;
 import io.taskmigo.identity.user.application.port.in.api.UserSessionLifecycleService;
 import io.taskmigo.web.adapter.in.security.session.UserSessionPrincipal;
 import java.util.Objects;
@@ -54,13 +55,13 @@ class OAuthPersistenceConfiguration {
 
     static JsonMapper authorizationMapper() {
         var validator = BasicPolymorphicTypeValidator.builder().allowIfSubType(UserSessionPrincipal.class);
-        return JsonMapper.builder()
-            .addModules(
+        return TaskmigoJackson.configure(
+            JsonMapper.builder().addModules(
                 SecurityJacksonModules.getModules(
                     Objects.requireNonNull(OAuthPersistenceConfiguration.class.getClassLoader()),
                     validator
                 )
             )
-            .build();
+        ).build();
     }
 }

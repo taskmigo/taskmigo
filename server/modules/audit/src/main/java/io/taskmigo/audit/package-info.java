@@ -1,5 +1,5 @@
 /// Owns immutable entity-audit records, synchronous append semantics, and audit queries.
-@ApplicationModule(allowedDependencies = { "foundation", "database" })
+@ApplicationModule(allowedDependencies = { "foundation", "foundation :: jackson", "database" })
 @NullMarked
 package io.taskmigo.audit;
 

@@ -9,6 +9,7 @@ rootProject.name = "taskmigo"
 
 include(
     ":modules:foundation:core",
+    ":modules:foundation:jackson",
     ":modules:foundation:spring",
     ":modules:language",
     ":modules:query",

@@ -2,6 +2,7 @@ package io.taskmigo.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.tngtech.archunit.core.importer.ClassFileImporter;
 import io.taskmigo.migration.application.model.InstallationPlan;
 import io.taskmigo.migration.bootstrap.MigrationResourceLoader;
 import java.util.Objects;
@@ -10,6 +11,31 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
 
 class MigrationResourceLoaderTest {
+
+    /**
+     * Verifies that Migration YAML parsing does not rely on Jackson's library defaults for Taskmigo-wide settings.
+     *
+     * Given: the dedicated YAML mapper is constructed by the migration resource loader.
+     * Expect: its construction path explicitly depends on the shared Taskmigo Jackson policy.
+     */
+    @Test
+    @DisplayName("applies the shared Taskmigo Jackson policy to Migration YAML")
+    void shouldApplySharedTaskmigoJacksonPolicyWhenMigrationYamlMapperIsConstructed() {
+        // Arrange
+        var loader = new ClassFileImporter()
+            .importClasses(MigrationResourceLoader.class)
+            .get(MigrationResourceLoader.class);
+
+        // Act
+        var dependencies = loader
+            .getDirectDependenciesFromSelf()
+            .stream()
+            .map(dependency -> dependency.getTargetClass().getName())
+            .toList();
+
+        // Assert
+        assertThat(dependencies).contains("io.taskmigo.foundation.jackson.TaskmigoJackson");
+    }
 
     /**
      * Verifies that migration resources preserve raw credentials for application-side hashing.
