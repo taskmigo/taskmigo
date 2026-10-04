@@ -16,7 +16,6 @@ import io.taskmigo.language.FieldId;
 import io.taskmigo.language.FieldPath;
 import io.taskmigo.language.LanguageType;
 import io.taskmigo.language.ResourceSchema;
-import io.taskmigo.language.ResourceSchemaResolver;
 import io.taskmigo.language.ResourceType;
 import io.taskmigo.query.FilterByCompiler;
 import io.taskmigo.query.QueryBinding;
@@ -192,12 +191,12 @@ class JpaUnaryPlusExpressionBinderTest {
         QueryBinding<TestQuery> startupBinding = new StaticQueryBinding<>(
             TestQuery.class,
             startupSchema,
-            List.of(new QueryFieldBinding(AMOUNT, QueryPath.parse("amount"), Set.of(QueryOperator.EQ)))
+            List.of(new QueryFieldBinding(AMOUNT, QueryPath.parse("amount"), Integer.class, Set.of(QueryOperator.EQ)))
         );
         QueryBinding<TestQuery> runtimeBinding = new StaticQueryBinding<>(
             TestQuery.class,
             runtimeSchema,
-            List.of(new QueryFieldBinding(AMOUNT, QueryPath.parse("storedAmount"), Set.of(QueryOperator.EQ)))
+            List.of(new QueryFieldBinding(AMOUNT, QueryPath.parse("storedAmount"), Integer.class, Set.of(QueryOperator.EQ)))
         );
         QueryBindingResolver bindings = QueryBindingResolver.registered(
             List.of(startupBinding, runtimeBinding),
@@ -205,10 +204,9 @@ class JpaUnaryPlusExpressionBinderTest {
         );
         var predicate = new FilterByCompiler().compile(runtimeSchema, runtimeBinding, "object.amount == 1");
         JpaQueryPredicateBinder<TestQuery, TestEntity> binder = new JpaQueryPredicateBinder<>(
-            TestQuery.class,
             TestEntity.class,
-            bindings,
-            Map.of(AMOUNT, Integer.class)
+            startupBinding,
+            bindings
         );
 
         Specification<TestEntity> specification = binder.bind(predicate);
@@ -236,7 +234,7 @@ class JpaUnaryPlusExpressionBinderTest {
         ObjectAuthorizationBinding<TestQuery> startupBinding = new StaticObjectAuthorizationBinding<>(
             TestQuery.class,
             startupSchema,
-            List.of(new ObjectAuthorizationFieldBinding(AMOUNT, "amount", Set.of(ObjectAuthorizationOperator.EQ)))
+            List.of(new ObjectAuthorizationFieldBinding(AMOUNT, "amount", Integer.class, Set.of(ObjectAuthorizationOperator.EQ)))
         );
         ObjectAuthorizationBinding<TestQuery> runtimeBinding = new StaticObjectAuthorizationBinding<>(
             TestQuery.class,
@@ -245,6 +243,7 @@ class JpaUnaryPlusExpressionBinderTest {
                 new ObjectAuthorizationFieldBinding(
                     AMOUNT,
                     "storedAmount",
+                    Integer.class,
                     Set.of(ObjectAuthorizationOperator.EQ)
                 )
             )
@@ -263,10 +262,9 @@ class JpaUnaryPlusExpressionBinderTest {
         );
         JpaObjectAuthorizationPredicateBinder<TestQuery, TestEntity> binder =
             new JpaObjectAuthorizationPredicateBinder<>(
-                TestQuery.class,
                 TestEntity.class,
-                bindings,
-                Map.of(AMOUNT, Integer.class)
+                startupBinding,
+                bindings
             );
 
         Specification<TestEntity> specification = binder.bind(predicate);
