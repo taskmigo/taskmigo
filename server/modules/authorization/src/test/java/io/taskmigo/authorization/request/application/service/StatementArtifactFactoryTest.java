@@ -3,9 +3,11 @@ package io.taskmigo.authorization.request.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Ticker;
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfile;
+import io.taskmigo.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
 import io.taskmigo.authorization.object.ObjectAuthorizationBinding;
 import io.taskmigo.authorization.object.ObjectAuthorizationFieldBinding;
 import io.taskmigo.authorization.object.ObjectAuthorizationOperator;
@@ -30,6 +32,7 @@ import io.taskmigo.language.ResourceType;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
@@ -180,6 +183,76 @@ class StatementArtifactFactoryTest {
         assertThat(second.pathMatcher()).isSameAs(first.pathMatcher());
         assertThat(different.policy()).isNotSameAs(first.policy());
         assertThat(different.pathMatcher()).isNotSameAs(first.pathMatcher());
+    }
+
+    /**
+     * Verifies exact policy source participates in compiled-artifact cache validity.
+     *
+     * Given: the same Statement id and revision timestamp are loaded with different policy source.
+     * Expect: the second build compiles a distinct policy instead of reusing the stale first artifact.
+     */
+    @Test
+    @DisplayName("invalidates compiled artifacts when policy source changes at the same revision")
+    void shouldInvalidateCompiledArtifactWhenPolicySourceChangesAtSameRevision() {
+        // Arrange
+        UUID id = UUID.randomUUID();
+        Instant updatedAt = Instant.parse("2026-09-13T00:00:00Z");
+        StatementInfo allow = new StatementInfo(
+            id,
+            "source_identity",
+            null,
+            Effect.ALLOW,
+            Scope.REQUEST,
+            new TargetInfo(new ApiInfo("GET", "/api/v0/users")),
+            "return true;"
+        );
+        StatementInfo deny = new StatementInfo(
+            id,
+            "source_identity",
+            null,
+            Effect.ALLOW,
+            Scope.REQUEST,
+            new TargetInfo(new ApiInfo("GET", "/api/v0/users")),
+            "return false;"
+        );
+
+        // Act
+        StatementExecutionArtifact first = this.factory
+            .build(List.of(effective(allow, updatedAt)), "GET", "/api/v0/users")
+            .getFirst();
+        StatementExecutionArtifact second = this.factory
+            .build(List.of(effective(deny, updatedAt)), "GET", "/api/v0/users")
+            .getFirst();
+
+        // Assert
+        assertThat(second.policy()).isNotSameAs(first.policy());
+        assertThat(second.policy().sourceFingerprint()).isNotEqualTo(first.policy().sourceFingerprint());
+        assertThat(second.policy().constantBoolean()).contains(false);
+    }
+
+    /**
+     * Verifies runtime schema churn cannot grow the process-global compiler-environment cache without bound.
+     *
+     * Given: more unique Object Authorization schema identities than the retained cache limit.
+     * Expect: cache maintenance keeps retained environments within the configured finite bound.
+     */
+    @Test
+    @DisplayName("bounds cached object compiler environments under runtime schema churn")
+    void shouldBoundCachedObjectCompilerEnvironmentsUnderSchemaChurn() throws ReflectiveOperationException {
+        // Arrange
+        Object cache = objectEnvironmentCache();
+        clearObjectEnvironmentCache(cache);
+
+        // Act
+        for (int index = 0; index < 1_100; index++) {
+            String resourceType = "test:cache-object-" + index;
+            AuthorizationEmbeddedLanguageSchemas.object(
+                binding(FirstObject.class, resourceType, "field:" + resourceType + ":name")
+            );
+        }
+
+        // Assert
+        assertThat(objectEnvironmentCacheSize(cache)).isLessThanOrEqualTo(1_024);
     }
 
     /**
@@ -476,6 +549,36 @@ class StatementArtifactFactoryTest {
         assertThatThrownBy(() -> this.factory.build(List.of(effective), "GET", "/api/v0/users/ADMIN"))
             .isInstanceOf(AuthorizationException.class)
             .hasMessageContaining("valid regular expression");
+    }
+
+    private static Object objectEnvironmentCache() throws ReflectiveOperationException {
+        java.lang.reflect.Field cacheField = AuthorizationEmbeddedLanguageSchemas.class.getDeclaredField("OBJECTS");
+        cacheField.setAccessible(true);
+        return cacheField.get(null);
+    }
+
+    private static void clearObjectEnvironmentCache(Object cache) {
+        if (cache instanceof Map<?, ?> map) {
+            map.clear();
+            return;
+        }
+        if (cache instanceof Cache<?, ?> caffeine) {
+            caffeine.invalidateAll();
+            caffeine.cleanUp();
+            return;
+        }
+        throw new IllegalStateException("Unsupported compiler-environment cache type: " + cache.getClass().getName());
+    }
+
+    private static long objectEnvironmentCacheSize(Object cache) {
+        if (cache instanceof Map<?, ?> map) {
+            return map.size();
+        }
+        if (cache instanceof Cache<?, ?> caffeine) {
+            caffeine.cleanUp();
+            return caffeine.estimatedSize();
+        }
+        throw new IllegalStateException("Unsupported compiler-environment cache type: " + cache.getClass().getName());
     }
 
     private static EffectiveStatement effective(StatementInfo statement, Instant updatedAt) {
