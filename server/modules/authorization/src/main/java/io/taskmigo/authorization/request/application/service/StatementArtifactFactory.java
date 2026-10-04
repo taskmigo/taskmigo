@@ -38,14 +38,9 @@ public final class StatementArtifactFactory {
     private final StatementArtifactCache<CachedTargetMatcher> targetMatchers;
     private final StatementArtifactCache<CachedArtifacts> derived;
 
-    public StatementArtifactFactory(
-        LanguageCompiler compiler,
-        List<ObjectAuthorizationBinding<?>> bindings,
-        ObjectAuthorizationTargetResolver targetResolver
-    ) {
+    public StatementArtifactFactory(LanguageCompiler compiler, ObjectAuthorizationTargetResolver targetResolver) {
         this(
             compiler,
-            bindings,
             targetResolver,
             StatementArtifactCache.expireAfterAccess(CACHE_IDLE_TTL),
             StatementArtifactCache.expireAfterAccess(CACHE_IDLE_TTL)
@@ -54,7 +49,6 @@ public final class StatementArtifactFactory {
 
     StatementArtifactFactory(
         LanguageCompiler compiler,
-        List<ObjectAuthorizationBinding<?>> bindings,
         ObjectAuthorizationTargetResolver targetResolver,
         StatementArtifactCache<CachedTargetMatcher> targetMatchers,
         StatementArtifactCache<CachedArtifacts> derived
