@@ -60,8 +60,8 @@ class QueryBindingTest {
         );
 
         assertThatThrownBy(() -> new FilterByCompiler().compile(changed, binding, "object.priority >= 3"))
-            .isInstanceOf(FilterByException.class)
-            .hasMessageContaining("Invalid filterBy expression");
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("query binding is incompatible");
     }
 
     @Test
