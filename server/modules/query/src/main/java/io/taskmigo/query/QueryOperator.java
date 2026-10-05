@@ -19,6 +19,7 @@ public enum QueryOperator {
     DIVIDE,
     MODULO,
     IN,
+    CONTAINS,
     ALL,
     ANY,
     NONE,

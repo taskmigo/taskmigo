@@ -12,6 +12,7 @@ include(
     ":modules:foundation:spring",
     ":modules:language",
     ":modules:query",
+    ":modules:jpa-query",
     ":modules:access-control",
     ":modules:database",
     ":modules:audit",
