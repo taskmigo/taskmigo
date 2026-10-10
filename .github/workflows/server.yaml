@@ -46,8 +46,21 @@ jobs:
 
       - name: Run Gradle build
         run: |
-          set -o pipefail
-          ./gradlew --no-daemon --console=plain --continue build 2>&1 | tee "$RUNNER_TEMP/server-build.log"
+          set +e
+          ./gradlew --no-daemon --console=plain --continue build \
+            > "$RUNNER_TEMP/server-build.log" 2>&1
+          exit_code=$?
+          tail -n 300 "$RUNNER_TEMP/server-build.log" || true
+          exit "$exit_code"
+
+      - name: Upload Gradle build log
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: server-build-log-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/server-build.log
+          if-no-files-found: ignore
+          retention-days: 1
 
       - name: Verify OpenAPI snapshot
         run: |
@@ -61,4 +74,4 @@ jobs:
           grep -E "(FAILED|error:|\[ERROR\]|Caused by:|Invalid explicit module dependency|There were failing tests|Checkstyle rule violations)" \
             "$RUNNER_TEMP/server-build.log" | tail -n 200 || true
           echo "::endgroup::"
-          echo "::error::Server build failed. Inspect the grouped summary and the Run Gradle build step above."
+          echo "::error::Server build failed. Prefer the server-build-log-${{ github.run_id }}-${{ github.run_attempt }} artifact and inspect server-build.log; use this grouped summary only as a quick hint."
