@@ -11,7 +11,9 @@ dependencies {
     implementation(platform(libs.spring.boot.bom))
     api(project(":modules:foundation:core"))
     api(project(":modules:query"))
+    api(project(":modules:database"))
     api(libs.jakarta.persistence.api)
+    api(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.boot.core.starter)
 
     testImplementation(libs.spring.boot.starter.test)

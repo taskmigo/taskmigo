@@ -11,19 +11,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import org.springframework.core.ResolvableType;
 
 /// Defines one operation-scoped, JPA-backed query surface for an entity root.
 public abstract class QuerySchema<E> implements QuerySchemaView {
 
-    private final Class<?> rootType;
+    private final Class<E> rootType;
 
-    protected QuerySchema() {
-        Class<?> resolved = ResolvableType.forClass(this.getClass()).as(QuerySchema.class).getGeneric(0).resolve();
-        if (resolved == null) {
-            throw new IllegalStateException("QuerySchema root entity type cannot be resolved");
-        }
-        this.rootType = resolved;
+    /// Creates a schema for one explicit persistence entity root.
+    protected QuerySchema(Class<E> rootType) {
+        this.rootType = Objects.requireNonNull(rootType);
     }
 
     /// Returns the operation identifier owned by this concrete schema.
@@ -35,8 +31,8 @@ public abstract class QuerySchema<E> implements QuerySchemaView {
     /// Returns runtime-discovered fields for this operation and context.
     protected abstract Collection<QueryField<E, ?>> runtimeFields(QueryFieldContext context);
 
-    /// Returns the entity root type inferred from this schema's generic parameter.
-    public final Class<?> rootType() {
+    /// Returns the entity root type owned by this operation schema.
+    public final Class<E> rootType() {
         return this.rootType;
     }
 

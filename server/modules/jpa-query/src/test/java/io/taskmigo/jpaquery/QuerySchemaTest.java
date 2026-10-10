@@ -379,6 +379,7 @@ class QuerySchemaTest {
             SingularAttribute<TestEntity, Organization> organization,
             SingularAttribute<Organization, String> organizationName
         ) {
+            super(TestEntity.class);
             this.id = id;
             this.username = username;
             this.organization = organization;
@@ -410,6 +411,7 @@ class QuerySchemaTest {
         private final SingularAttribute<TestEntity, String> username;
 
         private DuplicateStaticSchema(SingularAttribute<TestEntity, String> username) {
+            super(TestEntity.class);
             this.username = username;
         }
 
@@ -434,6 +436,7 @@ class QuerySchemaTest {
         private final SingularAttribute<TestEntity, UUID> id;
 
         private RuntimeCollisionSchema(SingularAttribute<TestEntity, UUID> id) {
+            super(TestEntity.class);
             this.id = id;
         }
 
@@ -458,6 +461,7 @@ class QuerySchemaTest {
         private final SingularAttribute<TestEntity, String> username;
 
         private DuplicateRuntimeSchema(SingularAttribute<TestEntity, String> username) {
+            super(TestEntity.class);
             this.username = username;
         }
 
@@ -483,6 +487,7 @@ class QuerySchemaTest {
         private final SingularAttribute<TestEntity, UUID> id;
 
         private OperationSchema(String operation, SingularAttribute<TestEntity, UUID> id) {
+            super(TestEntity.class);
             this.operation = operation;
             this.id = id;
         }

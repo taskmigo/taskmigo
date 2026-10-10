@@ -2,28 +2,19 @@ package io.taskmigo.authorization.adapter.out.persistence.query;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationPredicateModel;
-import java.util.Map;
+import io.taskmigo.jpaquery.QuerySchema;
 import org.springframework.data.jpa.domain.Specification;
 
-/// Creates an Access Control-owned Object Authorization predicate binder for an entity mapping.
+/// Binds Object Authorization predicates through the same operation schema as client query filtering.
 public final class JpaObjectAuthorizationPredicateBinder<Q, E> implements ObjectAuthorizationPredicateBinder<Q, E> {
 
     private final Class<Q> objectType;
-    private final Class<E> domainType;
-    private final Map<String, String> paths;
-    private final Map<String, Class<?>> types;
+    private final QuerySchema<E> schema;
 
-    /// Creates a binder with explicit logical-to-physical paths and physical value types.
-    public JpaObjectAuthorizationPredicateBinder(
-        Class<Q> objectType,
-        Class<E> domainType,
-        Map<String, String> paths,
-        Map<String, Class<?>> types
-    ) {
+    /// Creates a binder backed by one concrete operation schema.
+    public JpaObjectAuthorizationPredicateBinder(Class<Q> objectType, QuerySchema<E> schema) {
         this.objectType = objectType;
-        this.domainType = domainType;
-        this.paths = Map.copyOf(paths);
-        this.types = Map.copyOf(types);
+        this.schema = schema;
     }
 
     @Override
@@ -33,7 +24,7 @@ public final class JpaObjectAuthorizationPredicateBinder<Q, E> implements Object
 
     @Override
     public Class<E> domainType() {
-        return this.domainType;
+        return this.schema.rootType();
     }
 
     @Override
@@ -41,6 +32,11 @@ public final class JpaObjectAuthorizationPredicateBinder<Q, E> implements Object
         if (!(predicate instanceof ObjectAuthorizationPredicateModel model)) {
             throw new IllegalArgumentException("unsupported Object Authorization Predicate implementation");
         }
-        return JpaObjectAuthorizationExpressionBinder.bind(model.expression(), this.paths, this.types);
+        if (!model.schemaIdentity().equals(this.schema.identity())) {
+            throw new IllegalArgumentException(
+                "Object Authorization Predicate schema identity does not match the JPA operation schema"
+            );
+        }
+        return JpaObjectAuthorizationExpressionBinder.bind(model.expression(), this.schema);
     }
 }

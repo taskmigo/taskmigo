@@ -7,6 +7,8 @@ description = "Taskmigo Access Control bounded context"
 dependencies {
     compileOnly(platform(libs.spring.modulith.bom))
     compileOnly(libs.spring.modulith.starter.core)
+    annotationProcessor(platform(libs.spring.boot.bom))
+    annotationProcessor(libs.hibernate.processor)
     testImplementation(platform(libs.spring.modulith.bom))
     testImplementation(libs.spring.modulith.starter.test)
     testImplementation(project(":testing:architecture"))
@@ -17,6 +19,7 @@ dependencies {
     api(project(":modules:language"))
     api(project(":modules:query"))
     implementation(project(":modules:database"))
+    implementation(project(":modules:jpa-query"))
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(platform(libs.guava.bom))
     implementation(libs.guava)

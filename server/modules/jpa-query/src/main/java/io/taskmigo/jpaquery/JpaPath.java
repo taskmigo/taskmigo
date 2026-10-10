@@ -9,19 +9,23 @@ import jakarta.persistence.metamodel.SingularAttribute;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 
 /// Represents a type-safe singular JPA attribute path that can be exposed by an operation query schema.
 public final class JpaPath<E, V> {
 
     private final List<SingularAttribute<?, ?>> attributes;
+    private final Function<Path<E>, Path<V>> resolver;
 
-    private JpaPath(List<SingularAttribute<?, ?>> attributes) {
+    private JpaPath(List<SingularAttribute<?, ?>> attributes, Function<Path<E>, Path<V>> resolver) {
         this.attributes = List.copyOf(attributes);
+        this.resolver = Objects.requireNonNull(resolver);
     }
 
     /// Starts a path at one singular JPA metamodel attribute.
     public static <E, V> JpaPath<E, V> of(SingularAttribute<? super E, V> attribute) {
-        return new JpaPath<>(List.of(Objects.requireNonNull(attribute)));
+        Objects.requireNonNull(attribute);
+        return new JpaPath<>(List.of(attribute), root -> Objects.requireNonNull(root.get(attribute)));
     }
 
     /// Rejects collection-valued paths because collection traversal is outside Enhancement #237.
@@ -38,7 +42,7 @@ public final class JpaPath<E, V> {
         List<SingularAttribute<?, ?>> nested = new ArrayList<>(this.attributes.size() + 1);
         nested.addAll(this.attributes);
         nested.add(attribute);
-        return new JpaPath<>(nested);
+        return new JpaPath<>(nested, root -> Objects.requireNonNull(this.resolve(root).get(attribute)));
     }
 
     /// Rejects collection-valued traversal from any nested segment.
@@ -62,13 +66,9 @@ public final class JpaPath<E, V> {
         return this.attributes.stream().anyMatch(SingularAttribute::isOptional);
     }
 
-    /// Resolves this metadata path from one Criteria root/path.
-    public Path<?> resolve(Path<E> root) {
-        Path<?> current = Objects.requireNonNull(root);
-        for (SingularAttribute<?, ?> attribute : this.attributes) {
-            current = current.get(attribute.getName());
-        }
-        return current;
+    /// Resolves this metadata path from one Criteria root using typed JPA metamodel attributes.
+    public Path<V> resolve(Path<E> root) {
+        return Objects.requireNonNull(this.resolver.apply(Objects.requireNonNull(root)));
     }
 
     /// Returns the Java type of the leaf attribute for persistence-value coercion.
