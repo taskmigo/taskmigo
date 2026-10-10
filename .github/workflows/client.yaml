@@ -43,7 +43,7 @@ jobs:
 
       # Keep these versions aligned with client/package.json and client/Dockerfile.
       - name: Setup Node.js
-        uses: actions/setup-node@v7.0.0
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: 26.7.0
           cache: pnpm
