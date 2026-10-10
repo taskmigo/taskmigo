@@ -1,7 +1,7 @@
 package io.taskmigo.authorization.object.model;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
+import io.taskmigo.query.QuerySchemaView;
 import java.util.Objects;
 
 /// Creates and exposes the trusted logical model behind opaque Object Authorization predicates.
@@ -10,14 +10,14 @@ public final class ObjectAuthorizationPredicateModels {
     private ObjectAuthorizationPredicateModels() {}
 
     public static <Q> ObjectAuthorizationPredicate<Q> from(
-        ObjectAuthorizationSchema<Q> schema,
+        QuerySchemaView schema,
         ObjectAuthorizationExpression expression
     ) {
         Objects.requireNonNull(schema);
         return wrap(schema.identity(), expression);
     }
 
-    public static <Q> ObjectAuthorizationPredicate<Q> constant(ObjectAuthorizationSchema<Q> schema, boolean value) {
+    public static <Q> ObjectAuthorizationPredicate<Q> constant(QuerySchemaView schema, boolean value) {
         return from(schema, new ObjectAuthorizationExpression.Literal(value));
     }
 

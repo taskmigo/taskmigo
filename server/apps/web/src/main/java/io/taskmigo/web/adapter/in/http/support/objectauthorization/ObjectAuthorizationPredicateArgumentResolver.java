@@ -1,9 +1,9 @@
 package io.taskmigo.web.adapter.in.http.support.objectauthorization;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.port.in.api.ObjectAuthorization;
 import io.taskmigo.authorization.request.AuthorizationContext;
+import io.taskmigo.query.QuerySchemaView;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.springframework.core.MethodParameter;
@@ -20,12 +20,11 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 public final class ObjectAuthorizationPredicateArgumentResolver implements HandlerMethodArgumentResolver {
 
     private final ObjectAuthorization authorization;
-    private final List<ObjectAuthorizationSchema<?>> schemas;
+    private final List<QuerySchemaView> schemas;
 
-    /// Creates a resolver using the Object Authorization service and resource-owned schemas.
     public ObjectAuthorizationPredicateArgumentResolver(
         ObjectAuthorization authorization,
-        List<ObjectAuthorizationSchema<?>> schemas
+        List<QuerySchemaView> schemas
     ) {
         this.authorization = authorization;
         this.schemas = List.copyOf(schemas);
@@ -47,12 +46,12 @@ public final class ObjectAuthorizationPredicateArgumentResolver implements Handl
         if (objectType == null) {
             throw new IllegalStateException("ObjectAuthorizationPredicate must declare an object type");
         }
-        ObjectAuthorizationSchema<?> schema = this.schemas
+        QuerySchemaView schema = this.schemas
             .stream()
-            .filter(candidate -> candidate.objectType().equals(objectType))
+            .filter(candidate -> candidate.operation().equals(objectType.getName()))
             .findFirst()
             .orElseThrow(() ->
-                new IllegalStateException("No Object Authorization Schema registered for " + objectType.getName())
+                new IllegalStateException("No Object Authorization Query Schema registered for " + objectType.getName())
             );
         Object value = webRequest.getAttribute(AuthorizationContext.ATTRIBUTE, RequestAttributes.SCOPE_REQUEST);
         if (!(value instanceof AuthorizationContext context)) {

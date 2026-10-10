@@ -13,7 +13,6 @@ import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.TargetInfo;
 import io.taskmigo.language.LanguageCompiler;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -43,14 +42,10 @@ class RequestAuthorizationResultTypeTest {
             new TargetInfo(new ApiInfo("GET", "/api/v0/users")),
             "return \"allow\";"
         );
-        when(resolver.resolve(userId)).thenReturn(List.of(new EffectiveStatement(statement, Instant.EPOCH)));
+        when(resolver.resolve(userId)).thenReturn(List.of(new EffectiveStatement(statement)));
         RequestAuthorizationService service = new RequestAuthorizationService(
             resolver,
-            new StatementArtifactFactory(
-                new LanguageCompiler(),
-                List.of(),
-                ObjectAuthorizationTargetResolver.all(List.of())
-            )
+            new StatementArtifactFactory(new LanguageCompiler(), ObjectAuthorizationTargetResolver.all(List.of()))
         );
 
         // Act

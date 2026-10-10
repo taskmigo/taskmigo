@@ -20,7 +20,6 @@ dependencies {
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(platform(libs.guava.bom))
     implementation(libs.guava)
-    implementation(libs.caffeine)
     implementation(libs.re2j)
 
     testImplementation(libs.spring.boot.starter.test)

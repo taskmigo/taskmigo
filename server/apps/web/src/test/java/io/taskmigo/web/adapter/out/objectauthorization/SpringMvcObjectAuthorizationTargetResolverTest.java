@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
+import io.taskmigo.query.QuerySchemaView;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
@@ -39,18 +39,11 @@ class SpringMvcObjectAuthorizationTargetResolverTest {
     private VersionRequestCondition version;
 
     @Mock
-    private ObjectAuthorizationSchema<TestObject> schema;
+    private QuerySchemaView schema;
 
-    /**
-     * Verifies that Object Authorization target metadata is derived from the actual Spring MVC handler mapping.
-     *
-     * Given: a versioned GET handler whose typed ObjectAuthorizationPredicate targets TestObject.
-     * Expect: the materialized `/api/v0/objects` route resolves to the TestObject schema without manual registration.
-     */
     @Test
     @DisplayName("derives an object schema route from a typed MVC handler")
     void shouldResolveSchemaWhenTypedHandlerMappingMatchesStatementTarget() throws NoSuchMethodException {
-        // Arrange
         Method method = TestController.class.getDeclaredMethod("list", ObjectAuthorizationPredicate.class);
         HandlerMethod handler = new HandlerMethod(new TestController(), method);
         when(this.handlerMappings.getObject()).thenReturn(this.handlerMapping);
@@ -59,20 +52,16 @@ class SpringMvcObjectAuthorizationTargetResolverTest {
         when(this.version.getVersion()).thenReturn("0");
         when(this.mapping.getPatternValues()).thenReturn(Set.of("/api/v{version}/objects"));
         when(this.mapping.getMethodsCondition()).thenReturn(new RequestMethodsRequestCondition(RequestMethod.GET));
-        when(this.schema.objectType()).thenReturn(TestObject.class);
+        when(this.schema.operation()).thenReturn(TestObject.class.getName());
         SpringMvcObjectAuthorizationTargetResolver resolver = new SpringMvcObjectAuthorizationTargetResolver(
             this.handlerMappings,
             List.of(this.schema)
         );
-
-        // Act
         resolver.afterSingletonsInstantiated();
-        List<ObjectAuthorizationSchema<?>> applicable = resolver.applicable(
+        List<QuerySchemaView> applicable = resolver.applicable(
             "GET",
             StatementTargetPathMatcher.compile("/api/v0/objects")
         );
-
-        // Assert
         assertThat(applicable).containsExactly(this.schema);
     }
 
