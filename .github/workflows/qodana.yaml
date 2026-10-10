@@ -71,25 +71,25 @@ jobs:
           echo "file=$SARIF_FILE" >> "$GITHUB_OUTPUT"
           [[ -f "$SARIF_FILE" ]] && echo "exists=true" >> "$GITHUB_OUTPUT"
 
-      - name: Publish Qodana results to job summary
-        if: ${{ always() && steps.qodana-sarif.outputs.exists == 'true' }}
+      - name: Prepare Qodana results
+        id: qodana-results
+        if: ${{ failure() && steps.qodana-sarif.outputs.exists == 'true' }}
         shell: bash
         env:
           SARIF_FILE: ${{ steps.qodana-sarif.outputs.file }}
         run: |
-          COUNT=$(jq '[.runs[]?.results[]?] | length' "$SARIF_FILE")
+          RESULTS_FILE="$RUNNER_TEMP/qodana-results.json"
+          jq '[.runs[]?.results[]?]' "$SARIF_FILE" > "$RESULTS_FILE"
+          echo "file=$RESULTS_FILE" >> "$GITHUB_OUTPUT"
 
-          {
-            echo "## Qodana results"
-            echo
-            echo "<details>"
-            printf '<summary>%s issue(s) found</summary>\n\n' "$COUNT"
-            echo '```json'
-            jq '[.runs[]?.results[]?]' "$SARIF_FILE"
-            echo '```'
-            echo
-            echo "</details>"
-          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload Qodana results artifact
+        if: ${{ failure() && steps.qodana-results.outputs.file != '' }}
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: qodana-results-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ steps.qodana-results.outputs.file }}
+          if-no-files-found: error
+          retention-days: 1
 
       - name: Upload SARIF
         if: ${{ always() && steps.qodana-sarif.outputs.exists == 'true' }}
