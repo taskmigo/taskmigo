@@ -9,161 +9,82 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.MethodSource;
 
 class QuerySchemaValidatorTest {
 
-    /**
-     * Verifies that nested expression forms cannot hide a field from an outer operator permission check.
-     *
-     * Given: arithmetic, length, membership, and quantifier expressions whose inner operator is allowed while the
-     * outer operator is forbidden.
-     * Expect: every expression is rejected against the field allow-list.
-     */
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("nestedOperatorCases")
-    @DisplayName("should reject a forbidden outer operator when a nested expression hides the field")
-    void shouldRejectForbiddenOuterOperatorWhenNestedExpressionHidesField(ValidationCase testCase) {
-        // Arrange
-        QuerySchema<TestQuery> schema = schema(testCase.path(), testCase.type(), testCase.innerOperators());
+    @Test
+    @DisplayName("should map greater-or-equal to GTE capability")
+    void shouldMapGreaterOrEqualToGteCapability() {
+        QuerySchema<TestQuery> schema = schema("age", Integer.class, Set.of(QueryOperator.GTE));
+        QueryExpression expression = new QueryExpression.Binary(
+            QueryExpression.BinaryOperator.GREATER_OR_EQUAL,
+            reference("age"),
+            new QueryExpression.Literal(18)
+        );
 
-        // Act + Assert
-        assertRejected(testCase.expression(), schema);
-    }
-
-    /**
-     * Verifies that nested operator attribution does not reject fields that allow every participating operator.
-     *
-     * Given: arithmetic, length, membership, and quantifier expressions whose fields allow both the inner and outer
-     * semantic operators.
-     * Expect: every expression is accepted.
-     */
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("nestedOperatorCases")
-    @DisplayName("should accept nested operators when the field allows every participating operator")
-    void shouldAcceptNestedOperatorsWhenFieldAllowsEveryParticipatingOperator(ValidationCase testCase) {
-        // Arrange
-        QuerySchema<TestQuery> schema = schema(testCase.path(), testCase.type(), testCase.allOperators());
-
-        // Act + Assert
-        assertThatCode(() -> QuerySchemaValidator.validate(testCase.expression(), schema)).doesNotThrowAnyException();
-    }
-
-    /**
-     * Verifies that each unary expression is attributed to its matching field operator.
-     *
-     * Given: a field allow-list containing exactly the operator corresponding to NOT, PLUS, or MINUS.
-     * Expect: validation accepts the unary expression without substituting another unary operator.
-     */
-    @ParameterizedTest(name = "{0}")
-    @EnumSource(QueryExpression.UnaryOperator.class)
-    @DisplayName("should accept a unary expression when its matching operator is allowed")
-    void shouldAcceptUnaryExpressionWhenMatchingOperatorIsAllowed(QueryExpression.UnaryOperator expressionOperator) {
-        // Arrange
-        QueryOperator allowedOperator = QueryOperator.valueOf(expressionOperator.name());
-        QuerySchema<TestQuery> schema = schema("amount", Integer.class, Set.of(allowedOperator));
-        QueryExpression expression = new QueryExpression.Unary(expressionOperator, reference("amount"));
-
-        // Act + Assert
         assertThatCode(() -> QuerySchemaValidator.validate(expression, schema)).doesNotThrowAnyException();
     }
 
-    /**
-     * Verifies that unary PLUS cannot borrow permission from unary NOT.
-     *
-     * Given: an amount field that allows NOT but does not allow PLUS.
-     * Expect: validation rejects a unary PLUS expression over that field.
-     */
     @Test
-    @DisplayName("should reject unary plus when only logical not is allowed")
-    void shouldRejectUnaryPlusWhenOnlyLogicalNotIsAllowed() {
-        // Arrange
-        QuerySchema<TestQuery> schema = schema("amount", Integer.class, Set.of(QueryOperator.NOT));
-        QueryExpression expression = new QueryExpression.Unary(QueryExpression.UnaryOperator.PLUS, reference("amount"));
-
-        // Act + Assert
-        assertRejected(expression, schema);
-    }
-
-    private static Stream<ValidationCase> nestedOperatorCases() {
-        return Stream.of(
-            new ValidationCase(
-                "arithmetic",
-                "amount",
-                Integer.class,
-                Set.of(QueryOperator.ADD),
-                Set.of(QueryOperator.ADD, QueryOperator.GT),
-                new QueryExpression.Binary(
-                    QueryExpression.BinaryOperator.GREATER,
-                    new QueryExpression.Binary(
-                        QueryExpression.BinaryOperator.ADD,
-                        reference("amount"),
-                        new QueryExpression.Literal(0)
-                    ),
-                    new QueryExpression.Literal(18)
-                )
-            ),
-            new ValidationCase(
-                "length",
-                "values",
-                List.class,
-                Set.of(QueryOperator.LENGTH),
-                Set.of(QueryOperator.LENGTH, QueryOperator.GT),
-                new QueryExpression.Binary(
-                    QueryExpression.BinaryOperator.GREATER,
-                    new QueryExpression.Length(reference("values")),
-                    new QueryExpression.Literal(0)
-                )
-            ),
-            new ValidationCase(
-                "membership",
-                "values",
-                List.class,
-                Set.of(QueryOperator.IN),
-                Set.of(QueryOperator.IN, QueryOperator.EQ),
-                new QueryExpression.Binary(
-                    QueryExpression.BinaryOperator.EQUAL,
-                    new QueryExpression.Binary(
-                        QueryExpression.BinaryOperator.IN,
-                        new QueryExpression.Literal(1),
-                        reference("values")
-                    ),
-                    new QueryExpression.Literal(true)
-                )
-            ),
-            new ValidationCase(
-                "quantifier",
-                "values",
-                List.class,
-                Set.of(QueryOperator.ANY),
-                Set.of(QueryOperator.ANY, QueryOperator.EQ),
-                new QueryExpression.Binary(
-                    QueryExpression.BinaryOperator.EQUAL,
-                    new QueryExpression.Quantifier(
-                        QueryExpression.QuantifierOperator.ANY,
-                        reference("values"),
-                        "item",
-                        new QueryExpression.Binary(
-                            QueryExpression.BinaryOperator.GREATER,
-                            new QueryExpression.Reference("item", List.of()),
-                            new QueryExpression.Literal(0)
-                        )
-                    ),
-                    new QueryExpression.Literal(true)
-                )
-            )
+    @DisplayName("should require CONTAINS capability for contains expression")
+    void shouldRequireContainsCapabilityForContainsExpression() {
+        QueryExpression expression = new QueryExpression.Binary(
+            QueryExpression.BinaryOperator.CONTAINS,
+            reference("name"),
+            new QueryExpression.Literal("ali")
         );
+
+        assertThatCode(() ->
+            QuerySchemaValidator.validate(expression, schema("name", String.class, Set.of(QueryOperator.CONTAINS)))
+        ).doesNotThrowAnyException();
+        assertThatThrownBy(() ->
+            QuerySchemaValidator.validate(expression, schema("name", String.class, Set.of(QueryOperator.EQ)))
+        )
+            .isInstanceOf(FilterByException.class)
+            .hasMessageContaining("operator is not supported");
     }
 
-    private static void assertRejected(QueryExpression expression, QuerySchema<TestQuery> schema) {
+    @Test
+    @DisplayName("should reject contains when the substring is not a literal")
+    void shouldRejectContainsWhenSubstringIsNotLiteral() {
+        QuerySchema<TestQuery> schema = schema("name", String.class, Set.of(QueryOperator.CONTAINS));
+        QueryExpression expression = new QueryExpression.Binary(
+            QueryExpression.BinaryOperator.CONTAINS,
+            reference("name"),
+            reference("name")
+        );
+
         assertThatThrownBy(() -> QuerySchemaValidator.validate(expression, schema))
             .isInstanceOf(FilterByException.class)
-            .hasMessageContaining("operator is not supported for query path");
+            .hasMessageContaining("string literal");
+    }
+
+    @Test
+    @DisplayName("should reject legacy membership expressions")
+    void shouldRejectLegacyMembershipExpression() {
+        QuerySchema<TestQuery> schema = schema("name", String.class, Set.of(QueryOperator.EQ));
+        QueryExpression expression = new QueryExpression.Binary(
+            QueryExpression.BinaryOperator.IN,
+            reference("name"),
+            new QueryExpression.ListValue(List.of(new QueryExpression.Literal("alice")))
+        );
+
+        assertThatThrownBy(() -> QuerySchemaValidator.validate(expression, schema))
+            .isInstanceOf(FilterByException.class)
+            .hasMessageContaining("unsupported filterBy operator");
+    }
+
+    @Test
+    @DisplayName("should reject unary expressions from the query surface")
+    void shouldRejectUnaryExpression() {
+        QuerySchema<TestQuery> schema = schema("active", Boolean.class, Set.of(QueryOperator.EQ));
+        QueryExpression expression = new QueryExpression.Unary(QueryExpression.UnaryOperator.NOT, reference("active"));
+
+        assertThatThrownBy(() -> QuerySchemaValidator.validate(expression, schema))
+            .isInstanceOf(FilterByException.class)
+            .hasMessageContaining("unsupported filterBy expression");
     }
 
     private static QueryExpression.Reference reference(String path) {
@@ -188,20 +109,6 @@ class QuerySchemaValidatorTest {
                 return List.of(field);
             }
         };
-    }
-
-    private record ValidationCase(
-        String name,
-        String path,
-        Class<?> type,
-        Set<QueryOperator> innerOperators,
-        Set<QueryOperator> allOperators,
-        QueryExpression expression
-    ) {
-        @Override
-        public String toString() {
-            return this.name;
-        }
     }
 
     private static final class TestQuery {}

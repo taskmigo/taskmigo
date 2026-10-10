@@ -32,7 +32,7 @@ class QuerySchemaIdentityTest {
             QueryPath.of("score"),
             TypeDescriptor.of(Integer.class),
             true,
-            Set.of(QueryOperator.GE, QueryOperator.LT)
+            Set.of(QueryOperator.GTE, QueryOperator.LT)
         );
 
         // Act

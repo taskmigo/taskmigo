@@ -324,6 +324,7 @@ record SemanticAst(
         GREATER_OR_EQUAL,
         LESS,
         LESS_OR_EQUAL,
+        CONTAINS,
         IN,
         ADD,
         SUBTRACT,

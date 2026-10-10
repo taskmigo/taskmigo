@@ -12,7 +12,7 @@ public record QueryField(QueryPath path, TypeDescriptor type, boolean nullable, 
         operators = Set.copyOf(operators);
     }
 
-    /// Creates a field with the standard scalar operators.
+    /// Creates a field with the standard scalar comparison operators.
     public QueryField(QueryPath path, TypeDescriptor type, boolean nullable) {
         this(
             path,
@@ -22,10 +22,9 @@ public record QueryField(QueryPath path, TypeDescriptor type, boolean nullable, 
                 QueryOperator.EQ,
                 QueryOperator.NE,
                 QueryOperator.GT,
-                QueryOperator.GE,
+                QueryOperator.GTE,
                 QueryOperator.LT,
-                QueryOperator.LE,
-                QueryOperator.IN
+                QueryOperator.LTE
             )
         );
     }

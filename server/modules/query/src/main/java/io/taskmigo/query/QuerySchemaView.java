@@ -11,6 +11,7 @@ public interface QuerySchemaView {
     String operation();
 
     /// Resolves the effective static and runtime field allowlist for one operation context.
+    @SuppressWarnings("NullableProblems")
     Collection<QueryFieldDescriptor> fields(QueryFieldContext context);
 
     /// Resolves the effective field allowlist for a static-only context.

@@ -55,6 +55,7 @@ final class EmbeddedLanguageEvaluator {
             case GREATER_OR_EQUAL -> compare(left, right) >= 0;
             case LESS -> compare(left, right) < 0;
             case LESS_OR_EQUAL -> compare(left, right) <= 0;
+            case CONTAINS -> string(left).contains(string(right));
             case IN -> contains(list(right), left);
             case ADD -> number(left).add(number(right));
             case SUBTRACT -> number(left).subtract(number(right));
@@ -230,6 +231,13 @@ final class EmbeddedLanguageEvaluator {
     private static Boolean requireBoolean(@Nullable Object value) {
         if (!(value instanceof Boolean result)) {
             throw new IllegalArgumentException("Embedded Language value is not Bool");
+        }
+        return result;
+    }
+
+    private static String string(@Nullable Object value) {
+        if (!(value instanceof String result)) {
+            throw new IllegalArgumentException("Embedded Language value is not String");
         }
         return result;
     }
