@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.adapter.out.persistence.query;
+package io.taskmigo.authorization.querybinding.jpa;
 
 import io.taskmigo.jpaquery.JpaQueryExpressionBinder;
 import io.taskmigo.jpaquery.QuerySchema;
@@ -34,7 +34,9 @@ public final class JpaQueryPredicateBinder<Q, E> implements QueryPredicateBinder
             throw new IllegalArgumentException("unsupported Query Predicate implementation");
         }
         if (!model.schemaIdentity().equals(this.schema.identity())) {
-            throw new IllegalArgumentException("Query Predicate schema identity does not match the JPA operation schema");
+            throw new IllegalArgumentException(
+                "Query Predicate schema identity does not match the JPA operation schema"
+            );
         }
         return JpaQueryExpressionBinder.bind(model.expression(), this.schema);
     }

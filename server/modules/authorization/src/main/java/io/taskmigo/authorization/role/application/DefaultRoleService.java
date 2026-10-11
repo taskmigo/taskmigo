@@ -1,6 +1,5 @@
 package io.taskmigo.authorization.role.application;
 
-import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.role.RoleException;
 import io.taskmigo.authorization.role.RoleInfo;
@@ -9,6 +8,7 @@ import io.taskmigo.authorization.role.application.internal.RoleCommandService;
 import io.taskmigo.authorization.role.domain.RoleRuleViolation;
 import io.taskmigo.authorization.role.domain.hierarchy.RoleHierarchy;
 import io.taskmigo.authorization.role.domain.hierarchy.RoleHierarchyException;
+import io.taskmigo.authorization.transaction.TransactionRunner;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;

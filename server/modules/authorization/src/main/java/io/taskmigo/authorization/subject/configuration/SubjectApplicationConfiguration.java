@@ -1,6 +1,5 @@
 package io.taskmigo.authorization.subject.configuration;
 
-import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.role.application.api.RoleService;
 import io.taskmigo.authorization.statement.application.api.StatementService;
 import io.taskmigo.authorization.subject.application.DefaultSubjectGrantAssignmentService;
@@ -11,6 +10,7 @@ import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentS
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
 import io.taskmigo.authorization.subject.application.api.SubjectRoleQueryService;
 import io.taskmigo.authorization.subject.application.resolution.EffectiveSubjectResolver;
+import io.taskmigo.authorization.transaction.TransactionRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.adapter.out.persistence.query;
+package io.taskmigo.authorization.querybinding.jpa;
 
 import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
 import io.taskmigo.jpaquery.JpaQueryExpressionBinder;
@@ -30,7 +30,9 @@ final class JpaObjectAuthorizationExpressionBinder {
                 queryExpression(binary.left()),
                 queryExpression(binary.right())
             );
-            default -> throw new IllegalArgumentException("Unsupported Object Authorization expression for JPA binding");
+            default -> throw new IllegalArgumentException(
+                "Unsupported Object Authorization expression for JPA binding"
+            );
         };
     }
 
