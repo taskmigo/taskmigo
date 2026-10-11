@@ -4,7 +4,7 @@ import io.taskmigo.authorization.request.AuthorizationContext;
 import io.taskmigo.authorization.request.AuthorizationPrincipal;
 import io.taskmigo.authorization.request.AuthorizationRequest;
 import io.taskmigo.authorization.request.RequestAuthorizationResult;
-import io.taskmigo.authorization.request.application.port.in.api.RequestAuthorization;
+import io.taskmigo.authorization.request.application.api.RequestAuthorization;
 import io.taskmigo.identity.user.UserException;
 import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.api.UserService;
