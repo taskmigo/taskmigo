@@ -2,7 +2,7 @@ package io.taskmigo.authorization.subject.application.service;
 
 import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.role.RoleInfo;
-import io.taskmigo.authorization.role.application.port.in.api.RoleService;
+import io.taskmigo.authorization.role.application.api.RoleService;
 import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectRoleQueryService;
 import io.taskmigo.authorization.subject.application.port.out.SubjectGrantRepository;
