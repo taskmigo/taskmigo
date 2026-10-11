@@ -2,7 +2,7 @@ plugins {
     `java-library`
 }
 
-description = "Shared Hexagonal and Onion architecture test conventions"
+description = "Shared DDD and Onion architecture test conventions"
 
 dependencies {
     api(libs.archunit.junit5)
