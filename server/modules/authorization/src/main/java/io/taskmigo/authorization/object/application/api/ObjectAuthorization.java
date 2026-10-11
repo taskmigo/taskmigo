@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.object.application.port.in.api;
+package io.taskmigo.authorization.object.application.api;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.request.AuthorizationContext;

@@ -1,6 +1,6 @@
 package io.taskmigo.authorization.embeddedlanguage;
 
-import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
+import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.query.QuerySchemaView;
 import java.util.List;
