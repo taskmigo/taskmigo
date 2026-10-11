@@ -1,8 +1,8 @@
 package io.taskmigo.web.adapter.in.security.session;
 
 import io.taskmigo.identity.user.UserStatus;
-import io.taskmigo.identity.user.application.port.in.api.UserService;
-import io.taskmigo.identity.user.application.port.in.api.UserSessionLifecycleService;
+import io.taskmigo.identity.user.application.api.UserService;
+import io.taskmigo.identity.user.application.api.UserSessionLifecycleService;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.session.Session;

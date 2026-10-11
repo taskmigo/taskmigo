@@ -3,7 +3,7 @@ package io.taskmigo;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.taskmigo.identity.user.UserStatus;
-import io.taskmigo.identity.user.application.port.in.api.UserRetentionService;
+import io.taskmigo.identity.user.application.api.UserRetentionService;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;

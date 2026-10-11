@@ -2,7 +2,7 @@ package io.taskmigo.web.adapter.in.http.api.v0.auth.user;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.taskmigo.identity.provisioning.application.port.in.api.IdentityProvisioningService;
+import io.taskmigo.identity.provisioning.application.api.IdentityProvisioningService;
 import io.taskmigo.web.adapter.in.http.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.web.adapter.in.http.api.v0.testing.TaskmigoApiClient.CreateGroupRequest;
 import io.taskmigo.web.adapter.in.http.api.v0.testing.TaskmigoApiClient.CreateRoleRequest;

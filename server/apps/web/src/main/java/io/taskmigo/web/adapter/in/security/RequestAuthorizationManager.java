@@ -7,7 +7,7 @@ import io.taskmigo.authorization.request.RequestAuthorizationResult;
 import io.taskmigo.authorization.request.application.port.in.api.RequestAuthorization;
 import io.taskmigo.identity.user.UserException;
 import io.taskmigo.identity.user.UserStatus;
-import io.taskmigo.identity.user.application.port.in.api.UserService;
+import io.taskmigo.identity.user.application.api.UserService;
 import java.util.UUID;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;

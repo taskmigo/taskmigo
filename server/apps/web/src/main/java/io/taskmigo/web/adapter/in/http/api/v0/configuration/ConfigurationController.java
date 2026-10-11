@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.taskmigo.identity.configuration.ConfigurationSnapshot;
 import io.taskmigo.identity.configuration.RetentionDuration;
-import io.taskmigo.identity.configuration.application.port.in.api.ConfigurationService;
+import io.taskmigo.identity.configuration.application.api.ConfigurationService;
 import io.taskmigo.identity.user.UserException;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponseFactory;

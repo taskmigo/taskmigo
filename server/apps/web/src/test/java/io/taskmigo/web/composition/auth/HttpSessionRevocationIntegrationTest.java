@@ -4,8 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.TaskmigoApplication;
-import io.taskmigo.identity.provisioning.application.port.in.api.IdentityProvisioningService;
-import io.taskmigo.identity.user.application.port.in.api.UserRetentionService;
+import io.taskmigo.identity.provisioning.application.api.IdentityProvisioningService;
+import io.taskmigo.identity.user.application.api.UserRetentionService;
 import io.taskmigo.web.adapter.in.http.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.web.adapter.in.http.api.v0.testing.TaskmigoApiClient;
 import io.taskmigo.web.adapter.in.security.session.UserSessionPrincipal;

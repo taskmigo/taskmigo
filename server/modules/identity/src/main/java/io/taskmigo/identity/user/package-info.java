@@ -1,7 +1,7 @@
-/// Publishes User data/error contracts shared with driving adapters.
+/// Publishes User data/error contracts shared with runtime applications.
 ///
-/// User use cases are exposed separately through the `user-input` named interface; domain, application implementation,
-/// outbound ports, and driven adapters remain internal to Identity.
+/// User use cases are exposed separately through the `user-use-cases` named interface; domain, application
+/// implementations, persistence, integrations, and configuration remain internal to Identity.
 @NamedInterface("user")
 @NullMarked
 package io.taskmigo.identity.user;

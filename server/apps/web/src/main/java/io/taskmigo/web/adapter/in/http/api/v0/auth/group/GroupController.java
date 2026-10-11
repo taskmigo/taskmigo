@@ -7,7 +7,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.group.GroupInfo;
-import io.taskmigo.identity.group.application.port.in.api.GroupService;
+import io.taskmigo.identity.group.application.api.GroupService;
 import io.taskmigo.query.FilteredQuery;
 import io.taskmigo.query.QueryOperation;
 import io.taskmigo.web.adapter.in.http.api.v0.support.pagination.OffsetPageRequest;
