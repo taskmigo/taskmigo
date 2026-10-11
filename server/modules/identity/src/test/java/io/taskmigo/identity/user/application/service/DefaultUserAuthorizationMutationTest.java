@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -78,11 +79,11 @@ class DefaultUserAuthorizationMutationTest {
     }
 
     /**
-     * Given: Object Authorization resolves the target but the locked User is retained and therefore read-only.
-     * Expect: authorization runs before locking and the domain conflict remains visible as CONFLICT.
+     * Given: Object Authorization resolves a retained target and locks it in that same constrained query.
+     * Expect: the domain conflict remains visible as CONFLICT without a second unrestricted lookup.
      */
     @Test
-    @DisplayName("reports domain conflict only after authorized statement target resolution")
+    @DisplayName("reports domain conflict after authorized statement target resolution")
     void shouldReportConflictAfterAuthorizedStatementTargetResolution() {
         // Arrange
         UUID userId = UUID.randomUUID();
@@ -90,8 +91,7 @@ class DefaultUserAuthorizationMutationTest {
         UserCommandService commands = mock(UserCommandService.class);
         SubjectGrantAssignmentService assignments = mock(SubjectGrantAssignmentService.class);
         ObjectAuthorizationPredicate<UserInfo> authorization = authorization();
-        when(users.findForStatementUpdate(userId, authorization)).thenReturn(Optional.of(mock(UserInfo.class)));
-        when(commands.findByIdForUpdate(userId)).thenReturn(Optional.of(retainedUser(userId)));
+        when(users.findForStatementUpdate(userId, authorization)).thenReturn(Optional.of(retainedUser(userId)));
         DefaultUserService service = service(
             users,
             commands,
@@ -111,15 +111,14 @@ class DefaultUserAuthorizationMutationTest {
         ).isInstanceOfSatisfying(UserException.class, exception ->
             assertThat(exception.type()).isEqualTo(DomainFailureType.CONFLICT)
         );
-        var order = inOrder(users, commands);
-        order.verify(users).findForStatementUpdate(userId, authorization);
-        order.verify(commands).findByIdForUpdate(userId);
+        verify(users).findForStatementUpdate(userId, authorization);
+        verify(commands, never()).findByIdForUpdate(any());
         verify(assignments, never()).setStatements(any(), any());
     }
 
     /**
      * Given: Object Authorization resolves an active target but referenced Statements fail semantic validation.
-     * Expect: validation happens after authorization and locking, then reports UNPROCESSABLE rather than hiding it.
+     * Expect: validation happens after authorized resolution, then reports UNPROCESSABLE rather than hiding it.
      */
     @Test
     @DisplayName("reports semantic invalidity only after authorized statement target resolution")
@@ -132,8 +131,7 @@ class DefaultUserAuthorizationMutationTest {
         SubjectGrantQueryService queries = mock(SubjectGrantQueryService.class);
         SubjectGrantAssignmentService assignments = mock(SubjectGrantAssignmentService.class);
         ObjectAuthorizationPredicate<UserInfo> authorization = authorization();
-        when(users.findForStatementUpdate(userId, authorization)).thenReturn(Optional.of(mock(UserInfo.class)));
-        when(commands.findByIdForUpdate(userId)).thenReturn(Optional.of(activeUser(userId)));
+        when(users.findForStatementUpdate(userId, authorization)).thenReturn(Optional.of(activeUser(userId)));
         when(queries.statementIds(any())).thenReturn(Set.of());
         doThrow(new AuthorizationException("One or more Statements do not exist"))
             .when(assignments)
@@ -158,10 +156,10 @@ class DefaultUserAuthorizationMutationTest {
             assertThat(exception.type()).isEqualTo(DomainFailureType.UNPROCESSABLE);
             assertThat(exception).hasMessage("One or more Statements do not exist");
         });
-        var order = inOrder(users, commands, assignments);
+        var order = inOrder(users, assignments);
         order.verify(users).findForStatementUpdate(userId, authorization);
-        order.verify(commands).findByIdForUpdate(userId);
         order.verify(assignments).setStatements(any(), any());
+        verify(commands, never()).findByIdForUpdate(any());
     }
 
     /**
@@ -194,6 +192,37 @@ class DefaultUserAuthorizationMutationTest {
         );
         verify(commands, never()).findByIdForUpdate(any());
         verify(deletion, never()).delete(any(), any(), any());
+    }
+
+    /**
+     * Given: Object Authorization resolves a mutable delete target.
+     * Expect: the authorized resolution is the mutation target and no unrestricted second lookup is performed.
+     */
+    @Test
+    @DisplayName("does not perform an unrestricted second lookup after delete authorization")
+    void shouldNotPerformUnrestrictedSecondLookupAfterDeleteAuthorization() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+        User target = activeUser(userId);
+        UserQueryRepository users = mock(UserQueryRepository.class);
+        UserCommandService commands = mock(UserCommandService.class);
+        UserDeletionLifecycleService deletion = mock(UserDeletionLifecycleService.class);
+        ObjectAuthorizationPredicate<UserInfo> authorization = authorization();
+        when(users.findForDelete(userId, authorization)).thenReturn(Optional.of(target));
+        DefaultUserService service = service(
+            users,
+            commands,
+            mock(SubjectGrantQueryService.class),
+            mock(SubjectGrantAssignmentService.class),
+            deletion
+        );
+
+        // Act
+        service.delete(userId, authorization, new UserMutationActor(UUID.randomUUID(), "operator"));
+
+        // Assert
+        verify(commands, never()).findByIdForUpdate(userId);
+        verify(deletion).delete(eq(target), any(), any());
     }
 
     private static DefaultUserService service(

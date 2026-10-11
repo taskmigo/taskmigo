@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.taskmigo.foundation.TypeDescriptor;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,13 +21,13 @@ class QuerySchemaIdentityTest {
     @DisplayName("should canonicalize equivalent query schemas")
     void shouldProduceSameIdentityWhenSchemaCollectionOrderDiffers() {
         // Arrange
-        QueryField name = new QueryField(
+        QueryFieldDescriptor name = new QueryFieldDescriptor(
             QueryPath.of("name"),
             TypeDescriptor.of(String.class),
             false,
             Set.of(QueryOperator.NE, QueryOperator.EQ)
         );
-        QueryField score = new QueryField(
+        QueryFieldDescriptor score = new QueryFieldDescriptor(
             QueryPath.of("score"),
             TypeDescriptor.of(Integer.class),
             true,
@@ -36,35 +35,25 @@ class QuerySchemaIdentityTest {
         );
 
         // Act
-        QuerySchema<Contract> first = schema(List.of(name, score));
-        QuerySchema<Contract> second = schema(List.of(score, name));
+        QuerySchemaView first = schema(List.of(name, score));
+        QuerySchemaView second = schema(List.of(score, name));
 
         // Assert
         assertThat(first.identity()).isEqualTo(second.identity());
     }
 
-    private static QuerySchema<Contract> schema(Collection<QueryField> fields) {
-        List<QueryField> declared = List.copyOf(fields);
-        return new QuerySchema<>() {
+    private static QuerySchemaView schema(Collection<QueryFieldDescriptor> fields) {
+        List<QueryFieldDescriptor> declared = List.copyOf(fields);
+        return new QuerySchemaView() {
             @Override
-            public Class<Contract> queryType() {
-                return Contract.class;
+            public String operation() {
+                return "test.contract";
             }
 
             @Override
-            public Optional<QueryField> field(QueryPath path) {
-                return declared
-                    .stream()
-                    .filter(field -> field.path().equals(path))
-                    .findFirst();
-            }
-
-            @Override
-            public Collection<QueryField> fields() {
+            public Collection<QueryFieldDescriptor> fields(QueryFieldContext context) {
                 return declared;
             }
         };
     }
-
-    private static final class Contract {}
 }

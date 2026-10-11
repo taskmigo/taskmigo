@@ -10,6 +10,7 @@ import io.taskmigo.identity.user.AuthenticationInfo;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.port.out.UserQueryRepository;
+import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.UserProfile;
 import io.taskmigo.jpaquery.JpaQuerySpecifications;
 import io.taskmigo.query.QueryPredicate;
@@ -21,7 +22,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
-/// Reads User projections directly from JPA and binds every predicate to the selected operation schema.
+/// Reads User projections and resolves mutation targets through operation-scoped JPA query schemas.
 @Repository
 public class JpaUserQueryRepository implements UserQueryRepository {
 
@@ -49,16 +50,19 @@ public class JpaUserQueryRepository implements UserQueryRepository {
 
     @Override
     public Optional<UserInfo> find(UUID id) {
-        return this.users.findById(id).filter(user -> user.status() != UserStatus.TOMBSTONE).map(JpaUserQueryRepository::info);
+        return this.users
+            .findById(id)
+            .filter(user -> user.status() != UserStatus.TOMBSTONE)
+            .map(JpaUserQueryRepository::info);
     }
 
     @Override
-    public Optional<UserInfo> findForDelete(UUID id, ObjectAuthorizationPredicate<UserInfo> authorization) {
+    public Optional<User> findForDelete(UUID id, ObjectAuthorizationPredicate<UserInfo> authorization) {
         return this.authorizedFind(id, authorization, this.deleteAuthorizationBinder);
     }
 
     @Override
-    public Optional<UserInfo> findForStatementUpdate(
+    public Optional<User> findForStatementUpdate(
         UUID id,
         ObjectAuthorizationPredicate<UserInfo> authorization
     ) {
@@ -99,7 +103,7 @@ public class JpaUserQueryRepository implements UserQueryRepository {
         );
     }
 
-    private Optional<UserInfo> authorizedFind(
+    private Optional<User> authorizedFind(
         UUID id,
         ObjectAuthorizationPredicate<UserInfo> authorization,
         ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> binder
@@ -110,7 +114,7 @@ public class JpaUserQueryRepository implements UserQueryRepository {
                 builder.notEqual(root.get(UserEntity_.status), UserStatus.TOMBSTONE)
             );
         Specification<UserEntity> authorizationSpec = binder.bind(authorization);
-        return this.users.findOne(target.and(authorizationSpec)).map(JpaUserQueryRepository::info);
+        return this.users.findOne(target.and(authorizationSpec)).map(UserEntity::toDomain);
     }
 
     private static UserInfo info(UserEntity user) {

@@ -9,14 +9,6 @@ final class QuerySchemaValidator {
 
     private QuerySchemaValidator() {}
 
-    static <Q> void validate(QueryExpression expression, QuerySchema<Q> schema) {
-        validate(expression, path ->
-            schema
-                .field(path)
-                .map(field -> new QueryFieldDescriptor(field.path(), field.type(), field.nullable(), field.operators()))
-        );
-    }
-
     static void validate(QueryExpression expression, QuerySchemaView schema, QueryFieldContext context) {
         validate(expression, path -> schema.field(path, context));
     }

@@ -10,15 +10,14 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 class Enhancement237FilterByContractTest {
 
-    private final QuerySchema<CustomerQuery> schema = new QuerySchema<>() {
-        private final QueryField name = new QueryField(
+    private final QuerySchemaView schema = new QuerySchemaView() {
+        private final QueryFieldDescriptor name = new QueryFieldDescriptor(
             QueryPath.of("name"),
             TypeDescriptor.of(String.class),
             false,
@@ -26,20 +25,12 @@ class Enhancement237FilterByContractTest {
         );
 
         @Override
-        public Class<CustomerQuery> queryType() {
-            return CustomerQuery.class;
+        public String operation() {
+            return "test.customers.list";
         }
 
         @Override
-        public Optional<QueryField> field(QueryPath path) {
-            return this.fields()
-                .stream()
-                .filter(field -> field.path().equals(path))
-                .findFirst();
-        }
-
-        @Override
-        public Collection<QueryField> fields() {
+        public Collection<QueryFieldDescriptor> fields(QueryFieldContext context) {
             return List.of(this.name);
         }
     };
@@ -63,10 +54,7 @@ class Enhancement237FilterByContractTest {
     @Test
     @DisplayName("should compile contains for a declared string field")
     void filterBySupportsContainsFunctionForDeclaredStringField() {
-        QueryPredicate<CustomerQuery> predicate = new FilterByCompiler().compile(
-            this.schema,
-            "contains(object.name, \"hon\")"
-        );
+        QueryPredicate<?> predicate = new FilterByCompiler().compile(this.schema, "contains(object.name, \"hon\")");
 
         assertThat(predicate.isAlwaysTrue()).isFalse();
         assertThat(predicate.isAlwaysFalse()).isFalse();
@@ -130,6 +118,4 @@ class Enhancement237FilterByContractTest {
             String.class,
         });
     }
-
-    private static final class CustomerQuery {}
 }

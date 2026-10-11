@@ -7,7 +7,6 @@ import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.query.model.QueryExpression;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,14 +16,16 @@ class QuerySchemaValidatorTest {
     @Test
     @DisplayName("should map greater-or-equal to GTE capability")
     void shouldMapGreaterOrEqualToGteCapability() {
-        QuerySchema<TestQuery> schema = schema("age", Integer.class, Set.of(QueryOperator.GTE));
+        QuerySchemaView schema = schema("age", Integer.class, Set.of(QueryOperator.GTE));
         QueryExpression expression = new QueryExpression.Binary(
             QueryExpression.BinaryOperator.GREATER_OR_EQUAL,
             reference("age"),
             new QueryExpression.Literal(18)
         );
 
-        assertThatCode(() -> QuerySchemaValidator.validate(expression, schema)).doesNotThrowAnyException();
+        assertThatCode(() ->
+            QuerySchemaValidator.validate(expression, schema, QueryFieldContext.empty())
+        ).doesNotThrowAnyException();
     }
 
     @Test
@@ -37,10 +38,18 @@ class QuerySchemaValidatorTest {
         );
 
         assertThatCode(() ->
-            QuerySchemaValidator.validate(expression, schema("name", String.class, Set.of(QueryOperator.CONTAINS)))
+            QuerySchemaValidator.validate(
+                expression,
+                schema("name", String.class, Set.of(QueryOperator.CONTAINS)),
+                QueryFieldContext.empty()
+            )
         ).doesNotThrowAnyException();
         assertThatThrownBy(() ->
-            QuerySchemaValidator.validate(expression, schema("name", String.class, Set.of(QueryOperator.EQ)))
+            QuerySchemaValidator.validate(
+                expression,
+                schema("name", String.class, Set.of(QueryOperator.EQ)),
+                QueryFieldContext.empty()
+            )
         )
             .isInstanceOf(FilterByException.class)
             .hasMessageContaining("operator is not supported");
@@ -49,14 +58,14 @@ class QuerySchemaValidatorTest {
     @Test
     @DisplayName("should reject contains when the substring is not a literal")
     void shouldRejectContainsWhenSubstringIsNotLiteral() {
-        QuerySchema<TestQuery> schema = schema("name", String.class, Set.of(QueryOperator.CONTAINS));
+        QuerySchemaView schema = schema("name", String.class, Set.of(QueryOperator.CONTAINS));
         QueryExpression expression = new QueryExpression.Binary(
             QueryExpression.BinaryOperator.CONTAINS,
             reference("name"),
             reference("name")
         );
 
-        assertThatThrownBy(() -> QuerySchemaValidator.validate(expression, schema))
+        assertThatThrownBy(() -> QuerySchemaValidator.validate(expression, schema, QueryFieldContext.empty()))
             .isInstanceOf(FilterByException.class)
             .hasMessageContaining("string literal");
     }
@@ -64,14 +73,14 @@ class QuerySchemaValidatorTest {
     @Test
     @DisplayName("should reject legacy membership expressions")
     void shouldRejectLegacyMembershipExpression() {
-        QuerySchema<TestQuery> schema = schema("name", String.class, Set.of(QueryOperator.EQ));
+        QuerySchemaView schema = schema("name", String.class, Set.of(QueryOperator.EQ));
         QueryExpression expression = new QueryExpression.Binary(
             QueryExpression.BinaryOperator.IN,
             reference("name"),
             new QueryExpression.ListValue(List.of(new QueryExpression.Literal("alice")))
         );
 
-        assertThatThrownBy(() -> QuerySchemaValidator.validate(expression, schema))
+        assertThatThrownBy(() -> QuerySchemaValidator.validate(expression, schema, QueryFieldContext.empty()))
             .isInstanceOf(FilterByException.class)
             .hasMessageContaining("unsupported filterBy operator");
     }
@@ -79,10 +88,10 @@ class QuerySchemaValidatorTest {
     @Test
     @DisplayName("should reject unary expressions from the query surface")
     void shouldRejectUnaryExpression() {
-        QuerySchema<TestQuery> schema = schema("active", Boolean.class, Set.of(QueryOperator.EQ));
+        QuerySchemaView schema = schema("active", Boolean.class, Set.of(QueryOperator.EQ));
         QueryExpression expression = new QueryExpression.Unary(QueryExpression.UnaryOperator.NOT, reference("active"));
 
-        assertThatThrownBy(() -> QuerySchemaValidator.validate(expression, schema))
+        assertThatThrownBy(() -> QuerySchemaValidator.validate(expression, schema, QueryFieldContext.empty()))
             .isInstanceOf(FilterByException.class)
             .hasMessageContaining("unsupported filterBy expression");
     }
@@ -91,25 +100,23 @@ class QuerySchemaValidatorTest {
         return new QueryExpression.Reference("object", List.of(path));
     }
 
-    private static QuerySchema<TestQuery> schema(String path, Class<?> type, Set<QueryOperator> operators) {
-        QueryField field = new QueryField(QueryPath.of(path), TypeDescriptor.of(type), false, operators);
-        return new QuerySchema<>() {
+    private static QuerySchemaView schema(String path, Class<?> type, Set<QueryOperator> operators) {
+        QueryFieldDescriptor field = new QueryFieldDescriptor(
+            QueryPath.of(path),
+            TypeDescriptor.of(type),
+            false,
+            operators
+        );
+        return new QuerySchemaView() {
             @Override
-            public Class<TestQuery> queryType() {
-                return TestQuery.class;
+            public String operation() {
+                return "test.query";
             }
 
             @Override
-            public Optional<QueryField> field(QueryPath queryPath) {
-                return field.path().equals(queryPath) ? Optional.of(field) : Optional.empty();
-            }
-
-            @Override
-            public Collection<QueryField> fields() {
+            public Collection<QueryFieldDescriptor> fields(QueryFieldContext context) {
                 return List.of(field);
             }
         };
     }
-
-    private static final class TestQuery {}
 }

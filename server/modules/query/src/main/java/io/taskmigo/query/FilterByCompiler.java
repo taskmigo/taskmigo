@@ -72,40 +72,8 @@ public class FilterByCompiler {
         return this.compile(schema, QueryFieldContext.empty(), source);
     }
 
-    /// Compiles against the legacy schema contract while callers migrate to operation-scoped schemas.
-    public <Q> QueryPredicate<Q> compile(QuerySchema<Q> schema, @Nullable String source) {
-        if (source == null || source.isBlank()) {
-            return QueryPredicateFactory.alwaysTrue(schema);
-        }
-        try {
-            CompiledSource compiled = this.compiler.compile(source, environment(schema), PROFILE);
-            if (compiled.resultType() != LanguageType.Scalar.BOOL) {
-                throw new FilterByException("filterBy expression must return Bool");
-            }
-            QueryExpression expression = compiled.map(LanguageQueryExpressionVisitor.INSTANCE);
-            QuerySchemaValidator.validate(expression, schema);
-            return QueryPredicateFactory.from(schema, expression);
-        } catch (EmbeddedLanguageException | IllegalArgumentException exception) {
-            throw new FilterByException("Invalid filterBy expression", exception);
-        }
-    }
-
-    /// Compiles a legacy schema selected through Spring's generic type resolution.
-    public QueryPredicate<?> compileUntyped(QuerySchema<?> schema, @Nullable String source) {
-        return this.compile(schema, source);
-    }
-
     private static EnvironmentSchema environment(QuerySchemaView schema, QueryFieldContext context) {
         return environment("query-filter:" + schema.identity(context), schema.operation(), schema.fields(context));
-    }
-
-    private static <Q> EnvironmentSchema environment(QuerySchema<Q> schema) {
-        List<QueryFieldDescriptor> fields = schema
-            .fields()
-            .stream()
-            .map(field -> new QueryFieldDescriptor(field.path(), field.type(), field.nullable(), field.operators()))
-            .toList();
-        return environment("query-filter:" + schema.identity(), schema.queryType().getName(), fields);
     }
 
     private static EnvironmentSchema environment(

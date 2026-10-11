@@ -118,8 +118,7 @@ public final class DefaultUserService implements UserService {
         UserMutationActor actor
     ) {
         this.transactions.write(() -> {
-            this.requireAuthorizedStatementTarget(userId, authorization);
-            User target = this.requireLocked(userId);
+            User target = this.requireAuthorizedStatementTarget(userId, authorization);
             this.requireMutable(target);
             this.replaceStatements(userId, statementIds, actor);
         });
@@ -144,8 +143,7 @@ public final class DefaultUserService implements UserService {
     @Override
     public void delete(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization, UserMutationActor actor) {
         this.transactions.write(() -> {
-            this.requireAuthorizedDeleteTarget(userId, authorization);
-            User target = this.requireLocked(userId);
+            User target = this.requireAuthorizedDeleteTarget(userId, authorization);
             try {
                 this.deletion.delete(target, actor, this.clock.instant());
             } catch (UserRuleViolation violation) {
@@ -154,14 +152,14 @@ public final class DefaultUserService implements UserService {
         });
     }
 
-    private void requireAuthorizedDeleteTarget(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization) {
-        this.users
+    private User requireAuthorizedDeleteTarget(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization) {
+        return this.users
             .findForDelete(userId, authorization)
             .orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"));
     }
 
-    private void requireAuthorizedStatementTarget(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization) {
-        this.users
+    private User requireAuthorizedStatementTarget(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization) {
+        return this.users
             .findForStatementUpdate(userId, authorization)
             .orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"));
     }
