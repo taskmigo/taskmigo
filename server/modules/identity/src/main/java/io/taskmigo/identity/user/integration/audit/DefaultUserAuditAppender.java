@@ -1,6 +1,6 @@
 package io.taskmigo.identity.user.integration.audit;
 
-import io.taskmigo.audit.application.port.in.append.AuditAppendService;
+import io.taskmigo.audit.application.append.AuditAppendService;
 import io.taskmigo.audit.event.AuditEvent;
 import io.taskmigo.identity.user.application.UserAuditAppender;
 import org.springframework.stereotype.Component;

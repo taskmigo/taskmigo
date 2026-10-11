@@ -2,10 +2,10 @@
 @ApplicationModule(
     allowedDependencies = {
         "foundation",
-        "audit :: append-input",
+        "audit :: append",
         "audit :: events",
         "audit :: model",
-        "audit :: privacy-input",
+        "audit :: privacy",
         "database :: criteria",
         "jpaquery",
         "query",
