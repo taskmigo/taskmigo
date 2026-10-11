@@ -4,11 +4,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.role.application.api.RoleService;
 import io.taskmigo.authorization.statement.application.api.StatementService;
 import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.authorization.subject.domain.SubjectGrants;
+import io.taskmigo.authorization.transaction.TransactionRunner;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;

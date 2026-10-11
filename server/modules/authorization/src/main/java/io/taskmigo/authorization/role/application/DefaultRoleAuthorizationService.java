@@ -1,9 +1,9 @@
 package io.taskmigo.authorization.role.application;
 
-import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.role.application.api.RoleAuthorizationService;
 import io.taskmigo.authorization.role.application.internal.RoleCommandService;
 import io.taskmigo.authorization.statement.application.api.StatementService;
+import io.taskmigo.authorization.transaction.TransactionRunner;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;

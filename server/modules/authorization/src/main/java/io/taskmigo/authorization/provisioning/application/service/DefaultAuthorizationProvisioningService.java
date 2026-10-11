@@ -1,6 +1,5 @@
 package io.taskmigo.authorization.provisioning.application.service;
 
-import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningResult;
@@ -17,6 +16,7 @@ import io.taskmigo.authorization.statement.application.internal.StatementCommand
 import io.taskmigo.authorization.statement.application.internal.StatementMutationResult;
 import io.taskmigo.authorization.statement.domain.Statement;
 import io.taskmigo.authorization.statement.domain.StatementRuleViolation;
+import io.taskmigo.authorization.transaction.TransactionRunner;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;

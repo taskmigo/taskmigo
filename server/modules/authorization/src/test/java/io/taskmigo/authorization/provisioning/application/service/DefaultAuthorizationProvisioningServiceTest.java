@@ -7,7 +7,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningResult;
 import io.taskmigo.authorization.role.application.RoleHierarchyRepository;
@@ -21,6 +20,7 @@ import io.taskmigo.authorization.statement.application.api.StatementService;
 import io.taskmigo.authorization.statement.application.internal.StatementCommandService;
 import io.taskmigo.authorization.statement.application.internal.StatementMutationResult;
 import io.taskmigo.authorization.statement.domain.Statement;
+import io.taskmigo.authorization.transaction.TransactionRunner;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;

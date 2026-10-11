@@ -6,7 +6,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
@@ -14,6 +13,7 @@ import io.taskmigo.authorization.statement.StatementException;
 import io.taskmigo.authorization.statement.application.internal.StatementCommandService;
 import io.taskmigo.authorization.statement.domain.Statement;
 import io.taskmigo.authorization.statement.domain.StatementRuleViolation;
+import io.taskmigo.authorization.transaction.TransactionRunner;
 import io.taskmigo.foundation.DomainFailureType;
 import java.util.Optional;
 import java.util.Set;

@@ -1,6 +1,5 @@
 package io.taskmigo.authorization.statement.application;
 
-import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.statement.Effect;
@@ -10,6 +9,7 @@ import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.application.api.StatementService;
 import io.taskmigo.authorization.statement.application.internal.StatementCommandService;
 import io.taskmigo.authorization.statement.domain.StatementRuleViolation;
+import io.taskmigo.authorization.transaction.TransactionRunner;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
