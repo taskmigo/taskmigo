@@ -17,7 +17,11 @@ class HexagonalOnionArchitectureTest {
             "io.taskmigo.authorization.object"
         ),
         List.of(),
-        List.of("io.taskmigo.authorization.role.persistence..", "io.taskmigo.authorization.statement.persistence.."),
+        List.of(
+            "io.taskmigo.authorization.role.persistence..",
+            "io.taskmigo.authorization.statement.persistence..",
+            "io.taskmigo.authorization.subject.persistence.."
+        ),
         List.of(
             "io.taskmigo.authorization.core",
             "io.taskmigo.authorization.object",
@@ -32,8 +36,8 @@ class HexagonalOnionArchitectureTest {
             "io.taskmigo.authorization.statement",
             "io.taskmigo.authorization.statement.application.api",
             "io.taskmigo.authorization.subject",
-            "io.taskmigo.authorization.subject.application.port.in.api",
-            "io.taskmigo.authorization.subject.application.port.out.resolution"
+            "io.taskmigo.authorization.subject.application.api",
+            "io.taskmigo.authorization.subject.application.resolution"
         )
     );
 

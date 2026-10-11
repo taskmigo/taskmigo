@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.subject.adapter.out.persistence;
+package io.taskmigo.authorization.subject.persistence;
 
 import java.util.List;
 import java.util.UUID;

@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.subject.application.port.out.resolution;
+package io.taskmigo.authorization.subject.application.resolution;
 
 import io.taskmigo.authorization.subject.SubjectRef;
 import java.util.Set;

@@ -12,9 +12,9 @@
         "query :: model",
         "authorization :: object",
         "authorization :: object-model",
-        "authorization :: subject-resolution-port",
+        "authorization :: subject-resolution",
         "authorization :: subject",
-        "authorization :: subject-input",
+        "authorization :: subject-use-cases",
     }
 )
 @NullMarked

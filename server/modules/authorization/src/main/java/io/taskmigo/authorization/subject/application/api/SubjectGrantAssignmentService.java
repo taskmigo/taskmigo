@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.subject.application.port.in.api;
+package io.taskmigo.authorization.subject.application.api;
 
 import io.taskmigo.authorization.subject.SubjectRef;
 import java.util.Collection;

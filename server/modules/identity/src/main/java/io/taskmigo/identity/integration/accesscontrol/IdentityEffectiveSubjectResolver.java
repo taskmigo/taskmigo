@@ -1,7 +1,7 @@
 package io.taskmigo.identity.integration.accesscontrol;
 
 import io.taskmigo.authorization.subject.SubjectRef;
-import io.taskmigo.authorization.subject.application.port.out.resolution.EffectiveSubjectResolver;
+import io.taskmigo.authorization.subject.application.resolution.EffectiveSubjectResolver;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.group.GroupException;
 import io.taskmigo.identity.group.application.GroupHierarchyRepository;
