@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.taskmigo.authorization.request.application.port.out.EffectiveStatement;
 import io.taskmigo.authorization.request.application.port.out.EffectiveStatementResolver;
 import io.taskmigo.authorization.role.RoleInfo;
-import io.taskmigo.authorization.role.application.port.in.api.RoleService;
+import io.taskmigo.authorization.role.application.api.RoleService;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectRoleQueryService;
 import io.taskmigo.identity.group.application.api.GroupService;
