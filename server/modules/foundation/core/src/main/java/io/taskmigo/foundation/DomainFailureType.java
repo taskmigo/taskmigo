@@ -5,4 +5,5 @@ public enum DomainFailureType {
     INVALID_INPUT,
     NOT_FOUND,
     CONFLICT,
+    UNPROCESSABLE,
 }

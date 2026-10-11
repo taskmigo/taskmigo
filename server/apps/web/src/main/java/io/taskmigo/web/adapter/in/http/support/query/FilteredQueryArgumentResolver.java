@@ -2,27 +2,26 @@ package io.taskmigo.web.adapter.in.http.support.query;
 
 import io.taskmigo.query.FilterByCompiler;
 import io.taskmigo.query.FilteredQuery;
-import io.taskmigo.query.QuerySchema;
+import io.taskmigo.query.QueryOperation;
+import io.taskmigo.query.QuerySchemaView;
 import java.util.List;
-import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 import org.springframework.core.MethodParameter;
-import org.springframework.core.ResolvableType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
-/// Resolves generic FilteredQuery arguments from registered Query Schemas and client filterBy input.
+/// Resolves FilteredQuery arguments against the Query Schema selected by the handler operation.
 @Component
 public final class FilteredQueryArgumentResolver implements HandlerMethodArgumentResolver {
 
-    private final List<QuerySchema<?>> schemas;
+    private final List<QuerySchemaView> schemas;
     private final FilterByCompiler filters;
 
-    /// Creates a resolver using Spring-managed Query Schemas and the filter compiler.
-    public FilteredQueryArgumentResolver(List<QuerySchema<?>> schemas, FilterByCompiler filters) {
+    /// Creates a resolver using Spring-managed operation schema views and the filter compiler.
+    public FilteredQueryArgumentResolver(List<QuerySchemaView> schemas, FilterByCompiler filters) {
         this.schemas = List.copyOf(schemas);
         this.filters = filters;
     }
@@ -39,17 +38,24 @@ public final class FilteredQueryArgumentResolver implements HandlerMethodArgumen
         NativeWebRequest webRequest,
         @Nullable WebDataBinderFactory binderFactory
     ) {
-        ResolvableType type = ResolvableType.forMethodParameter(parameter).getGeneric(0);
-        Class<?> queryType = type.resolve();
-        QuerySchema<?> schema = this.schemas
+        QuerySchemaView schema = this.schema(parameter);
+        return new FilteredQuery<>(this.filters.compile(schema, webRequest.getParameter("filterBy")));
+    }
+
+    private QuerySchemaView schema(MethodParameter parameter) {
+        QueryOperation operation = parameter.getMethodAnnotation(QueryOperation.class);
+        if (operation == null) {
+            throw new IllegalStateException("FilteredQuery handler must declare @QueryOperation");
+        }
+        List<QuerySchemaView> matches = this.schemas
             .stream()
-            .filter(candidate -> candidate.queryType().equals(queryType))
-            .findFirst()
-            .orElseThrow(() ->
-                new IllegalStateException(
-                    "No Query Schema registered for " + Objects.requireNonNull(queryType).getName()
-                )
+            .filter(candidate -> candidate.operation().equals(operation.value()))
+            .toList();
+        if (matches.size() != 1) {
+            throw new IllegalStateException(
+                "Expected exactly one Query Schema for operation " + operation.value() + ", found " + matches.size()
             );
-        return new FilteredQuery<>(this.filters.compileUntyped(schema, webRequest.getParameter("filterBy")));
+        }
+        return matches.getFirst();
     }
 }

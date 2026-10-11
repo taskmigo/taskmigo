@@ -24,12 +24,12 @@ public interface UserService {
     );
     Set<UUID> roleIds(UUID userId);
     void setStatements(UUID userId, Collection<UUID> statementIds, UserMutationActor actor);
-    boolean setStatements(
+    void setStatements(
         UUID userId,
         Collection<UUID> statementIds,
         ObjectAuthorizationPredicate<UserInfo> authorization,
         UserMutationActor actor
     );
     void setRoles(UUID userId, Collection<UUID> roleIds, UserMutationActor actor);
-    boolean delete(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization, UserMutationActor actor);
+    void delete(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization, UserMutationActor actor);
 }

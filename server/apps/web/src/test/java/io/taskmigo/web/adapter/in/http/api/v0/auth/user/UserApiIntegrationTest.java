@@ -306,14 +306,14 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     /**
-     * Verifies that the persisted lifecycle policy protects the reserved system User through the public API.
+     * Verifies that Object Authorization hides the reserved system User from the delete mutation target space.
      *
      * Given: the reserved system User and an authenticated caller otherwise allowed to delete Users.
-     * Expect: the object policy denies DELETE and the system User remains persisted.
+     * Expect: DELETE returns HTTP 404 without exposing whether the protected User exists, and the User remains persisted.
      */
     @Test
-    @DisplayName("denies deletion of the system user through policy")
-    void shouldDenySystemUserDeletionThroughPolicy() {
+    @DisplayName("hides the system user delete target through object authorization")
+    void shouldReturnNotFoundForSystemUserDeletionThroughPolicy() {
         // Arrange
         UUID systemUserId = Objects.requireNonNull(
             this.jdbc.queryForObject("select id from users where username = ?", UUID.class, "system")
@@ -321,7 +321,7 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
 
         // Act + Assert
         assertThatThrownBy(() -> this.api().users().delete(systemUserId)).isInstanceOf(
-            HttpClientErrorException.Forbidden.class
+            HttpClientErrorException.NotFound.class
         );
         assertThat(
             this.jdbc.queryForObject("select count(*) from users where id = ?", Integer.class, systemUserId)
@@ -329,14 +329,14 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     /**
-     * Verifies that a retained User cannot be deleted again and that the original retention clock is immutable.
+     * Verifies that a retained User is outside the authorized delete target space and its retention clock is immutable.
      *
      * Given: an active User deleted once through the public API with non-zero retention configured.
-     * Expect: a second DELETE is denied by object policy and retainedAt remains exactly unchanged.
+     * Expect: a second DELETE returns HTTP 404 and retainedAt remains exactly unchanged.
      */
     @Test
-    @DisplayName("denies repeated deletion of a retained user without resetting retainedAt")
-    void shouldDenyRepeatedRetainedUserDeletionWithoutResettingRetainedAt() {
+    @DisplayName("hides a retained user from repeated deletion without resetting retainedAt")
+    void shouldReturnNotFoundForRepeatedRetainedUserDeletionWithoutResettingRetainedAt() {
         // Arrange
         UUID userId = this.create("repeated-delete-" + UUID.randomUUID(), Set.of(), Set.of());
 
@@ -346,7 +346,7 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
         assertThat(retained.retainedAt()).isNotNull();
 
         assertThatThrownBy(() -> this.api().users().delete(userId)).isInstanceOf(
-            HttpClientErrorException.Forbidden.class
+            HttpClientErrorException.NotFound.class
         );
 
         // Assert
@@ -356,14 +356,14 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     /**
-     * Verifies retained User statement mutation is denied by the persisted object policy.
+     * Verifies retained User statement mutation is hidden by the persisted Object Authorization policy.
      *
      * Given: an active User transitioned to RETAINED and a valid direct Statement.
-     * Expect: PATCH statements returns HTTP 403 and no direct Statement binding is created.
+     * Expect: PATCH statements returns HTTP 404 and no direct Statement binding is created.
      */
     @Test
-    @DisplayName("denies statement mutation of a retained user through policy")
-    void shouldDenyRetainedUserStatementMutationThroughPolicy() {
+    @DisplayName("hides statement mutation target for a retained user")
+    void shouldReturnNotFoundForRetainedUserStatementMutationThroughPolicy() {
         // Arrange
         UUID userId = this.create("retained-statements-" + UUID.randomUUID(), Set.of(), Set.of());
         UUID statementId = this.createStatement("retained-statement-" + UUID.randomUUID());
@@ -371,7 +371,7 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
 
         // Act + Assert
         assertThatThrownBy(() -> this.api().users().replaceStatements(userId, List.of(statementId))).isInstanceOf(
-            HttpClientErrorException.Forbidden.class
+            HttpClientErrorException.NotFound.class
         );
         assertThat(
             this.jdbc.queryForObject(
@@ -410,6 +410,25 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
                 user
             )
         ).containsExactlyInAnyOrder(first, second);
+    }
+
+    /**
+     * Given: Object Authorization resolves an active User but the requested Statement does not exist.
+     * Expect: PATCH statements returns HTTP 422 because semantic validation runs after authorized resolution.
+     */
+    @Test
+    @DisplayName("returns unprocessable content for an unknown statement on an authorized user")
+    void shouldReturnUnprocessableContentWhenStatementAssignmentIsUnknown() {
+        // Arrange
+        UUID user = this.create("invalid-statement-user-" + UUID.randomUUID(), Set.of(), Set.of());
+        UUID unknownStatement = UUID.randomUUID();
+
+        // Act + Assert
+        assertThatThrownBy(() ->
+            this.api().users().replaceStatements(user, List.of(unknownStatement))
+        ).isInstanceOfSatisfying(HttpClientErrorException.UnprocessableContent.class, exception ->
+            assertThat(exception.getResponseBodyAsString()).contains("One or more Statements do not exist")
+        );
     }
 
     @Test

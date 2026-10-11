@@ -3,6 +3,7 @@ package io.taskmigo.database.criteria;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
+import java.time.Instant;
 import java.util.UUID;
 
 /// Builds ordered JPA Criteria comparisons while preserving the Java type of
@@ -61,6 +62,9 @@ public final class JpaCriteriaComparison {
         }
         if (type == UUID.class) {
             return compareComparable(builder, left.as(UUID.class), right.as(UUID.class), operator);
+        }
+        if (type == Instant.class) {
+            return compareComparable(builder, left.as(Instant.class), right.as(Instant.class), operator);
         }
         if (type == Character.class || type == char.class) {
             return compareComparable(builder, left.as(Character.class), right.as(Character.class), operator);

@@ -14,6 +14,7 @@ public final class UserException extends DomainException {
         INVALID_INPUT,
         NOT_FOUND,
         CONFLICT,
+        UNPROCESSABLE,
     }
 
     public UserException(Type type, String message) {

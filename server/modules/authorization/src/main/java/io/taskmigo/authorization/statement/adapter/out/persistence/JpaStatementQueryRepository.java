@@ -1,20 +1,24 @@
 package io.taskmigo.authorization.statement.adapter.out.persistence;
 
+import io.taskmigo.authorization.adapter.out.persistence.query.JpaObjectAuthorizationPredicateBinder;
+import io.taskmigo.authorization.adapter.out.persistence.query.JpaQueryPredicateBinder;
 import io.taskmigo.authorization.adapter.out.persistence.query.ObjectAuthorizationPredicateBinder;
 import io.taskmigo.authorization.adapter.out.persistence.query.QueryPredicateBinder;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.application.port.out.StatementQueryRepository;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.jpaquery.JpaQuerySpecifications;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
-/// Reads Statement projections directly from JPA while keeping mutation aggregate loading separate.
+/// Reads Statement projections and binds client and authorization predicates through the list operation schema.
 @Repository
 public class JpaStatementQueryRepository implements StatementQueryRepository {
 
@@ -22,14 +26,10 @@ public class JpaStatementQueryRepository implements StatementQueryRepository {
     private final QueryPredicateBinder<StatementInfo, StatementEntity> queryBinder;
     private final ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> objectBinder;
 
-    JpaStatementQueryRepository(
-        StatementRepository statements,
-        QueryPredicateBinder<StatementInfo, StatementEntity> queryBinder,
-        ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> objectBinder
-    ) {
+    JpaStatementQueryRepository(StatementRepository statements, ListStatementsQuerySchema schema) {
         this.statements = statements;
-        this.queryBinder = queryBinder;
-        this.objectBinder = objectBinder;
+        this.queryBinder = new JpaQueryPredicateBinder<>(StatementInfo.class, schema);
+        this.objectBinder = new JpaObjectAuthorizationPredicateBinder<>(StatementInfo.class, schema);
     }
 
     @Override
@@ -56,8 +56,10 @@ public class JpaStatementQueryRepository implements StatementQueryRepository {
         ObjectAuthorizationPredicate<StatementInfo> authorization
     ) {
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
+        Specification<StatementEntity> authorizationSpec = this.objectBinder.bind(authorization);
+        Specification<StatementEntity> clientFilter = this.queryBinder.bind(filter);
         var result = this.statements.findAll(
-            this.queryBinder.bind(filter).and(this.objectBinder.bind(authorization)),
+            JpaQuerySpecifications.authorized(authorizationSpec, clientFilter),
             pageable
         );
         return new OffsetPage<>(

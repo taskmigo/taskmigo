@@ -11,6 +11,7 @@ import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.application.port.in.api.UserRegistrationService;
 import io.taskmigo.identity.user.application.port.in.api.UserService;
 import io.taskmigo.query.FilteredQuery;
+import io.taskmigo.query.QueryOperation;
 import io.taskmigo.web.adapter.in.http.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponseFactory;
@@ -34,7 +35,6 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -63,6 +63,7 @@ class UserController {
     }
 
     @GetMapping("/users")
+    @QueryOperation("identity.users.list")
     @Operation(summary = "List users")
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
@@ -85,6 +86,7 @@ class UserController {
     }
 
     @DeleteMapping("/users/{userId}")
+    @QueryOperation("identity.users.delete")
     @Operation(summary = "Delete a user")
     @OpenApiNotFound
     @ResponseStatus(HttpStatus.OK)
@@ -93,13 +95,12 @@ class UserController {
         @Parameter(hidden = true) ObjectAuthorizationPredicate<UserInfo> authorization,
         JwtAuthenticationToken authentication
     ) {
-        if (!this.users.delete(userId, authorization, actor(authentication))) {
-            throw new AccessDeniedException("User lifecycle policy denied deletion");
-        }
+        this.users.delete(userId, authorization, actor(authentication));
         return this.responses.ok("resource.user.deleted", "User deleted");
     }
 
     @PatchMapping(value = "/users/{userId}/statements", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @QueryOperation("identity.users.update-statements")
     @Operation(summary = "Replace a user's direct statements")
     @OpenApiNotFound
     @OpenApiUnsupportedMediaType
@@ -110,15 +111,12 @@ class UserController {
         @Parameter(hidden = true) ObjectAuthorizationPredicate<UserInfo> authorization,
         JwtAuthenticationToken authentication
     ) {
-        boolean allowed = this.users.setStatements(
+        this.users.setStatements(
             userId,
             request.statementIds() == null ? Set.of() : request.statementIds(),
             authorization,
             actor(authentication)
         );
-        if (!allowed) {
-            throw new AccessDeniedException("User lifecycle policy denied mutation");
-        }
         return this.responses.ok("resource.user.statements.updated", "User statements updated");
     }
 

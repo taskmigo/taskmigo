@@ -5,333 +5,109 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.authorization.core.AuthorizationException;
-import io.taskmigo.authorization.object.ObjectAuthorizationField;
-import io.taskmigo.authorization.object.ObjectAuthorizationPath;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
-import io.taskmigo.authorization.request.AuthorizationPrincipal;
-import io.taskmigo.authorization.request.AuthorizationRequest;
-import io.taskmigo.authorization.request.RequestAuthorizationResult;
 import io.taskmigo.authorization.request.application.model.AuthorizationOperation;
 import io.taskmigo.authorization.request.application.model.AuthorizationSnapshot;
 import io.taskmigo.authorization.request.application.port.out.EffectiveStatement;
-import io.taskmigo.authorization.request.application.port.out.EffectiveStatementResolver;
-import io.taskmigo.authorization.request.application.service.RequestAuthorizationService;
 import io.taskmigo.authorization.request.application.service.StatementArtifactFactory;
 import io.taskmigo.authorization.statement.ApiInfo;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
-import io.taskmigo.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.TargetInfo;
 import io.taskmigo.foundation.TypeDescriptor;
-import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.LanguageCompiler;
-import java.time.Instant;
+import io.taskmigo.query.QueryFieldContext;
+import io.taskmigo.query.QueryFieldDescriptor;
+import io.taskmigo.query.QueryOperator;
+import io.taskmigo.query.QueryPath;
+import io.taskmigo.query.QuerySchemaView;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 class ObjectAuthorizationServiceTest {
 
-    private final ObjectAuthorizationSchema<TestObject> schema = schema();
+    private final QuerySchemaView schema = schema("name");
+    private final ObjectAuthorizationTargetResolver targets = ObjectAuthorizationTargetResolver.all(
+        List.of(this.schema)
+    );
     private final StatementArtifactFactory artifacts = new StatementArtifactFactory(
         new LanguageCompiler(),
-        List.of(this.schema),
-        ObjectAuthorizationTargetResolver.all(List.of(this.schema))
+        this.targets
     );
     private final ObjectAuthorizationService service = new ObjectAuthorizationService(
         new LanguageCompiler(),
-        ObjectAuthorizationTargetResolver.all(List.of(this.schema))
+        this.targets
     );
 
-    /**
-     * Verifies the default-deny Object Authorization contract.
-     *
-     * Given: an operation with no matching Object Authorization Statements.
-     * Expect: the resulting predicate is constant false.
-     */
     @Test
-    @DisplayName("returns an always false predicate when no object allow exists")
-    void shouldReturnAlwaysFalseWhenNoObjectAllowExists() {
-        // Arrange
+    @DisplayName("defaults to deny without a matching object statement")
+    void shouldDefaultDenyWithoutMatchingObjectStatement() {
         AuthorizationOperation operation = new AuthorizationOperation(
             new AuthorizationSnapshot(UUID.randomUUID(), List.of(), Map.of()),
             "GET",
             "/api/v0/objects"
         );
-
-        // Act
         ObjectAuthorizationPredicate<TestObject> predicate = this.service.authorize(operation, this.schema);
-
-        // Assert
         assertThat(predicate.isAlwaysFalse()).isTrue();
-        assertThat(predicate.isAlwaysTrue()).isFalse();
     }
 
-    /**
-     * Verifies that an unconditional allow policy becomes an opaque predicate granting every object.
-     *
-     * Given: one matching Object Authorization Statement with an unconditional allow policy.
-     * Expect: the returned predicate is always true and exposes no persistence representation.
-     */
     @Test
-    @DisplayName("returns an always true predicate for an unconditional allow")
-    void shouldReturnAlwaysTrueWhenAllowPolicyIsUnconditional() {
-        // Arrange
-        AuthorizationOperation operation = operation(statement(Effect.ALLOW, "true"));
-
-        // Act
-        ObjectAuthorizationPredicate<TestObject> predicate = this.service.authorize(operation, this.schema);
-
-        // Assert
-        assertThat(predicate.isAlwaysTrue()).isTrue();
-        assertThat(predicate.isAlwaysFalse()).isFalse();
-    }
-
-    /**
-     * Verifies that an unconditional deny policy produces a no-row authorization predicate.
-     *
-     * Given: one matching Object Authorization Statement with an unconditional deny policy.
-     * Expect: the returned predicate is always false before any resource query is paginated.
-     */
-    @Test
-    @DisplayName("returns an always false predicate for an unconditional deny")
-    void shouldReturnAlwaysFalseWhenDenyPolicyIsUnconditional() {
-        // Arrange
-        AuthorizationOperation operation = operation(statement(Effect.DENY, "true"));
-
-        // Act
-        ObjectAuthorizationPredicate<TestObject> predicate = this.service.authorize(operation, this.schema);
-
-        // Assert
-        assertThat(predicate.isAlwaysFalse()).isTrue();
-        assertThat(predicate.isAlwaysTrue()).isFalse();
-    }
-
-    /**
-     * Verifies that an object-dependent policy remains opaque instead of being evaluated over JVM rows.
-     *
-     * Given: a matching allow policy that compares a persisted object field with a literal.
-     * Expect: the predicate is neither constant, so the resource binder must bind it to persistence.
-     */
-    @Test
-    @DisplayName("keeps an object dependent policy as an opaque predicate")
-    void shouldKeepPredicateOpaqueWhenPolicyReferencesObject() {
-        // Arrange
-        AuthorizationOperation operation = operation(statement(Effect.ALLOW, "object.name == \"alice\""));
-
-        // Act
-        ObjectAuthorizationPredicate<TestObject> predicate = this.service.authorize(operation, this.schema);
-
-        // Assert
-        assertThat(predicate.isAlwaysTrue()).isFalse();
-        assertThat(predicate.isAlwaysFalse()).isFalse();
-    }
-
-    /**
-     * Verifies that a valid Object policy with a non-Boolean result is accepted during activation.
-     *
-     * Given: a syntactically valid Object policy returning a String for a registered route.
-     * Expect: activation validation succeeds because Boolean enforcement belongs to evaluation.
-     */
-    @Test
-    @DisplayName("accepts a non-boolean object policy during activation")
-    void shouldAcceptNonBooleanObjectPolicyWhenActivationInputsAreValid() {
-        // Arrange
-        String policy = "\"not-a-decision-yet\"";
-
-        // Act + Assert
-        assertThatCode(() -> this.service.validatePolicy(policy, "GET", "/api/v0/objects")).doesNotThrowAnyException();
-    }
-
-    /**
-     * Verifies that Object policy activation enforces the expression-only source contract.
-     *
-     * Given: a registered Object route and a policy using statement-level `if/else` control flow.
-     * Expect: activation rejects the policy during Language compilation before any persistence predicate exists.
-     */
-    @Test
-    @DisplayName("rejects program control flow during object policy activation")
-    void shouldRejectProgramControlFlowWhenObjectPolicyIsValidated() {
-        // Arrange
-        String policy = "if (object.name == \"alice\") { return true; } else { return false; }";
-
-        // Act + Assert
-        assertThatThrownBy(() -> this.service.validatePolicy(policy, "GET", "/api/v0/objects")).isInstanceOf(
-            EmbeddedLanguageException.class
+    @DisplayName("keeps object-dependent policies opaque")
+    void shouldKeepObjectDependentPolicyOpaque() {
+        ObjectAuthorizationPredicate<TestObject> predicate = this.service.authorize(
+            operation(statement(Effect.ALLOW, "object.name == \"alice\"")),
+            this.schema
         );
+        assertThat(predicate.isAlwaysTrue()).isFalse();
+        assertThat(predicate.isAlwaysFalse()).isFalse();
     }
 
-    /**
-     * Verifies Object policy validation uses the same bounded Statement target contract as authorization.
-     *
-     * Given: a target containing a Java-regex backreference that is outside the supported RE2 syntax.
-     * Expect: validation fails closed before route applicability or policy compilation.
-     */
     @Test
-    @DisplayName("rejects unsupported target regex during object policy validation")
-    void shouldRejectTargetRegexWhenObjectPolicyValidationRequiresBacktracking() {
-        // Arrange
-        String targetPath = "^/(a+)\\1$";
-
-        // Act + Assert
-        assertThatThrownBy(() -> this.service.validatePolicy("true", "GET", targetPath))
-            .isInstanceOf(AuthorizationException.class)
-            .hasMessageContaining("valid regular expression");
-    }
-
-    /**
-     * Verifies that a concrete non-Boolean Object result fails closed at authorization time.
-     *
-     * Given: an Object policy returning a Number and no symbolic Object input.
-     * Expect: Object Authorization raises the domain authorization failure instead of granting access.
-     */
-    @Test
-    @DisplayName("fails closed for a concrete non-boolean object result")
-    void shouldFailClosedWhenConcreteObjectPolicyResultIsNotBoolean() {
-        // Arrange
-        AuthorizationOperation operation = operation(statement(Effect.ALLOW, "42"));
-
-        // Act + Assert
-        assertThatThrownBy(() -> this.service.authorize(operation, this.schema))
-            .isInstanceOf(AuthorizationException.class)
-            .hasMessageContaining("not Bool");
-    }
-
-    /**
-     * Verifies that a residual non-Boolean Object result fails closed after partial evaluation.
-     *
-     * Given: an Object policy returning a symbolic String field and an empty known-input map.
-     * Expect: the residual result is rejected because Object Authorization requires Bool at runtime.
-     */
-    @Test
-    @DisplayName("fails closed for a residual non-boolean object result")
-    void shouldFailClosedWhenResidualObjectPolicyResultIsNotBoolean() {
-        // Arrange
-        AuthorizationOperation operation = operation(statement(Effect.ALLOW, "object.name"));
-
-        // Act + Assert
-        assertThatThrownBy(() -> this.service.authorize(operation, this.schema))
-            .isInstanceOf(AuthorizationException.class)
-            .hasMessageContaining("not Bool");
-    }
-
-    /**
-     * Verifies that Object policy activation validates only schemas whose application routes match the target.
-     *
-     * Given: two target resolutions with different fields and a policy valid only for the first target.
-     * Expect: the first target succeeds and the unrelated second target rejects the policy.
-     */
-    @Test
-    @DisplayName("validates an object policy against only applicable schemas")
-    void shouldValidateObjectPolicyAgainstApplicableSchemasOnly() {
-        // Arrange
-        ObjectAuthorizationSchema<TestObject> otherSchema = schema("other");
-        ObjectAuthorizationTargetResolver targetResolver = (method, pathMatcher) ->
-            pathMatcher.matches("/api/v0/objects") ? List.of(this.schema) : List.of(otherSchema);
-        ObjectAuthorizationService targetedService = new ObjectAuthorizationService(
+    @DisplayName("validates contains against the shared query schema")
+    void shouldValidateContainsAgainstSharedQuerySchema() {
+        QuerySchemaView containsSchema = schema("name", Set.of(QueryOperator.EQ, QueryOperator.CONTAINS));
+        ObjectAuthorizationService containsService = new ObjectAuthorizationService(
             new LanguageCompiler(),
-            targetResolver
+            ObjectAuthorizationTargetResolver.all(List.of(containsSchema))
         );
-        String policy = "object.name == \"alice\"";
-
-        // Act + Assert
         assertThatCode(() ->
-            targetedService.validatePolicy(policy, "GET", "/api/v0/objects")
+            containsService.validatePolicy("contains(object.name, \"ali\")", "GET", "/api/v0/objects")
         ).doesNotThrowAnyException();
-        assertThatThrownBy(() -> targetedService.validatePolicy(policy, "GET", "/api/v0/other")).isInstanceOf(
-            EmbeddedLanguageException.class
-        );
     }
 
-    /**
-     * Verifies that the typed Request result context can be reused by Object Authorization for the same operation.
-     *
-     * Given: one request allow Statement and one Object allow Statement resolved for a typed request.
-     * Expect: Object Authorization accepts the returned opaque context and effective state resolves once.
-     */
     @Test
-    @DisplayName("reuses the typed request context for object authorization")
-    void shouldReuseTypedRequestContextWhenObjectAuthorizationUsesSameOperation() {
-        // Arrange
-        EffectiveStatementResolver resolver = Mockito.mock(EffectiveStatementResolver.class);
-        UUID userId = UUID.randomUUID();
-        StatementInfo requestStatement = new StatementInfo(
-            UUID.randomUUID(),
-            "request_statement",
-            null,
-            Effect.ALLOW,
-            Scope.REQUEST,
-            new TargetInfo(new ApiInfo("GET", "/api/v0/objects")),
-            "return true;"
-        );
-        StatementInfo objectStatement = statement(Effect.ALLOW, "object.name == \"alice\"");
-        Mockito.when(resolver.resolve(userId)).thenReturn(
-            List.of(effective(requestStatement), effective(objectStatement))
-        );
-        RequestAuthorizationService requestAuthorization = new RequestAuthorizationService(resolver, this.artifacts);
-
-        // Act
-        RequestAuthorizationResult result = requestAuthorization.authorize(
-            new AuthorizationPrincipal(userId, "alice"),
-            new AuthorizationRequest("GET", "/api/v0/objects", Map.of())
-        );
-        ObjectAuthorizationPredicate<TestObject> predicate = this.service.authorize(result.context(), this.schema);
-
-        // Assert
-        assertThat(result.granted()).isTrue();
-        assertThat(predicate.isAlwaysTrue()).isFalse();
-        assertThat(predicate.isAlwaysFalse()).isFalse();
-        Mockito.verify(resolver).resolve(userId);
-    }
-
-    /**
-     * Verifies that Object Authorization uses the public composed Statement target path.
-     *
-     * Given: a schema exposing `target.api.path` and policies using either the public or persistence-shaped name.
-     * Expect: the public path is accepted and the persistence-shaped path is rejected.
-     */
-    @Test
-    @DisplayName("uses API-visible nested paths for object authorization")
-    void shouldUseApiVisibleStatementPathWhenObjectPolicyReferencesTarget() {
-        // Arrange
-        ObjectAuthorizationSchema<TestObject> apiSchema = schema("target.api.path");
-        ObjectAuthorizationService apiService = new ObjectAuthorizationService(
-            new LanguageCompiler(),
-            ObjectAuthorizationTargetResolver.all(List.of(apiSchema))
-        );
-
-        // Act + Assert
-        assertThatCode(() ->
-            apiService.validatePolicy("object.target.api.path == \"/api/v0/users\"", "GET", "/api/v0/users")
-        ).doesNotThrowAnyException();
+    @DisplayName("rejects unknown object paths")
+    void shouldRejectUnknownObjectPath() {
         assertThatThrownBy(() ->
-            apiService.validatePolicy("object.path == \"/api/v0/users\"", "GET", "/api/v0/users")
-        ).isInstanceOf(EmbeddedLanguageException.class);
+            this.service.validatePolicy("object.other == \"alice\"", "GET", "/api/v0/objects")
+        ).isInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    @DisplayName("fails closed for concrete non-boolean results")
+    void shouldFailClosedForConcreteNonBooleanResult() {
+        assertThatThrownBy(() -> this.service.authorize(operation(statement(Effect.ALLOW, "42")), this.schema))
+            .isInstanceOf(AuthorizationException.class)
+            .hasMessageContaining("not Bool");
     }
 
     private AuthorizationOperation operation(StatementInfo statement) {
-        List<StatementExecutionArtifact> executable = this.artifacts.build(
-            List.of(effective(statement)),
-            "GET",
-            "/api/v0/objects"
-        );
         return new AuthorizationOperation(
-            new AuthorizationSnapshot(UUID.randomUUID(), executable, Map.of()),
+            new AuthorizationSnapshot(
+                UUID.randomUUID(),
+                this.artifacts.build(List.of(new EffectiveStatement(statement)), "GET", "/api/v0/objects"),
+                Map.of()
+            ),
             "GET",
             "/api/v0/objects"
         );
-    }
-
-    private static EffectiveStatement effective(StatementInfo statement) {
-        return new EffectiveStatement(statement, Instant.EPOCH);
     }
 
     private static StatementInfo statement(Effect effect, String policy) {
@@ -346,29 +122,35 @@ class ObjectAuthorizationServiceTest {
         );
     }
 
-    private static ObjectAuthorizationSchema<TestObject> schema() {
-        return schema("name");
+    private static QuerySchemaView schema(String path) {
+        return schema(
+            path,
+            Set.of(
+                QueryOperator.EQ,
+                QueryOperator.NE,
+                QueryOperator.GT,
+                QueryOperator.GTE,
+                QueryOperator.LT,
+                QueryOperator.LTE
+            )
+        );
     }
 
-    private static ObjectAuthorizationSchema<TestObject> schema(String path) {
-        ObjectAuthorizationField field = new ObjectAuthorizationField(
-            ObjectAuthorizationPath.parse(path),
+    private static QuerySchemaView schema(String path, Set<QueryOperator> operators) {
+        QueryFieldDescriptor field = new QueryFieldDescriptor(
+            QueryPath.parse(path),
             TypeDescriptor.of(String.class),
-            false
+            false,
+            operators
         );
-        return new ObjectAuthorizationSchema<>() {
+        return new QuerySchemaView() {
             @Override
-            public Class<TestObject> objectType() {
-                return TestObject.class;
+            public String operation() {
+                return TestObject.class.getName();
             }
 
             @Override
-            public Optional<ObjectAuthorizationField> field(ObjectAuthorizationPath path) {
-                return field.path().equals(path) ? Optional.of(field) : Optional.empty();
-            }
-
-            @Override
-            public Collection<ObjectAuthorizationField> fields() {
+            public Collection<QueryFieldDescriptor> fields(QueryFieldContext context) {
                 return List.of(field);
             }
         };

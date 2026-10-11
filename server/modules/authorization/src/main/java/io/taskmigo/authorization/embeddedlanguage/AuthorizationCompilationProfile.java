@@ -11,13 +11,10 @@ public final class AuthorizationCompilationProfile {
 
     private static final Set<CompilationFeature> EXPRESSION_POLICY_FEATURES = Set.of(
         CompilationFeature.LIST_LITERALS,
-        CompilationFeature.MEMBERSHIP,
         CompilationFeature.LOGICAL_OPERATORS,
         CompilationFeature.EQUALITY_OPERATORS,
         CompilationFeature.ORDERING_OPERATORS,
-        CompilationFeature.ARITHMETIC_OPERATORS,
-        CompilationFeature.COLLECTION_QUANTIFIERS,
-        CompilationFeature.LENGTH_INTRINSIC
+        CompilationFeature.CONTAINS_INTRINSIC
     );
     private static final CompilationProfile REQUEST_POLICY = new CompilationProfile(
         CompilationMode.PROGRAM,

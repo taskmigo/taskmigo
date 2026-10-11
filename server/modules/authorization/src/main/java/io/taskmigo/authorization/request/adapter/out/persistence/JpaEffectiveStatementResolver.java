@@ -45,7 +45,7 @@ public class JpaEffectiveStatementResolver implements EffectiveStatementResolver
     public List<EffectiveStatement> resolve(UUID principalId) {
         return this.resolveEntities(principalId)
             .stream()
-            .map(entity -> new EffectiveStatement(entity.info(), entity.updatedAt()))
+            .map(entity -> new EffectiveStatement(entity.info()))
             .toList();
     }
 

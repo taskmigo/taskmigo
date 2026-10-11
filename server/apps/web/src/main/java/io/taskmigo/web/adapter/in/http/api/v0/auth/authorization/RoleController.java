@@ -10,6 +10,7 @@ import io.taskmigo.authorization.role.application.port.in.api.RoleAuthorizationS
 import io.taskmigo.authorization.role.application.port.in.api.RoleService;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.FilteredQuery;
+import io.taskmigo.query.QueryOperation;
 import io.taskmigo.web.adapter.in.http.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponseFactory;
@@ -70,6 +71,7 @@ class RoleController {
     }
 
     @GetMapping("/roles")
+    @QueryOperation("access-control.roles.list")
     @Operation(summary = "List roles")
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(

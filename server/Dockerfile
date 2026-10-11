@@ -11,6 +11,7 @@ COPY modules/foundation/core/build.gradle.kts modules/foundation/core/build.grad
 COPY modules/foundation/spring/build.gradle.kts modules/foundation/spring/build.gradle.kts
 COPY modules/language/build.gradle.kts modules/language/build.gradle.kts
 COPY modules/query/build.gradle.kts modules/query/build.gradle.kts
+COPY modules/jpa-query/build.gradle.kts modules/jpa-query/build.gradle.kts
 COPY modules/authorization/build.gradle.kts modules/authorization/build.gradle.kts
 COPY modules/database/build.gradle.kts modules/database/build.gradle.kts
 COPY modules/audit/build.gradle.kts modules/audit/build.gradle.kts
@@ -31,6 +32,7 @@ COPY modules/foundation/core/src modules/foundation/core/src
 COPY modules/foundation/spring/src modules/foundation/spring/src
 COPY modules/language/src modules/language/src
 COPY modules/query/src modules/query/src
+COPY modules/jpa-query/src modules/jpa-query/src
 COPY modules/authorization/src modules/authorization/src
 COPY modules/database/src modules/database/src
 COPY modules/audit/src modules/audit/src
@@ -65,7 +67,7 @@ FROM alpine:3.24@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec4
 RUN apk add --no-cache \
         ca-certificates=20260909-r0 \
         p11-kit-trust=0.26.2-r0 \
-        tzdata=2026d-r0
+        tzdata=2026e-r0
 
 COPY --from=runtime-builder /opt/taskmigo-jre /opt/java
 

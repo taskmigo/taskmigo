@@ -2,10 +2,13 @@ package io.taskmigo.identity.group.adapter.out.persistence;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.identity.adapter.out.persistence.query.JpaObjectAuthorizationPredicateBinder;
+import io.taskmigo.identity.adapter.out.persistence.query.JpaQueryPredicateBinder;
 import io.taskmigo.identity.adapter.out.persistence.query.ObjectAuthorizationPredicateBinder;
 import io.taskmigo.identity.adapter.out.persistence.query.QueryPredicateBinder;
 import io.taskmigo.identity.group.GroupInfo;
 import io.taskmigo.identity.group.application.port.out.GroupQueryRepository;
+import io.taskmigo.jpaquery.JpaQuerySpecifications;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
 import java.util.HashSet;
@@ -14,9 +17,10 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
-/// Reads Group projections and existence state directly from JPA.
+/// Reads Group projections and binds client and authorization predicates through the list operation schema.
 @Repository
 public class JpaGroupQueryRepository implements GroupQueryRepository {
 
@@ -24,14 +28,10 @@ public class JpaGroupQueryRepository implements GroupQueryRepository {
     private final QueryPredicateBinder<GroupInfo, GroupEntity> queryBinder;
     private final ObjectAuthorizationPredicateBinder<GroupInfo, GroupEntity> objectBinder;
 
-    JpaGroupQueryRepository(
-        JpaGroupRepository groups,
-        QueryPredicateBinder<GroupInfo, GroupEntity> queryBinder,
-        ObjectAuthorizationPredicateBinder<GroupInfo, GroupEntity> objectBinder
-    ) {
+    JpaGroupQueryRepository(JpaGroupRepository groups, ListGroupsQuerySchema schema) {
         this.groups = groups;
-        this.queryBinder = queryBinder;
-        this.objectBinder = objectBinder;
+        this.queryBinder = new JpaQueryPredicateBinder<>(GroupInfo.class, schema);
+        this.objectBinder = new JpaObjectAuthorizationPredicateBinder<>(GroupInfo.class, schema);
     }
 
     @Override
@@ -53,8 +53,10 @@ public class JpaGroupQueryRepository implements GroupQueryRepository {
         ObjectAuthorizationPredicate<GroupInfo> authorization
     ) {
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
+        Specification<GroupEntity> authorizationSpec = this.objectBinder.bind(authorization);
+        Specification<GroupEntity> clientFilter = this.queryBinder.bind(filter);
         var result = this.groups.findAll(
-            this.queryBinder.bind(filter).and(this.objectBinder.bind(authorization)),
+            JpaQuerySpecifications.authorized(authorizationSpec, clientFilter),
             pageable
         );
         return new OffsetPage<>(

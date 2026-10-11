@@ -7,6 +7,7 @@
         "audit :: model",
         "audit :: privacy-input",
         "database :: criteria",
+        "jpaquery",
         "query",
         "query :: model",
         "authorization :: object",

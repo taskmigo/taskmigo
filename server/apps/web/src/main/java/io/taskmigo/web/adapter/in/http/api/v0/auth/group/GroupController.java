@@ -9,6 +9,7 @@ import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.group.GroupInfo;
 import io.taskmigo.identity.group.application.port.in.api.GroupService;
 import io.taskmigo.query.FilteredQuery;
+import io.taskmigo.query.QueryOperation;
 import io.taskmigo.web.adapter.in.http.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponseFactory;
@@ -50,6 +51,7 @@ class GroupController {
     }
 
     @GetMapping("/groups")
+    @QueryOperation("identity.groups.list")
     @Operation(summary = "List groups")
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(

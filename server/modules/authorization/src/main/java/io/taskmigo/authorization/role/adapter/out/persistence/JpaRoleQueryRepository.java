@@ -1,11 +1,14 @@
 package io.taskmigo.authorization.role.adapter.out.persistence;
 
+import io.taskmigo.authorization.adapter.out.persistence.query.JpaObjectAuthorizationPredicateBinder;
+import io.taskmigo.authorization.adapter.out.persistence.query.JpaQueryPredicateBinder;
 import io.taskmigo.authorization.adapter.out.persistence.query.ObjectAuthorizationPredicateBinder;
 import io.taskmigo.authorization.adapter.out.persistence.query.QueryPredicateBinder;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.role.application.port.out.RoleQueryRepository;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.jpaquery.JpaQuerySpecifications;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
 import java.util.HashSet;
@@ -14,9 +17,10 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
-/// Reads Role projections and existence state directly from JPA without loading command-only Statement assignment.
+/// Reads Role projections and binds client and authorization predicates through the list operation schema.
 @Repository
 public class JpaRoleQueryRepository implements RoleQueryRepository {
 
@@ -24,14 +28,10 @@ public class JpaRoleQueryRepository implements RoleQueryRepository {
     private final QueryPredicateBinder<RoleInfo, RoleEntity> queryBinder;
     private final ObjectAuthorizationPredicateBinder<RoleInfo, RoleEntity> objectBinder;
 
-    public JpaRoleQueryRepository(
-        RoleRepository roles,
-        QueryPredicateBinder<RoleInfo, RoleEntity> queryBinder,
-        ObjectAuthorizationPredicateBinder<RoleInfo, RoleEntity> objectBinder
-    ) {
+    JpaRoleQueryRepository(RoleRepository roles, ListRolesQuerySchema schema) {
         this.roles = roles;
-        this.queryBinder = queryBinder;
-        this.objectBinder = objectBinder;
+        this.queryBinder = new JpaQueryPredicateBinder<>(RoleInfo.class, schema);
+        this.objectBinder = new JpaObjectAuthorizationPredicateBinder<>(RoleInfo.class, schema);
     }
 
     @Override
@@ -48,8 +48,10 @@ public class JpaRoleQueryRepository implements RoleQueryRepository {
         ObjectAuthorizationPredicate<RoleInfo> authorization
     ) {
         var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
+        Specification<RoleEntity> authorizationSpec = this.objectBinder.bind(authorization);
+        Specification<RoleEntity> clientFilter = this.queryBinder.bind(filter);
         var result = this.roles.findAll(
-            this.queryBinder.bind(filter).and(this.objectBinder.bind(authorization)),
+            JpaQuerySpecifications.authorized(authorizationSpec, clientFilter),
             pageable
         );
         return new OffsetPage<>(

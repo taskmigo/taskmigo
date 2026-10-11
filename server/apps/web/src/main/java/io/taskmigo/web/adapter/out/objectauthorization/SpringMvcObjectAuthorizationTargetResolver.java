@@ -1,25 +1,23 @@
 package io.taskmigo.web.adapter.out.objectauthorization;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
+import io.taskmigo.query.QueryOperation;
+import io.taskmigo.query.QuerySchemaView;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.annotation.Primary;
-import org.springframework.core.MethodParameter;
-import org.springframework.core.ResolvableType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
-/// Derives Object Authorization target metadata from Spring MVC handler mappings.
+/// Derives Object Authorization target metadata from Spring MVC handler mappings and declared query operations.
 @Component
 @Primary
 public final class SpringMvcObjectAuthorizationTargetResolver
@@ -27,13 +25,12 @@ public final class SpringMvcObjectAuthorizationTargetResolver
 {
 
     private final ObjectProvider<RequestMappingHandlerMapping> handlerMappings;
-    private final List<ObjectAuthorizationSchema<?>> schemas;
+    private final List<QuerySchemaView> schemas;
     private List<Route> routes = List.of();
 
-    /// Creates a resolver from Spring MVC mappings and the resource-owned schemas.
     public SpringMvcObjectAuthorizationTargetResolver(
         ObjectProvider<RequestMappingHandlerMapping> handlerMappings,
-        List<ObjectAuthorizationSchema<?>> schemas
+        List<QuerySchemaView> schemas
     ) {
         this.handlerMappings = handlerMappings;
         this.schemas = List.copyOf(schemas);
@@ -51,24 +48,21 @@ public final class SpringMvcObjectAuthorizationTargetResolver
     }
 
     @Override
-    public List<ObjectAuthorizationSchema<?>> applicable(
-        String method,
-        StatementTargetPathMatcher pathMatcher
-    ) {
+    public List<QuerySchemaView> applicable(String method, StatementTargetPathMatcher pathMatcher) {
         return this.routes
             .stream()
             .filter(route -> route.matches(method, pathMatcher))
-            .<ObjectAuthorizationSchema<?>>map(Route::schema)
+            .map(Route::schema)
             .distinct()
             .toList();
     }
 
     private List<Route> routes(RequestMappingInfo mapping, HandlerMethod handler) {
-        Optional<ObjectAuthorizationSchema<?>> schema = this.schema(handler);
+        Optional<QuerySchemaView> schema = this.schema(handler);
         if (schema.isEmpty()) {
             return List.of();
         }
-        ObjectAuthorizationSchema<?> declaredSchema = schema.orElseThrow();
+        QuerySchemaView declaredSchema = schema.orElseThrow();
         String version = mapping.getVersionCondition().getVersion();
         List<String> methods = mapping.getMethodsCondition().getMethods().isEmpty()
             ? List.of("*")
@@ -81,36 +75,36 @@ public final class SpringMvcObjectAuthorizationTargetResolver
             .toList();
     }
 
-    private Optional<ObjectAuthorizationSchema<?>> schema(HandlerMethod handler) {
-        List<MethodParameter> predicateParameters = Arrays.stream(handler.getMethodParameters())
+    private Optional<QuerySchemaView> schema(HandlerMethod handler) {
+        long authorizationCount = Arrays.stream(handler.getMethodParameters())
             .filter(parameter -> parameter.getParameterType() == ObjectAuthorizationPredicate.class)
-            .toList();
-        if (predicateParameters.isEmpty()) {
+            .count();
+        if (authorizationCount == 0) {
             return Optional.empty();
         }
-        if (predicateParameters.size() != 1) {
+        if (authorizationCount != 1) {
             throw new IllegalStateException("A handler may declare only one ObjectAuthorizationPredicate");
         }
-        Class<?> objectType = this.objectType(predicateParameters.getFirst());
-        return Optional.of(
-            this.schemas
-                .stream()
-                .filter(candidate -> candidate.objectType().equals(objectType))
-                .findFirst()
-                .orElseThrow(() ->
-                    new IllegalStateException("No Object Authorization Schema registered for " + objectType.getName())
-                )
-        );
+        QueryOperation operation = handler.getMethodAnnotation(QueryOperation.class);
+        if (operation == null) {
+            throw new IllegalStateException("Object Authorization handler must declare @QueryOperation");
+        }
+        List<QuerySchemaView> matches = this.schemas
+            .stream()
+            .filter(candidate -> candidate.operation().equals(operation.value()))
+            .toList();
+        if (matches.size() != 1) {
+            throw new IllegalStateException(
+                "Expected exactly one Object Authorization Query Schema for operation " +
+                operation.value() +
+                ", found " +
+                matches.size()
+            );
+        }
+        return Optional.of(matches.getFirst());
     }
 
-    private Class<?> objectType(MethodParameter parameter) {
-        return Objects.requireNonNull(
-            ResolvableType.forMethodParameter(parameter).getGeneric(0).resolve(),
-            "ObjectAuthorizationPredicate must declare an object type"
-        );
-    }
-
-    private record Route(String method, String path, ObjectAuthorizationSchema<?> schema) {
+    private record Route(String method, String path, QuerySchemaView schema) {
         private boolean matches(String statementMethod, StatementTargetPathMatcher pathMatcher) {
             return (
                 ("*".equals(statementMethod) || "*".equals(this.method) || this.method.equals(statementMethod)) &&

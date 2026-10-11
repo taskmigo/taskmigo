@@ -2,6 +2,7 @@ package io.taskmigo;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -100,5 +101,23 @@ class ModulithArchitectureTest {
 
         // Act + Assert
         ordinaryClassesDoNotDependOnSpringModulith.check(classes);
+    }
+
+    /**
+     * Verifies Enhancement #237 does not retain the superseded logical schema contracts after operation-scoped JPA
+     * schemas become authoritative.
+     *
+     * Given: the production query module on the application classpath.
+     * Expect: the retired persistence-neutral QuerySchema and QueryField types are absent.
+     */
+    @Test
+    @DisplayName("rejects superseded logical query schema contracts")
+    void shouldRejectSupersededLogicalQuerySchemaContracts() {
+        assertThatThrownBy(() -> Class.forName("io.taskmigo.query.QuerySchema")).isInstanceOf(
+            ClassNotFoundException.class
+        );
+        assertThatThrownBy(() -> Class.forName("io.taskmigo.query.QueryField")).isInstanceOf(
+            ClassNotFoundException.class
+        );
     }
 }

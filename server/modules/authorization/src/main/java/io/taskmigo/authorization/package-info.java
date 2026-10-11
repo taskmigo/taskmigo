@@ -4,6 +4,7 @@
         "foundation",
         "language",
         "language :: ast",
+        "jpaquery",
         "query",
         "query :: model",
         "database :: criteria",
