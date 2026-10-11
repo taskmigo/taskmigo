@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.subject.application.service;
+package io.taskmigo.authorization.subject.application;
 
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -8,7 +8,6 @@ import io.taskmigo.authorization.application.port.out.transaction.TransactionRun
 import io.taskmigo.authorization.role.application.api.RoleService;
 import io.taskmigo.authorization.statement.application.api.StatementService;
 import io.taskmigo.authorization.subject.SubjectRef;
-import io.taskmigo.authorization.subject.application.port.out.SubjectGrantRepository;
 import io.taskmigo.authorization.subject.domain.SubjectGrants;
 import java.util.List;
 import java.util.Set;

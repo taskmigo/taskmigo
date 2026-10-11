@@ -1,8 +1,8 @@
 package io.taskmigo.identity.user.application;
 
 import io.taskmigo.authorization.subject.SubjectRef;
-import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantAssignmentService;
-import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantQueryService;
+import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
+import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.membership.application.internal.MembershipCleanupService;
 import io.taskmigo.identity.user.domain.User;
