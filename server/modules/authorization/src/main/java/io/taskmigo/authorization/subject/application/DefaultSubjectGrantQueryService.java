@@ -1,8 +1,8 @@
 package io.taskmigo.authorization.subject.application;
 
-import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
+import io.taskmigo.authorization.transaction.TransactionRunner;
 import java.util.Set;
 import java.util.UUID;
 

@@ -7,11 +7,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.role.RoleException;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.role.application.internal.RoleCommandService;
 import io.taskmigo.authorization.role.domain.hierarchy.RoleHierarchy;
+import io.taskmigo.authorization.transaction.TransactionRunner;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;

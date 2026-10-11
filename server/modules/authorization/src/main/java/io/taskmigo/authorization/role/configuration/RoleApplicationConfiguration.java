@@ -1,6 +1,5 @@
 package io.taskmigo.authorization.role.configuration;
 
-import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.role.application.DefaultRoleAuthorizationService;
 import io.taskmigo.authorization.role.application.DefaultRoleCommandService;
 import io.taskmigo.authorization.role.application.DefaultRoleService;
@@ -11,6 +10,7 @@ import io.taskmigo.authorization.role.application.api.RoleAuthorizationService;
 import io.taskmigo.authorization.role.application.api.RoleService;
 import io.taskmigo.authorization.role.application.internal.RoleCommandService;
 import io.taskmigo.authorization.statement.application.api.StatementService;
+import io.taskmigo.authorization.transaction.TransactionRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

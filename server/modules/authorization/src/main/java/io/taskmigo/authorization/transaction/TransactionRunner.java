@@ -1,10 +1,9 @@
-package io.taskmigo.authorization.application.port.out.transaction;
+package io.taskmigo.authorization.transaction;
 
 import java.util.function.Supplier;
 
 /// Executes application-owned transaction scopes without exposing framework transaction APIs to application services.
 public interface TransactionRunner {
-
     /// Executes read-only application work in the current transaction or a new read-only transaction.
     ///
     /// @param work application work to execute

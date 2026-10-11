@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.adapter.out.persistence.query;
+package io.taskmigo.authorization.querybinding.jpa;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import org.springframework.data.jpa.domain.Specification;

@@ -1,10 +1,10 @@
 package io.taskmigo.authorization.statement.persistence;
 
-import io.taskmigo.authorization.adapter.out.persistence.query.JpaObjectAuthorizationPredicateBinder;
-import io.taskmigo.authorization.adapter.out.persistence.query.JpaQueryPredicateBinder;
-import io.taskmigo.authorization.adapter.out.persistence.query.ObjectAuthorizationPredicateBinder;
-import io.taskmigo.authorization.adapter.out.persistence.query.QueryPredicateBinder;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.authorization.querybinding.jpa.JpaObjectAuthorizationPredicateBinder;
+import io.taskmigo.authorization.querybinding.jpa.JpaQueryPredicateBinder;
+import io.taskmigo.authorization.querybinding.jpa.ObjectAuthorizationPredicateBinder;
+import io.taskmigo.authorization.querybinding.jpa.QueryPredicateBinder;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.application.StatementQueryRepository;
 import io.taskmigo.foundation.OffsetPage;
