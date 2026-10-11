@@ -8,7 +8,7 @@ import io.taskmigo.authorization.role.application.api.RoleAuthorizationService;
 import io.taskmigo.authorization.role.application.api.RoleService;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
-import io.taskmigo.authorization.statement.application.port.in.api.StatementService;
+import io.taskmigo.authorization.statement.application.api.StatementService;
 import io.taskmigo.identity.user.application.api.UserRegistrationService;
 import io.taskmigo.web.adapter.in.http.api.v0.testing.ApiIntegrationTestSupport;
 import jakarta.persistence.EntityManagerFactory;

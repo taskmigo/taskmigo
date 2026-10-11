@@ -4,7 +4,7 @@ import static org.mockito.Mockito.verify;
 
 import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.role.application.internal.RoleCommandService;
-import io.taskmigo.authorization.statement.application.port.in.api.StatementService;
+import io.taskmigo.authorization.statement.application.api.StatementService;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
