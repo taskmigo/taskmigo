@@ -1,0 +1,58 @@
+package io.taskmigo.identity.membership.persistence;
+
+import io.taskmigo.identity.membership.application.MembershipRepository;
+import io.taskmigo.identity.membership.persistence.GroupMembershipEntity.GroupMembershipId;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.stereotype.Repository;
+
+/// Applies targeted Membership changes directly to the membership table.
+@Repository
+public class JpaMembershipOperations implements MembershipRepository {
+
+    private final JpaMembershipRepository memberships;
+
+    JpaMembershipOperations(JpaMembershipRepository memberships) {
+        this.memberships = memberships;
+    }
+
+    @Override
+    public void add(UUID groupId, UUID userId) {
+        GroupMembershipId id = new GroupMembershipId(groupId, userId);
+        if (this.memberships.existsById(id)) {
+            return;
+        }
+        this.memberships.saveAndFlush(new GroupMembershipEntity(groupId, userId));
+    }
+
+    @Override
+    public void remove(UUID groupId, UUID userId) {
+        GroupMembershipId id = new GroupMembershipId(groupId, userId);
+        if (!this.memberships.existsById(id)) {
+            return;
+        }
+        this.memberships.deleteById(id);
+        this.memberships.flush();
+    }
+
+    @Override
+    public List<UUID> groupsForUser(UUID userId) {
+        return this.memberships.findGroupIdsByUserId(userId);
+    }
+
+    @Override
+    public boolean removeAllForUser(UUID userId) {
+        List<UUID> groupIds = this.memberships.findGroupIdsByUserId(userId);
+        if (groupIds.isEmpty()) {
+            return false;
+        }
+        this.memberships.deleteAllById(
+            groupIds
+                .stream()
+                .map(groupId -> new GroupMembershipId(groupId, userId))
+                .toList()
+        );
+        this.memberships.flush();
+        return true;
+    }
+}

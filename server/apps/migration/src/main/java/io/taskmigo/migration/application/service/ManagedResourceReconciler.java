@@ -4,8 +4,8 @@ import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException
 import io.taskmigo.authorization.provisioning.application.port.in.api.AuthorizationProvisioningService;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
-import io.taskmigo.identity.provisioning.application.port.in.api.GroupProvisioningService;
-import io.taskmigo.identity.provisioning.application.port.in.api.IdentityProvisioningService;
+import io.taskmigo.identity.provisioning.application.api.GroupProvisioningService;
+import io.taskmigo.identity.provisioning.application.api.IdentityProvisioningService;
 import io.taskmigo.migration.application.model.InstallationPlan;
 import java.util.LinkedHashMap;
 import java.util.List;

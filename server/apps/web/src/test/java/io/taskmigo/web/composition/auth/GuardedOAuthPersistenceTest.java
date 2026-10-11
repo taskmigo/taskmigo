@@ -8,7 +8,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import io.taskmigo.identity.user.application.port.in.api.UserSessionLifecycleService;
+import io.taskmigo.identity.user.application.api.UserSessionLifecycleService;
 import io.taskmigo.web.adapter.in.security.session.UserSessionPrincipal;
 import java.security.Principal;
 import java.util.UUID;

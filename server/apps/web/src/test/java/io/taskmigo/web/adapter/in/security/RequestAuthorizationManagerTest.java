@@ -13,7 +13,7 @@ import io.taskmigo.authorization.request.RequestAuthorizationResult;
 import io.taskmigo.authorization.request.application.port.in.api.RequestAuthorization;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.UserStatus;
-import io.taskmigo.identity.user.application.port.in.api.UserService;
+import io.taskmigo.identity.user.application.api.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.List;

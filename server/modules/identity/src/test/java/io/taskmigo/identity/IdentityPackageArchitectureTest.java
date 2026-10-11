@@ -6,62 +6,72 @@ import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchRule;
+import io.taskmigo.architecture.OnionArchitectureRules;
+import io.taskmigo.architecture.OnionArchitectureRules.Context;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 class IdentityPackageArchitectureTest {
 
+    private static final Context ONION_CONTEXT = new Context(
+        "io.taskmigo.identity",
+        List.of("io.taskmigo.identity..application.."),
+        List.of("io.taskmigo.identity..persistence.."),
+        List.of(
+            "io.taskmigo.identity.user.configuration..",
+            "io.taskmigo.identity.group.configuration..",
+            "io.taskmigo.identity.membership.configuration..",
+            "io.taskmigo.identity.provisioning.configuration..",
+            "io.taskmigo.identity.configuration.configuration.."
+        ),
+        List.of("io.taskmigo.identity..integration..", "io.taskmigo.identity.transaction.."),
+        List.of("io.taskmigo.identity..integration..", "io.taskmigo.identity.transaction..")
+    );
+
     /**
-     * Verifies that completed Phase 2 adapter migrations cannot regress to transitional package names.
+     * Verifies the completed Identity migration cannot regress to mandatory Hexagonal package vocabulary.
      *
      * Given: all production classes in the Identity bounded context.
-     * Expect: no class resides in the retired top-level persistence or infrastructure packages.
+     * Expect: no class resides in the retired adapter, port, service-layer, composition, or infrastructure packages.
      */
     @Test
-    @DisplayName("rejects retired Identity adapter package names")
-    void shouldRejectLegacyAdapterPackagesWhenIdentityPackagesAreInspected() {
+    @DisplayName("rejects retired Identity architecture package names")
+    void shouldRejectRetiredArchitecturePackagesWhenIdentityPackagesAreInspected() {
         // Arrange
         JavaClasses classes = productionClasses();
-        ArchRule noLegacyAdapterPackages = noClasses()
+        ArchRule noRetiredPackages = noClasses()
             .should()
-            .resideInAnyPackage("io.taskmigo.identity.persistence..", "io.taskmigo.identity..infrastructure..");
-
-        // Act + Assert
-        noLegacyAdapterPackages.check(classes);
-    }
-
-    /**
-     * Verifies that persistence internals do not depend on application adapters.
-     *
-     * Given: all production classes in the consolidated Identity capability.
-     * Expect: persistence entities, repositories, and binders remain below the application boundary.
-     */
-    @Test
-    @DisplayName("keeps identity persistence below application adapters")
-    void shouldKeepPersistenceBelowApplicationsWhenIdentityPackagesAreInspected() {
-        // Arrange
-        JavaClasses classes = productionClasses();
-        ArchRule persistenceDoesNotDependOnApplications = noClasses()
-            .that()
-            .resideInAnyPackage("io.taskmigo.identity..adapter.out.persistence..")
-            .should()
-            .dependOnClassesThat()
             .resideInAnyPackage(
-                "io.taskmigo.rest..",
-                "io.taskmigo.internal..",
-                "io.taskmigo.migration..",
-                "io.taskmigo.worker.."
+                "io.taskmigo.identity.adapter..",
+                "io.taskmigo.identity.application.port..",
+                "io.taskmigo.identity..application.service..",
+                "io.taskmigo.identity..composition..",
+                "io.taskmigo.identity..infrastructure.."
             );
 
         // Act + Assert
-        persistenceDoesNotDependOnApplications.check(classes);
+        noRetiredPackages.check(classes);
+    }
+
+    /**
+     * Verifies Identity follows the repository-wide responsibility-oriented Onion baseline.
+     *
+     * Given: the completed Identity Phase 1 package structure.
+     * Expect: domain/application dependencies point inward, persistence frameworks stay in persistence packages, and
+     * Identity never depends back on executable applications.
+     */
+    @Test
+    @DisplayName("enforces the shared Onion dependency baseline for Identity")
+    void shouldEnforceSharedOnionRulesWhenIdentityPackagesAreInspected() {
+        OnionArchitectureRules.checkProduction(ONION_CONTEXT);
     }
 
     /**
      * Verifies that Identity integrates with Access Control only through published contracts.
      *
-     * Given: all production classes in the Identity bounded context.
-     * Expect: no Identity class reaches into Access Control driven adapters or retired persistence packages.
+     * Given: all production classes in Identity.
+     * Expect: no Identity class reaches into Access Control persistence or adapter implementation packages.
      */
     @Test
     @DisplayName("keeps Access Control persistence private from Identity")
@@ -80,46 +90,44 @@ class IdentityPackageArchitectureTest {
     }
 
     /**
-     * Verifies that Identity domain/application packages do not reach into JPA adapters.
+     * Verifies published root contracts remain independent from their feature implementations.
      *
-     * Given: production User domain/application, Group, provisioning, and Identity authorization packages.
-     * Expect: their dependencies exclude Identity persistence, Spring Data, and JPA packages.
+     * Given: the User, Group, Membership, Configuration, and Provisioning public contract packages.
+     * Expect: contracts do not depend on application implementations, persistence, integrations, or Spring wiring.
      */
     @Test
-    @DisplayName("keeps Identity use cases independent from JPA adapters")
-    void shouldKeepUseCasesIndependentWhenIdentityPackagesAreInspected() {
+    @DisplayName("keeps published Identity contracts independent from implementation layers")
+    void shouldKeepPublishedContractsIndependentWhenIdentityPackagesAreInspected() {
         // Arrange
         JavaClasses classes = productionClasses();
-        ArchRule useCasesDoNotDependOnJpaAdapters = noClasses()
+        ArchRule contractsDoNotDependOnImplementations = noClasses()
             .that()
             .resideInAnyPackage(
-                "io.taskmigo.identity.provisioning..",
-                "io.taskmigo.identity.user.domain..",
-                "io.taskmigo.identity.user.application..",
-                "io.taskmigo.identity.group.domain..",
-                "io.taskmigo.identity.group.application..",
-                "io.taskmigo.identity.membership.application..",
-                "io.taskmigo.identity.authorization.."
+                "io.taskmigo.identity.user",
+                "io.taskmigo.identity.group",
+                "io.taskmigo.identity.membership",
+                "io.taskmigo.identity.configuration",
+                "io.taskmigo.identity.provisioning"
             )
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
-                "io.taskmigo.identity..adapter..",
-                "org.springframework.data..",
-                "jakarta.persistence.."
+                "io.taskmigo.identity..application..",
+                "io.taskmigo.identity..persistence..",
+                "io.taskmigo.identity..integration..",
+                "io.taskmigo.identity..configuration.configuration..",
+                "io.taskmigo.identity.transaction.."
             );
 
         // Act + Assert
-        useCasesDoNotDependOnJpaAdapters.check(classes);
+        contractsDoNotDependOnImplementations.check(classes);
     }
 
     /**
-     * Verifies that published Identity contracts remain independent from framework-specific representation and OAuth
-     * server implementation concerns.
+     * Verifies published Identity contracts remain independent from transport and OAuth server implementation details.
      *
-     * Given: production provisioning, User, Group, and Identity authorization contract packages.
-     * Expect: those classes do not depend on Spring Core type descriptors, Jackson 2/3, Spring Web, Servlet, or Spring
-     * Authorization Server implementation APIs.
+     * Given: public Identity contract packages.
+     * Expect: those contracts do not depend on Jackson, Spring Web, Servlet, or Spring Authorization Server APIs.
      */
     @Test
     @DisplayName("keeps Identity contracts framework neutral")
@@ -130,15 +138,15 @@ class IdentityPackageArchitectureTest {
             .that()
             .resideInAnyPackage(
                 "io.taskmigo.identity.provisioning..",
-                "io.taskmigo.identity.user..",
+                "io.taskmigo.identity.user",
                 "io.taskmigo.identity.group",
                 "io.taskmigo.identity.membership",
+                "io.taskmigo.identity.configuration",
                 "io.taskmigo.identity.authorization.."
             )
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
-                "org.springframework.core..",
                 "com.fasterxml.jackson..",
                 "tools.jackson..",
                 "org.springframework.web..",
@@ -148,151 +156,6 @@ class IdentityPackageArchitectureTest {
 
         // Act + Assert
         contractsDoNotDependOnFrameworkDetails.check(classes);
-    }
-
-    /**
-     * Verifies the published User package cannot reach outward into application or infrastructure implementation.
-     *
-     * Given: production classes in the root User API package.
-     * Expect: published User contracts may depend on domain concepts but not application services or infrastructure.
-     */
-    @Test
-    @DisplayName("keeps User API independent from implementation layers")
-    void shouldKeepUserApiIndependentWhenIdentityPackagesAreInspected() {
-        // Arrange
-        JavaClasses classes = productionClasses();
-        ArchRule userApiDoesNotDependOnImplementation = noClasses()
-            .that()
-            .resideInAnyPackage("io.taskmigo.identity.user")
-            .should()
-            .dependOnClassesThat()
-            .resideInAnyPackage("io.taskmigo.identity.user.application..", "io.taskmigo.identity.user.adapter..");
-
-        // Act + Assert
-        userApiDoesNotDependOnImplementation.check(classes);
-    }
-
-    /**
-     * Verifies the User slice's domain dependency direction.
-     *
-     * Given: the canonical User domain package.
-     * Expect: domain code has no dependency on application/infrastructure packages, Spring, Spring Data, or JPA.
-     */
-    @Test
-    @DisplayName("keeps User domain framework neutral and inward")
-    void shouldKeepUserDomainIndependentWhenIdentityPackagesAreInspected() {
-        // Arrange
-        JavaClasses classes = productionClasses();
-        ArchRule userDomainDependsOnlyInward = noClasses()
-            .that()
-            .resideInAnyPackage("io.taskmigo.identity.user.domain..")
-            .should()
-            .dependOnClassesThat()
-            .resideInAnyPackage(
-                "io.taskmigo.identity.user.application..",
-                "io.taskmigo.identity.user.adapter..",
-                "org.springframework..",
-                "org.springframework.data..",
-                "jakarta.persistence.."
-            );
-
-        // Act + Assert
-        userDomainDependsOnlyInward.check(classes);
-    }
-
-    /**
-     * Verifies the User application layer does not reach into its JPA adapter.
-     *
-     * Given: User application services and command/query ports.
-     * Expect: they do not depend on User infrastructure, Spring Data, or JPA.
-     */
-    @Test
-    @DisplayName("keeps User application independent from infrastructure")
-    void shouldKeepUserApplicationIndependentWhenIdentityPackagesAreInspected() {
-        // Arrange
-        JavaClasses classes = productionClasses();
-        ArchRule userApplicationDoesNotDependOnInfrastructure = noClasses()
-            .that()
-            .resideInAnyPackage("io.taskmigo.identity.user.application..")
-            .should()
-            .dependOnClassesThat()
-            .resideInAnyPackage(
-                "io.taskmigo.identity.user.adapter..",
-                "org.springframework.data..",
-                "jakarta.persistence.."
-            );
-
-        // Act + Assert
-        userApplicationDoesNotDependOnInfrastructure.check(classes);
-    }
-
-    /**
-     * Verifies the published Group and Membership APIs remain independent from implementation layers.
-     *
-     * Given: root API packages for Group and Membership.
-     * Expect: published contracts do not depend on their application or infrastructure implementations.
-     */
-    @Test
-    @DisplayName("keeps Group and Membership APIs independent from implementation layers")
-    void shouldKeepGroupAndMembershipApisIndependentWhenIdentityPackagesAreInspected() {
-        // Arrange
-        JavaClasses classes = productionClasses();
-        ArchRule apiDoesNotDependOnImplementation = noClasses()
-            .that()
-            .resideInAnyPackage("io.taskmigo.identity.group", "io.taskmigo.identity.membership")
-            .should()
-            .dependOnClassesThat()
-            .resideInAnyPackage(
-                "io.taskmigo.identity.group.application..",
-                "io.taskmigo.identity.group.adapter..",
-                "io.taskmigo.identity.membership.application..",
-                "io.taskmigo.identity.membership.adapter.."
-            );
-
-        // Act + Assert
-        apiDoesNotDependOnImplementation.check(classes);
-    }
-
-    /**
-     * Verifies Group domain and application dependency direction.
-     *
-     * Given: the canonical Group domain and application packages.
-     * Expect: domain is framework neutral and application does not depend on Group/Membership infrastructure.
-     */
-    @Test
-    @DisplayName("keeps Group domain and application independent from infrastructure")
-    void shouldKeepGroupLayersIndependentWhenIdentityPackagesAreInspected() {
-        // Arrange
-        JavaClasses classes = productionClasses();
-        ArchRule groupDomainDoesNotDependOutward = noClasses()
-            .that()
-            .resideInAnyPackage("io.taskmigo.identity.group.domain..")
-            .should()
-            .dependOnClassesThat()
-            .resideInAnyPackage(
-                "io.taskmigo.identity.group.application..",
-                "io.taskmigo.identity.group.adapter..",
-                "org.springframework..",
-                "jakarta.persistence.."
-            );
-        ArchRule groupApplicationDoesNotDependOnInfrastructure = noClasses()
-            .that()
-            .resideInAnyPackage(
-                "io.taskmigo.identity.group.application..",
-                "io.taskmigo.identity.membership.application.."
-            )
-            .should()
-            .dependOnClassesThat()
-            .resideInAnyPackage(
-                "io.taskmigo.identity.group.adapter..",
-                "io.taskmigo.identity.membership.adapter..",
-                "org.springframework.data..",
-                "jakarta.persistence.."
-            );
-
-        // Act + Assert
-        groupDomainDoesNotDependOutward.check(classes);
-        groupApplicationDoesNotDependOnInfrastructure.check(classes);
     }
 
     /**
@@ -312,7 +175,7 @@ class IdentityPackageArchitectureTest {
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
-                "io.taskmigo.identity..adapter..",
+                "io.taskmigo.identity..persistence..",
                 "jakarta.persistence..",
                 "org.springframework.data.."
             );
@@ -324,8 +187,8 @@ class IdentityPackageArchitectureTest {
     /**
      * Verifies that Identity no longer imports Access Control Role models or broad Role services.
      *
-     * Given: every production class owned by Identity after the Phase 6 contract split.
-     * Expect: Identity depends on subject capabilities and the Access Control-owned subject-resolution port, not the Role package.
+     * Given: every production class owned by Identity after the contract split.
+     * Expect: Identity depends on subject capabilities and subject-resolution contracts, not the Role package.
      */
     @Test
     @DisplayName("keeps Access Control Role contracts out of Identity")
@@ -345,15 +208,15 @@ class IdentityPackageArchitectureTest {
 
     /// Verifies that User persistence cleanup uses repository APIs rather than application SQL.
     ///
-    /// Given: production User persistence adapters, including OAuth cleanup.
-    /// Expect: no adapter depends on Spring JDBC execution APIs.
+    /// Given: production User persistence classes, including OAuth cleanup.
+    /// Expect: no persistence class depends on Spring JDBC execution APIs.
     @Test
-    @DisplayName("keeps application SQL out of User persistence adapters")
-    void shouldUseRepositoryApisWhenUserPersistenceAdaptersAreInspected() {
+    @DisplayName("keeps application SQL out of User persistence")
+    void shouldUseRepositoryApisWhenUserPersistenceIsInspected() {
         // Arrange
         ArchRule rule = noClasses()
             .that()
-            .resideInAnyPackage("io.taskmigo.identity.user.adapter.out.persistence..")
+            .resideInAnyPackage("io.taskmigo.identity.user.persistence..")
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage("org.springframework.jdbc.core..");

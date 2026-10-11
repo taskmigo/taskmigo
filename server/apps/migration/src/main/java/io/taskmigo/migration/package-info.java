@@ -9,7 +9,7 @@
         "authorization :: role",
         "authorization :: statement",
         "identity :: provisioning",
-        "identity :: provisioning-input",
+        "identity :: provisioning-use-cases",
         "identity :: user",
         "identity :: group",
     }

@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import io.taskmigo.identity.user.application.port.in.api.UserRetentionService;
+import io.taskmigo.identity.user.application.api.UserRetentionService;
 import java.lang.reflect.Method;
 import java.time.Clock;
 import java.time.Instant;

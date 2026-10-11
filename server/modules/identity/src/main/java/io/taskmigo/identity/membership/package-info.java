@@ -1,6 +1,6 @@
 /// Documents the Identity-owned Membership capability.
 ///
-/// Membership use cases are exposed through the `membership-input` named interface.
+/// Membership use cases are exposed through the `membership-use-cases` named interface.
 @NullMarked
 package io.taskmigo.identity.membership;
 

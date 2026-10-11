@@ -13,7 +13,7 @@ import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import io.taskmigo.authorization.statement.TargetInfo;
-import io.taskmigo.identity.user.application.port.in.api.UserService;
+import io.taskmigo.identity.user.application.api.UserService;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.query.QuerySchemaView;
 import io.taskmigo.web.adapter.in.http.api.v0.testing.ApiIntegrationTestSupport;

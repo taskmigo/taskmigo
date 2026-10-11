@@ -15,11 +15,11 @@
         "authorization :: statement",
         "authorization :: statement-input",
         "identity :: user",
-        "identity :: user-input",
+        "identity :: user-use-cases",
         "identity :: group",
-        "identity :: group-input",
+        "identity :: group-use-cases",
         "identity :: configuration",
-        "identity :: configuration-input",
+        "identity :: configuration-use-cases",
     }
 )
 @NullMarked

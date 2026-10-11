@@ -9,8 +9,8 @@ import static org.mockito.Mockito.when;
 
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.UserStatus;
-import io.taskmigo.identity.user.application.port.in.api.UserService;
-import io.taskmigo.identity.user.application.port.in.api.UserSessionLifecycleService;
+import io.taskmigo.identity.user.application.api.UserService;
+import io.taskmigo.identity.user.application.api.UserSessionLifecycleService;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
