@@ -6,7 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
-import io.taskmigo.audit.application.port.in.append.AuditAppendService;
+import io.taskmigo.audit.application.append.AuditAppendService;
 import io.taskmigo.audit.event.AuditEvent;
 import io.taskmigo.audit.model.AuditActor;
 import io.taskmigo.audit.model.AuditChange;

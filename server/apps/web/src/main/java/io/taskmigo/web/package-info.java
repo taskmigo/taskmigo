@@ -3,7 +3,7 @@
     allowedDependencies = {
         "foundation",
         "audit :: model",
-        "audit :: query-input",
+        "audit :: query",
         "query",
         "authorization :: object",
         "authorization :: object-use-cases",
