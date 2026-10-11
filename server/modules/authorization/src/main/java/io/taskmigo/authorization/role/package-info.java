@@ -1,4 +1,4 @@
-/// Publishes Access Control Role data contracts while runtime use cases are exposed through the Role input port.
+/// Publishes Access Control Role data contracts while runtime use cases are exposed through the Role use-case interface.
 @NamedInterface("role")
 @NullMarked
 package io.taskmigo.authorization.role;

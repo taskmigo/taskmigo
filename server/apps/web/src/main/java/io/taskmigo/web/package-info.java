@@ -11,7 +11,7 @@
         "authorization :: request",
         "authorization :: request-input",
         "authorization :: role",
-        "authorization :: role-input",
+        "authorization :: role-use-cases",
         "authorization :: statement",
         "authorization :: statement-input",
         "identity :: user",

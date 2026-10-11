@@ -17,7 +17,7 @@ class HexagonalOnionArchitectureTest {
             "io.taskmigo.authorization.object"
         ),
         List.of(),
-        List.of(),
+        List.of("io.taskmigo.authorization.role.persistence.."),
         List.of(
             "io.taskmigo.authorization.core",
             "io.taskmigo.authorization.object",
@@ -28,7 +28,7 @@ class HexagonalOnionArchitectureTest {
             "io.taskmigo.authorization.provisioning.application.port.in.api",
             "io.taskmigo.authorization.request",
             "io.taskmigo.authorization.role",
-            "io.taskmigo.authorization.role.application.port.in.api",
+            "io.taskmigo.authorization.role.application.api",
             "io.taskmigo.authorization.statement",
             "io.taskmigo.authorization.statement.application.port.in.api",
             "io.taskmigo.authorization.subject",
@@ -38,13 +38,13 @@ class HexagonalOnionArchitectureTest {
     );
 
     @Test
-    @DisplayName("enforces Access Control Hexagonal and Onion production boundaries")
+    @DisplayName("enforces transitional Access Control Hexagonal and Onion production boundaries")
     void shouldEnforceProductionBoundariesWhenAuthorizationPackagesAreInspected() {
         HexagonalOnionRules.checkProduction(ARCHITECTURE);
     }
 
     @Test
-    @DisplayName("keeps Access Control tactical tests lightweight")
+    @DisplayName("keeps transitional Access Control tactical tests lightweight")
     void shouldKeepTacticalTestsLightweightWhenAuthorizationTestsAreInspected() {
         HexagonalOnionRules.checkTacticalTests(ARCHITECTURE);
     }
