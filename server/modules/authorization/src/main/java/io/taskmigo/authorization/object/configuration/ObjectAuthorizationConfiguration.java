@@ -1,7 +1,7 @@
-package io.taskmigo.authorization.object.composition;
+package io.taskmigo.authorization.object.configuration;
 
-import io.taskmigo.authorization.object.application.port.in.api.ObjectAuthorization;
-import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
+import io.taskmigo.authorization.object.application.api.ObjectAuthorization;
+import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.object.application.service.ObjectAuthorizationService;
 import io.taskmigo.language.LanguageCompiler;
 import org.springframework.context.annotation.Bean;

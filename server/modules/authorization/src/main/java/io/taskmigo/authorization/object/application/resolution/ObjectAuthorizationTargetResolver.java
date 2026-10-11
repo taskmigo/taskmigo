@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.object.application.port.out;
+package io.taskmigo.authorization.object.application.resolution;
 
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import io.taskmigo.query.QuerySchemaView;
