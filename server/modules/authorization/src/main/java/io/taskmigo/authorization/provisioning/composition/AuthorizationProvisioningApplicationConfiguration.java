@@ -5,8 +5,8 @@ import io.taskmigo.authorization.provisioning.application.port.in.api.Authorizat
 import io.taskmigo.authorization.provisioning.application.service.DefaultAuthorizationProvisioningService;
 import io.taskmigo.authorization.role.application.RoleHierarchyRepository;
 import io.taskmigo.authorization.role.application.internal.RoleCommandService;
-import io.taskmigo.authorization.statement.application.port.in.api.StatementService;
-import io.taskmigo.authorization.statement.application.port.in.internal.StatementCommandService;
+import io.taskmigo.authorization.statement.application.api.StatementService;
+import io.taskmigo.authorization.statement.application.internal.StatementCommandService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

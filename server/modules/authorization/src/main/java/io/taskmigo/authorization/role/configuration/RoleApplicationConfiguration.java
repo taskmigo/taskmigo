@@ -10,7 +10,7 @@ import io.taskmigo.authorization.role.application.RoleQueryRepository;
 import io.taskmigo.authorization.role.application.api.RoleAuthorizationService;
 import io.taskmigo.authorization.role.application.api.RoleService;
 import io.taskmigo.authorization.role.application.internal.RoleCommandService;
-import io.taskmigo.authorization.statement.application.port.in.api.StatementService;
+import io.taskmigo.authorization.statement.application.api.StatementService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

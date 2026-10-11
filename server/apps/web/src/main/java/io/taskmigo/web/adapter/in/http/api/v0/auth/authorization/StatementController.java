@@ -8,7 +8,7 @@ import io.taskmigo.authorization.statement.ApiInfo;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
-import io.taskmigo.authorization.statement.application.port.in.api.StatementService;
+import io.taskmigo.authorization.statement.application.api.StatementService;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.FilteredQuery;
 import io.taskmigo.query.QueryOperation;
