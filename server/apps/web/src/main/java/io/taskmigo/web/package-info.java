@@ -9,7 +9,7 @@
         "authorization :: object-input",
         "authorization :: object-target-resolution-port",
         "authorization :: request",
-        "authorization :: request-input",
+        "authorization :: request-use-cases",
         "authorization :: role",
         "authorization :: role-use-cases",
         "authorization :: statement",
