@@ -1,7 +1,7 @@
 package io.taskmigo.migration.application.service;
 
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
-import io.taskmigo.authorization.provisioning.application.port.in.api.AuthorizationProvisioningService;
+import io.taskmigo.authorization.provisioning.application.api.AuthorizationProvisioningService;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.identity.provisioning.application.api.GroupProvisioningService;

@@ -5,7 +5,7 @@
         "authorization :: object",
         "authorization :: object-target-resolution",
         "authorization :: provisioning",
-        "authorization :: provisioning-input",
+        "authorization :: provisioning-use-cases",
         "authorization :: role",
         "authorization :: statement",
         "identity :: provisioning",

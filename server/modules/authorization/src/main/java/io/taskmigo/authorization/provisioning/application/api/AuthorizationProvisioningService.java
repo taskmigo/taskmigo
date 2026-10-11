@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.provisioning.application.port.in.api;
+package io.taskmigo.authorization.provisioning.application.api;
 
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningResult;
 import io.taskmigo.authorization.statement.Effect;
