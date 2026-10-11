@@ -7,6 +7,8 @@ import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantQueryService;
+import io.taskmigo.foundation.DomainException;
+import io.taskmigo.foundation.DomainFailureType;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.application.port.out.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;
@@ -21,6 +23,7 @@ import io.taskmigo.identity.user.application.port.in.internal.UserDeletionLifecy
 import io.taskmigo.identity.user.application.port.out.UserAuditAppender;
 import io.taskmigo.identity.user.application.port.out.UserQueryRepository;
 import io.taskmigo.identity.user.domain.User;
+import io.taskmigo.identity.user.domain.UserRuleViolation;
 import io.taskmigo.query.QueryPredicate;
 import java.time.Clock;
 import java.time.Instant;
@@ -102,33 +105,30 @@ public final class DefaultUserService implements UserService {
     @Override
     public void setStatements(UUID userId, Collection<UUID> statementIds, UserMutationActor actor) {
         this.transactions.write(() -> {
-            this.requireMutableLocked(userId);
+            this.requireMutable(this.requireLocked(userId));
             this.replaceStatements(userId, statementIds, actor);
         });
     }
 
     @Override
-    public boolean setStatements(
+    public void setStatements(
         UUID userId,
         Collection<UUID> statementIds,
         ObjectAuthorizationPredicate<UserInfo> authorization,
         UserMutationActor actor
     ) {
-        return this.transactions.write(() -> {
+        this.transactions.write(() -> {
+            this.requireAuthorizedStatementTarget(userId, authorization);
             User target = this.requireLocked(userId);
-            if (this.users.find(userId, authorization).isEmpty()) {
-                return false;
-            }
-            target.requireMutable();
+            this.requireMutable(target);
             this.replaceStatements(userId, statementIds, actor);
-            return true;
         });
     }
 
     @Override
     public void setRoles(UUID userId, Collection<UUID> roleIds, UserMutationActor actor) {
         this.transactions.write(() -> {
-            this.requireMutableLocked(userId);
+            this.requireMutable(this.requireLocked(userId));
             SubjectRef subject = IdentitySubjects.user(userId);
             Set<UUID> before = this.grantQueries.roleIds(subject);
             Set<UUID> after = Set.copyOf(roleIds);
@@ -142,15 +142,28 @@ public final class DefaultUserService implements UserService {
     }
 
     @Override
-    public boolean delete(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization, UserMutationActor actor) {
-        return this.transactions.write(() -> {
+    public void delete(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization, UserMutationActor actor) {
+        this.transactions.write(() -> {
+            this.requireAuthorizedDeleteTarget(userId, authorization);
             User target = this.requireLocked(userId);
-            if (this.users.find(userId, authorization).isEmpty()) {
-                return false;
+            try {
+                this.deletion.delete(target, actor, this.clock.instant());
+            } catch (UserRuleViolation violation) {
+                throw translate(violation);
             }
-            this.deletion.delete(target, actor, this.clock.instant());
-            return true;
         });
+    }
+
+    private void requireAuthorizedDeleteTarget(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization) {
+        this.users
+            .findForDelete(userId, authorization)
+            .orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"));
+    }
+
+    private void requireAuthorizedStatementTarget(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization) {
+        this.users
+            .findForStatementUpdate(userId, authorization)
+            .orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"));
     }
 
     private void replaceStatements(UUID userId, Collection<UUID> statementIds, UserMutationActor actor) {
@@ -161,7 +174,19 @@ public final class DefaultUserService implements UserService {
             return;
         }
 
-        this.grantAssignments.setStatements(subject, after);
+        try {
+            this.grantAssignments.setStatements(subject, after);
+        } catch (DomainException exception) {
+            if (exception.type() != DomainFailureType.INVALID_INPUT) {
+                throw exception;
+            }
+            String message = exception.getMessage();
+            throw new UserException(
+                UserException.Type.UNPROCESSABLE,
+                message == null ? "Statement assignment is invalid" : message,
+                exception
+            );
+        }
         this.append(userId, actor, UserAuditChanges.visible("statementIds", ordered(before), ordered(after)));
     }
 
@@ -198,8 +223,23 @@ public final class DefaultUserService implements UserService {
         return user;
     }
 
-    private void requireMutableLocked(UUID userId) {
-        this.requireLocked(userId).requireMutable();
+    private void requireMutable(User user) {
+        try {
+            user.requireMutable();
+        } catch (UserRuleViolation violation) {
+            throw translate(violation);
+        }
+    }
+
+    private static UserException translate(UserRuleViolation violation) {
+        UserException.Type type = switch (violation.reason()) {
+            case SYSTEM_USER_DELETION_FORBIDDEN, RETAINED_USER_READ_ONLY -> UserException.Type.CONFLICT;
+            case
+                REQUIRED_FIELD,
+                RESERVED_SYSTEM_USERNAME,
+                SYSTEM_INITIAL_PASSWORD_REQUIRED -> UserException.Type.INVALID_INPUT;
+        };
+        return new UserException(type, violation.detail(), violation);
     }
 
     private static List<String> ordered(Collection<UUID> ids) {

@@ -6,6 +6,7 @@ import io.taskmigo.language.LanguageContract;
 import io.taskmigo.language.LanguageType;
 import io.taskmigo.query.QueryFieldDescriptor;
 import io.taskmigo.query.QuerySchemaView;
+import java.time.temporal.TemporalAccessor;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -106,7 +107,14 @@ public final class AuthorizationEmbeddedLanguageSchemas {
 
     private static LanguageType languageType(TypeDescriptor type) {
         Class<?> raw = type.rawType();
-        if (raw == String.class || raw == UUID.class || raw == Character.class || raw == char.class) {
+        if (
+            raw == String.class ||
+            raw == UUID.class ||
+            raw == Character.class ||
+            raw == char.class ||
+            raw.isEnum() ||
+            TemporalAccessor.class.isAssignableFrom(raw)
+        ) {
             return LanguageType.Scalar.STRING;
         }
         if (raw == Boolean.class || raw == boolean.class) {

@@ -3,23 +3,21 @@ package io.taskmigo.web.adapter.out.objectauthorization;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
+import io.taskmigo.query.QueryOperation;
 import io.taskmigo.query.QuerySchemaView;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.annotation.Primary;
-import org.springframework.core.MethodParameter;
-import org.springframework.core.ResolvableType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
-/// Derives Object Authorization target metadata from Spring MVC handler mappings.
+/// Derives Object Authorization target metadata from Spring MVC handler mappings and declared query operations.
 @Component
 @Primary
 public final class SpringMvcObjectAuthorizationTargetResolver
@@ -78,32 +76,32 @@ public final class SpringMvcObjectAuthorizationTargetResolver
     }
 
     private Optional<QuerySchemaView> schema(HandlerMethod handler) {
-        List<MethodParameter> parameters = Arrays.stream(handler.getMethodParameters())
+        long authorizationCount = Arrays.stream(handler.getMethodParameters())
             .filter(parameter -> parameter.getParameterType() == ObjectAuthorizationPredicate.class)
-            .toList();
-        if (parameters.isEmpty()) {
+            .count();
+        if (authorizationCount == 0) {
             return Optional.empty();
         }
-        if (parameters.size() != 1) {
+        if (authorizationCount != 1) {
             throw new IllegalStateException("A handler may declare only one ObjectAuthorizationPredicate");
         }
-        Class<?> objectType = objectType(parameters.getFirst());
-        return Optional.of(
-            this.schemas
-                .stream()
-                .filter(candidate -> candidate.operation().equals(objectType.getName()))
-                .findFirst()
-                .orElseThrow(() ->
-                    new IllegalStateException("No Object Authorization Query Schema registered for " + objectType.getName())
-                )
-        );
-    }
-
-    private static Class<?> objectType(MethodParameter parameter) {
-        return Objects.requireNonNull(
-            ResolvableType.forMethodParameter(parameter).getGeneric(0).resolve(),
-            "ObjectAuthorizationPredicate must declare an object type"
-        );
+        QueryOperation operation = handler.getMethodAnnotation(QueryOperation.class);
+        if (operation == null) {
+            throw new IllegalStateException("Object Authorization handler must declare @QueryOperation");
+        }
+        List<QuerySchemaView> matches = this.schemas
+            .stream()
+            .filter(candidate -> candidate.operation().equals(operation.value()))
+            .toList();
+        if (matches.size() != 1) {
+            throw new IllegalStateException(
+                "Expected exactly one Object Authorization Query Schema for operation " +
+                operation.value() +
+                ", found " +
+                matches.size()
+            );
+        }
+        return Optional.of(matches.getFirst());
     }
 
     private record Route(String method, String path, QuerySchemaView schema) {

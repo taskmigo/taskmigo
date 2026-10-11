@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
+import io.taskmigo.query.QueryOperation;
 import io.taskmigo.query.QuerySchemaView;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -41,9 +42,17 @@ class SpringMvcObjectAuthorizationTargetResolverTest {
     @Mock
     private QuerySchemaView schema;
 
+    @Mock
+    private QuerySchemaView otherSchema;
+
+    /**
+     * Given: an MVC route with an explicit query operation and multiple schemas for the same object DTO.
+     * Expect: target discovery maps the route to the schema with the declared operation ID.
+     */
     @Test
-    @DisplayName("derives an object schema route from a typed MVC handler")
-    void shouldResolveSchemaWhenTypedHandlerMappingMatchesStatementTarget() throws NoSuchMethodException {
+    @DisplayName("derives an object schema route from the declared query operation")
+    void shouldResolveSchemaWhenOperationHandlerMappingMatchesStatementTarget() throws NoSuchMethodException {
+        // Arrange
         Method method = TestController.class.getDeclaredMethod("list", ObjectAuthorizationPredicate.class);
         HandlerMethod handler = new HandlerMethod(new TestController(), method);
         when(this.handlerMappings.getObject()).thenReturn(this.handlerMapping);
@@ -52,21 +61,27 @@ class SpringMvcObjectAuthorizationTargetResolverTest {
         when(this.version.getVersion()).thenReturn("0");
         when(this.mapping.getPatternValues()).thenReturn(Set.of("/api/v{version}/objects"));
         when(this.mapping.getMethodsCondition()).thenReturn(new RequestMethodsRequestCondition(RequestMethod.GET));
-        when(this.schema.operation()).thenReturn(TestObject.class.getName());
+        when(this.schema.operation()).thenReturn("test.objects.list");
+        when(this.otherSchema.operation()).thenReturn("test.objects.delete");
         SpringMvcObjectAuthorizationTargetResolver resolver = new SpringMvcObjectAuthorizationTargetResolver(
             this.handlerMappings,
-            List.of(this.schema)
+            List.of(this.otherSchema, this.schema)
         );
+
+        // Act
         resolver.afterSingletonsInstantiated();
         List<QuerySchemaView> applicable = resolver.applicable(
             "GET",
             StatementTargetPathMatcher.compile("/api/v0/objects")
         );
+
+        // Assert
         assertThat(applicable).containsExactly(this.schema);
     }
 
     private static final class TestController {
 
+        @QueryOperation("test.objects.list")
         void list(ObjectAuthorizationPredicate<TestObject> authorization) {}
     }
 

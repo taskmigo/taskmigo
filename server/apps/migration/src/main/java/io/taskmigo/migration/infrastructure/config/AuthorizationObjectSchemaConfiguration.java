@@ -30,16 +30,14 @@ class AuthorizationObjectSchemaConfiguration {
 
     private static List<Route> routes(QuerySchemaView schema) {
         return switch (schema.operation()) {
-            case "io.taskmigo.identity.user.UserInfo" -> List.of(
-                new Route("GET", "/api/v0/users", schema),
-                new Route("DELETE", "/api/v0/users/{userId}", schema),
+            case "identity.users.list" -> List.of(new Route("GET", "/api/v0/users", schema));
+            case "identity.users.delete" -> List.of(new Route("DELETE", "/api/v0/users/{userId}", schema));
+            case "identity.users.update-statements" -> List.of(
                 new Route("PATCH", "/api/v0/users/{userId}/statements", schema)
             );
-            case "io.taskmigo.identity.group.GroupInfo" -> List.of(new Route("GET", "/api/v0/groups", schema));
-            case "io.taskmigo.authorization.role.RoleInfo" -> List.of(new Route("GET", "/api/v0/roles", schema));
-            case "io.taskmigo.authorization.statement.StatementInfo" -> List.of(
-                new Route("GET", "/api/v0/statements", schema)
-            );
+            case "identity.groups.list" -> List.of(new Route("GET", "/api/v0/groups", schema));
+            case "access-control.roles.list" -> List.of(new Route("GET", "/api/v0/roles", schema));
+            case "access-control.statements.list" -> List.of(new Route("GET", "/api/v0/statements", schema));
             default -> List.of();
         };
     }

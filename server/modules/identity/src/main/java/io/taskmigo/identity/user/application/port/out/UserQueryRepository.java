@@ -11,7 +11,8 @@ import java.util.UUID;
 /// Reads User projections without requiring aggregate hydration.
 public interface UserQueryRepository {
     Optional<UserInfo> find(UUID id);
-    Optional<UserInfo> find(UUID id, ObjectAuthorizationPredicate<UserInfo> authorization);
+    Optional<UserInfo> findForDelete(UUID id, ObjectAuthorizationPredicate<UserInfo> authorization);
+    Optional<UserInfo> findForStatementUpdate(UUID id, ObjectAuthorizationPredicate<UserInfo> authorization);
     Optional<AuthenticationInfo> findForAuthentication(String username);
     boolean exists(UUID id);
     OffsetPage<UserInfo> list(

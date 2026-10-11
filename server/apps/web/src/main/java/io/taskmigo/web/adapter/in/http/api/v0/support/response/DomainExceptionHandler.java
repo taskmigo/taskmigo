@@ -34,6 +34,7 @@ final class DomainExceptionHandler {
             case INVALID_INPUT -> new TransportFailure(HttpStatus.BAD_REQUEST, "BAD_REQUEST");
             case NOT_FOUND -> new TransportFailure(HttpStatus.NOT_FOUND, "NOT_FOUND");
             case CONFLICT -> new TransportFailure(HttpStatus.CONFLICT, "CONFLICT");
+            case UNPROCESSABLE -> new TransportFailure(HttpStatus.UNPROCESSABLE_CONTENT, "UNPROCESSABLE_CONTENT");
         };
         String message = exceptionMessage == null ? "Operation failed" : exceptionMessage;
         return this.responses.failure(
