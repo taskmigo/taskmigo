@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.request.adapter.out.persistence;
+package io.taskmigo.authorization.request.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyCollection;
