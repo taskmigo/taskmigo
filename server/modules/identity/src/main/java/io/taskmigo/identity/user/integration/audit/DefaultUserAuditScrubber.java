@@ -1,6 +1,6 @@
 package io.taskmigo.identity.user.integration.audit;
 
-import io.taskmigo.audit.application.port.in.privacy.AuditPrivacyService;
+import io.taskmigo.audit.application.privacy.AuditPrivacyService;
 import io.taskmigo.identity.user.application.UserAuditScrubber;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
