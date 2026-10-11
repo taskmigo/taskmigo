@@ -1,7 +1,7 @@
 package io.taskmigo.web.adapter.out.objectauthorization;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
+import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import io.taskmigo.query.QueryOperation;
 import io.taskmigo.query.QuerySchemaView;

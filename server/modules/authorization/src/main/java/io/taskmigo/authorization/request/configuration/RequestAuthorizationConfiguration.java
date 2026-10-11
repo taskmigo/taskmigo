@@ -1,6 +1,6 @@
 package io.taskmigo.authorization.request.configuration;
 
-import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
+import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.request.application.api.RequestAuthorization;
 import io.taskmigo.authorization.request.application.port.out.EffectiveStatementResolver;
 import io.taskmigo.authorization.request.application.service.RequestAuthorizationService;

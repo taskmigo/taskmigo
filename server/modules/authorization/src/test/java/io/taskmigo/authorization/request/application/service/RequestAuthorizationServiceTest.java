@@ -7,7 +7,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
+import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.request.AuthorizationContext;
 import io.taskmigo.authorization.request.AuthorizationPrincipal;
 import io.taskmigo.authorization.request.AuthorizationRequest;

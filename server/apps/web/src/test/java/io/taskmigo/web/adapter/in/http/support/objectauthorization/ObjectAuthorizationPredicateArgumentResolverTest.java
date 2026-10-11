@@ -5,7 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.object.application.port.in.api.ObjectAuthorization;
+import io.taskmigo.authorization.object.application.api.ObjectAuthorization;
 import io.taskmigo.authorization.request.AuthorizationContext;
 import io.taskmigo.query.QueryOperation;
 import io.taskmigo.query.QuerySchemaView;
