@@ -6,39 +6,23 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.taskmigo.foundation.TypeDescriptor;
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 class FilterByCompilerTest {
 
-    private final QuerySchema<CustomerQuery> schema = new QuerySchema<>() {
-        private final QueryField name = new QueryField(
-            QueryPath.of("name"),
-            TypeDescriptor.of(String.class),
-            false,
-            Set.of(QueryOperator.EQ)
-        );
-
-        @Override
-        public Class<CustomerQuery> queryType() {
-            return CustomerQuery.class;
-        }
-
-        @Override
-        public Optional<QueryField> field(QueryPath path) {
-            return this.fields()
-                .stream()
-                .filter(field -> field.path().equals(path))
-                .findFirst();
-        }
-
-        @Override
-        public Collection<QueryField> fields() {
-            return List.of(this.name);
-        }
-    };
+    private final QuerySchemaView schema = schema(
+        "test.customers.list",
+        List.of(
+            new QueryFieldDescriptor(
+                QueryPath.of("name"),
+                TypeDescriptor.of(String.class),
+                false,
+                Set.of(QueryOperator.EQ)
+            )
+        )
+    );
 
     /**
      * Verifies that a missing client filter is represented by the logical identity predicate.
@@ -53,7 +37,7 @@ class FilterByCompilerTest {
         FilterByCompiler compiler = new FilterByCompiler();
 
         // Act
-        QueryPredicate<CustomerQuery> result = compiler.compile(this.schema, null);
+        QueryPredicate<?> result = compiler.compile(this.schema, null);
 
         // Assert
         assertThat(result.isAlwaysTrue()).isTrue();
@@ -72,7 +56,7 @@ class FilterByCompilerTest {
         FilterByCompiler compiler = new FilterByCompiler();
 
         // Act
-        QueryPredicate<CustomerQuery> result = compiler.compile(this.schema, "object.name == \"Phong\"");
+        QueryPredicate<?> result = compiler.compile(this.schema, "object.name == \"Phong\"");
 
         // Assert
         assertThat(result.isAlwaysTrue()).isFalse();
@@ -107,41 +91,26 @@ class FilterByCompilerTest {
     @DisplayName("should compile a compound filter when scalar fields are combined")
     void shouldCompileCompoundFilterWhenScalarFieldsAreCombined() {
         // Arrange
-        QuerySchema<CustomerQuery> compoundSchema = new QuerySchema<>() {
-            @Override
-            public Class<CustomerQuery> queryType() {
-                return CustomerQuery.class;
-            }
-
-            @Override
-            public Optional<QueryField> field(QueryPath path) {
-                return this.fields()
-                    .stream()
-                    .filter(field -> field.path().equals(path))
-                    .findFirst();
-            }
-
-            @Override
-            public Collection<QueryField> fields() {
-                return List.of(
-                    new QueryField(
-                        QueryPath.of("name"),
-                        TypeDescriptor.of(String.class),
-                        false,
-                        Set.of(QueryOperator.EQ)
-                    ),
-                    new QueryField(
-                        QueryPath.of("email"),
-                        TypeDescriptor.of(String.class),
-                        false,
-                        Set.of(QueryOperator.EQ)
-                    )
-                );
-            }
-        };
+        QuerySchemaView compoundSchema = schema(
+            "test.customers.compound",
+            List.of(
+                new QueryFieldDescriptor(
+                    QueryPath.of("name"),
+                    TypeDescriptor.of(String.class),
+                    false,
+                    Set.of(QueryOperator.EQ)
+                ),
+                new QueryFieldDescriptor(
+                    QueryPath.of("email"),
+                    TypeDescriptor.of(String.class),
+                    false,
+                    Set.of(QueryOperator.EQ)
+                )
+            )
+        );
 
         // Act
-        QueryPredicate<CustomerQuery> result = new FilterByCompiler().compile(
+        QueryPredicate<?> result = new FilterByCompiler().compile(
             compoundSchema,
             "object.name == \"Phong\" && object.email == \"p@example.com\""
         );
@@ -161,33 +130,26 @@ class FilterByCompilerTest {
     @DisplayName("should use API-visible nested paths for Statement filtering")
     void shouldCompileApiVisibleStatementPathWhenFilterReferencesTarget() {
         // Arrange
-        QuerySchema<StatementQuery> statementSchema = new QuerySchema<>() {
-            private final List<QueryField> fields = List.of(
-                new QueryField(QueryPath.parse("target.api.method"), TypeDescriptor.of(String.class), false),
-                new QueryField(QueryPath.parse("target.api.path"), TypeDescriptor.of(String.class), false)
-            );
-
-            @Override
-            public Class<StatementQuery> queryType() {
-                return StatementQuery.class;
-            }
-
-            @Override
-            public Optional<QueryField> field(QueryPath path) {
-                return this.fields
-                    .stream()
-                    .filter(field -> field.path().equals(path))
-                    .findFirst();
-            }
-
-            @Override
-            public Collection<QueryField> fields() {
-                return this.fields;
-            }
-        };
+        QuerySchemaView statementSchema = schema(
+            "test.statements.list",
+            List.of(
+                new QueryFieldDescriptor(
+                    QueryPath.parse("target.api.method"),
+                    TypeDescriptor.of(String.class),
+                    false,
+                    Set.of(QueryOperator.EQ)
+                ),
+                new QueryFieldDescriptor(
+                    QueryPath.parse("target.api.path"),
+                    TypeDescriptor.of(String.class),
+                    false,
+                    Set.of(QueryOperator.EQ)
+                )
+            )
+        );
 
         // Act
-        QueryPredicate<StatementQuery> result = new FilterByCompiler().compile(
+        QueryPredicate<?> result = new FilterByCompiler().compile(
             statementSchema,
             "object.target.api.method == \"GET\""
         );
@@ -200,50 +162,49 @@ class FilterByCompilerTest {
     }
 
     /**
-     * Verifies that Query Predicate composition rejects predicates from different schema revisions.
+     * Verifies that operation-schema identity changes when the exposed field contract changes.
      *
-     * Given: one predicate bound to the current schema and one bound to a schema with a different field contract.
-     * Expect: composition fails before a predicate can cross the schema boundary.
+     * Given: two schemas with the same operation name but different nullability contracts.
+     * Expect: compiled predicates carry distinct schema identities.
      */
     @Test
-    @DisplayName("should reject predicate composition when schema identities differ")
-    void shouldRejectPredicateCompositionWhenSchemaIdentitiesDiffer() {
+    @DisplayName("should produce different predicate identities when schema contracts differ")
+    void shouldProduceDifferentPredicateIdentitiesWhenSchemaContractsDiffer() {
         // Arrange
-        QueryPredicate<CustomerQuery> left = new FilterByCompiler().compile(this.schema, "object.name == \"Phong\"");
-        QuerySchema<CustomerQuery> incompatible = new QuerySchema<>() {
-            @Override
-            public Class<CustomerQuery> queryType() {
-                return CustomerQuery.class;
-            }
+        QueryPredicate<?> left = new FilterByCompiler().compile(this.schema, "object.name == \"Phong\"");
+        QuerySchemaView incompatible = schema(
+            "test.customers.list",
+            List.of(
+                new QueryFieldDescriptor(
+                    QueryPath.of("name"),
+                    TypeDescriptor.of(String.class),
+                    true,
+                    Set.of(QueryOperator.EQ)
+                )
+            )
+        );
+        QueryPredicate<?> right = new FilterByCompiler().compile(incompatible, "object.name == \"Phong\"");
 
-            @Override
-            public Optional<QueryField> field(QueryPath path) {
-                return Optional.of(
-                    new QueryField(path, TypeDescriptor.of(String.class), true, Set.of(QueryOperator.EQ))
-                );
-            }
+        // Act
+        String leftIdentity = QueryPredicateFactory.schemaIdentity(left);
+        String rightIdentity = QueryPredicateFactory.schemaIdentity(right);
 
-            @Override
-            public Collection<QueryField> fields() {
-                return List.of(
-                    new QueryField(
-                        QueryPath.of("name"),
-                        TypeDescriptor.of(String.class),
-                        true,
-                        Set.of(QueryOperator.EQ)
-                    )
-                );
-            }
-        };
-        QueryPredicate<CustomerQuery> right = new FilterByCompiler().compile(incompatible, "object.name == \"Phong\"");
-
-        // Act + Assert
-        assertThatThrownBy(() -> QueryPredicates.standard().and(left, right))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("incompatible");
+        // Assert
+        assertThat(leftIdentity).isNotEqualTo(rightIdentity);
     }
 
-    private static final class CustomerQuery {}
+    private static QuerySchemaView schema(String operation, Collection<QueryFieldDescriptor> fields) {
+        List<QueryFieldDescriptor> declared = List.copyOf(fields);
+        return new QuerySchemaView() {
+            @Override
+            public String operation() {
+                return operation;
+            }
 
-    private static final class StatementQuery {}
+            @Override
+            public Collection<QueryFieldDescriptor> fields(QueryFieldContext context) {
+                return declared;
+            }
+        };
+    }
 }

@@ -21,7 +21,6 @@ import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.TargetInfo;
 import io.taskmigo.language.LanguageCompiler;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -34,11 +33,7 @@ class RequestAuthorizationServiceTest {
     private final EffectiveStatementResolver statements = mock(EffectiveStatementResolver.class);
     private final RequestAuthorizationService service = new RequestAuthorizationService(
         this.statements,
-        new StatementArtifactFactory(
-            new LanguageCompiler(),
-            List.of(),
-            ObjectAuthorizationTargetResolver.all(List.of())
-        )
+        new StatementArtifactFactory(new LanguageCompiler(), ObjectAuthorizationTargetResolver.all(List.of()))
     );
 
     /**
@@ -276,7 +271,6 @@ class RequestAuthorizationServiceTest {
             userId,
             new StatementArtifactFactory(
                 new LanguageCompiler(),
-                List.of(),
                 ObjectAuthorizationTargetResolver.all(List.of())
             ).build(statements, "GET", "/api/v0/users"),
             Map.of("request", Map.of("method", "GET"))
@@ -368,7 +362,7 @@ class RequestAuthorizationServiceTest {
     }
 
     private static EffectiveStatement effective(Effect effect, String policy) {
-        return new EffectiveStatement(statement(effect, policy), Instant.EPOCH);
+        return new EffectiveStatement(statement(effect, policy));
     }
 
     private static StatementInfo statement(Effect effect, String policy) {

@@ -11,6 +11,7 @@ import io.taskmigo.audit.model.AuditLog;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.user.UserInfo;
+import io.taskmigo.query.QueryOperation;
 import io.taskmigo.web.adapter.in.http.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.adapter.in.http.api.v0.support.response.ApiResponseFactory;
@@ -46,6 +47,7 @@ class AuditController {
     }
 
     @GetMapping("/audit/{entityType}/logs")
+    @QueryOperation("identity.users.list")
     @Operation(summary = "List entity audit logs", operationId = "listAuditLogs")
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(

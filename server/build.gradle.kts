@@ -62,6 +62,7 @@ subprojects {
         tasks.withType<JavaCompile>().configureEach {
             options.errorprone {
                 disableAllChecks.set(true)
+                excludedPaths.set(".*/build/generated/.*")
                 error(
                     "JSpecifyUnrecognizedAnnotationLocation",
                     "NullAway",

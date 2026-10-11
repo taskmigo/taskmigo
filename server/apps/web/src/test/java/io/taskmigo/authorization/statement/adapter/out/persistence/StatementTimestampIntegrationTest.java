@@ -45,14 +45,15 @@ class StatementTimestampIntegrationTest extends ApiIntegrationTestSupport {
     }
 
     /**
-     * Verifies that statement updates advance the authorization revision timestamp.
+     * Verifies that statement persistence timestamps advance independently from effective authorization state.
      *
-     * Given: a statement assigned to a User and its initial persisted revision.
-     * Expect: reconciling the statement preserves created_at while advancing updated_at in persistence and resolution.
+     * Given: a statement assigned to a User and its initial persisted timestamps.
+     * Expect: reconciling the statement preserves created_at, advances updated_at, and subsequent resolution returns
+     * the newly persisted Statement without exposing timestamp metadata as an authorization revision.
      */
     @Test
-    @DisplayName("advances statement updated_at and exposes it as the authorization revision")
-    void shouldAdvanceUpdatedAtWhenStatementIsUpdated() {
+    @DisplayName("advances statement updated_at while resolving the latest authoritative statement")
+    void shouldAdvanceUpdatedAtAndResolveLatestStatementWhenStatementIsUpdated() {
         // Arrange
         String suffix = UUID.randomUUID().toString();
         String statementCode = "timestamp-" + suffix;
@@ -94,10 +95,11 @@ class StatementTimestampIntegrationTest extends ApiIntegrationTestSupport {
 
         // Assert
         assertThat(initialUpdatedAt).isAfterOrEqualTo(createdAt);
-        assertThat(initialResolved.updatedAt()).isEqualTo(initialUpdatedAt);
+        assertThat(initialResolved.statement().id()).isEqualTo(statementId);
+        assertThat(initialResolved.statement().description()).isEqualTo("before");
         assertThat(updated.createdAt()).isEqualTo(createdAt);
         assertThat(updated.updatedAt()).isAfter(initialUpdatedAt);
         assertThat(updatedResolved.statement().id()).isEqualTo(statementId);
-        assertThat(updatedResolved.updatedAt()).isEqualTo(updated.updatedAt());
+        assertThat(updatedResolved.statement().description()).isEqualTo("after");
     }
 }

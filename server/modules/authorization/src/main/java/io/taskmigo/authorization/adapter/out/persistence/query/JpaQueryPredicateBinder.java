@@ -1,29 +1,21 @@
 package io.taskmigo.authorization.adapter.out.persistence.query;
 
+import io.taskmigo.jpaquery.JpaQueryExpressionBinder;
+import io.taskmigo.jpaquery.QuerySchema;
 import io.taskmigo.query.QueryPredicate;
 import io.taskmigo.query.model.QueryPredicateModel;
-import java.util.Map;
 import org.springframework.data.jpa.domain.Specification;
 
-/// Creates an Access Control-owned Query Predicate binder for a flat or nested entity mapping.
+/// Binds Query predicates through the operation-scoped JPA query schema owned by Access Control.
 public final class JpaQueryPredicateBinder<Q, E> implements QueryPredicateBinder<Q, E> {
 
     private final Class<Q> queryType;
-    private final Class<E> domainType;
-    private final Map<String, String> paths;
-    private final Map<String, Class<?>> types;
+    private final QuerySchema<E> schema;
 
-    /// Creates a binder with explicit logical-to-physical paths and physical value types.
-    public JpaQueryPredicateBinder(
-        Class<Q> queryType,
-        Class<E> domainType,
-        Map<String, String> paths,
-        Map<String, Class<?>> types
-    ) {
+    /// Creates a binder backed by one concrete operation schema.
+    public JpaQueryPredicateBinder(Class<Q> queryType, QuerySchema<E> schema) {
         this.queryType = queryType;
-        this.domainType = domainType;
-        this.paths = Map.copyOf(paths);
-        this.types = Map.copyOf(types);
+        this.schema = schema;
     }
 
     @Override
@@ -33,7 +25,7 @@ public final class JpaQueryPredicateBinder<Q, E> implements QueryPredicateBinder
 
     @Override
     public Class<E> domainType() {
-        return this.domainType;
+        return this.schema.rootType();
     }
 
     @Override
@@ -41,6 +33,9 @@ public final class JpaQueryPredicateBinder<Q, E> implements QueryPredicateBinder
         if (!(predicate instanceof QueryPredicateModel model)) {
             throw new IllegalArgumentException("unsupported Query Predicate implementation");
         }
-        return JpaQueryExpressionBinder.bind(model.expression(), this.paths, this.types);
+        if (!model.schemaIdentity().equals(this.schema.identity())) {
+            throw new IllegalArgumentException("Query Predicate schema identity does not match the JPA operation schema");
+        }
+        return JpaQueryExpressionBinder.bind(model.expression(), this.schema);
     }
 }

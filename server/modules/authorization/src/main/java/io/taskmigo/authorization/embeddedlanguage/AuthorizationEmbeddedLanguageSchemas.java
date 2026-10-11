@@ -1,18 +1,17 @@
 package io.taskmigo.authorization.embeddedlanguage;
 
-import io.taskmigo.authorization.object.ObjectAuthorizationField;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.language.EnvironmentSchema;
 import io.taskmigo.language.LanguageContract;
 import io.taskmigo.language.LanguageType;
+import io.taskmigo.query.QueryFieldDescriptor;
+import io.taskmigo.query.QuerySchemaView;
+import java.time.temporal.TemporalAccessor;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 /// Builds the consumer-owned Language schemas used by authorization.
 public final class AuthorizationEmbeddedLanguageSchemas {
@@ -26,20 +25,17 @@ public final class AuthorizationEmbeddedLanguageSchemas {
             root(Map.of("method", string(), "path", string(), "pathVariables", dynamicString()))
         )
     );
-    private static final ConcurrentMap<String, EnvironmentSchema> OBJECTS = new ConcurrentHashMap<>();
 
     private AuthorizationEmbeddedLanguageSchemas() {}
 
-    /// Returns the reusable request-only schema required by the authorization specification.
     public static EnvironmentSchema request() {
         return REQUEST;
     }
 
-    /// Returns an object schema containing the fields registered by all logical object contracts.
-    public static EnvironmentSchema object(List<? extends ObjectAuthorizationSchema<?>> schemas) {
+    public static EnvironmentSchema object(List<? extends QuerySchemaView> schemas) {
         Map<String, EnvironmentSchema.Field> fields = new HashMap<>();
-        for (ObjectAuthorizationSchema<?> schema : schemas) {
-            for (ObjectAuthorizationField field : schema.fields()) {
+        for (QuerySchemaView schema : schemas) {
+            for (QueryFieldDescriptor field : schema.fields()) {
                 String first = field.path().segments().getFirst();
                 fields.putIfAbsent(first, field.path().segments().size() == 1 ? field(field) : nested(schema, first));
             }
@@ -48,7 +44,7 @@ public final class AuthorizationEmbeddedLanguageSchemas {
             "taskmigo.authorization.object." +
                 LanguageContract.VERSION +
                 ":" +
-                schemas.stream().map(ObjectAuthorizationSchema::identity).sorted().toList(),
+                schemas.stream().map(QuerySchemaView::identity).sorted().toList(),
             Map.of(
                 "principal",
                 root(Map.of("id", string(), "username", string())),
@@ -60,14 +56,9 @@ public final class AuthorizationEmbeddedLanguageSchemas {
         );
     }
 
-    /// Returns a cached object schema derived from an authorization-owned logical object schema.
-    public static <Q> EnvironmentSchema object(ObjectAuthorizationSchema<Q> schema) {
-        return OBJECTS.computeIfAbsent(schema.identity(), ignored -> buildObject(schema));
-    }
-
-    private static <Q> EnvironmentSchema buildObject(ObjectAuthorizationSchema<Q> schema) {
+    public static EnvironmentSchema object(QuerySchemaView schema) {
         Map<String, EnvironmentSchema.Field> fields = new HashMap<>();
-        for (ObjectAuthorizationField field : schema.fields()) {
+        for (QueryFieldDescriptor field : schema.fields()) {
             String first = field.path().segments().getFirst();
             fields.put(first, field.path().segments().size() == 1 ? field(field) : nested(schema, first));
         }
@@ -81,7 +72,7 @@ public final class AuthorizationEmbeddedLanguageSchemas {
                 "object",
                 new EnvironmentSchema.Root(
                     new EnvironmentSchema.Field(
-                        new LanguageType.StructuredType(schema.objectType().getName(), fields),
+                        new LanguageType.StructuredType(schema.operation(), fields),
                         false,
                         true
                     ),
@@ -91,14 +82,14 @@ public final class AuthorizationEmbeddedLanguageSchemas {
         );
     }
 
-    private static EnvironmentSchema.Field field(ObjectAuthorizationField field) {
+    private static EnvironmentSchema.Field field(QueryFieldDescriptor field) {
         return new EnvironmentSchema.Field(languageType(field.type()), field.nullable(), true);
     }
 
-    private static <Q> EnvironmentSchema.Field nested(ObjectAuthorizationSchema<Q> schema, String prefix) {
+    private static EnvironmentSchema.Field nested(QuerySchemaView schema, String prefix) {
         List<String> prefixSegments = List.of(prefix.split("\\."));
         Map<String, EnvironmentSchema.Field> children = new HashMap<>();
-        for (ObjectAuthorizationField field : schema.fields()) {
+        for (QueryFieldDescriptor field : schema.fields()) {
             List<String> segments = field.path().segments();
             if (
                 segments.size() > prefixSegments.size() &&
@@ -116,7 +107,14 @@ public final class AuthorizationEmbeddedLanguageSchemas {
 
     private static LanguageType languageType(TypeDescriptor type) {
         Class<?> raw = type.rawType();
-        if (raw == String.class || raw == UUID.class || raw == Character.class || raw == char.class) {
+        if (
+            raw == String.class ||
+            raw == UUID.class ||
+            raw == Character.class ||
+            raw == char.class ||
+            raw.isEnum() ||
+            TemporalAccessor.class.isAssignableFrom(raw)
+        ) {
             return LanguageType.Scalar.STRING;
         }
         if (raw == Boolean.class || raw == boolean.class) {

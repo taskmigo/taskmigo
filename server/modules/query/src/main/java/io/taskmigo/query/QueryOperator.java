@@ -1,26 +1,14 @@
 package io.taskmigo.query;
 
-/// Identifies logical operators a Query Schema may expose to clients or policy authors.
+/// Identifies the complete operator surface supported by policy and query expressions.
 public enum QueryOperator {
     AND,
     OR,
-    NOT,
-    PLUS,
-    MINUS,
     EQ,
     NE,
     GT,
-    GE,
+    GTE,
     LT,
-    LE,
-    ADD,
-    SUBTRACT,
-    MULTIPLY,
-    DIVIDE,
-    MODULO,
-    IN,
-    ALL,
-    ANY,
-    NONE,
-    LENGTH,
+    LTE,
+    CONTAINS,
 }

@@ -58,7 +58,7 @@ public class PostgresTestConfiguration {
                 "system_user_statement_mutation",
                 "PATCH",
                 "/api/v0/users/.*/statements",
-                "object.retainedAt == null"
+                "object.status != \"RETAINED\" && object.status != \"TOMBSTONE\""
             );
             UUID userDelete = objectStatement(
                 authorization,

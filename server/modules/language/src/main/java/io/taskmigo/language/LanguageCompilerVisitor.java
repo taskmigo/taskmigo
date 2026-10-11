@@ -282,7 +282,7 @@ final class LanguageCompilerVisitor {
             SemanticAst.Expression operand = this.unary(context.unaryExpression());
             this.requireFeature(
                 operator == SemanticAst.UnaryOperator.NOT
-                    ? CompilationFeature.LOGICAL_OPERATORS
+                    ? CompilationFeature.UNARY_NOT
                     : CompilationFeature.ARITHMETIC_OPERATORS,
                 span(context)
             );
@@ -327,6 +327,9 @@ final class LanguageCompilerVisitor {
         }
         if (context.lengthExpression() != null) {
             return this.length(context.lengthExpression());
+        }
+        if (context.containsExpression() != null) {
+            return this.contains(context.containsExpression());
         }
         return this.expression(context.expression());
     }
@@ -567,11 +570,18 @@ final class LanguageCompilerVisitor {
         );
     }
 
+    private SemanticAst.Expression contains(EmbeddedLanguageParser.ContainsExpressionContext context) {
+        SemanticAst.Expression value = this.expression(context.expression(0));
+        SemanticAst.Expression substring = this.expression(context.expression(1));
+        return this.binary(SemanticAst.BinaryOperator.CONTAINS, value, substring, span(context));
+    }
+
     private CompilationFeature feature(SemanticAst.BinaryOperator operator) {
         return switch (operator) {
             case AND, OR -> CompilationFeature.LOGICAL_OPERATORS;
             case EQUAL, NOT_EQUAL -> CompilationFeature.EQUALITY_OPERATORS;
             case GREATER, GREATER_OR_EQUAL, LESS, LESS_OR_EQUAL -> CompilationFeature.ORDERING_OPERATORS;
+            case CONTAINS -> CompilationFeature.CONTAINS_INTRINSIC;
             case IN -> CompilationFeature.MEMBERSHIP;
             case ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO -> CompilationFeature.ARITHMETIC_OPERATORS;
         };
@@ -598,6 +608,11 @@ final class LanguageCompilerVisitor {
             require(left, LanguageType.Scalar.NUMBER, "arithmetic requires Number");
             require(right, LanguageType.Scalar.NUMBER, "arithmetic requires Number");
             return LanguageType.Scalar.NUMBER;
+        }
+        if (operator == SemanticAst.BinaryOperator.CONTAINS) {
+            require(left, LanguageType.Scalar.STRING, "contains value must be String");
+            require(right, LanguageType.Scalar.STRING, "contains substring must be String");
+            return LanguageType.Scalar.BOOL;
         }
         if (operator == SemanticAst.BinaryOperator.IN) {
             if (!(right.type() instanceof LanguageType.ListType list) || !left.type().equals(list.elementType())) {

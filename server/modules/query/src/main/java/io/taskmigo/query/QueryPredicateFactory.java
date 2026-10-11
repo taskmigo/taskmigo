@@ -9,19 +9,6 @@ final class QueryPredicateFactory {
 
     private QueryPredicateFactory() {}
 
-    static <Q> QueryPredicate<Q> from(QuerySchema<Q> schema, QueryExpression expression) {
-        Objects.requireNonNull(schema);
-        return new LogicalQueryPredicate<>(schema.identity(), Objects.requireNonNull(expression));
-    }
-
-    static <Q> QueryPredicate<Q> alwaysTrue(QuerySchema<Q> schema) {
-        return from(schema, new QueryExpression.Literal(true));
-    }
-
-    static <Q> QueryPredicate<Q> alwaysFalse(QuerySchema<Q> schema) {
-        return from(schema, new QueryExpression.Literal(false));
-    }
-
     static QueryPredicateModel model(QueryPredicate<?> predicate) {
         if (!(predicate instanceof QueryPredicateModel model)) {
             throw new IllegalArgumentException("unsupported Query Predicate implementation");

@@ -1,12 +1,8 @@
 package io.taskmigo.migration.infrastructure.config;
 
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
-import io.taskmigo.authorization.role.RoleInfo;
-import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
-import io.taskmigo.identity.group.GroupInfo;
-import io.taskmigo.identity.user.UserInfo;
+import io.taskmigo.query.QuerySchemaView;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,33 +12,37 @@ import org.springframework.context.annotation.Primary;
 @Configuration(proxyBeanMethods = false)
 class AuthorizationObjectSchemaConfiguration {
 
-    /// Supplies installer target metadata for the versioned collection APIs that exist in the web application.
     @Bean
     @Primary
-    ObjectAuthorizationTargetResolver objectAuthorizationTargetResolver(
-        ObjectAuthorizationSchema<UserInfo> users,
-        ObjectAuthorizationSchema<GroupInfo> groups,
-        ObjectAuthorizationSchema<RoleInfo> roles,
-        ObjectAuthorizationSchema<StatementInfo> statements
-    ) {
-        List<Route> routes = List.of(
-            new Route("GET", "/api/v0/users", users),
-            new Route("DELETE", "/api/v0/users/{userId}", users),
-            new Route("PATCH", "/api/v0/users/{userId}/statements", users),
-            new Route("GET", "/api/v0/groups", groups),
-            new Route("GET", "/api/v0/roles", roles),
-            new Route("GET", "/api/v0/statements", statements)
-        );
+    ObjectAuthorizationTargetResolver objectAuthorizationTargetResolver(List<QuerySchemaView> schemas) {
+        List<Route> routes = schemas
+            .stream()
+            .flatMap(schema -> routes(schema).stream())
+            .toList();
         return (method, pathMatcher) ->
             routes
                 .stream()
                 .filter(route -> route.matches(method, pathMatcher))
-                .<ObjectAuthorizationSchema<?>>map(Route::schema)
+                .map(Route::schema)
                 .distinct()
                 .toList();
     }
 
-    private record Route(String method, String path, ObjectAuthorizationSchema<?> schema) {
+    private static List<Route> routes(QuerySchemaView schema) {
+        return switch (schema.operation()) {
+            case "identity.users.list" -> List.of(new Route("GET", "/api/v0/users", schema));
+            case "identity.users.delete" -> List.of(new Route("DELETE", "/api/v0/users/{userId}", schema));
+            case "identity.users.update-statements" -> List.of(
+                new Route("PATCH", "/api/v0/users/{userId}/statements", schema)
+            );
+            case "identity.groups.list" -> List.of(new Route("GET", "/api/v0/groups", schema));
+            case "access-control.roles.list" -> List.of(new Route("GET", "/api/v0/roles", schema));
+            case "access-control.statements.list" -> List.of(new Route("GET", "/api/v0/statements", schema));
+            default -> List.of();
+        };
+    }
+
+    private record Route(String method, String path, QuerySchemaView schema) {
         private boolean matches(String statementMethod, StatementTargetPathMatcher pathMatcher) {
             return (
                 ("*".equals(statementMethod) || this.method.equals(statementMethod)) && pathMatcher.matches(this.path)

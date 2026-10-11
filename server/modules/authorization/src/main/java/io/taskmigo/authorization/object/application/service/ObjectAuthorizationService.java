@@ -5,7 +5,6 @@ import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfil
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicates;
-import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.port.in.api.ObjectAuthorization;
 import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.object.domain.ObjectAuthorizationPredicateComposer;
@@ -21,6 +20,7 @@ import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageType;
 import io.taskmigo.language.PartialProgram;
+import io.taskmigo.query.QuerySchemaView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -31,21 +31,16 @@ public final class ObjectAuthorizationService implements ObjectAuthorization {
     private static final ObjectAuthorizationPredicateComposer COMPOSER = new ObjectAuthorizationPredicateComposer(
         ObjectAuthorizationPredicates.standard()
     );
-
     private final LanguageCompiler compiler;
     private final ObjectAuthorizationTargetResolver targetResolver;
 
-    /// Creates the service with the compiler and application-owned Object Authorization target resolver.
     public ObjectAuthorizationService(LanguageCompiler compiler, ObjectAuthorizationTargetResolver targetResolver) {
         this.compiler = compiler;
         this.targetResolver = targetResolver;
     }
 
     @Override
-    public <Q> ObjectAuthorizationPredicate<Q> authorize(
-        AuthorizationContext context,
-        ObjectAuthorizationSchema<Q> schema
-    ) {
+    public <Q> ObjectAuthorizationPredicate<Q> authorize(AuthorizationContext context, QuerySchemaView schema) {
         if (!(context instanceof AuthorizationOperation operation)) {
             throw new AuthorizationException("authorization context is not valid for this operation");
         }
@@ -72,15 +67,14 @@ public final class ObjectAuthorizationService implements ObjectAuthorization {
         }
     }
 
-    /// Validates an object policy independently against every schema governed by its target.
     @Override
     public void validatePolicy(String policy, String method, String path) {
         StatementTargetPathMatcher pathMatcher = StatementTargetPathMatcher.compile(path);
-        List<ObjectAuthorizationSchema<?>> applicable = this.targetResolver.applicable(method, pathMatcher);
+        List<QuerySchemaView> applicable = this.targetResolver.applicable(method, pathMatcher);
         if (applicable.isEmpty()) {
             throw new AuthorizationException("Object Statement target matches no registered object schema route");
         }
-        for (ObjectAuthorizationSchema<?> schema : applicable) {
+        for (QuerySchemaView schema : applicable) {
             CompiledSource compiled = this.compiler.compile(
                 policy,
                 AuthorizationEmbeddedLanguageSchemas.object(schema),
