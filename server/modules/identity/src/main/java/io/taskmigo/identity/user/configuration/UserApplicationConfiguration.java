@@ -1,7 +1,7 @@
 package io.taskmigo.identity.user.configuration;
 
-import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantAssignmentService;
-import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantQueryService;
+import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
+import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
 import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.configuration.application.api.ConfigurationService;
 import io.taskmigo.identity.group.application.api.GroupService;

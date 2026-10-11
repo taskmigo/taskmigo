@@ -1,11 +1,10 @@
-package io.taskmigo.authorization.subject.application.service;
+package io.taskmigo.authorization.subject.application;
 
 import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.role.application.api.RoleService;
 import io.taskmigo.authorization.statement.application.api.StatementService;
 import io.taskmigo.authorization.subject.SubjectRef;
-import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantAssignmentService;
-import io.taskmigo.authorization.subject.application.port.out.SubjectGrantRepository;
+import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.domain.SubjectGrants;
 import java.util.Collection;
 import java.util.Set;

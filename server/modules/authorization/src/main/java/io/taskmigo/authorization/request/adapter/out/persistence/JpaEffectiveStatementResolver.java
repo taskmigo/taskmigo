@@ -6,8 +6,8 @@ import io.taskmigo.authorization.role.application.RoleEffectiveStatementReposito
 import io.taskmigo.authorization.statement.persistence.StatementEntity;
 import io.taskmigo.authorization.statement.persistence.StatementRepository;
 import io.taskmigo.authorization.subject.SubjectRef;
-import io.taskmigo.authorization.subject.application.port.out.SubjectGrantRepository;
-import io.taskmigo.authorization.subject.application.port.out.resolution.EffectiveSubjectResolver;
+import io.taskmigo.authorization.subject.application.SubjectGrantRepository;
+import io.taskmigo.authorization.subject.application.resolution.EffectiveSubjectResolver;
 import io.taskmigo.authorization.subject.domain.SubjectGrants;
 import java.util.HashSet;
 import java.util.List;

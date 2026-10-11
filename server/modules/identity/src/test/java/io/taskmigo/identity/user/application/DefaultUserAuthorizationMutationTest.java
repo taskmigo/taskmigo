@@ -13,8 +13,8 @@ import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantAssignmentService;
-import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantQueryService;
+import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
+import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
 import io.taskmigo.foundation.DomainFailureType;
 import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.user.UserException;

@@ -1,16 +1,16 @@
-package io.taskmigo.authorization.subject.composition;
+package io.taskmigo.authorization.subject.configuration;
 
 import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
 import io.taskmigo.authorization.role.application.api.RoleService;
 import io.taskmigo.authorization.statement.application.api.StatementService;
-import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantAssignmentService;
-import io.taskmigo.authorization.subject.application.port.in.api.SubjectGrantQueryService;
-import io.taskmigo.authorization.subject.application.port.in.api.SubjectRoleQueryService;
-import io.taskmigo.authorization.subject.application.port.out.SubjectGrantRepository;
-import io.taskmigo.authorization.subject.application.port.out.resolution.EffectiveSubjectResolver;
-import io.taskmigo.authorization.subject.application.service.DefaultSubjectGrantAssignmentService;
-import io.taskmigo.authorization.subject.application.service.DefaultSubjectGrantQueryService;
-import io.taskmigo.authorization.subject.application.service.DefaultSubjectRoleQueryService;
+import io.taskmigo.authorization.subject.application.DefaultSubjectGrantAssignmentService;
+import io.taskmigo.authorization.subject.application.DefaultSubjectGrantQueryService;
+import io.taskmigo.authorization.subject.application.DefaultSubjectRoleQueryService;
+import io.taskmigo.authorization.subject.application.SubjectGrantRepository;
+import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
+import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
+import io.taskmigo.authorization.subject.application.api.SubjectRoleQueryService;
+import io.taskmigo.authorization.subject.application.resolution.EffectiveSubjectResolver;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
