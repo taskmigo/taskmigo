@@ -13,7 +13,7 @@
         "authorization :: role",
         "authorization :: role-use-cases",
         "authorization :: statement",
-        "authorization :: statement-input",
+        "authorization :: statement-use-cases",
         "identity :: user",
         "identity :: user-use-cases",
         "identity :: group",
