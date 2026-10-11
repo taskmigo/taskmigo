@@ -69,6 +69,7 @@ class FoundationPackageArchitectureTest {
         Set<String> actualContracts = productionClasses()
             .stream()
             .filter(type -> type.getPackageName().equals("io.taskmigo.foundation"))
+            .filter(type -> !type.getName().endsWith(".package-info"))
             .map(type -> type.getName())
             .collect(Collectors.toSet());
 
