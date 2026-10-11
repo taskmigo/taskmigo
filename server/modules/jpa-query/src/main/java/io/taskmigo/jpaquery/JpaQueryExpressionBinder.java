@@ -1,6 +1,5 @@
 package io.taskmigo.jpaquery;
 
-import io.taskmigo.database.criteria.JpaCriteriaComparison;
 import io.taskmigo.query.QueryPath;
 import io.taskmigo.query.model.QueryExpression;
 import jakarta.persistence.criteria.CriteriaBuilder;

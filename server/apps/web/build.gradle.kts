@@ -24,9 +24,9 @@ dependencies {
     implementation(project(":modules:query"))
     implementation(project(":modules:audit"))
     implementation(project(":modules:access-control"))
-    // Provides shared datasource/JPA configuration; apps/migration owns migration execution.
-    implementation(project(":modules:database"))
     implementation(project(":modules:identity"))
+    // Provides datasource/JPA runtime configuration; apps/migration owns migration execution.
+    runtimeOnly(project(":modules:database"))
     runtimeOnly(libs.jspecify)
     implementation(libs.spring.boot.starter.jdbc)
     implementation(libs.spring.boot.starter.session.jdbc)

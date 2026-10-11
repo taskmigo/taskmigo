@@ -6,7 +6,6 @@
         "audit :: events",
         "audit :: model",
         "audit :: privacy",
-        "database :: criteria",
         "jpaquery",
         "query",
         "query :: model",

@@ -18,7 +18,6 @@ dependencies {
     implementation(project(":modules:audit"))
     api(project(":modules:query"))
     api(project(":modules:access-control"))
-    implementation(project(":modules:database"))
     implementation(project(":modules:jpa-query"))
     implementation(project(":modules:language"))
 
