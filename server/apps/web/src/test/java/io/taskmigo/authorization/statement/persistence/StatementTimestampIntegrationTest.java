@@ -2,7 +2,7 @@ package io.taskmigo.authorization.statement.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.taskmigo.authorization.provisioning.application.port.in.api.AuthorizationProvisioningService;
+import io.taskmigo.authorization.provisioning.application.api.AuthorizationProvisioningService;
 import io.taskmigo.authorization.request.application.port.out.EffectiveStatement;
 import io.taskmigo.authorization.request.application.port.out.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.Effect;

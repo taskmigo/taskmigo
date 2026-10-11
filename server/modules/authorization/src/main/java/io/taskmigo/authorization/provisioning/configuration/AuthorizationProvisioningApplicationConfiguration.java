@@ -1,7 +1,7 @@
-package io.taskmigo.authorization.provisioning.composition;
+package io.taskmigo.authorization.provisioning.configuration;
 
 import io.taskmigo.authorization.application.port.out.transaction.TransactionRunner;
-import io.taskmigo.authorization.provisioning.application.port.in.api.AuthorizationProvisioningService;
+import io.taskmigo.authorization.provisioning.application.api.AuthorizationProvisioningService;
 import io.taskmigo.authorization.provisioning.application.service.DefaultAuthorizationProvisioningService;
 import io.taskmigo.authorization.role.application.RoleHierarchyRepository;
 import io.taskmigo.authorization.role.application.internal.RoleCommandService;
