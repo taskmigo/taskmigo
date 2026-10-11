@@ -52,11 +52,13 @@ Before implementation, preserve the Phase 0/1 work from PR #253 but do not merge
 ### Task 1: Establish the Phase 2 verification gate
 
 **Files:**
+
 - Verify/modify: `server/modules/authorization/src/test/java/io/taskmigo/authorization/AccessControlOnionArchitectureTest.java`.
 - Verify/modify: `server/modules/authorization/src/test/java/io/taskmigo/authorization/AccessControlPackageArchitectureTest.java`.
 - Verify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/**/package-info.java`.
 
 **Interfaces:**
+
 - Consumes: Phase 0 `io.taskmigo.architecture.OnionArchitectureRules`.
 - Produces: regression gates for inward dependency direction and retired Access Control package vocabulary.
 
@@ -69,6 +71,7 @@ Before implementation, preserve the Phase 0/1 work from PR #253 but do not merge
 ### Task 2: Role capability PR
 
 **Files:**
+
 - Verify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/role/application/**`.
 - Verify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/role/persistence/**`.
 - Verify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/role/configuration/**`.
@@ -76,6 +79,7 @@ Before implementation, preserve the Phase 0/1 work from PR #253 but do not merge
 - Move: `server/modules/authorization/src/test/java/io/taskmigo/authorization/role/adapter/out/persistence/*.java` -> `.../role/persistence/*.java`.
 
 **Interfaces:**
+
 - Produces: `role.application.api.RoleService`, `RoleAuthorizationService`; private mutation API remains under `role.application.internal`; repositories remain application-owned.
 
 - [ ] **Step 1:** Run the Role tests before edits and confirm the red failures are package/import failures, not intended behavior changes.
@@ -88,6 +92,7 @@ Before implementation, preserve the Phase 0/1 work from PR #253 but do not merge
 ### Task 3: Statement capability PR
 
 **Files:**
+
 - Verify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/statement/application/**`.
 - Verify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/statement/persistence/**`.
 - Move: `server/modules/authorization/src/test/java/io/taskmigo/authorization/statement/application/service/*.java` -> `.../statement/application/*.java`.
@@ -95,6 +100,7 @@ Before implementation, preserve the Phase 0/1 work from PR #253 but do not merge
 - Update imports only as needed: `server/apps/web/src/test/java/io/taskmigo/authorization/statement/adapter/out/persistence/StatementTimestampIntegrationTest.java`.
 
 **Interfaces:**
+
 - Produces: `statement.application.api.StatementService`; mutation API remains private under `statement.application.internal`.
 
 - [ ] **Step 1:** Run existing Statement tests as the behavior baseline.
@@ -107,12 +113,14 @@ Before implementation, preserve the Phase 0/1 work from PR #253 but do not merge
 ### Task 4: Subject capability PR
 
 **Files:**
+
 - Verify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/subject/application/**`.
 - Verify published contract: `server/modules/authorization/src/main/java/io/taskmigo/authorization/subject/application/resolution/**`.
 - Move: `server/modules/authorization/src/test/java/io/taskmigo/authorization/subject/application/service/DefaultSubjectGrantAssignmentServiceTest.java` -> `.../subject/application/DefaultSubjectGrantAssignmentServiceTest.java`.
 - Update/replay Subject consumers from `server/modules/identity/src/main/java/io/taskmigo/identity/**`, including the changes currently represented by `efdbda81`.
 
 **Interfaces:**
+
 - Produces: `SubjectGrantAssignmentService`, `SubjectGrantQueryService`, and `SubjectRoleQueryService` from `subject.application.api`; resolution remains deliberately published without implementation leakage.
 
 - [ ] **Step 1:** Keep existing Subject grant/resolution tests as the red/behavior baseline.
@@ -124,6 +132,7 @@ Before implementation, preserve the Phase 0/1 work from PR #253 but do not merge
 ### Task 5: Request Authorization capability PR
 
 **Files:**
+
 - Verify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/request/application/**`.
 - Verify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/request/domain/**`.
 - Verify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/request/persistence/JpaEffectiveStatementResolver.java`.
@@ -131,6 +140,7 @@ Before implementation, preserve the Phase 0/1 work from PR #253 but do not merge
 - Move: `server/modules/authorization/src/test/java/io/taskmigo/authorization/request/adapter/out/persistence/EffectiveStatementResolverTest.java` -> `.../request/persistence/EffectiveStatementResolverTest.java`.
 
 **Interfaces:**
+
 - Produces: `request.application.api.RequestAuthorization`; `EffectiveStatementResolver` remains application-owned and is implemented by persistence.
 
 - [ ] **Step 1:** Run Request tests and preserve decision/result typing, snapshot, artifact, and domain-decider assertions.
@@ -143,12 +153,14 @@ Before implementation, preserve the Phase 0/1 work from PR #253 but do not merge
 ### Task 6: Object Authorization capability PR
 
 **Files:**
+
 - Verify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/object/application/**`.
 - Verify published contract: `server/modules/authorization/src/main/java/io/taskmigo/authorization/object/application/target/**`.
 - Verify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/object/domain/**`.
 - Move: `server/modules/authorization/src/test/java/io/taskmigo/authorization/object/application/service/*.java` -> `.../object/application/*.java`.
 
 **Interfaces:**
+
 - Produces: `object.application.api.ObjectAuthorization`; target-resolution contract remains published while persistence/private implementations remain hidden.
 
 - [ ] **Step 1:** Run existing Object tests, especially `Enhancement237ObjectAuthorizationContractTest`, as the behavior baseline.
@@ -161,6 +173,7 @@ Before implementation, preserve the Phase 0/1 work from PR #253 but do not merge
 ### Task 7: Provisioning capability PR
 
 **Files:**
+
 - Verify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/provisioning/application/DefaultAuthorizationProvisioningService.java`.
 - Verify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/provisioning/application/api/AuthorizationProvisioningService.java`.
 - Verify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/provisioning/configuration/AuthorizationProvisioningApplicationConfiguration.java`.
@@ -171,6 +184,7 @@ Before implementation, preserve the Phase 0/1 work from PR #253 but do not merge
 - Update imports: `server/apps/web/src/test/java/io/taskmigo/PostgresTestConfiguration.java`.
 
 **Interfaces:**
+
 - Produces: `provisioning.application.api.AuthorizationProvisioningService`; consumes final Role/Statement application contracts and the Access Control transaction abstraction.
 
 - [ ] **Step 1:** Run Provisioning tests and retain reconciliation/idempotency/error assertions.
@@ -183,6 +197,7 @@ Before implementation, preserve the Phase 0/1 work from PR #253 but do not merge
 ### Task 8: Shared Access Control internals cleanup PR
 
 **Files:**
+
 - Verify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/application/TransactionRunner.java`.
 - Verify: `server/modules/authorization/src/main/java/io/taskmigo/authorization/persistence/query/**`.
 - Modify as required: `server/modules/authorization/src/test/java/io/taskmigo/authorization/AccessControlOnionArchitectureTest.java`.
@@ -190,6 +205,7 @@ Before implementation, preserve the Phase 0/1 work from PR #253 but do not merge
 - Update stale named-interface/package docs under `server/modules/authorization/src/main/java/io/taskmigo/authorization/**/package-info.java` only where needed.
 
 **Interfaces:**
+
 - Produces: one coherent Access Control module with no temporary Phase 2 Hexagonal exceptions; transaction abstraction remains application-owned pending #170.
 
 - [ ] **Step 1:** Remove transitional architecture exceptions/allowlists that referred to migrated Access Control packages.
@@ -201,10 +217,12 @@ Before implementation, preserve the Phase 0/1 work from PR #253 but do not merge
 ### Task 9: Phase 2 repository-wide zero-reference gate
 
 **Files:**
+
 - Inspect only unless a missed reference is found: `server/modules/**`, `server/apps/**` Java source/tests.
 - Return any discovered stale reference to its owning capability PR rather than creating a cross-capability compatibility commit.
 
 **Interfaces:**
+
 - Consumes: all merged Phase 2 capability contracts.
 - Produces: proof that the repository has no live old Access Control package dependency.
 
@@ -216,11 +234,13 @@ Before implementation, preserve the Phase 0/1 work from PR #253 but do not merge
 ### Task 10: Final Phase 2 review
 
 **Files:**
+
 - Update this plan's checkboxes as slices complete.
 - Update #252 progress/checklist after all Phase 2 PRs merge.
 - Do not modify `.github/workflows/**` or pipeline configuration in this task.
 
 **Interfaces:**
+
 - Produces: verified completion evidence for Phase 2, ready for the separate pipeline-repair pass if infrastructure-only failures remain.
 
 - [ ] **Step 1:** Verify `ApplicationModules.verify()` coverage and Access Control ArchUnit tests pass on the integrated `next` state.
