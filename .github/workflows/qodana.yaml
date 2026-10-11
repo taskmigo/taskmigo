@@ -84,7 +84,7 @@ jobs:
 
       - name: Upload Qodana results artifact
         if: ${{ failure() && steps.qodana-results.outputs.file != '' }}
-        uses: actions/upload-artifact@v7.0.1
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: qodana-results-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ steps.qodana-results.outputs.file }}
