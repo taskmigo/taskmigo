@@ -1,6 +1,6 @@
 package io.taskmigo.migration.application.service;
 
-import io.taskmigo.authorization.provisioning.application.port.in.api.AuthorizationProvisioningService;
+import io.taskmigo.authorization.provisioning.application.api.AuthorizationProvisioningService;
 import io.taskmigo.identity.provisioning.application.api.GroupProvisioningService;
 import io.taskmigo.identity.provisioning.application.api.IdentityProvisioningService;
 import io.taskmigo.migration.application.model.InstallationPlan;
