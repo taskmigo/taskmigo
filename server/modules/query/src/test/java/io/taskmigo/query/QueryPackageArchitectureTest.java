@@ -12,12 +12,12 @@ import org.junit.jupiter.api.Test;
 class QueryPackageArchitectureTest {
 
     /**
-     * Verifies that Query contracts stay independent from framework-specific type, transport, persistence, and OAuth
-     * implementations while still allowing Spring stereotypes and Spring Modulith boundary annotations.
+     * Verifies that Query stays a consumer-neutral supporting library and does not acquire runtime framework ownership.
      *
      * Given: all production classes in the Query module.
-     * Expect: no Query class depends on Spring Core type descriptors, Jackson, Spring Web, Servlet, Spring Data, JPA,
-     * or Spring Authorization Server implementation packages.
+     * Expect: no Query class depends on Spring runtime stereotypes, Spring Core type descriptors, Jackson, Spring Web,
+     * Servlet, Spring Data, JPA, or Spring Authorization Server implementation packages. Spring Modulith boundary
+     * annotations remain compile-only metadata and are intentionally allowed.
      */
     @Test
     @DisplayName("keeps Query contracts framework neutral")
@@ -30,6 +30,7 @@ class QueryPackageArchitectureTest {
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
+                "org.springframework.stereotype..",
                 "org.springframework.core..",
                 "com.fasterxml.jackson..",
                 "tools.jackson..",
