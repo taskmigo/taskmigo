@@ -20,10 +20,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
-import org.springframework.stereotype.Service;
 
-/// Compiles the optional HTTP filterBy expression against an explicit operation-scoped Query Schema.
-@Service
+/// Compiles an optional filterBy expression against an explicit operation-scoped Query Schema.
 public class FilterByCompiler {
 
     private static final CompilationProfile PROFILE = new CompilationProfile(
