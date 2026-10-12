@@ -2,13 +2,13 @@ package io.taskmigo.authorization.embeddedlanguage;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 
-import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryFieldDescriptor;
 import io.taskmigo.query.QueryOperator;
 import io.taskmigo.query.QueryPath;
 import io.taskmigo.query.QuerySchemaView;
+import io.taskmigo.query.TypeDescriptor;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;

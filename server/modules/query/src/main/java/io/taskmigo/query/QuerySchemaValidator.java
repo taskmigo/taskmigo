@@ -1,6 +1,5 @@
 package io.taskmigo.query;
 
-import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.query.model.QueryExpression;
 import java.util.Optional;
 
