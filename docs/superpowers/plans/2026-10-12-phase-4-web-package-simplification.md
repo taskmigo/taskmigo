@@ -29,7 +29,7 @@
 ## Review Focus
 
 - OpenAPI generation must still execute after its test package moves; `:apps:web:generateOpenApi` must target `io.taskmigo.web.api.OpenApiGenerationIntegrationTest` and produce no snapshot diff.
-- API-v0 authentication and authorization failures must still be rendered through the v0 response contract while shared `web.security` remains independent of `web.api.v0`; pin this with `VersionedApiSecurityErrorHandlerTest` plus the v0 integration suite.
+- API-v0 authentication and authorization failures must still use the v0 response contract while shared `web.security` remains independent of `web.api.v0`; pin this with `VersionedApiSecurityErrorHandlerTest` and `ApiV0SecurityErrorRendererTest`.
 - Session revocation and serialized `UserSessionPrincipal` behavior must survive moving `HttpSessionConfiguration` and the guarded repository into `web.security.session`; pin this with `HttpSessionRevocationIntegrationTest`, `GuardedSessionRepositoryTest`, and `SessionPrincipalSerializationTest`.
 - Spring MVC Object Authorization route/schema discovery must preserve method/path matching and Query Schema selection after the target resolver moves; pin this with `SpringMvcObjectAuthorizationTargetResolverTest` and `ObjectAuthorizationRouteIntegrationTest`.
 - OAuth persistence, signing keys, interactive authentication, and OIDC provider discovery must survive splitting `composition.auth`; pin this with `GuardedOAuthPersistenceTest`, `SigningKeyStoreTest`, and `InteractiveAuthenticationIntegrationTest`.
@@ -72,8 +72,10 @@ Expected: FAIL because current production classes still reside under `io.taskmig
 
 - [ ] **Step 3: Commit the RED checkpoint**
 
+Run from repository root:
+
 ```bash
-git add apps/web/src/test/java/io/taskmigo/web/WebPackageArchitectureTest.java
+git add server/apps/web/src/test/java/io/taskmigo/web/WebPackageArchitectureTest.java
 git commit -m "test(web): require responsibility packages"
 ```
 
@@ -164,12 +166,12 @@ Expected: targeted tests PASS; OpenAPI generation runs the moved test; the commi
 
 - [ ] **Step 7: Commit the API move**
 
-```bash
-git add apps/web
- git commit -m "refactor(web): organize api packages"
-```
+Run from repository root:
 
-Before committing, remove the accidental leading space before `git commit` if your shell preserves it; the intended command is `git commit -m "refactor(web): organize api packages"`.
+```bash
+git add server/apps/web
+git commit -m "refactor(web): organize api packages"
+```
 
 ### Task 3: Move Security, session, and Object Authorization runtime integration
 
@@ -187,6 +189,7 @@ Before committing, remove the accidental leading space before `git commit` if yo
 - Move: `server/apps/web/src/main/java/io/taskmigo/web/adapter/out/objectauthorization/package-info.java` -> `server/apps/web/src/main/java/io/taskmigo/web/security/objectauthorization/package-info.java`.
 - Move matching tests from `adapter.in.security..`, `adapter.out.objectauthorization..`, and the session-focused tests currently under `composition.auth` to `web.security..`.
 - Create: `server/apps/web/src/test/java/io/taskmigo/web/security/VersionedApiSecurityErrorHandlerTest.java`.
+- Create: `server/apps/web/src/test/java/io/taskmigo/web/api/v0/support/security/ApiV0SecurityErrorRendererTest.java`.
 - Modify: `server/apps/web/src/main/java/io/taskmigo/web/api/v0/support/security/ApiV0SecurityErrorRenderer.java`.
 
 **Interfaces:**
@@ -200,16 +203,27 @@ Before committing, remove the accidental leading space before `git commit` if yo
 
 Move the three existing `adapter.in.security` classes and `ApiSecurityErrorRenderer` into `web.security`. Update `ApiV0SecurityErrorRenderer` to import `io.taskmigo.web.security.ApiSecurityErrorRenderer`; do not make `VersionedApiSecurityErrorHandler` depend on `web.api.v0`.
 
-- [ ] **Step 2: Add unit coverage for versioned security error dispatch**
+- [ ] **Step 2: Add unit coverage for shared security-error dispatch**
 
-Add `VersionedApiSecurityErrorHandlerTest` in the same `web.security` package. Pin both existing branches:
+Add `VersionedApiSecurityErrorHandlerTest` in `web.security`. Pin both existing branches:
 
 - when multiple renderers exist, the first renderer whose `supports(request)` returns `true` receives the status/code/text and later renderers are not invoked;
 - when no renderer supports the request, `HttpServletResponse.sendError(status.value(), messageText)` is used.
 
-Exercise both `commence` (`401`, `security.unauthorized`) and `handle` (`403`, `security.forbidden`) across those tests without changing production behavior.
+Exercise `commence` with `401` / `security.unauthorized` and `handle` with `403` / `security.forbidden` without changing production behavior.
 
-- [ ] **Step 3: Move the session-security classes together**
+- [ ] **Step 3: Add unit coverage for the v0 renderer contract**
+
+Add `ApiV0SecurityErrorRendererTest` in `web.api.v0.support.security`. Assert that:
+
+- `supports` is true for `/api/v0/...` and false for another API version/path;
+- `write` sets the requested HTTP status and `application/json` content type;
+- `401` requests call `ApiResponseFactory.failureBody` with error code `UNAUTHORIZED`;
+- `403` requests call it with error code `FORBIDDEN`.
+
+Mock `ApiResponseFactory`, `ObjectMapper`, and servlet request/response dependencies so the test pins delegation and envelope selection rather than duplicating JSON serialization implementation.
+
+- [ ] **Step 4: Move the session-security classes together**
 
 Move `GuardedSessionRepository`, `UserSessionPrincipal`, their package metadata, and `HttpSessionConfiguration` into `web.security.session`. Preserve `FlushMode.ON_SAVE`, the 30-minute inactivity interval, principal-name index value derived from `userId`, `JSESSIONID`, and delegation to `UserSessionLifecycleService`.
 
@@ -221,15 +235,15 @@ HttpSessionRevocationIntegrationTest
 SessionPrincipalSerializationTest
 ```
 
-- [ ] **Step 4: Move the Object Authorization MVC target resolver**
+- [ ] **Step 5: Move the Object Authorization MVC target resolver**
 
 Move `SpringMvcObjectAuthorizationTargetResolver` and package metadata to `web.security.objectauthorization`. Move `SpringMvcObjectAuthorizationTargetResolverTest` and `ObjectAuthorizationRouteIntegrationTest` to the same test package. Preserve `@Component`, `@Primary`, `SmartInitializingSingleton`, method/path matching, API version substitution, exactly-one-predicate enforcement, `@QueryOperation` lookup, and exactly-one-schema enforcement.
 
-- [ ] **Step 5: Move the request-authorization test**
+- [ ] **Step 6: Move the request-authorization test**
 
 Move `RequestAuthorizationManagerTest` to `io.taskmigo.web.security` and update only package/import references.
 
-- [ ] **Step 6: Run Security/session/Object Authorization verification**
+- [ ] **Step 7: Run Security/session/Object Authorization verification**
 
 Run from `server/`:
 
@@ -237,16 +251,19 @@ Run from `server/`:
 ./gradlew :apps:web:test \
   --tests 'io.taskmigo.web.security.RequestAuthorizationManagerTest' \
   --tests 'io.taskmigo.web.security.VersionedApiSecurityErrorHandlerTest' \
+  --tests 'io.taskmigo.web.api.v0.support.security.ApiV0SecurityErrorRendererTest' \
   --tests 'io.taskmigo.web.security.session.*' \
   --tests 'io.taskmigo.web.security.objectauthorization.*'
 ```
 
 Expected: PASS with no change to security error envelopes, session lifecycle behavior, or Object Authorization route resolution.
 
-- [ ] **Step 7: Commit the Security move**
+- [ ] **Step 8: Commit the Security move**
+
+Run from repository root:
 
 ```bash
-git add apps/web
+git add server/apps/web
 git commit -m "refactor(web): organize security packages"
 ```
 
@@ -306,7 +323,7 @@ find server/apps/web/src/main/java/io/taskmigo/web/composition -type f -print
 Expected: no files. Remove empty directories if the filesystem still contains them, then commit:
 
 ```bash
-git add apps/web
+git add server/apps/web
 git commit -m "refactor(web): organize oauth packages"
 ```
 
@@ -335,9 +352,7 @@ io.taskmigo.web.oauth..
 io.taskmigo.web.configuration..
 ```
 
-Allow `configuration` but do not create it merely to satisfy the rule.
-
-Add a dependency rule asserting classes in `io.taskmigo.web.security..` do not depend on classes in `io.taskmigo.web.api.v0..`.
+Allow `configuration` but do not create it merely to satisfy the rule. Add a dependency rule asserting classes in `io.taskmigo.web.security..` do not depend on classes in `io.taskmigo.web.api.v0..`.
 
 - [ ] **Step 2: Remove Web's `HexagonalOnionRules.checkDrivingApplication(...)` test**
 
@@ -458,7 +473,7 @@ Expected: no stale imports or production package declarations reference the reti
 
 - [ ] **Step 6: Commit any verification-only formatting correction**
 
-Only if Step 4 produced legitimate formatting changes:
+Only if Step 4 produced legitimate formatting changes, run from repository root:
 
 ```bash
 git add -A
@@ -484,7 +499,7 @@ For Kubernetes Integration, confirm the deployment, Helm integration tests, and 
 
 - [ ] **Step 8: Review the final diff for semantic drift**
 
-Compare against the Phase 4 Web base and confirm changes are limited to package/file moves, package/import references, Web architecture tests, package documentation, the OpenAPI Gradle FQCN filters, and the added security-error-handler regression test. Reject accidental controller logic, security policy, session parameters, OAuth configuration, persistence logic, query/filter logic, or `@ApplicationModule.allowedDependencies` changes.
+Compare against the Phase 4 Web base and confirm changes are limited to package/file moves, package/import references, Web architecture tests, package documentation, the OpenAPI Gradle FQCN filters, and the two security-error regression tests. Reject accidental controller logic, security policy, session parameters, OAuth configuration, persistence logic, query/filter logic, or `@ApplicationModule.allowedDependencies` changes.
 
 - [ ] **Step 9: Prepare the child PR for review without merging it**
 
