@@ -1,4 +1,4 @@
-package io.taskmigo.foundation;
+package io.taskmigo.query;
 
 import java.util.List;
 import java.util.Objects;

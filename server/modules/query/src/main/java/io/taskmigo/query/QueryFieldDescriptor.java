@@ -1,6 +1,5 @@
 package io.taskmigo.query;
 
-import io.taskmigo.foundation.TypeDescriptor;
 import java.util.Objects;
 import java.util.Set;
 

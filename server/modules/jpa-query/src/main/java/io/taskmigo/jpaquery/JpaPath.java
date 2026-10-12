@@ -1,7 +1,7 @@
 package io.taskmigo.jpaquery;
 
-import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.query.QueryPath;
+import io.taskmigo.query.TypeDescriptor;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.metamodel.Attribute.PersistentAttributeType;
 import jakarta.persistence.metamodel.PluralAttribute;

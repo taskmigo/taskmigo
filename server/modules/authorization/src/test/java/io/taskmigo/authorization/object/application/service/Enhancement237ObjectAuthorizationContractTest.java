@@ -4,12 +4,12 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
-import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryFieldDescriptor;
 import io.taskmigo.query.QueryOperator;
 import io.taskmigo.query.QueryPath;
 import io.taskmigo.query.QuerySchemaView;
+import io.taskmigo.query.TypeDescriptor;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;

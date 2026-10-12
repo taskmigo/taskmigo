@@ -1,6 +1,5 @@
 package io.taskmigo.query;
 
-import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.language.CompilationFeature;
 import io.taskmigo.language.CompilationMode;
 import io.taskmigo.language.CompilationProfile;

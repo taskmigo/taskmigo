@@ -1,4 +1,4 @@
-package io.taskmigo.foundation;
+package io.taskmigo.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
