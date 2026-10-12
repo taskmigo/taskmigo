@@ -1,5 +1,6 @@
 package io.taskmigo.language;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -227,10 +228,10 @@ final class EmbeddedLanguagePartialEvaluator {
         SemanticAst.Expression operand = simplify(expression.operand(), frame);
         if (operand instanceof SemanticAst.Literal literal) {
             if (literal.value() instanceof String text) {
-                return literal(java.math.BigDecimal.valueOf(text.length()), expression.span());
+                return literal(BigDecimal.valueOf(text.length()), expression.span());
             }
             if (literal.value() instanceof List<?> list) {
-                return literal(java.math.BigDecimal.valueOf(list.size()), expression.span());
+                return literal(BigDecimal.valueOf(list.size()), expression.span());
             }
         }
         if (operand == expression.operand()) {
