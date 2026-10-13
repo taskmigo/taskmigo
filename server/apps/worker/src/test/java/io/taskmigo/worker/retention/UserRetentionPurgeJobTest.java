@@ -1,4 +1,4 @@
-package io.taskmigo.worker.adapter.in.retention;
+package io.taskmigo.worker.retention;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -17,12 +17,14 @@ import org.springframework.scheduling.annotation.Scheduled;
 class UserRetentionPurgeJobTest {
 
     /**
-     * Given: the retention Worker job and a fixed clock.
-     * Expect: one invocation uses the current clock instant and the schedule is exactly hourly.
+     * Verifies that the retention Worker job delegates purge work using the current clock instant.
+     *
+     * Given: a fixed clock at 2026-10-03T00:00:00Z and a mocked User retention application API.
+     * Expect: the job invokes purgeExpiredUsers exactly once with that instant.
      */
     @Test
-    @DisplayName("runs user retention tombstone processing hourly")
-    void shouldRunRetentionTombstoneProcessingHourly() throws Exception {
+    @DisplayName("uses the current instant for user retention tombstone processing")
+    void shouldUseCurrentInstantWhenRetentionJobExecutes() {
         // Arrange
         Instant now = Instant.parse("2026-10-03T00:00:00Z");
         UserRetentionService retention = mock(UserRetentionService.class);
@@ -33,9 +35,24 @@ class UserRetentionPurgeJobTest {
 
         // Assert
         verify(retention).purgeExpiredUsers(now);
+    }
 
+    /**
+     * Verifies that the retention Worker job remains scheduled at a one-hour fixed delay.
+     *
+     * Given: the scheduled purgeExpiredUsers method on UserRetentionPurgeJob.
+     * Expect: its schedule uses fixedDelay = 1 with TimeUnit.HOURS.
+     */
+    @Test
+    @DisplayName("runs user retention tombstone processing hourly")
+    void shouldRunHourlyWhenRetentionScheduleIsInspected() throws Exception {
+        // Arrange
         Method method = UserRetentionPurgeJob.class.getDeclaredMethod("purgeExpiredUsers");
+
+        // Act
         Scheduled scheduled = method.getAnnotation(Scheduled.class);
+
+        // Assert
         assertThat(scheduled).isNotNull();
         assertThat(scheduled.fixedDelay()).isEqualTo(1);
         assertThat(scheduled.timeUnit()).isEqualTo(TimeUnit.HOURS);
