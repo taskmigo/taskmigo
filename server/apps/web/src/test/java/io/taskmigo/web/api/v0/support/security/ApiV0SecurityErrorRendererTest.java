@@ -24,7 +24,10 @@ class ApiV0SecurityErrorRendererTest {
 
     private final ApiResponseFactory responses = mock(ApiResponseFactory.class);
     private final ObjectMapper objectMapper = mock(ObjectMapper.class);
-    private final ApiV0SecurityErrorRenderer renderer = new ApiV0SecurityErrorRenderer(this.responses, this.objectMapper);
+    private final ApiV0SecurityErrorRenderer renderer = new ApiV0SecurityErrorRenderer(
+        this.responses,
+        this.objectMapper
+    );
 
     @Test
     @DisplayName("supports only API v0 requests")

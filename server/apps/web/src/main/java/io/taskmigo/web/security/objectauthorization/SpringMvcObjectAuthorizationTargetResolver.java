@@ -96,9 +96,9 @@ public final class SpringMvcObjectAuthorizationTargetResolver
         if (matches.size() != 1) {
             throw new IllegalStateException(
                 "Expected exactly one Object Authorization Query Schema for operation " +
-                operation.value() +
-                ", found " +
-                matches.size()
+                    operation.value() +
+                    ", found " +
+                    matches.size()
             );
         }
         return Optional.of(matches.getFirst());
