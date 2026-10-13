@@ -1,4 +1,4 @@
-/// Shared ArchUnit conventions for enforcing Taskmigo Hexagonal and Onion dependency direction.
+/// Shared ArchUnit conventions for enforcing Taskmigo DDD and Onion Architecture dependency direction.
 @NullMarked
 package io.taskmigo.architecture;
 
