@@ -1,4 +1,4 @@
-package io.taskmigo.web.adapter.in.http.support.security;
+package io.taskmigo.web.security;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

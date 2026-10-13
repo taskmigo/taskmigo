@@ -2,7 +2,7 @@ package io.taskmigo.web.api.v0.support.security;
 
 import io.taskmigo.web.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.api.v0.support.response.ApiResponseFactory;
-import io.taskmigo.web.adapter.in.http.support.security.ApiSecurityErrorRenderer;
+import io.taskmigo.web.security.ApiSecurityErrorRenderer;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;

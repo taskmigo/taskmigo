@@ -1,4 +1,4 @@
-package io.taskmigo.web.adapter.in.security;
+package io.taskmigo.web.security;
 
 import io.taskmigo.authorization.request.AuthorizationContext;
 import io.taskmigo.authorization.request.AuthorizationPrincipal;

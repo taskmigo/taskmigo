@@ -1,6 +1,5 @@
-package io.taskmigo.web.adapter.in.security;
+package io.taskmigo.web.security;
 
-import io.taskmigo.web.adapter.in.http.support.security.ApiSecurityErrorRenderer;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;

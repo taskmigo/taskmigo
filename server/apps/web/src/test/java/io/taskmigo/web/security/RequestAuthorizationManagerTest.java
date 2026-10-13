@@ -1,4 +1,4 @@
-package io.taskmigo.web.adapter.in.security;
+package io.taskmigo.web.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
