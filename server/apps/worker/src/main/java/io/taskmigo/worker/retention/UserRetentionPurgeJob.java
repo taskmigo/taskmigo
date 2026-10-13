@@ -1,4 +1,4 @@
-package io.taskmigo.worker.adapter.in.retention;
+package io.taskmigo.worker.retention;
 
 import io.taskmigo.identity.user.application.api.UserRetentionService;
 import java.time.Clock;
