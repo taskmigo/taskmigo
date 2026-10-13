@@ -1,6 +1,6 @@
 package io.taskmigo.migration.bootstrap;
 
-import io.taskmigo.migration.application.model.InstallationPlan;
+import io.taskmigo.migration.installation.InstallationPlan;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;

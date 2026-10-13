@@ -1,4 +1,4 @@
-package io.taskmigo.migration.infrastructure.config;
+package io.taskmigo.migration.configuration;
 
 import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;

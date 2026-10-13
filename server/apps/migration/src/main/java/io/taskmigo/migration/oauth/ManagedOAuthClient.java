@@ -1,5 +1,6 @@
-package io.taskmigo.migration.application.model;
+package io.taskmigo.migration.oauth;
 
+import io.taskmigo.migration.installation.InstallationPlan;
 import java.time.Duration;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;

@@ -18,9 +18,9 @@ import io.taskmigo.identity.provisioning.application.api.IdentityProvisioningSer
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.application.api.UserService;
-import io.taskmigo.migration.application.model.InstallationPlan;
-import io.taskmigo.migration.application.service.MigrationInstaller;
 import io.taskmigo.migration.bootstrap.MigrationResourceLoader;
+import io.taskmigo.migration.installation.InstallationPlan;
+import io.taskmigo.migration.installation.MigrationInstaller;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;

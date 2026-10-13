@@ -1,6 +1,5 @@
-package io.taskmigo.migration.infrastructure.oauth;
+package io.taskmigo.migration.oauth;
 
-import io.taskmigo.migration.application.model.ManagedOAuthClient;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;

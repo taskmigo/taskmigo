@@ -49,7 +49,7 @@ class MigrationPackageArchitectureTest {
             .importPackages("io.taskmigo.migration");
         ArchRule rule = noClasses()
             .that()
-            .resideInAPackage("io.taskmigo.migration.application.service")
+            .resideInAPackage("io.taskmigo.migration.installation")
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
