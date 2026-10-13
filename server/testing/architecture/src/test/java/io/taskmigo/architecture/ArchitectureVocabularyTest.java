@@ -16,7 +16,8 @@ class ArchitectureVocabularyTest {
     void shouldNotExposeHexagonalVocabulary() {
         JavaClasses classes = new ClassFileImporter().importPackages("io.taskmigo.architecture");
 
-        List<String> obsoleteTypes = classes.stream()
+        List<String> obsoleteTypes = classes
+            .stream()
             .map(JavaClass::getName)
             .filter(name -> name.startsWith("io.taskmigo.architecture."))
             .filter(name -> name.contains("Hexagonal"))
