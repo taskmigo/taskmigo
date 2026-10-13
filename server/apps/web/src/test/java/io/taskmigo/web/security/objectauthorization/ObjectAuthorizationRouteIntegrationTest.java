@@ -1,4 +1,4 @@
-package io.taskmigo.web.adapter.out.objectauthorization;
+package io.taskmigo.web.security.objectauthorization;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -16,7 +16,7 @@ import io.taskmigo.authorization.statement.TargetInfo;
 import io.taskmigo.identity.user.application.api.UserService;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.query.QuerySchemaView;
-import io.taskmigo.web.adapter.in.http.api.v0.testing.ApiIntegrationTestSupport;
+import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;

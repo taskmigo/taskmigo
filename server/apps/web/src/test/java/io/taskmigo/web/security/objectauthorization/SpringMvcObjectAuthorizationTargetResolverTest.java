@@ -1,4 +1,4 @@
-package io.taskmigo.web.adapter.out.objectauthorization;
+package io.taskmigo.web.security.objectauthorization;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;

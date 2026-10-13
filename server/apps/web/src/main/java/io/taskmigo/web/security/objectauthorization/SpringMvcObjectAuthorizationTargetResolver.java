@@ -1,4 +1,4 @@
-package io.taskmigo.web.adapter.out.objectauthorization;
+package io.taskmigo.web.security.objectauthorization;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
