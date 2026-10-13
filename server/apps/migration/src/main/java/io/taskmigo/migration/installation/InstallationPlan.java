@@ -1,4 +1,4 @@
-package io.taskmigo.migration.application.model;
+package io.taskmigo.migration.installation;
 
 import java.time.Duration;
 import java.util.List;

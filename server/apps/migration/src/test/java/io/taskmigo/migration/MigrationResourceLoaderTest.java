@@ -2,8 +2,8 @@ package io.taskmigo.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.taskmigo.migration.application.model.InstallationPlan;
 import io.taskmigo.migration.bootstrap.MigrationResourceLoader;
+import io.taskmigo.migration.installation.InstallationPlan;
 import java.util.Objects;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

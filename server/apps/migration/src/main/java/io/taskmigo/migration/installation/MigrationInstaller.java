@@ -1,10 +1,9 @@
-package io.taskmigo.migration.application.service;
+package io.taskmigo.migration.installation;
 
 import io.taskmigo.authorization.provisioning.application.api.AuthorizationProvisioningService;
 import io.taskmigo.identity.provisioning.application.api.GroupProvisioningService;
 import io.taskmigo.identity.provisioning.application.api.IdentityProvisioningService;
-import io.taskmigo.migration.application.model.InstallationPlan;
-import io.taskmigo.migration.infrastructure.oauth.ManagedClientRepository;
+import io.taskmigo.migration.oauth.ManagedClientRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.security.crypto.password.PasswordEncoder;

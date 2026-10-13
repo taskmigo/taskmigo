@@ -1,8 +1,7 @@
-package io.taskmigo.migration.application.service;
+package io.taskmigo.migration.installation;
 
-import io.taskmigo.migration.application.model.InstallationPlan;
-import io.taskmigo.migration.application.model.ManagedOAuthClient;
-import io.taskmigo.migration.infrastructure.oauth.ManagedClientRepository;
+import io.taskmigo.migration.oauth.ManagedClientRepository;
+import io.taskmigo.migration.oauth.ManagedOAuthClient;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;

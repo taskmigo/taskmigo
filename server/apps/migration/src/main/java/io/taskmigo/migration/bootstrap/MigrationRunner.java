@@ -1,6 +1,6 @@
 package io.taskmigo.migration.bootstrap;
 
-import io.taskmigo.migration.application.service.MigrationInstaller;
+import io.taskmigo.migration.installation.MigrationInstaller;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
