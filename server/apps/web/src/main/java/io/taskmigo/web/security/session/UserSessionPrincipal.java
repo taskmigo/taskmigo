@@ -1,4 +1,4 @@
-package io.taskmigo.web.adapter.in.security.session;
+package io.taskmigo.web.security.session;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonCreator;

@@ -1,4 +1,4 @@
-package io.taskmigo.web.composition.auth;
+package io.taskmigo.web.oauth;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

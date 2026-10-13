@@ -1,4 +1,4 @@
-package io.taskmigo.web.composition.auth;
+package io.taskmigo.web.oauth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

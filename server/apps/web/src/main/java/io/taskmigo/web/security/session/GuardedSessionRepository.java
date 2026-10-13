@@ -1,4 +1,4 @@
-package io.taskmigo.web.adapter.in.security.session;
+package io.taskmigo.web.security.session;
 
 import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.api.UserService;

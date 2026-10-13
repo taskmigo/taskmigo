@@ -1,7 +1,7 @@
-package io.taskmigo.web.composition.auth;
+package io.taskmigo.web.oauth;
 
 import io.taskmigo.identity.user.application.api.UserSessionLifecycleService;
-import io.taskmigo.web.adapter.in.security.session.UserSessionPrincipal;
+import io.taskmigo.web.security.session.UserSessionPrincipal;
 import java.security.Principal;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.Authentication;

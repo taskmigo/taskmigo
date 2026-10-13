@@ -1,9 +1,7 @@
-package io.taskmigo.web.composition.auth;
+package io.taskmigo.web.security.session;
 
 import io.taskmigo.identity.user.application.api.UserService;
 import io.taskmigo.identity.user.application.api.UserSessionLifecycleService;
-import io.taskmigo.web.adapter.in.security.session.GuardedSessionRepository;
-import io.taskmigo.web.adapter.in.security.session.UserSessionPrincipal;
 import java.time.Duration;
 import java.util.Map;
 import org.springframework.context.annotation.Bean;

@@ -1,4 +1,4 @@
-package io.taskmigo.web.composition.auth;
+package io.taskmigo.web.security.session;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -6,9 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.taskmigo.TaskmigoApplication;
 import io.taskmigo.identity.provisioning.application.api.IdentityProvisioningService;
 import io.taskmigo.identity.user.application.api.UserRetentionService;
-import io.taskmigo.web.adapter.in.http.api.v0.testing.ApiIntegrationTestSupport;
-import io.taskmigo.web.adapter.in.http.api.v0.testing.TaskmigoApiClient;
-import io.taskmigo.web.adapter.in.security.session.UserSessionPrincipal;
+import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
+import io.taskmigo.web.api.v0.testing.TaskmigoApiClient;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.io.Serial;

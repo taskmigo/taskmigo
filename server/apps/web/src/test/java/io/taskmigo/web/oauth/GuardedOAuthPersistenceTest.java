@@ -1,4 +1,4 @@
-package io.taskmigo.web.composition.auth;
+package io.taskmigo.web.oauth;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -9,7 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import io.taskmigo.identity.user.application.api.UserSessionLifecycleService;
-import io.taskmigo.web.adapter.in.security.session.UserSessionPrincipal;
+import io.taskmigo.web.security.session.UserSessionPrincipal;
 import java.security.Principal;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;

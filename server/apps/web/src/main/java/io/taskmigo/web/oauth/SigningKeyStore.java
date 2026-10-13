@@ -1,4 +1,4 @@
-package io.taskmigo.web.composition.auth;
+package io.taskmigo.web.oauth;
 
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.jwk.KeyUse;
