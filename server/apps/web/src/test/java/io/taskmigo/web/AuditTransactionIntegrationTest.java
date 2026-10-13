@@ -1,4 +1,4 @@
-package io.taskmigo.web.composition.audit;
+package io.taskmigo.web;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
