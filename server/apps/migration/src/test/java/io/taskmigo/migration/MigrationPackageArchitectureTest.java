@@ -12,6 +12,29 @@ import org.junit.jupiter.api.Test;
 class MigrationPackageArchitectureTest {
 
     /**
+     * Verifies that retired generic architecture buckets cannot remain in the Migration executable.
+     *
+     * Given: Migration production classes after the responsibility-oriented package simplification.
+     * Expect: no class resides under the retired application or infrastructure package roots.
+     */
+    @Test
+    @DisplayName("rejects retired Migration architecture vocabulary")
+    void shouldRejectRetiredArchitectureVocabularyWhenMigrationPackagesAreChecked() {
+        // Arrange
+        JavaClasses classes = new ClassFileImporter()
+            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+            .importPackages("io.taskmigo.migration");
+        ArchRule rule = noClasses()
+            .that()
+            .resideInAPackage("io.taskmigo.migration..")
+            .should()
+            .resideInAnyPackage("io.taskmigo.migration.application..", "io.taskmigo.migration.infrastructure..");
+
+        // Act + Assert
+        rule.check(classes);
+    }
+
+    /**
      * Verifies that managed-resource reconciliation consumes provider-owned provisioning boundaries.
      *
      * Given: the migration ManagedResourceReconciler production class.
