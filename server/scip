@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v scip-java >/dev/null 2>&1; then
+  echo "scip-java is required. Install it from https://github.com/scip-code/scip-java/blob/main/docs/getting-started.md" >&2
+  exit 127
+fi
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "$script_dir"
+
+scip_init_script="$(mktemp)"
+trap 'rm -f "$scip_init_script"' EXIT
+
+# Error Prone reaches annotationProcessor through an inherited Gradle configuration,
+# while scip-java checks only direct dependencies before attaching scip-javac there.
+# Add a temporary direct dependency so the CLI can place its compiler plugin correctly.
+cat > "$scip_init_script" <<'GRADLE'
+allprojects {
+    pluginManager.withPlugin("java") {
+        def sentinel = layout.buildDirectory.dir("scip-annotation-processor-sentinel")
+        dependencies.add("annotationProcessor", files(sentinel))
+        dependencies.add("testAnnotationProcessor", files(sentinel))
+    }
+}
+GRADLE
+
+target_root="$script_dir/build/scip-targetroot"
+
+scip-java index --build-tool=gradle --output index.scip --targetroot "$target_root" -- \
+  --init-script "$scip_init_script" \
+  clean scipPrintDependencies scipCompileAll
+
+# Use a stable logical source root and serial aggregation so index.scip is byte-reproducible.
+scip-java aggregate \
+  --no-parallel \
+  --cwd=/server \
+  --output="$script_dir/index.scip" \
+  "$target_root"
