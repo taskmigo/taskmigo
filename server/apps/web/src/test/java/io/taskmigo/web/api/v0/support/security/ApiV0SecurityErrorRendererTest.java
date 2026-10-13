@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import io.taskmigo.web.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.api.v0.support.response.ApiResponseFactory;
 import java.io.IOException;
+import java.time.Instant;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -60,8 +61,14 @@ class ApiV0SecurityErrorRendererTest {
 
     private void assertFailure(HttpStatus status, String messageCode, String messageText, String errorCode)
         throws IOException {
-        @SuppressWarnings("unchecked")
-        ApiResponse<Void, ApiResponse.BasicMeta> body = mock(ApiResponse.class);
+        ApiResponse<Void, ApiResponse.BasicMeta> body = new ApiResponse<>(
+            false,
+            status.value(),
+            new ApiResponse.Message(messageCode, messageText),
+            null,
+            new ApiResponse.BasicMeta(new ApiResponse.Execution(Instant.EPOCH, 0)),
+            null
+        );
         when(
             this.responses.failureBody(eq(status), eq(messageCode), eq(messageText), any(ApiResponse.Error.class))
         ).thenReturn(body);
