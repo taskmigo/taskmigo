@@ -53,7 +53,7 @@ tasks.withType<JavaCompile>().configureEach {
 
 tasks.named<Test>("test") {
     filter {
-        excludeTestsMatching("io.taskmigo.web.adapter.in.http.api.OpenApiGenerationIntegrationTest")
+        excludeTestsMatching("io.taskmigo.web.api.OpenApiGenerationIntegrationTest")
     }
 }
 
@@ -64,7 +64,7 @@ tasks.register<Test>("generateOpenApi") {
     testClassesDirs = sourceSets["test"].output.classesDirs
     classpath = sourceSets["test"].runtimeClasspath
     filter {
-        includeTestsMatching("io.taskmigo.web.adapter.in.http.api.OpenApiGenerationIntegrationTest")
+        includeTestsMatching("io.taskmigo.web.api.OpenApiGenerationIntegrationTest")
     }
     outputs.upToDateWhen { false }
 }

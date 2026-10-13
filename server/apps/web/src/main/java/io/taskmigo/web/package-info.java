@@ -1,4 +1,4 @@
-/// Hosts the web executable application's driving adapters, framework-specific driven adapters, and composition.
+/// Hosts the web executable application's API, Security/session, and OAuth runtime integration.
 @ApplicationModule(
     allowedDependencies = {
         "foundation",

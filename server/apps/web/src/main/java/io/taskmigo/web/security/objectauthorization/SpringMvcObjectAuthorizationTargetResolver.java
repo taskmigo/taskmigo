@@ -1,0 +1,115 @@
+package io.taskmigo.web.security.objectauthorization;
+
+import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
+import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
+import io.taskmigo.query.QueryOperation;
+import io.taskmigo.query.QuerySchemaView;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.context.annotation.Primary;
+import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+
+/// Derives Object Authorization target metadata from Spring MVC handler mappings and declared query operations.
+@Component
+@Primary
+public final class SpringMvcObjectAuthorizationTargetResolver
+    implements ObjectAuthorizationTargetResolver, SmartInitializingSingleton
+{
+
+    private final ObjectProvider<RequestMappingHandlerMapping> handlerMappings;
+    private final List<QuerySchemaView> schemas;
+    private List<Route> routes = List.of();
+
+    public SpringMvcObjectAuthorizationTargetResolver(
+        ObjectProvider<RequestMappingHandlerMapping> handlerMappings,
+        List<QuerySchemaView> schemas
+    ) {
+        this.handlerMappings = handlerMappings;
+        this.schemas = List.copyOf(schemas);
+    }
+
+    @Override
+    public void afterSingletonsInstantiated() {
+        this.routes = this.handlerMappings
+            .getObject()
+            .getHandlerMethods()
+            .entrySet()
+            .stream()
+            .flatMap(entry -> this.routes(entry.getKey(), entry.getValue()).stream())
+            .toList();
+    }
+
+    @Override
+    public List<QuerySchemaView> applicable(String method, StatementTargetPathMatcher pathMatcher) {
+        return this.routes
+            .stream()
+            .filter(route -> route.matches(method, pathMatcher))
+            .map(Route::schema)
+            .distinct()
+            .toList();
+    }
+
+    private List<Route> routes(RequestMappingInfo mapping, HandlerMethod handler) {
+        Optional<QuerySchemaView> schema = this.schema(handler);
+        if (schema.isEmpty()) {
+            return List.of();
+        }
+        QuerySchemaView declaredSchema = schema.orElseThrow();
+        String version = mapping.getVersionCondition().getVersion();
+        List<String> methods = mapping.getMethodsCondition().getMethods().isEmpty()
+            ? List.of("*")
+            : mapping.getMethodsCondition().getMethods().stream().map(RequestMethod::name).toList();
+        return mapping
+            .getPatternValues()
+            .stream()
+            .map(pattern -> version == null ? pattern : pattern.replace("{version}", version))
+            .flatMap(route -> methods.stream().map(method -> new Route(method, route, declaredSchema)))
+            .toList();
+    }
+
+    private Optional<QuerySchemaView> schema(HandlerMethod handler) {
+        long authorizationCount = Arrays.stream(handler.getMethodParameters())
+            .filter(parameter -> parameter.getParameterType() == ObjectAuthorizationPredicate.class)
+            .count();
+        if (authorizationCount == 0) {
+            return Optional.empty();
+        }
+        if (authorizationCount != 1) {
+            throw new IllegalStateException("A handler may declare only one ObjectAuthorizationPredicate");
+        }
+        QueryOperation operation = handler.getMethodAnnotation(QueryOperation.class);
+        if (operation == null) {
+            throw new IllegalStateException("Object Authorization handler must declare @QueryOperation");
+        }
+        List<QuerySchemaView> matches = this.schemas
+            .stream()
+            .filter(candidate -> candidate.operation().equals(operation.value()))
+            .toList();
+        if (matches.size() != 1) {
+            throw new IllegalStateException(
+                "Expected exactly one Object Authorization Query Schema for operation " +
+                    operation.value() +
+                    ", found " +
+                    matches.size()
+            );
+        }
+        return Optional.of(matches.getFirst());
+    }
+
+    private record Route(String method, String path, QuerySchemaView schema) {
+        private boolean matches(String statementMethod, StatementTargetPathMatcher pathMatcher) {
+            return (
+                ("*".equals(statementMethod) || "*".equals(this.method) || this.method.equals(statementMethod)) &&
+                pathMatcher.matches(this.path)
+            );
+        }
+    }
+}
