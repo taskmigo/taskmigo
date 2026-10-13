@@ -11,7 +11,7 @@ import io.taskmigo.authorization.statement.application.api.StatementService;
 import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.application.api.UserRegistrationService;
 import io.taskmigo.identity.user.application.api.UserService;
-import io.taskmigo.web.adapter.in.http.api.v0.testing.ApiIntegrationTestSupport;
+import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;

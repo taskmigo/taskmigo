@@ -7,7 +7,7 @@ import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementException;
 import io.taskmigo.authorization.statement.domain.Statement;
 import io.taskmigo.foundation.DomainFailureType;
-import io.taskmigo.web.adapter.in.http.api.v0.testing.ApiIntegrationTestSupport;
+import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CyclicBarrier;
