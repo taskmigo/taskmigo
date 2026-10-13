@@ -32,9 +32,11 @@
 ### Task 1: Lock the final Migration package contract with a RED architecture test
 
 **Files:**
+
 - Modify: `server/apps/migration/src/test/java/io/taskmigo/migration/MigrationPackageArchitectureTest.java`
 
 **Interfaces:**
+
 - Consumes: current Migration production packages at the Phase 4 integration-branch baseline.
 - Produces: an ArchUnit regression gate rejecting `io.taskmigo.migration.application..` and `io.taskmigo.migration.infrastructure..` as retired generic architecture buckets.
 
@@ -55,6 +57,7 @@ Commit the architecture-test-only change so remote CI can independently prove th
 ### Task 2: Move Migration production code to direct runtime responsibilities
 
 **Files:**
+
 - Move/modify: `server/apps/migration/src/main/java/io/taskmigo/migration/application/model/InstallationPlan.java` → `server/apps/migration/src/main/java/io/taskmigo/migration/installation/InstallationPlan.java`
 - Move/modify: `server/apps/migration/src/main/java/io/taskmigo/migration/application/model/ManagedOAuthClient.java` → `server/apps/migration/src/main/java/io/taskmigo/migration/oauth/ManagedOAuthClient.java`
 - Move/modify: `server/apps/migration/src/main/java/io/taskmigo/migration/application/service/MigrationInstaller.java` → `server/apps/migration/src/main/java/io/taskmigo/migration/installation/MigrationInstaller.java`
@@ -70,6 +73,7 @@ Commit the architecture-test-only change so remote CI can independently prove th
 - Modify: `server/apps/migration/src/test/java/io/taskmigo/migration/MigrationIntegrationTest.java`
 
 **Interfaces:**
+
 - Consumes: provider-owned Authorization/Identity provisioning APIs, Spring Authorization Server JDBC repository, Spring transaction manager, PasswordEncoder, YAML resource loader.
 - Produces: the same one-shot Migration runtime behavior with internal package names `installation`, `bootstrap`, `oauth`, and `configuration`.
 
@@ -100,10 +104,12 @@ Expected: PASS.
 ### Task 3: Final review and PR handoff
 
 **Files:**
+
 - Review the complete child-branch diff against `server/ARCHITECTURE.md` and #252.
 - Update the child PR body using `.github/pull_request_template.md`.
 
 **Interfaces:**
+
 - Consumes: final child-branch diff and exact CI SHA.
 - Produces: a focused PR targeting `refactor/252-onion-identity-user` with no behavior change and traceable Phase 4 status.
 
