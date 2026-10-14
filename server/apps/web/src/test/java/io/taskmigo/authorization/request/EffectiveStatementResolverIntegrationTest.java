@@ -2,15 +2,15 @@ package io.taskmigo.authorization.request;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.taskmigo.authorization.request.application.port.out.EffectiveStatement;
-import io.taskmigo.authorization.request.application.port.out.EffectiveStatementResolver;
-import io.taskmigo.authorization.role.application.port.in.api.RoleAuthorizationService;
-import io.taskmigo.authorization.role.application.port.in.api.RoleService;
+import io.taskmigo.authorization.request.application.resolution.EffectiveStatement;
+import io.taskmigo.authorization.request.application.resolution.EffectiveStatementResolver;
+import io.taskmigo.authorization.role.application.api.RoleAuthorizationService;
+import io.taskmigo.authorization.role.application.api.RoleService;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
-import io.taskmigo.authorization.statement.application.port.in.api.StatementService;
-import io.taskmigo.identity.user.application.port.in.api.UserRegistrationService;
-import io.taskmigo.web.adapter.in.http.api.v0.testing.ApiIntegrationTestSupport;
+import io.taskmigo.authorization.statement.application.api.StatementService;
+import io.taskmigo.identity.user.application.api.UserRegistrationService;
+import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
 import jakarta.persistence.EntityManagerFactory;
 import java.util.List;
 import java.util.Set;

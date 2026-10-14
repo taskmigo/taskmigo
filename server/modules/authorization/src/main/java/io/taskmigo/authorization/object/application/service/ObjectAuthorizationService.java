@@ -5,8 +5,8 @@ import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfil
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicates;
-import io.taskmigo.authorization.object.application.port.in.api.ObjectAuthorization;
-import io.taskmigo.authorization.object.application.port.out.ObjectAuthorizationTargetResolver;
+import io.taskmigo.authorization.object.application.api.ObjectAuthorization;
+import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.object.domain.ObjectAuthorizationPredicateComposer;
 import io.taskmigo.authorization.object.domain.ObjectAuthorizationPredicateComposer.Rule;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;

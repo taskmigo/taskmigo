@@ -1,0 +1,30 @@
+package io.taskmigo.authorization.request.configuration;
+
+import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
+import io.taskmigo.authorization.request.application.api.RequestAuthorization;
+import io.taskmigo.authorization.request.application.resolution.EffectiveStatementResolver;
+import io.taskmigo.authorization.request.application.service.RequestAuthorizationService;
+import io.taskmigo.authorization.request.application.service.StatementArtifactFactory;
+import io.taskmigo.language.LanguageCompiler;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration(proxyBeanMethods = false)
+class RequestAuthorizationConfiguration {
+
+    @Bean
+    StatementArtifactFactory statementArtifactFactory(
+        LanguageCompiler compiler,
+        ObjectAuthorizationTargetResolver targetResolver
+    ) {
+        return new StatementArtifactFactory(compiler, targetResolver);
+    }
+
+    @Bean
+    RequestAuthorization requestAuthorization(
+        EffectiveStatementResolver statements,
+        StatementArtifactFactory artifacts
+    ) {
+        return new RequestAuthorizationService(statements, artifacts);
+    }
+}

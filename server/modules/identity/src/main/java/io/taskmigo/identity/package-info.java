@@ -2,19 +2,18 @@
 @ApplicationModule(
     allowedDependencies = {
         "foundation",
-        "audit :: append-input",
+        "audit :: append",
         "audit :: events",
         "audit :: model",
-        "audit :: privacy-input",
-        "database :: criteria",
+        "audit :: privacy",
         "jpaquery",
         "query",
         "query :: model",
         "authorization :: object",
         "authorization :: object-model",
-        "authorization :: subject-resolution-port",
+        "authorization :: subject-resolution",
         "authorization :: subject",
-        "authorization :: subject-input",
+        "authorization :: subject-use-cases",
     }
 )
 @NullMarked

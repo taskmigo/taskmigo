@@ -3,13 +3,13 @@
     allowedDependencies = {
         "foundation",
         "authorization :: object",
-        "authorization :: object-target-resolution-port",
+        "authorization :: object-target-resolution",
         "authorization :: provisioning",
-        "authorization :: provisioning-input",
+        "authorization :: provisioning-use-cases",
         "authorization :: role",
         "authorization :: statement",
         "identity :: provisioning",
-        "identity :: provisioning-input",
+        "identity :: provisioning-use-cases",
         "identity :: user",
         "identity :: group",
     }

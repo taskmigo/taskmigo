@@ -18,10 +18,9 @@ dependencies {
     testImplementation(project(":testing:architecture"))
 
     implementation(project(":modules:foundation:spring"))
-    implementation(project(":modules:database"))
-    implementation(project(":modules:audit"))
-    implementation(project(":modules:access-control"))
+    implementation(project(":modules:authorization"))
     implementation(project(":modules:identity"))
+    runtimeOnly(project(":modules:database"))
     runtimeOnly(libs.jspecify)
     implementation(libs.spring.boot.core.starter)
     implementation(libs.spring.boot.starter.jdbc)

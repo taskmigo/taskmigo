@@ -1,0 +1,105 @@
+package io.taskmigo.authorization.statement.persistence;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import io.taskmigo.authorization.provisioning.application.api.AuthorizationProvisioningService;
+import io.taskmigo.authorization.request.application.resolution.EffectiveStatement;
+import io.taskmigo.authorization.request.application.resolution.EffectiveStatementResolver;
+import io.taskmigo.authorization.statement.Effect;
+import io.taskmigo.authorization.statement.Scope;
+import io.taskmigo.authorization.statement.application.api.StatementService;
+import io.taskmigo.identity.user.UserMutationActor;
+import io.taskmigo.identity.user.application.api.UserRegistrationService;
+import io.taskmigo.identity.user.application.api.UserService;
+import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
+import java.time.Instant;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+class StatementTimestampIntegrationTest extends ApiIntegrationTestSupport {
+
+    private final StatementService statements;
+    private final AuthorizationProvisioningService provisioning;
+    private final StatementRepository statementRepository;
+    private final UserRegistrationService registrations;
+    private final UserService users;
+    private final EffectiveStatementResolver resolver;
+
+    StatementTimestampIntegrationTest(
+        StatementService statements,
+        AuthorizationProvisioningService provisioning,
+        StatementRepository statementRepository,
+        UserRegistrationService registrations,
+        UserService users,
+        EffectiveStatementResolver resolver
+    ) {
+        this.statements = statements;
+        this.provisioning = provisioning;
+        this.statementRepository = statementRepository;
+        this.registrations = registrations;
+        this.users = users;
+        this.resolver = resolver;
+    }
+
+    /**
+     * Verifies that statement persistence timestamps advance independently from effective authorization state.
+     *
+     * Given: a statement assigned to a User and its initial persisted timestamps.
+     * Expect: reconciling the statement preserves created_at, advances updated_at, and subsequent resolution returns
+     * the newly persisted Statement without exposing timestamp metadata as an authorization revision.
+     */
+    @Test
+    @DisplayName("advances statement updated_at while resolving the latest authoritative statement")
+    void shouldAdvanceUpdatedAtAndResolveLatestStatementWhenStatementIsUpdated() {
+        // Arrange
+        String suffix = UUID.randomUUID().toString();
+        String statementCode = "timestamp-" + suffix;
+        UUID statementId = this.statements.create(
+            statementCode,
+            "before",
+            Effect.ALLOW,
+            Scope.REQUEST,
+            "GET",
+            "/timestamp",
+            "return true;"
+        );
+        UUID userId = this.registrations.register(
+            "timestamp-user-" + suffix,
+            Set.of("timestamp-" + suffix + "@example.com"),
+            "Timestamp",
+            "User",
+            Set.of(),
+            Set.of()
+        );
+        this.users.setStatements(userId, List.of(statementId), new UserMutationActor(userId, "audit-test"));
+        StatementEntity created = this.statementRepository.findById(statementId).orElseThrow();
+        Instant createdAt = created.createdAt();
+        Instant initialUpdatedAt = created.updatedAt();
+        EffectiveStatement initialResolved = this.resolver.resolve(userId).getFirst();
+
+        // Act
+        this.provisioning.reconcileStatement(
+            statementCode,
+            "after",
+            Effect.ALLOW,
+            Scope.REQUEST,
+            "GET",
+            "/timestamp",
+            "return true;"
+        );
+        StatementEntity updated = this.statementRepository.findById(statementId).orElseThrow();
+        EffectiveStatement updatedResolved = this.resolver.resolve(userId).getFirst();
+
+        // Assert
+        assertThat(initialUpdatedAt).isAfterOrEqualTo(createdAt);
+        assertThat(initialResolved.statement().id()).isEqualTo(statementId);
+        assertThat(initialResolved.statement().description()).isEqualTo("before");
+        assertThat(updated.createdAt()).isEqualTo(createdAt);
+        assertThat(updated.updatedAt()).isAfter(initialUpdatedAt);
+        assertThat(updatedResolved.statement().id()).isEqualTo(statementId);
+        assertThat(updatedResolved.statement().description()).isEqualTo("after");
+    }
+}

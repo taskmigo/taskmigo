@@ -18,11 +18,8 @@ dependencies {
 
     implementation(platform(libs.spring.boot.bom))
     implementation(project(":modules:foundation:spring"))
-    implementation(project(":modules:query"))
-    implementation(project(":modules:audit"))
-    implementation(project(":modules:access-control"))
-    implementation(project(":modules:database"))
     implementation(project(":modules:identity"))
+    runtimeOnly(project(":modules:database"))
     runtimeOnly(libs.jspecify)
     runtimeOnly(libs.postgresql.driver)
     implementation(libs.spring.boot.core.starter)

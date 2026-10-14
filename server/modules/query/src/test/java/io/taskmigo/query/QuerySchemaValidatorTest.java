@@ -3,7 +3,6 @@ package io.taskmigo.query;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.query.model.QueryExpression;
 import java.util.Collection;
 import java.util.List;

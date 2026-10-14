@@ -13,7 +13,6 @@ dependencies {
 
     implementation(platform(libs.spring.boot.bom))
     api(project(":modules:foundation:core"))
-    implementation(project(":modules:database"))
 
     implementation(libs.spring.boot.core.starter)
     implementation(libs.spring.boot.starter.data.jpa)

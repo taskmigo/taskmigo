@@ -1,11 +1,11 @@
 package io.taskmigo.authorization.embeddedlanguage;
 
-import io.taskmigo.foundation.TypeDescriptor;
 import io.taskmigo.language.EnvironmentSchema;
 import io.taskmigo.language.LanguageContract;
 import io.taskmigo.language.LanguageType;
 import io.taskmigo.query.QueryFieldDescriptor;
 import io.taskmigo.query.QuerySchemaView;
+import io.taskmigo.query.TypeDescriptor;
 import java.time.temporal.TemporalAccessor;
 import java.util.Collection;
 import java.util.HashMap;

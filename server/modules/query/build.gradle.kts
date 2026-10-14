@@ -11,12 +11,10 @@ dependencies {
     testImplementation(libs.spring.modulith.starter.test)
     testImplementation(libs.archunit.junit5)
 
-    implementation(platform(libs.spring.boot.bom))
     api(project(":modules:foundation:core"))
-    implementation(libs.spring.boot.core.starter)
     api(project(":modules:language"))
 
-    testImplementation(libs.spring.boot.starter.test)
+    testImplementation(platform(libs.spring.boot.bom))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.assertj:assertj-core")
 }

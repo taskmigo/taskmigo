@@ -1,25 +1,25 @@
-/// Hosts the web executable application's driving adapters, framework-specific driven adapters, and composition.
+/// Hosts the web executable application's API, Security/session, and OAuth runtime integration.
 @ApplicationModule(
     allowedDependencies = {
         "foundation",
         "audit :: model",
-        "audit :: query-input",
+        "audit :: query",
         "query",
         "authorization :: object",
-        "authorization :: object-input",
-        "authorization :: object-target-resolution-port",
+        "authorization :: object-use-cases",
+        "authorization :: object-target-resolution",
         "authorization :: request",
-        "authorization :: request-input",
+        "authorization :: request-use-cases",
         "authorization :: role",
-        "authorization :: role-input",
+        "authorization :: role-use-cases",
         "authorization :: statement",
-        "authorization :: statement-input",
+        "authorization :: statement-use-cases",
         "identity :: user",
-        "identity :: user-input",
+        "identity :: user-use-cases",
         "identity :: group",
-        "identity :: group-input",
+        "identity :: group-use-cases",
         "identity :: configuration",
-        "identity :: configuration-input",
+        "identity :: configuration-use-cases",
     }
 )
 @NullMarked

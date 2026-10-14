@@ -1,6 +1,6 @@
 /// Publishes authorization Statement data contracts.
 ///
-/// Statement use cases are exposed separately through the `statement-input` named interface.
+/// Statement use cases are exposed separately through the `statement-use-cases` named interface.
 @NamedInterface("statement")
 @NullMarked
 package io.taskmigo.authorization.statement;

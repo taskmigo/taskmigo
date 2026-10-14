@@ -4,23 +4,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
-import io.taskmigo.authorization.provisioning.application.port.in.api.AuthorizationProvisioningService;
+import io.taskmigo.authorization.provisioning.application.api.AuthorizationProvisioningService;
 import io.taskmigo.authorization.role.RoleInfo;
-import io.taskmigo.authorization.role.application.port.in.api.RoleService;
+import io.taskmigo.authorization.role.application.api.RoleService;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
-import io.taskmigo.authorization.statement.application.port.in.api.StatementService;
-import io.taskmigo.authorization.subject.application.port.in.api.SubjectRoleQueryService;
-import io.taskmigo.identity.group.application.port.in.api.GroupService;
-import io.taskmigo.identity.provisioning.application.port.in.api.GroupProvisioningService;
-import io.taskmigo.identity.provisioning.application.port.in.api.IdentityProvisioningService;
+import io.taskmigo.authorization.statement.application.api.StatementService;
+import io.taskmigo.authorization.subject.application.api.SubjectRoleQueryService;
+import io.taskmigo.identity.group.application.api.GroupService;
+import io.taskmigo.identity.provisioning.application.api.GroupProvisioningService;
+import io.taskmigo.identity.provisioning.application.api.IdentityProvisioningService;
 import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserInfo;
-import io.taskmigo.identity.user.application.port.in.api.UserService;
-import io.taskmigo.migration.application.model.InstallationPlan;
-import io.taskmigo.migration.application.service.MigrationInstaller;
+import io.taskmigo.identity.user.application.api.UserService;
 import io.taskmigo.migration.bootstrap.MigrationResourceLoader;
+import io.taskmigo.migration.installation.InstallationPlan;
+import io.taskmigo.migration.installation.MigrationInstaller;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -497,7 +497,6 @@ class MigrationIntegrationTest {
         this.roles.setChildRoles(root, Set.of(middle));
         this.roles.setChildRoles(middle, Set.of(leaf));
         assertThat(this.roleClosureCount(root, leaf)).isEqualTo(1);
-
         // Act
         boolean removed = this.authorizationProvisioning.deleteRole(middleCode);
 
