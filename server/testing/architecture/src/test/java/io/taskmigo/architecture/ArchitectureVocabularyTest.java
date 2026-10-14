@@ -20,7 +20,7 @@ class ArchitectureVocabularyTest {
             .stream()
             .map(JavaClass::getName)
             .filter(name -> name.startsWith("io.taskmigo.architecture."))
-            .filter(name -> name.contains("Hexagonal"))
+            .filter(name -> name.contains("Hexagonal") || name.startsWith("io.taskmigo.architecture.fixtures."))
             .toList();
 
         assertThat(obsoleteTypes).isEmpty();
