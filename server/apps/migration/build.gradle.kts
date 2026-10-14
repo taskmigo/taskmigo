@@ -19,7 +19,7 @@ dependencies {
 
     implementation(project(":modules:foundation:spring"))
     implementation(project(":modules:audit"))
-    implementation(project(":modules:access-control"))
+    implementation(project(":modules:authorization"))
     implementation(project(":modules:identity"))
     runtimeOnly(project(":modules:database"))
     runtimeOnly(libs.jspecify)
