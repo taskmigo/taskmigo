@@ -43,7 +43,7 @@ class RequestOnionArchitectureTest {
         noClasses()
             .should()
             .resideInAnyPackage(
-                "io.taskmigo.authorization.request..application.port.in..",
+                "io.taskmigo.authorization.request..application.port..",
                 "io.taskmigo.authorization.request..adapter..",
                 "io.taskmigo.authorization.request..composition..",
                 "io.taskmigo.authorization.request..infrastructure.."
