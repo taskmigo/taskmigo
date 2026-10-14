@@ -18,9 +18,6 @@ dependencies {
 
     implementation(platform(libs.spring.boot.bom))
     implementation(project(":modules:foundation:spring"))
-    implementation(project(":modules:query"))
-    implementation(project(":modules:audit"))
-    implementation(project(":modules:authorization"))
     implementation(project(":modules:identity"))
     runtimeOnly(project(":modules:database"))
     runtimeOnly(libs.jspecify)
