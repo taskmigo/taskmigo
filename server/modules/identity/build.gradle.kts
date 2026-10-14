@@ -17,7 +17,7 @@ dependencies {
     api(project(":modules:foundation:core"))
     implementation(project(":modules:audit"))
     api(project(":modules:query"))
-    api(project(":modules:access-control"))
+    api(project(":modules:authorization"))
     implementation(project(":modules:jpa-query"))
     implementation(project(":modules:language"))
 

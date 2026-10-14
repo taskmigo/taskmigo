@@ -13,7 +13,7 @@ include(
     ":modules:language",
     ":modules:query",
     ":modules:jpa-query",
-    ":modules:access-control",
+    ":modules:authorization",
     ":modules:database",
     ":modules:audit",
     ":modules:identity",
@@ -23,5 +23,3 @@ include(
     ":apps:web",
     ":apps:worker",
 )
-
-project(":modules:access-control").projectDir = file("modules/authorization")

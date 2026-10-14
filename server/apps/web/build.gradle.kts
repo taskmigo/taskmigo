@@ -23,7 +23,7 @@ dependencies {
     implementation(project(":modules:foundation:spring"))
     implementation(project(":modules:query"))
     implementation(project(":modules:audit"))
-    implementation(project(":modules:access-control"))
+    implementation(project(":modules:authorization"))
     implementation(project(":modules:identity"))
     // Provides datasource/JPA runtime configuration; apps/migration owns migration execution.
     runtimeOnly(project(":modules:database"))

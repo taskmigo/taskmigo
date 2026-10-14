@@ -32,6 +32,51 @@ Their responsibilities are runtime composition and framework adaptation:
 
 Reusable modules must not depend back on executable applications.
 
+## Final project graph
+
+The final server project graph is responsibility-oriented. Solid arrows below are direct compile/runtime project dependencies; dashed arrows are runtime-only Database dependencies.
+
+```mermaid
+flowchart TB
+    web[apps:web] --> foundationSpring[foundation:spring]
+    web --> query[query]
+    web --> audit[audit]
+    web --> authorization[authorization]
+    web --> identity[identity]
+
+    worker[apps:worker] --> foundationSpring
+    worker --> identity
+
+    migration[apps:migration] --> foundationSpring
+    migration --> authorization
+    migration --> identity
+
+    identity --> foundationCore[foundation:core]
+    identity --> audit
+    identity --> query
+    identity --> authorization
+    identity --> jpaQuery[jpa-query]
+    identity --> language[language]
+
+    authorization --> foundationCore
+    authorization --> language
+    authorization --> query
+    authorization --> jpaQuery
+
+    audit --> foundationCore
+    query --> foundationCore
+    query --> language
+    jpaQuery --> foundationCore
+    jpaQuery --> query
+    foundationSpring --> foundationCore
+
+    web -. runtimeOnly .-> database[database]
+    worker -. runtimeOnly .-> database
+    migration -. runtimeOnly .-> database
+```
+
+Database remains a runtime capability for datasource/JPA/PostgreSQL and migration resources rather than a compile-time dependency bucket for business modules.
+
 ## Package conventions
 
 Business bounded contexts use package-by-feature first. Inside a feature, create only responsibilities that actually exist:
@@ -103,7 +148,24 @@ Removing Hexagonal terminology does not remove dependency inversion. An applicat
 
 Cross-context dependencies use deliberately published provider-owned contracts or events. Consumers must not reach into another bounded context's private persistence, framework, or implementation packages.
 
-Spring Modulith named interfaces should describe business or capability ownership rather than transport direction.
+Spring Modulith named interfaces describe business or capability ownership rather than transport direction. Published use-case surfaces use names such as `user-use-cases`, `role-use-cases`, and `object-use-cases`; model/event contracts are published separately when consumers need them.
+
+Executable modules declare only the named interfaces they actually consume. For example, Worker is limited to `identity :: user-use-cases`; it does not receive broad access to Identity or unrelated modules merely because those modules are present on the runtime classpath.
+
+## Gradle dependency exposure
+
+Use `api` only when a library's public contract intentionally exposes types owned by another project. Use `implementation` for implementation details and `runtimeOnly` for runtime capabilities that are not part of the consumer compile contract.
+
+The current exported project dependencies are intentional:
+
+- Identity exports Foundation Core, Query, and Authorization because published Identity use cases expose `OffsetPage`, `QueryPredicate`, and authorization predicate types.
+- Authorization exports Foundation Core, Language, and Query because its published contracts expose pagination/query types and compiled Language artifacts.
+- Audit exports Foundation Core because its published query contract exposes Foundation pagination types.
+- Query exports Foundation Core and Language because those types participate in its public query/compiler model.
+- JPA Query exports Foundation Core, Query, and its JPA/Spring Data type system because it is deliberately a JPA-specific supporting capability.
+- Foundation Spring exports Foundation Core and the framework APIs that form that technical library's public surface.
+
+All other project dependencies remain `implementation` or `runtimeOnly`. Executable applications depend directly only on modules they compile against; they do not repeat transitive dependencies merely to mirror the runtime graph.
 
 ## Foundation and supporting capabilities
 
@@ -125,12 +187,12 @@ The reusable baseline enforces:
 
 Bounded contexts may add stricter rules for published contracts, cross-context access, security, transactions, or optimized query paths.
 
-Regression fixtures in the architecture test project intentionally violate representative rules. Their tests must fail when the corresponding ArchUnit rule is applied, proving that the shared rules detect invalid dependency directions instead of merely documenting them.
+The active regression fixtures live under the Onion-specific `onionfixtures` namespace and intentionally violate representative rules. Their tests must fail when the corresponding ArchUnit rule is applied, proving that the shared rules detect invalid dependency directions instead of merely documenting them. The retired Hexagonal fixture namespace and `HexagonalOnionRules` helper are not part of the final architecture test surface.
 
-## Migration compatibility
+## Consolidated state
 
-The repository is migrating incrementally by coherent phases. `HexagonalOnionRules` remains temporarily for capabilities that have not yet been migrated. New or migrated capabilities must use responsibility-oriented Onion/DDD rules instead of introducing new mandatory Hexagonal package vocabulary.
+The #252 migration no longer carries a compatibility architecture alongside the final model. Retired Hexagonal-only package conventions are protected by capability-specific regression tests where useful, but no shared helper, package alias, or compatibility fixture is required to keep the old topology working.
 
-The transitional helper and obsolete Hexagonal-only package conventions are removed during the consolidation phase after all dependent capabilities have migrated.
+Internal package compatibility is intentionally not preserved for obsolete architecture paths because Taskmigo is still v0. Provider-owned named interfaces and Gradle project names now describe their final capability ownership.
 
-This migration must not change business behavior, public HTTP/API contracts, authorization semantics, transaction semantics, database behavior, or persistence/query performance.
+This architecture migration must not change business behavior, public HTTP/API contracts, authorization semantics, transaction semantics, database behavior, or persistence/query performance.
