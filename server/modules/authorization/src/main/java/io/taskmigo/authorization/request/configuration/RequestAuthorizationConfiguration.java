@@ -2,7 +2,7 @@ package io.taskmigo.authorization.request.configuration;
 
 import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.request.application.api.RequestAuthorization;
-import io.taskmigo.authorization.request.application.port.out.EffectiveStatementResolver;
+import io.taskmigo.authorization.request.application.resolution.EffectiveStatementResolver;
 import io.taskmigo.authorization.request.application.service.RequestAuthorizationService;
 import io.taskmigo.authorization.request.application.service.StatementArtifactFactory;
 import io.taskmigo.language.LanguageCompiler;

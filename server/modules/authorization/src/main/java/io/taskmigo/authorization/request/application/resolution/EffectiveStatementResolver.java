@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.request.application.port.out;
+package io.taskmigo.authorization.request.application.resolution;
 
 import java.util.List;
 import java.util.UUID;
