@@ -1,4 +1,4 @@
-package io.taskmigo.authorization.request.application.port.out;
+package io.taskmigo.authorization.request.application.resolution;
 
 import io.taskmigo.authorization.statement.StatementInfo;
 import java.util.Objects;
