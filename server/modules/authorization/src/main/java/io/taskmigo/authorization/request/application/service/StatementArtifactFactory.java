@@ -4,7 +4,7 @@ import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfile;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
 import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
-import io.taskmigo.authorization.request.application.port.out.EffectiveStatement;
+import io.taskmigo.authorization.request.application.resolution.EffectiveStatement;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.authorization.statement.StatementInfo;
