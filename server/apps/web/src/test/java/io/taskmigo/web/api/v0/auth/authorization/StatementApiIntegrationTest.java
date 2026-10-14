@@ -57,7 +57,7 @@ class StatementApiIntegrationTest extends ApiIntegrationTestSupport {
 
         // Assert
         assertThat(response)
-            .contains("\"code\":\"resource.statement.listed\"")
+            .contains("\"code\":\"users_read\"")
             .contains("\"method\":\"GET\"")
             .contains("\"scope\":\"REQUEST\"")
             .contains("return request.path == \\\"/api/v0/users\\\";");
