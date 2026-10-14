@@ -3,8 +3,8 @@ package io.taskmigo.authorization.statement.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.taskmigo.authorization.provisioning.application.api.AuthorizationProvisioningService;
-import io.taskmigo.authorization.request.application.port.out.EffectiveStatement;
-import io.taskmigo.authorization.request.application.port.out.EffectiveStatementResolver;
+import io.taskmigo.authorization.request.application.resolution.EffectiveStatement;
+import io.taskmigo.authorization.request.application.resolution.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.application.api.StatementService;

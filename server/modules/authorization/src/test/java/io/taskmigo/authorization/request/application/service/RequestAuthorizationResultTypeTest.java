@@ -5,8 +5,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
-import io.taskmigo.authorization.request.application.port.out.EffectiveStatement;
-import io.taskmigo.authorization.request.application.port.out.EffectiveStatementResolver;
+import io.taskmigo.authorization.request.application.resolution.EffectiveStatement;
+import io.taskmigo.authorization.request.application.resolution.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.ApiInfo;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
