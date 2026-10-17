@@ -10,22 +10,33 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
+import org.jspecify.annotations.Nullable;
 
 /// Represents a type-safe singular JPA attribute path that can be exposed by an operation query schema.
 public final class JpaPath<E, V> {
 
     private final List<SingularAttribute<?, ?>> attributes;
     private final Function<Path<E>, Path<V>> resolver;
+    private final @Nullable Class<V> javaType;
 
-    private JpaPath(List<SingularAttribute<?, ?>> attributes, Function<Path<E>, Path<V>> resolver) {
+    private JpaPath(
+        List<SingularAttribute<?, ?>> attributes,
+        Function<Path<E>, Path<V>> resolver,
+        @Nullable Class<V> javaType
+    ) {
         this.attributes = List.copyOf(attributes);
         this.resolver = Objects.requireNonNull(resolver);
+        this.javaType = javaType;
     }
 
     /// Starts a path at one singular JPA metamodel attribute.
     public static <E, V> JpaPath<E, V> of(SingularAttribute<? super E, V> attribute) {
         Objects.requireNonNull(attribute);
-        return new JpaPath<>(List.of(attribute), root -> Objects.requireNonNull(root.get(attribute)));
+        return new JpaPath<>(
+            List.of(attribute),
+            root -> Objects.requireNonNull(root.get(attribute)),
+            attribute.getJavaType()
+        );
     }
 
     /// Rejects collection-valued paths because collection traversal is outside Enhancement #237.
@@ -42,7 +53,11 @@ public final class JpaPath<E, V> {
         List<SingularAttribute<?, ?>> nested = new ArrayList<>(this.attributes.size() + 1);
         nested.addAll(this.attributes);
         nested.add(attribute);
-        return new JpaPath<>(nested, root -> Objects.requireNonNull(this.resolve(root).get(attribute)));
+        return new JpaPath<>(
+            nested,
+            root -> Objects.requireNonNull(this.resolve(root).get(attribute)),
+            attribute.getJavaType()
+        );
     }
 
     /// Rejects collection-valued traversal from any nested segment.
@@ -58,7 +73,7 @@ public final class JpaPath<E, V> {
 
     /// Returns the Java type of the leaf attribute.
     public TypeDescriptor type() {
-        return TypeDescriptor.of(this.attributes.getLast().getJavaType());
+        return TypeDescriptor.of(this.javaType());
     }
 
     /// Returns whether any singular segment may be null.
@@ -72,8 +87,8 @@ public final class JpaPath<E, V> {
     }
 
     /// Returns the Java type of the leaf attribute for persistence-value coercion.
-    public Class<?> javaType() {
-        return this.attributes.getLast().getJavaType();
+    public Class<V> javaType() {
+        return Objects.requireNonNull(this.javaType, "JPA metamodel leaf Java type is unavailable");
     }
 
     private static void requireTraversable(SingularAttribute<?, ?> attribute) {

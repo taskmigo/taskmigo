@@ -200,7 +200,6 @@ CREATE TABLE oauth2_authorization_consent (
     PRIMARY KEY (registered_client_id, principal_name)
 );
 
-
 CREATE TABLE audit_logs (
     id UUID PRIMARY KEY,
     entity_type VARCHAR(64) NOT NULL,
@@ -232,3 +231,135 @@ CREATE TABLE spring_session_attributes (
     attribute_bytes BYTEA NOT NULL,
     PRIMARY KEY (session_primary_id, attribute_name)
 );
+
+CREATE TABLE eav_schema_definitions (
+    id UUID PRIMARY KEY,
+    schema_key VARCHAR(200) NOT NULL UNIQUE,
+    name VARCHAR(200) NOT NULL,
+    current_version_id UUID,
+    created_at timestamptz(3) DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at timestamptz(3) DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+CREATE TABLE eav_schema_versions (
+    id UUID PRIMARY KEY,
+    schema_definition_id UUID NOT NULL REFERENCES eav_schema_definitions(id) ON DELETE RESTRICT,
+    version BIGINT NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    published_at timestamptz(3),
+    retired_at timestamptz(3),
+    CONSTRAINT uk_eav_schema_versions_definition_version UNIQUE (schema_definition_id, version),
+    CONSTRAINT uk_eav_schema_versions_definition_id UNIQUE (schema_definition_id, id),
+    CONSTRAINT ck_eav_schema_versions_version CHECK (version > 0),
+    CONSTRAINT ck_eav_schema_versions_status CHECK (status IN ('DRAFT', 'PUBLISHED', 'RETIRED')),
+    CONSTRAINT ck_eav_schema_versions_lifecycle CHECK (
+        (status = 'DRAFT' AND published_at IS NULL AND retired_at IS NULL)
+        OR (status = 'PUBLISHED' AND published_at IS NOT NULL AND retired_at IS NULL)
+        OR (status = 'RETIRED' AND published_at IS NOT NULL AND retired_at IS NOT NULL)
+    )
+);
+
+ALTER TABLE eav_schema_definitions
+ADD CONSTRAINT fk_eav_schema_definitions_current_version
+FOREIGN KEY (id, current_version_id)
+REFERENCES eav_schema_versions(schema_definition_id, id);
+
+CREATE TABLE eav_field_definitions (
+    id UUID PRIMARY KEY,
+    schema_version_id UUID NOT NULL REFERENCES eav_schema_versions(id) ON DELETE RESTRICT,
+    field_id UUID NOT NULL,
+    field_key VARCHAR(200) NOT NULL,
+    label VARCHAR(200) NOT NULL,
+    data_type VARCHAR(16) NOT NULL,
+    required BOOLEAN NOT NULL,
+    constraints_json JSONB DEFAULT '{}'::jsonb NOT NULL,
+    CONSTRAINT uk_eav_field_definitions_version_field UNIQUE (schema_version_id, field_id),
+    CONSTRAINT uk_eav_field_definitions_version_key UNIQUE (schema_version_id, field_key),
+    CONSTRAINT uk_eav_field_definitions_version_field_type UNIQUE (schema_version_id, field_id, data_type),
+    CONSTRAINT ck_eav_field_definitions_data_type CHECK (
+        data_type IN ('STRING', 'NUMBER', 'BOOLEAN', 'DATE', 'DATETIME', 'UUID', 'ENUM')
+    )
+);
+
+CREATE TABLE eav_schema_instances (
+    id UUID PRIMARY KEY,
+    schema_definition_id UUID NOT NULL,
+    schema_version_id UUID NOT NULL,
+    CONSTRAINT uk_eav_schema_instances_id_version UNIQUE (id, schema_version_id),
+    CONSTRAINT uk_eav_schema_instances_identity UNIQUE (id, schema_definition_id, schema_version_id),
+    CONSTRAINT fk_eav_schema_instances_version FOREIGN KEY (schema_definition_id, schema_version_id)
+        REFERENCES eav_schema_versions(schema_definition_id, id) ON DELETE RESTRICT
+);
+
+CREATE TABLE eav_field_values (
+    schema_instance_id UUID NOT NULL,
+    schema_version_id UUID NOT NULL,
+    field_id UUID NOT NULL,
+    data_type VARCHAR(16) NOT NULL,
+    string_value TEXT,
+    number_value NUMERIC,
+    boolean_value BOOLEAN,
+    date_value DATE,
+    datetime_value timestamptz(3),
+    uuid_value UUID,
+    enum_value VARCHAR(200),
+    PRIMARY KEY (schema_instance_id, field_id),
+    CONSTRAINT fk_eav_field_values_instance FOREIGN KEY (schema_instance_id, schema_version_id)
+        REFERENCES eav_schema_instances(id, schema_version_id) ON DELETE CASCADE,
+    CONSTRAINT fk_eav_field_values_definition FOREIGN KEY (schema_version_id, field_id, data_type)
+        REFERENCES eav_field_definitions(schema_version_id, field_id, data_type) ON DELETE RESTRICT,
+    CONSTRAINT ck_eav_field_values_data_type CHECK (
+        data_type IN ('STRING', 'NUMBER', 'BOOLEAN', 'DATE', 'DATETIME', 'UUID', 'ENUM')
+    ),
+    CONSTRAINT ck_eav_field_values_typed_value CHECK (
+        (data_type = 'STRING' AND string_value IS NOT NULL AND number_value IS NULL AND boolean_value IS NULL AND date_value IS NULL AND datetime_value IS NULL AND uuid_value IS NULL AND enum_value IS NULL)
+        OR (data_type = 'NUMBER' AND string_value IS NULL AND number_value IS NOT NULL AND boolean_value IS NULL AND date_value IS NULL AND datetime_value IS NULL AND uuid_value IS NULL AND enum_value IS NULL)
+        OR (data_type = 'BOOLEAN' AND string_value IS NULL AND number_value IS NULL AND boolean_value IS NOT NULL AND date_value IS NULL AND datetime_value IS NULL AND uuid_value IS NULL AND enum_value IS NULL)
+        OR (data_type = 'DATE' AND string_value IS NULL AND number_value IS NULL AND boolean_value IS NULL AND date_value IS NOT NULL AND datetime_value IS NULL AND uuid_value IS NULL AND enum_value IS NULL)
+        OR (data_type = 'DATETIME' AND string_value IS NULL AND number_value IS NULL AND boolean_value IS NULL AND date_value IS NULL AND datetime_value IS NOT NULL AND uuid_value IS NULL AND enum_value IS NULL)
+        OR (data_type = 'UUID' AND string_value IS NULL AND number_value IS NULL AND boolean_value IS NULL AND date_value IS NULL AND datetime_value IS NULL AND uuid_value IS NOT NULL AND enum_value IS NULL)
+        OR (data_type = 'ENUM' AND string_value IS NULL AND number_value IS NULL AND boolean_value IS NULL AND date_value IS NULL AND datetime_value IS NULL AND uuid_value IS NULL AND enum_value IS NOT NULL)
+    )
+);
+
+CREATE INDEX ix_eav_field_values_string ON eav_field_values(field_id, string_value, schema_instance_id);
+CREATE INDEX ix_eav_field_values_number ON eav_field_values(field_id, number_value, schema_instance_id);
+CREATE INDEX ix_eav_field_values_boolean ON eav_field_values(field_id, boolean_value, schema_instance_id);
+CREATE INDEX ix_eav_field_values_date ON eav_field_values(field_id, date_value, schema_instance_id);
+CREATE INDEX ix_eav_field_values_datetime ON eav_field_values(field_id, datetime_value, schema_instance_id);
+CREATE INDEX ix_eav_field_values_uuid ON eav_field_values(field_id, uuid_value, schema_instance_id);
+CREATE INDEX ix_eav_field_values_enum ON eav_field_values(field_id, enum_value, schema_instance_id);
+
+CREATE TABLE ticket_types (
+    id UUID PRIMARY KEY,
+    type_key VARCHAR(200) NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    schema_definition_id UUID NOT NULL REFERENCES eav_schema_definitions(id) ON DELETE RESTRICT,
+    created_at timestamptz(3) NOT NULL,
+    updated_at timestamptz(3) NOT NULL,
+    CONSTRAINT uk_ticket_types_key UNIQUE (type_key),
+    CONSTRAINT uk_ticket_types_schema_definition UNIQUE (schema_definition_id),
+    CONSTRAINT ck_ticket_types_key_nonblank CHECK (btrim(type_key) <> ''),
+    CONSTRAINT ck_ticket_types_name_nonblank CHECK (btrim(name) <> ''),
+    CONSTRAINT ck_ticket_types_status CHECK (status IN ('ACTIVE', 'RETIRED'))
+);
+
+CREATE TABLE tickets (
+    id UUID PRIMARY KEY,
+    ticket_type_id UUID NOT NULL REFERENCES ticket_types(id) ON DELETE RESTRICT,
+    schema_instance_id UUID NOT NULL REFERENCES eav_schema_instances(id) ON DELETE RESTRICT,
+    title VARCHAR(500) NOT NULL,
+    status VARCHAR(100) NOT NULL,
+    created_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    created_at timestamptz(3) NOT NULL,
+    updated_at timestamptz(3) NOT NULL,
+    version BIGINT DEFAULT 0 NOT NULL,
+    CONSTRAINT uk_tickets_schema_instance UNIQUE (schema_instance_id),
+    CONSTRAINT ck_tickets_title_nonblank CHECK (btrim(title) <> ''),
+    CONSTRAINT ck_tickets_status_nonblank CHECK (btrim(status) <> ''),
+    CONSTRAINT ck_tickets_version CHECK (version >= 0)
+);
+CREATE INDEX ix_tickets_ticket_type_id ON tickets(ticket_type_id);
+CREATE INDEX ix_tickets_status_id ON tickets(status, id);
+CREATE INDEX ix_tickets_created_at_id ON tickets(created_at, id);

@@ -1,6 +1,7 @@
 package io.taskmigo.authorization.object.model;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QuerySchemaView;
 import java.util.Objects;
 
@@ -13,12 +14,29 @@ public final class ObjectAuthorizationPredicateModels {
         QuerySchemaView schema,
         ObjectAuthorizationExpression expression
     ) {
+        return from(schema, QueryFieldContext.empty(), expression);
+    }
+
+    public static <Q> ObjectAuthorizationPredicate<Q> from(
+        QuerySchemaView schema,
+        QueryFieldContext queryContext,
+        ObjectAuthorizationExpression expression
+    ) {
         Objects.requireNonNull(schema);
-        return wrap(schema.identity(), expression);
+        Objects.requireNonNull(queryContext);
+        return wrap(schema.identity(queryContext), expression);
     }
 
     public static <Q> ObjectAuthorizationPredicate<Q> constant(QuerySchemaView schema, boolean value) {
-        return from(schema, new ObjectAuthorizationExpression.Literal(value));
+        return constant(schema, QueryFieldContext.empty(), value);
+    }
+
+    public static <Q> ObjectAuthorizationPredicate<Q> constant(
+        QuerySchemaView schema,
+        QueryFieldContext queryContext,
+        boolean value
+    ) {
+        return from(schema, queryContext, new ObjectAuthorizationExpression.Literal(value));
     }
 
     public static <Q> ObjectAuthorizationPredicate<Q> constantLike(

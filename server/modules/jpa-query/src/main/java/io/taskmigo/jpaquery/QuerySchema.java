@@ -29,6 +29,7 @@ public abstract class QuerySchema<E> implements QuerySchemaView {
     protected abstract Collection<QueryField<E, ?>> staticFields();
 
     /// Returns runtime-discovered fields for this operation and context.
+    @SuppressWarnings("NullableProblems")
     protected abstract Collection<QueryField<E, ?>> runtimeFields(QueryFieldContext context);
 
     /// Returns the entity root type owned by this operation schema.
