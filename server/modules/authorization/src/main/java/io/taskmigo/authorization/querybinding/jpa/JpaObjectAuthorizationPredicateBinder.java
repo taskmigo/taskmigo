@@ -3,6 +3,8 @@ package io.taskmigo.authorization.querybinding.jpa;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationPredicateModel;
 import io.taskmigo.jpaquery.QuerySchema;
+import io.taskmigo.query.QueryFieldContext;
+import java.util.Objects;
 import org.springframework.data.jpa.domain.Specification;
 
 /// Binds Object Authorization predicates through the same operation schema as client query filtering.
@@ -28,15 +30,16 @@ public final class JpaObjectAuthorizationPredicateBinder<Q, E> implements Object
     }
 
     @Override
-    public Specification<E> bind(ObjectAuthorizationPredicate<Q> predicate) {
+    public Specification<E> bind(ObjectAuthorizationPredicate<Q> predicate, QueryFieldContext context) {
+        Objects.requireNonNull(context);
         if (!(predicate instanceof ObjectAuthorizationPredicateModel model)) {
             throw new IllegalArgumentException("unsupported Object Authorization Predicate implementation");
         }
-        if (!model.schemaIdentity().equals(this.schema.identity())) {
+        if (!model.schemaIdentity().equals(this.schema.identity(context))) {
             throw new IllegalArgumentException(
                 "Object Authorization Predicate schema identity does not match the JPA operation schema"
             );
         }
-        return JpaObjectAuthorizationExpressionBinder.bind(model.expression(), this.schema);
+        return JpaObjectAuthorizationExpressionBinder.bind(model.expression(), this.schema, context);
     }
 }

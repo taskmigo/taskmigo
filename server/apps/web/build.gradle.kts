@@ -25,6 +25,7 @@ dependencies {
     implementation(project(":modules:audit"))
     implementation(project(":modules:authorization"))
     implementation(project(":modules:identity"))
+    implementation(project(":modules:ticket"))
     // Provides datasource/JPA runtime configuration; apps/migration owns migration execution.
     runtimeOnly(project(":modules:database"))
     runtimeOnly(libs.jspecify)

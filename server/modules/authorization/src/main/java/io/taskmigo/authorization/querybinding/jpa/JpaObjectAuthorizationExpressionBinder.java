@@ -3,6 +3,7 @@ package io.taskmigo.authorization.querybinding.jpa;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
 import io.taskmigo.jpaquery.JpaQueryExpressionBinder;
 import io.taskmigo.jpaquery.QuerySchema;
+import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.model.QueryExpression;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -12,7 +13,15 @@ final class JpaObjectAuthorizationExpressionBinder {
     private JpaObjectAuthorizationExpressionBinder() {}
 
     static <E> Specification<E> bind(ObjectAuthorizationExpression expression, QuerySchema<E> schema) {
-        return JpaQueryExpressionBinder.bind(queryExpression(expression), schema);
+        return bind(expression, schema, QueryFieldContext.empty());
+    }
+
+    static <E> Specification<E> bind(
+        ObjectAuthorizationExpression expression,
+        QuerySchema<E> schema,
+        QueryFieldContext context
+    ) {
+        return JpaQueryExpressionBinder.bind(queryExpression(expression), schema, context);
     }
 
     private static QueryExpression queryExpression(ObjectAuthorizationExpression expression) {

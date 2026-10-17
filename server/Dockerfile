@@ -15,7 +15,9 @@ COPY modules/jpa-query/build.gradle.kts modules/jpa-query/build.gradle.kts
 COPY modules/authorization/build.gradle.kts modules/authorization/build.gradle.kts
 COPY modules/database/build.gradle.kts modules/database/build.gradle.kts
 COPY modules/audit/build.gradle.kts modules/audit/build.gradle.kts
+COPY modules/eav/build.gradle.kts modules/eav/build.gradle.kts
 COPY modules/identity/build.gradle.kts modules/identity/build.gradle.kts
+COPY modules/ticket/build.gradle.kts modules/ticket/build.gradle.kts
 COPY benchmarks/authorization/build.gradle.kts benchmarks/authorization/build.gradle.kts
 COPY testing/architecture/build.gradle.kts testing/architecture/build.gradle.kts
 COPY apps/migration/build.gradle.kts apps/migration/build.gradle.kts
@@ -36,7 +38,9 @@ COPY modules/jpa-query/src modules/jpa-query/src
 COPY modules/authorization/src modules/authorization/src
 COPY modules/database/src modules/database/src
 COPY modules/audit/src modules/audit/src
+COPY modules/eav/src modules/eav/src
 COPY modules/identity/src modules/identity/src
+COPY modules/ticket/src modules/ticket/src
 COPY benchmarks/authorization/src benchmarks/authorization/src
 COPY apps/migration/src apps/migration/src
 COPY apps/web/src apps/web/src

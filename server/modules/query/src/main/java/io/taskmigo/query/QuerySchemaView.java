@@ -32,7 +32,7 @@ public interface QuerySchemaView {
         return this.field(path, QueryFieldContext.empty());
     }
 
-    /// Returns a deterministic identity for the effective operation schema.
+    /// Returns a deterministic identity for the effective operation schema, including opaque runtime source identity.
     default String identity(QueryFieldContext context) {
         String fields = this.fields(context)
             .stream()
@@ -45,7 +45,11 @@ public interface QuerySchemaView {
                     ":" +
                     field.nullable() +
                     ":" +
-                    field.operators().stream().map(Enum::name).sorted().collect(Collectors.joining(","))
+                    field.operators().stream().map(Enum::name).sorted().collect(Collectors.joining(",")) +
+                    ":" +
+                    field.sortable() +
+                    ":" +
+                    field.sourceIdentity()
             )
             .collect(Collectors.joining("|"));
         return this.operation() + "[" + fields + "]";

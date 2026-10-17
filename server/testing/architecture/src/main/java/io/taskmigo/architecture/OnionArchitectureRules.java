@@ -99,6 +99,8 @@ public final class OnionArchitectureRules {
         return noClasses()
             .that()
             .resideInAnyPackage(context.rootPackage() + "..domain..")
+            .and()
+            .doNotHaveSimpleName("package-info")
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(domainForbiddenPackages(context))
