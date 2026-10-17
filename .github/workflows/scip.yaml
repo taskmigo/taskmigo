@@ -1,0 +1,64 @@
+---
+name: SCIP
+
+on:
+  pull_request:
+    paths:
+      - server/**
+      - "!server/**/*.md"
+      - .github/workflows/scip.yaml
+  push:
+    branches: [next]
+    paths:
+      - server/**
+      - "!server/**/*.md"
+      - .github/workflows/scip.yaml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify server SCIP index
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Java
+        uses: actions/setup-java@v6.0.1
+        with:
+          distribution: temurin
+          java-version: "26"
+          cache: gradle
+          cache-dependency-path: |
+            server/**/*.gradle*
+            server/gradle/libs.versions.toml
+
+      - name: Install scip-java
+        run: |
+          curl --fail --location \
+            --output "$RUNNER_TEMP/scip-java" \
+            https://github.com/scip-code/scip-java/releases/download/v0.13.1/scip-java-v0.13.1
+          echo "a694cae143c32c5b6226362fb4bd268a8d13d3cd9b482819b3b0029a9a97b8fe  $RUNNER_TEMP/scip-java" \
+            | sha256sum --check
+          chmod +x "$RUNNER_TEMP/scip-java"
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Verify SCIP index
+        run: |
+          if ! git ls-files --error-unmatch server/index.scip >/dev/null; then
+            echo "::error::server/index.scip must be committed."
+            exit 1
+          fi
+
+          ./server/scip
+
+          if ! git diff --exit-code -- server/index.scip; then
+            echo "::error::server/index.scip is stale. Install scip-java v0.13.1, run ./server/scip, and commit server/index.scip."
+            exit 1
+          fi
