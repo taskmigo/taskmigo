@@ -18,6 +18,7 @@ Instructions for AI agents and automated contributors working in this repository
 
 ### Available skills
 
+- `github-actions-formatting-patch-artifact` (`.agents/skills/github-actions-formatting-patch-artifact/SKILL.md`): mandatory when the GitHub Actions `Formatting` workflow fails; use the generated formatting patch artifact as the canonical repair instead of manually fixing formatter output file by file.
 - `java-javadoc` (`.agents/skills/java-javadoc/SKILL.md`): write and review Java Javadoc using Markdown documentation comments (JEP 467). Use it when adding, writing, fixing, or reviewing Javadoc, documenting Java classes, methods, or fields, or generating public Java APIs that should include documentation comments.
 
 ## Specifications
@@ -73,7 +74,8 @@ Instructions for AI agents and automated contributors working in this repository
 - If `## Qodana results` is missing, the workflow did not find the expected SARIF file. Inspect the `Scan` step and surrounding job log for Qodana startup, project import, Gradle/classpath, cache, or report-generation failures instead of treating the failure as a source finding.
 - The current Qodana workflow does not upload a `qodana-sarif` Actions artifact. When the job-summary JSON is present but insufficient or truncated, use the SARIF uploaded by the `Upload SARIF` step to GitHub code scanning as the fallback. Do not waste time searching for a workflow artifact that the workflow does not create.
 - Do not enable Qodana `upload-result`, add artifact uploads, install extra tooling, or rerun expensive commands solely to recover information already available in `## Qodana results`, GitHub code scanning, or the relevant job log.
-- If the `Formatting` workflow fails, inspect the `Formatting diff` or `Formatting patch for AI agents` section in the failed `Check formatting` step. The workflow runs Prettier and prints the resulting unified diff directly in the CI log.
-- Apply that diff to the working tree instead of installing formatting tooling solely to reproduce CI formatting. Push the repaired files and use the next `Formatting` CI run to verify the result.
+- If the `Formatting` workflow fails, read and follow `.agents/skills/github-actions-formatting-patch-artifact/SKILL.md`, then fetch the `formatting-patch` artifact from the failed run for the current PR head SHA. The artifact contains `formatting.patch`, generated from the exact Prettier output after `npm run format:fix`.
+- Treat `formatting.patch` as the canonical formatting repair. With a local workspace, run `git apply --check formatting.patch` and then `git apply formatting.patch`; with connector-only repository access, apply the exact patch as one focused tree-level mutation. Do not manually reconstruct Prettier output or repair formatting file by file while the artifact is available.
+- Use the `Formatting patch for AI agents` log section only when the artifact is missing, failed to upload, or cannot be read. If the PR head changes, discard the old artifact and use the artifact from the Formatting run for the new head.
 - If any required CI check fails, inspect the failure, fix the cause when it is related to the task, push the correction, and continue this cycle until all required checks pass.
 - Do not stop work, report completion, or hand off a task while required verification is failing or pending. Stop only when all required checks pass or an external blocker that cannot be resolved from the repository is identified and clearly reported.

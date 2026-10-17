@@ -31,15 +31,29 @@ jobs:
         run: npm ci
 
       - name: Check formatting
+        id: formatting
         run: |
+          set -euo pipefail
+
           npm run format:fix
 
           if git diff --quiet; then
             exit 0
           fi
 
+          git --no-pager diff --no-ext-diff --binary --full-index > formatting.patch
+
           echo "::group::Formatting patch for AI agents"
-          git --no-pager diff --no-ext-diff --unified=3
+          cat formatting.patch
           echo "::endgroup::"
-          echo "::error::Formatting differs. Apply the patch shown above."
+          echo "::error::Formatting differs. Download the formatting-patch artifact and apply formatting.patch."
           exit 1
+
+      - name: Upload formatting patch
+        if: ${{ failure() && steps.formatting.outcome == 'failure' }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: formatting-patch
+          path: formatting.patch
+          if-no-files-found: ignore
+          retention-days: 1

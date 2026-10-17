@@ -39,7 +39,7 @@ Repository formatting:
 npm run format:check
 ```
 
-When the `Formatting` CI workflow reports differences, inspect the `Formatting diff` section in the failed `Check formatting` step. The workflow runs Prettier and prints the resulting unified diff directly in the CI log. If local formatting tooling is unavailable, apply that diff to the working tree instead of installing Node.js or Prettier solely to reproduce the CI formatter output, then push the result and use the next `Formatting` CI run as verification.
+When the `Formatting` CI workflow reports differences, download the `formatting-patch` artifact from that failed run. It contains `formatting.patch`, generated from the exact Prettier output after `npm run format:fix`. Apply the patch as a whole (`git apply --check formatting.patch` followed by `git apply formatting.patch`) instead of manually fixing formatter output file by file. The `Formatting patch for AI agents` section in the job log is a fallback only when the artifact is unavailable. Push the repaired change and use the next `Formatting` CI run as verification.
 
 Server:
 
