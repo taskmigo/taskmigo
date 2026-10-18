@@ -1,11 +1,9 @@
 package io.taskmigo.web.security.objectauthorization;
 
-import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import io.taskmigo.query.QueryOperation;
 import io.taskmigo.query.QuerySchemaView;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.factory.ObjectProvider;
@@ -76,18 +74,9 @@ public final class SpringMvcObjectAuthorizationTargetResolver
     }
 
     private Optional<QuerySchemaView> schema(HandlerMethod handler) {
-        long authorizationCount = Arrays.stream(handler.getMethodParameters())
-            .filter(parameter -> parameter.getParameterType() == ObjectAuthorizationPredicate.class)
-            .count();
-        if (authorizationCount == 0) {
-            return Optional.empty();
-        }
-        if (authorizationCount != 1) {
-            throw new IllegalStateException("A handler may declare only one ObjectAuthorizationPredicate");
-        }
         QueryOperation operation = handler.getMethodAnnotation(QueryOperation.class);
         if (operation == null) {
-            throw new IllegalStateException("Object Authorization handler must declare @QueryOperation");
+            return Optional.empty();
         }
         List<QuerySchemaView> matches = this.schemas
             .stream()

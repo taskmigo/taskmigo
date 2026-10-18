@@ -1,19 +1,18 @@
 package io.taskmigo.web.api.v0.ticket;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.FilteredQuery;
-import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryOperation;
 import io.taskmigo.ticket.application.api.TicketInfo;
 import io.taskmigo.ticket.application.api.TicketPatch;
 import io.taskmigo.ticket.application.api.TicketService;
+import io.taskmigo.web.api.support.objectauthorization.ObjectAuthorizationResolver;
+import io.taskmigo.web.api.support.objectauthorization.ResolvedObjectAuthorization;
 import io.taskmigo.web.api.support.query.FilteredQueryRequest;
-import io.taskmigo.web.api.support.query.FilteredQueryRequestCompiler;
+import io.taskmigo.web.api.support.query.FilteredQueryRequestResolver;
 import io.taskmigo.web.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.api.v0.support.response.ApiResponseFactory;
@@ -52,15 +51,20 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Ticket")
 class TicketController {
 
-    private static final String LIST_OPERATION = "tickets.list";
-
     private final TicketService tickets;
-    private final FilteredQueryRequestCompiler queryCompiler;
+    private final FilteredQueryRequestResolver queryResolver;
+    private final ObjectAuthorizationResolver objectAuthorization;
     private final ApiResponseFactory responses;
 
-    TicketController(TicketService tickets, FilteredQueryRequestCompiler queryCompiler, ApiResponseFactory responses) {
+    TicketController(
+        TicketService tickets,
+        FilteredQueryRequestResolver queryResolver,
+        ObjectAuthorizationResolver objectAuthorization,
+        ApiResponseFactory responses
+    ) {
         this.tickets = tickets;
-        this.queryCompiler = queryCompiler;
+        this.queryResolver = queryResolver;
+        this.objectAuthorization = objectAuthorization;
         this.responses = responses;
     }
 
@@ -88,23 +92,22 @@ class TicketController {
     }
 
     @GetMapping("/tickets")
-    @QueryOperation(LIST_OPERATION)
+    @QueryOperation("tickets.list")
     @Operation(summary = "List Tickets")
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         @RequestParam(required = false) @Nullable UUID ticketTypeId,
-        @ParameterObject @Valid FilteredQueryRequest query,
-        @Parameter(hidden = true) QueryFieldContext queryContext,
-        @Parameter(hidden = true) ObjectAuthorizationPredicate<TicketInfo> authorization
+        @ParameterObject @Valid FilteredQueryRequest query
     ) {
-        FilteredQuery<TicketInfo> filter = this.queryCompiler.compile(LIST_OPERATION, query, queryContext);
+        FilteredQuery<TicketInfo> filter = this.queryResolver.resolve(query);
+        ResolvedObjectAuthorization<TicketInfo> authorization = this.objectAuthorization.resolve();
         OffsetPage<TicketInfo> page = this.tickets.list(
             pagination.getPage(),
             pagination.getPageSize(),
             ticketTypeId,
             filter,
-            authorization
+            authorization.predicate()
         );
         return this.responses.ok(
             page.items().stream().map(Response::from).toList(),
@@ -119,13 +122,10 @@ class TicketController {
     @Operation(summary = "Get a Ticket")
     @OpenApiNotFound
     @ResponseStatus(HttpStatus.OK)
-    ResponseEntity<ApiResponse<Response, ApiResponse.BasicMeta>> read(
-        @PathVariable UUID ticketId,
-        @Parameter(hidden = true) ObjectAuthorizationPredicate<TicketInfo> authorization,
-        @Parameter(hidden = true) QueryFieldContext queryContext
-    ) {
+    ResponseEntity<ApiResponse<Response, ApiResponse.BasicMeta>> read(@PathVariable UUID ticketId) {
+        ResolvedObjectAuthorization<TicketInfo> authorization = this.objectAuthorization.resolve();
         return this.responses.ok(
-            Response.from(this.tickets.read(ticketId, authorization, queryContext)),
+            Response.from(this.tickets.read(ticketId, authorization.predicate(), authorization.queryContext())),
             "resource.ticket.read",
             "Ticket read"
         );
@@ -139,16 +139,15 @@ class TicketController {
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<Response, ApiResponse.BasicMeta>> update(
         @PathVariable UUID ticketId,
-        @Valid @RequestBody UpdateRequest request,
-        @Parameter(hidden = true) ObjectAuthorizationPredicate<TicketInfo> authorization,
-        @Parameter(hidden = true) QueryFieldContext queryContext
+        @Valid @RequestBody UpdateRequest request
     ) {
+        ResolvedObjectAuthorization<TicketInfo> authorization = this.objectAuthorization.resolve();
         Map<String, @Nullable Object> customFields = request.customFields() == null ? Map.of() : request.customFields();
         TicketInfo updated = this.tickets.update(
             ticketId,
             new TicketPatch(request.title(), request.status(), customFields),
-            authorization,
-            queryContext
+            authorization.predicate(),
+            authorization.queryContext()
         );
         return this.responses.ok(Response.from(updated), "resource.ticket.updated", "Ticket updated");
     }
