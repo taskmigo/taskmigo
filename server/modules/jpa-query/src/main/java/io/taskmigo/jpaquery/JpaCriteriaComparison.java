@@ -3,6 +3,8 @@ package io.taskmigo.jpaquery;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Predicate;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -57,7 +59,7 @@ final class JpaCriteriaComparison {
             return compareComparable(builder, left.as(Character.class), right.as(Character.class), operator);
         }
         if (isNumber(type)) {
-            return compareNumber(builder, left.as(Number.class), right.as(Number.class), operator);
+            return compareNumber(builder, left, right, type, operator);
         }
         throw new IllegalArgumentException("Unsupported ordered persistence type: " + type.getTypeName());
     }
@@ -74,6 +76,40 @@ final class JpaCriteriaComparison {
             case LESS -> builder.lessThan(left, right);
             case LESS_OR_EQUAL -> builder.lessThanOrEqualTo(left, right);
         };
+    }
+
+    private static Predicate compareNumber(
+        CriteriaBuilder builder,
+        Expression<?> left,
+        Expression<?> right,
+        Class<?> type,
+        Operator operator
+    ) {
+        if (type == BigDecimal.class) {
+            return compareNumber(builder, left.as(BigDecimal.class), right.as(BigDecimal.class), operator);
+        }
+        if (type == BigInteger.class) {
+            return compareNumber(builder, left.as(BigInteger.class), right.as(BigInteger.class), operator);
+        }
+        if (type == Byte.class || type == byte.class) {
+            return compareNumber(builder, left.as(Byte.class), right.as(Byte.class), operator);
+        }
+        if (type == Short.class || type == short.class) {
+            return compareNumber(builder, left.as(Short.class), right.as(Short.class), operator);
+        }
+        if (type == Integer.class || type == int.class) {
+            return compareNumber(builder, left.as(Integer.class), right.as(Integer.class), operator);
+        }
+        if (type == Long.class || type == long.class) {
+            return compareNumber(builder, left.as(Long.class), right.as(Long.class), operator);
+        }
+        if (type == Float.class || type == float.class) {
+            return compareNumber(builder, left.as(Float.class), right.as(Float.class), operator);
+        }
+        if (type == Double.class || type == double.class) {
+            return compareNumber(builder, left.as(Double.class), right.as(Double.class), operator);
+        }
+        throw new IllegalArgumentException("Unsupported numeric persistence type: " + type.getTypeName());
     }
 
     private static Predicate compareNumber(

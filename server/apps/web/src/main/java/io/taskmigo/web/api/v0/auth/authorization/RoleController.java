@@ -4,13 +4,16 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.role.application.api.RoleAuthorizationService;
 import io.taskmigo.authorization.role.application.api.RoleService;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.FilteredQuery;
 import io.taskmigo.query.QueryOperation;
+import io.taskmigo.web.api.support.objectauthorization.ObjectAuthorizationResolver;
+import io.taskmigo.web.api.support.objectauthorization.ResolvedObjectAuthorization;
+import io.taskmigo.web.api.support.query.FilteredQueryRequest;
+import io.taskmigo.web.api.support.query.FilteredQueryRequestResolver;
 import io.taskmigo.web.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.api.v0.support.response.ApiResponseFactory;
@@ -47,11 +50,21 @@ class RoleController {
 
     private final RoleService access;
     private final RoleAuthorizationService roleAuthorization;
+    private final FilteredQueryRequestResolver queryResolver;
+    private final ObjectAuthorizationResolver objectAuthorization;
     private final ApiResponseFactory responses;
 
-    RoleController(RoleService access, RoleAuthorizationService roleAuthorization, ApiResponseFactory responses) {
+    RoleController(
+        RoleService access,
+        RoleAuthorizationService roleAuthorization,
+        FilteredQueryRequestResolver queryResolver,
+        ObjectAuthorizationResolver objectAuthorization,
+        ApiResponseFactory responses
+    ) {
         this.access = access;
         this.roleAuthorization = roleAuthorization;
+        this.queryResolver = queryResolver;
+        this.objectAuthorization = objectAuthorization;
         this.responses = responses;
     }
 
@@ -76,14 +89,15 @@ class RoleController {
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
-        FilteredQuery<RoleInfo> filter,
-        ObjectAuthorizationPredicate<RoleInfo> authorization
+        @ParameterObject @Valid FilteredQueryRequest query
     ) {
+        FilteredQuery<RoleInfo> filter = this.queryResolver.resolve(query);
+        ResolvedObjectAuthorization<RoleInfo> authorization = this.objectAuthorization.resolve();
         OffsetPage<RoleInfo> roles = this.access.listRoles(
             pagination.getPage(),
             pagination.getPageSize(),
             filter.predicate(),
-            authorization
+            authorization.predicate()
         );
         return this.responses.ok(
             roles.items().stream().map(Response::from).toList(),

@@ -1,17 +1,17 @@
 package io.taskmigo.web.api.v0.audit;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.taskmigo.audit.application.query.AuditQueryService;
 import io.taskmigo.audit.model.AuditActor;
 import io.taskmigo.audit.model.AuditChange;
 import io.taskmigo.audit.model.AuditLog;
-import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.query.QueryOperation;
+import io.taskmigo.web.api.support.objectauthorization.ObjectAuthorizationResolver;
+import io.taskmigo.web.api.support.objectauthorization.ResolvedObjectAuthorization;
 import io.taskmigo.web.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.api.v0.support.response.ApiResponseFactory;
@@ -39,10 +39,16 @@ import org.springframework.web.bind.annotation.RestController;
 class AuditController {
 
     private final AuditQueryService audits;
+    private final ObjectAuthorizationResolver objectAuthorization;
     private final ApiResponseFactory responses;
 
-    AuditController(AuditQueryService audits, ApiResponseFactory responses) {
+    AuditController(
+        AuditQueryService audits,
+        ObjectAuthorizationResolver objectAuthorization,
+        ApiResponseFactory responses
+    ) {
         this.audits = audits;
+        this.objectAuthorization = objectAuthorization;
         this.responses = responses;
     }
 
@@ -52,10 +58,10 @@ class AuditController {
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @PathVariable String entityType,
-        @ParameterObject @Valid OffsetPageRequest pagination,
-        @Parameter(hidden = true) ObjectAuthorizationPredicate<UserInfo> authorization
+        @ParameterObject @Valid OffsetPageRequest pagination
     ) {
-        if (!authorization.isAlwaysTrue()) {
+        ResolvedObjectAuthorization<UserInfo> authorization = this.objectAuthorization.resolve();
+        if (!authorization.predicate().isAlwaysTrue()) {
             throw new AccessDeniedException("Audit access requires unrestricted User visibility");
         }
         OffsetPage<AuditLog> logs = this.audits.list(entityType, pagination.getPage(), pagination.getPageSize());

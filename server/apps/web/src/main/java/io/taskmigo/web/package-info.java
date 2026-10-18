@@ -20,6 +20,11 @@
         "identity :: group-use-cases",
         "identity :: configuration",
         "identity :: configuration-use-cases",
+        "eav :: schema-model",
+        "eav :: schema-use-cases",
+        "ticket :: ticket-use-cases",
+        "ticket :: ticket-type-use-cases",
+        "ticket :: ticket-type-model",
     }
 )
 @NullMarked

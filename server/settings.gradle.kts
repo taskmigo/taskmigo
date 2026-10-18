@@ -17,6 +17,8 @@ include(
     ":modules:database",
     ":modules:audit",
     ":modules:identity",
+    ":modules:eav",
+    ":modules:ticket",
     ":benchmarks:authorization",
     ":testing:architecture",
     ":apps:migration",

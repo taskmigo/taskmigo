@@ -53,6 +53,27 @@ public class PostgresTestConfiguration {
                 "/api/v0/statements"
             );
             UUID auditAccess = objectStatement(authorization, "system_audit_full_access", "/api/v0/audit/.*");
+            UUID ticketListAccess = objectStatement(
+                authorization,
+                "system_tickets_list_full_access",
+                "GET",
+                "/api/v0/tickets",
+                "true"
+            );
+            UUID ticketReadAccess = objectStatement(
+                authorization,
+                "system_tickets_read_full_access",
+                "GET",
+                "/api/v0/tickets/.*",
+                "true"
+            );
+            UUID ticketUpdateAccess = objectStatement(
+                authorization,
+                "system_tickets_update_full_access",
+                "PATCH",
+                "/api/v0/tickets/.*",
+                "true"
+            );
             UUID userStatementMutation = objectStatement(
                 authorization,
                 "system_user_statement_mutation",
@@ -79,6 +100,9 @@ public class PostgresTestConfiguration {
                         groupsAccess,
                         statementsAccess,
                         auditAccess,
+                        ticketListAccess,
+                        ticketReadAccess,
+                        ticketUpdateAccess,
                         userStatementMutation,
                         userDelete
                     )

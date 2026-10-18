@@ -35,16 +35,38 @@ paths:
           description: Number of items per page
           maximum: 100
           minimum: 1
-      - name: filter
+      - name: filterBy
         in: query
-        required: true
+        description: Filter expression using the Taskmigo FilterBy DSL.
+        required: false
         schema:
-          $ref: "#/components/schemas/FilteredQueryUserInfo"
-      - name: authorization
+          type:
+          - string
+          - "null"
+          description: Filter expression using the Taskmigo FilterBy DSL.
+      - name: sortBy
         in: query
-        required: true
+        description: Field path to sort by.
+        required: false
         schema:
-          $ref: "#/components/schemas/ObjectAuthorizationPredicateUserInfo"
+          type:
+          - string
+          - "null"
+          description: Field path to sort by.
+      - name: sortOrder
+        in: query
+        description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+          is present.
+        required: false
+        schema:
+          type:
+          - string
+          - "null"
+          description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+            is present.
+          enum:
+          - ASC
+          - DESC
       responses:
         "200":
           description: OK
@@ -142,11 +164,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
-  /api/v0/statements:
+  /api/v0/tickets:
     get:
       tags:
-      - Statement
-      summary: List authorization statements
+      - Ticket
+      summary: List Tickets
       operationId: list_1
       parameters:
       - name: page
@@ -170,16 +192,511 @@ paths:
           description: Number of items per page
           maximum: 100
           minimum: 1
-      - name: filter
+      - name: ticketTypeId
         in: query
+        required: false
+        schema:
+          type: string
+          format: uuid
+      - name: filterBy
+        in: query
+        description: Filter expression using the Taskmigo FilterBy DSL.
+        required: false
+        schema:
+          type:
+          - string
+          - "null"
+          description: Filter expression using the Taskmigo FilterBy DSL.
+      - name: sortBy
+        in: query
+        description: Field path to sort by.
+        required: false
+        schema:
+          type:
+          - string
+          - "null"
+          description: Field path to sort by.
+      - name: sortOrder
+        in: query
+        description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+          is present.
+        required: false
+        schema:
+          type:
+          - string
+          - "null"
+          description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+            is present.
+          enum:
+          - ASC
+          - DESC
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListTicketInfoOffsetMeta"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+    post:
+      tags:
+      - Ticket
+      summary: Create a Ticket
+      operationId: create_1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTicketRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+  /api/v0/ticket-types:
+    get:
+      tags:
+      - Ticket Type
+      summary: List Ticket Types
+      operationId: list_2
+      responses:
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+    post:
+      tags:
+      - Ticket Type
+      summary: Create a Ticket Type
+      operationId: create_2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTicketTypeRequest"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+  /api/v0/ticket-types/{ticketTypeId}/templates:
+    get:
+      tags:
+      - Ticket Type
+      summary: List Ticket template versions
+      operationId: listTemplates
+      parameters:
+      - name: ticketTypeId
+        in: path
         required: true
         schema:
-          $ref: "#/components/schemas/FilteredQueryStatementInfo"
-      - name: authorization
-        in: query
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+    post:
+      tags:
+      - Ticket Type
+      summary: Create a Ticket template draft
+      operationId: createTemplate
+      parameters:
+      - name: ticketTypeId
+        in: path
         required: true
         schema:
-          $ref: "#/components/schemas/ObjectAuthorizationPredicateStatementInfo"
+          type: string
+          format: uuid
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseTicketTemplateVersionBasicMeta"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+  /api/v0/ticket-types/{ticketTypeId}/templates/{templateVersionId}/retire:
+    post:
+      tags:
+      - Ticket Type
+      summary: Retire a Ticket template version
+      operationId: retireTemplate
+      parameters:
+      - name: ticketTypeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: templateVersionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+  /api/v0/ticket-types/{ticketTypeId}/templates/{templateVersionId}/publish:
+    post:
+      tags:
+      - Ticket Type
+      summary: Publish a Ticket template version
+      operationId: publishTemplate
+      parameters:
+      - name: ticketTypeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: templateVersionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+  /api/v0/statements:
+    get:
+      tags:
+      - Statement
+      summary: List authorization statements
+      operationId: list_3
+      parameters:
+      - name: page
+        in: query
+        description: Page number to retrieve (1-based index)
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 1
+          description: Page number to retrieve (1-based index)
+          minimum: 1
+      - name: pageSize
+        in: query
+        description: Number of items per page
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          description: Number of items per page
+          maximum: 100
+          minimum: 1
+      - name: filterBy
+        in: query
+        description: Filter expression using the Taskmigo FilterBy DSL.
+        required: false
+        schema:
+          type:
+          - string
+          - "null"
+          description: Filter expression using the Taskmigo FilterBy DSL.
+      - name: sortBy
+        in: query
+        description: Field path to sort by.
+        required: false
+        schema:
+          type:
+          - string
+          - "null"
+          description: Field path to sort by.
+      - name: sortOrder
+        in: query
+        description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+          is present.
+        required: false
+        schema:
+          type:
+          - string
+          - "null"
+          description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+            is present.
+          enum:
+          - ASC
+          - DESC
       responses:
         "200":
           description: OK
@@ -223,7 +740,7 @@ paths:
       tags:
       - Statement
       summary: Create an authorization statement
-      operationId: create_1
+      operationId: create_3
       requestBody:
         content:
           application/json:
@@ -282,7 +799,7 @@ paths:
       tags:
       - Role
       summary: List roles
-      operationId: list_2
+      operationId: list_4
       parameters:
       - name: page
         in: query
@@ -305,16 +822,38 @@ paths:
           description: Number of items per page
           maximum: 100
           minimum: 1
-      - name: filter
+      - name: filterBy
         in: query
-        required: true
+        description: Filter expression using the Taskmigo FilterBy DSL.
+        required: false
         schema:
-          $ref: "#/components/schemas/FilteredQueryRoleInfo"
-      - name: authorization
+          type:
+          - string
+          - "null"
+          description: Filter expression using the Taskmigo FilterBy DSL.
+      - name: sortBy
         in: query
-        required: true
+        description: Field path to sort by.
+        required: false
         schema:
-          $ref: "#/components/schemas/ObjectAuthorizationPredicateRoleInfo"
+          type:
+          - string
+          - "null"
+          description: Field path to sort by.
+      - name: sortOrder
+        in: query
+        description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+          is present.
+        required: false
+        schema:
+          type:
+          - string
+          - "null"
+          description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+            is present.
+          enum:
+          - ASC
+          - DESC
       responses:
         "200":
           description: OK
@@ -417,7 +956,7 @@ paths:
       tags:
       - Group
       summary: List groups
-      operationId: list_3
+      operationId: list_5
       parameters:
       - name: page
         in: query
@@ -440,16 +979,38 @@ paths:
           description: Number of items per page
           maximum: 100
           minimum: 1
-      - name: filter
+      - name: filterBy
         in: query
-        required: true
+        description: Filter expression using the Taskmigo FilterBy DSL.
+        required: false
         schema:
-          $ref: "#/components/schemas/FilteredQueryGroupInfo"
-      - name: authorization
+          type:
+          - string
+          - "null"
+          description: Filter expression using the Taskmigo FilterBy DSL.
+      - name: sortBy
         in: query
-        required: true
+        description: Field path to sort by.
+        required: false
         schema:
-          $ref: "#/components/schemas/ObjectAuthorizationPredicateGroupInfo"
+          type:
+          - string
+          - "null"
+          description: Field path to sort by.
+      - name: sortOrder
+        in: query
+        description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+          is present.
+        required: false
+        schema:
+          type:
+          - string
+          - "null"
+          description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+            is present.
+          enum:
+          - ASC
+          - DESC
       responses:
         "200":
           description: OK
@@ -493,7 +1054,7 @@ paths:
       tags:
       - Group
       summary: Create a group
-      operationId: create_2
+      operationId: create_4
       requestBody:
         content:
           application/json:
@@ -613,6 +1174,363 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+  /api/v0/tickets/{ticketId}:
+    get:
+      tags:
+      - Ticket
+      summary: Get a Ticket
+      operationId: read
+      parameters:
+      - name: ticketId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseTicketInfoBasicMeta"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+    patch:
+      tags:
+      - Ticket
+      summary: Update a Ticket
+      operationId: update
+      parameters:
+      - name: ticketId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTicketRequest"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseTicketInfoBasicMeta"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+  /api/v0/ticket-types/{ticketTypeId}:
+    get:
+      tags:
+      - Ticket Type
+      summary: Get a Ticket Type
+      operationId: get
+      parameters:
+      - name: ticketTypeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+    patch:
+      tags:
+      - Ticket Type
+      summary: Update a Ticket Type
+      operationId: update_1
+      parameters:
+      - name: ticketTypeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTicketTypeRequest"
+        required: true
+      responses:
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+  /api/v0/ticket-types/{ticketTypeId}/templates/{templateVersionId}:
+    get:
+      tags:
+      - Ticket Type
+      summary: Get a Ticket template version
+      operationId: getTemplate
+      parameters:
+      - name: ticketTypeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: templateVersionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+    patch:
+      tags:
+      - Ticket Type
+      summary: Replace fields in a Ticket template draft
+      operationId: replaceTemplate
+      parameters:
+      - name: ticketTypeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: templateVersionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTicketTemplateRequest"
+        required: true
+      responses:
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
   /api/v0/roles/{roleId}/statements:
     patch:
       tags:
@@ -678,7 +1596,7 @@ paths:
       tags:
       - Configuration
       summary: Get application configuration
-      operationId: get
+      operationId: get_1
       responses:
         "200":
           description: OK
@@ -722,7 +1640,7 @@ paths:
       tags:
       - Configuration
       summary: Update application configuration
-      operationId: update
+      operationId: update_2
       requestBody:
         content:
           application/json:
@@ -1116,6 +2034,118 @@ components:
       - meta
       - statusCode
       - success
+    CreateTicketRequest:
+      type: object
+      properties:
+        ticketTypeId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          minLength: 1
+        customFields:
+          type: object
+          additionalProperties: {}
+      required:
+      - status
+      - ticketTypeId
+      - title
+    CreateTicketTypeRequest:
+      type: object
+      properties:
+        key:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          minLength: 1
+      required:
+      - key
+      - name
+    ApiResponseTicketTemplateVersionBasicMeta:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the request completed successfully
+        statusCode:
+          type: integer
+          format: int32
+          description: HTTP status code of the response
+        message:
+          $ref: "#/components/schemas/Message"
+          description: Machine-readable and human-readable outcome message
+        error:
+          type: "null"
+          $ref: "#/components/schemas/Error"
+          description: Error details when the request fails
+        meta:
+          $ref: "#/components/schemas/BasicMeta"
+          description: Execution and pagination metadata
+        data:
+          type: "null"
+          $ref: "#/components/schemas/TicketTemplateVersion"
+          description: Response payload
+      required:
+      - data
+      - error
+      - message
+      - meta
+      - statusCode
+      - success
+    TicketTemplateField:
+      type: object
+      properties:
+        fieldId:
+          type: string
+          format: uuid
+        key:
+          type: string
+        label:
+          type: string
+        dataType:
+          type: string
+          enum:
+          - STRING
+          - NUMBER
+          - BOOLEAN
+          - DATE
+          - DATETIME
+          - UUID
+          - ENUM
+        required:
+          type: boolean
+        constraints:
+          type: object
+          additionalProperties: {}
+    TicketTemplateVersion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum:
+          - DRAFT
+          - PUBLISHED
+          - RETIRED
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/TicketTemplateField"
+        publishedAt:
+          type: string
+          format: date-time
+        retiredAt:
+          type: string
+          format: date-time
     ApiInfo:
       type: object
       properties:
@@ -1212,6 +2242,125 @@ components:
             type: string
             format: uuid
           uniqueItems: true
+    UpdateTicketRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        status:
+          type: string
+        customFields:
+          type: object
+          additionalProperties: {}
+    ApiResponseTicketInfoBasicMeta:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the request completed successfully
+        statusCode:
+          type: integer
+          format: int32
+          description: HTTP status code of the response
+        message:
+          $ref: "#/components/schemas/Message"
+          description: Machine-readable and human-readable outcome message
+        error:
+          type: "null"
+          $ref: "#/components/schemas/Error"
+          description: Error details when the request fails
+        meta:
+          $ref: "#/components/schemas/BasicMeta"
+          description: Execution and pagination metadata
+        data:
+          type: "null"
+          $ref: "#/components/schemas/TicketInfo"
+          description: Response payload
+      required:
+      - data
+      - error
+      - message
+      - meta
+      - statusCode
+      - success
+    TicketInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ticketTypeId:
+          type: string
+          format: uuid
+        templateVersionId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        status:
+          type: string
+        createdBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        customFields:
+          type: object
+          additionalProperties: {}
+    UpdateTicketTypeRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - RETIRED
+    TicketTemplateFieldRequest:
+      type: object
+      properties:
+        fieldId:
+          type: string
+          format: uuid
+        key:
+          type: string
+          minLength: 1
+        label:
+          type: string
+          minLength: 1
+        dataType:
+          type: string
+          enum:
+          - STRING
+          - NUMBER
+          - BOOLEAN
+          - DATE
+          - DATETIME
+          - UUID
+          - ENUM
+        required:
+          type: boolean
+        constraints:
+          type: object
+          additionalProperties: {}
+      required:
+      - dataType
+      - key
+      - label
+    UpdateTicketTemplateRequest:
+      type: object
+      properties:
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/TicketTemplateFieldRequest"
+      required:
+      - fields
     ReplaceRoleStatementsRequest:
       type: object
       properties:
@@ -1274,25 +2423,6 @@ components:
       properties:
         user:
           type: string
-    FilteredQueryUserInfo:
-      type: object
-      properties:
-        predicate:
-          $ref: "#/components/schemas/QueryPredicateUserInfo"
-    QueryPredicateUserInfo:
-      type: object
-      properties:
-        alwaysTrue:
-          type: boolean
-        alwaysFalse:
-          type: boolean
-    ObjectAuthorizationPredicateUserInfo:
-      type: object
-      properties:
-        alwaysTrue:
-          type: boolean
-        alwaysFalse:
-          type: boolean
     ApiResponseListUserInfoOffsetMeta:
       type: object
       properties:
@@ -1412,25 +2542,40 @@ components:
         retainedAt:
           type: string
           format: date-time
-    FilteredQueryStatementInfo:
+    ApiResponseListTicketInfoOffsetMeta:
       type: object
       properties:
-        predicate:
-          $ref: "#/components/schemas/QueryPredicateStatementInfo"
-    QueryPredicateStatementInfo:
-      type: object
-      properties:
-        alwaysTrue:
+        success:
           type: boolean
-        alwaysFalse:
-          type: boolean
-    ObjectAuthorizationPredicateStatementInfo:
-      type: object
-      properties:
-        alwaysTrue:
-          type: boolean
-        alwaysFalse:
-          type: boolean
+          description: Whether the request completed successfully
+        statusCode:
+          type: integer
+          format: int32
+          description: HTTP status code of the response
+        message:
+          $ref: "#/components/schemas/Message"
+          description: Machine-readable and human-readable outcome message
+        error:
+          type: "null"
+          $ref: "#/components/schemas/Error"
+          description: Error details when the request fails
+        meta:
+          $ref: "#/components/schemas/OffsetMeta"
+          description: Execution and pagination metadata
+        data:
+          type:
+          - array
+          - "null"
+          description: Response payload
+          items:
+            $ref: "#/components/schemas/TicketInfo"
+      required:
+      - data
+      - error
+      - message
+      - meta
+      - statusCode
+      - success
     ApiResponseData:
       type: object
       properties:
@@ -1501,25 +2646,6 @@ components:
       properties:
         api:
           $ref: "#/components/schemas/ApiResponseData"
-    FilteredQueryRoleInfo:
-      type: object
-      properties:
-        predicate:
-          $ref: "#/components/schemas/QueryPredicateRoleInfo"
-    QueryPredicateRoleInfo:
-      type: object
-      properties:
-        alwaysTrue:
-          type: boolean
-        alwaysFalse:
-          type: boolean
-    ObjectAuthorizationPredicateRoleInfo:
-      type: object
-      properties:
-        alwaysTrue:
-          type: boolean
-        alwaysFalse:
-          type: boolean
     ApiResponseListRoleInfoOffsetMeta:
       type: object
       properties:
@@ -1570,25 +2696,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/RoleInfo"
-    FilteredQueryGroupInfo:
-      type: object
-      properties:
-        predicate:
-          $ref: "#/components/schemas/QueryPredicateGroupInfo"
-    QueryPredicateGroupInfo:
-      type: object
-      properties:
-        alwaysTrue:
-          type: boolean
-        alwaysFalse:
-          type: boolean
-    ObjectAuthorizationPredicateGroupInfo:
-      type: object
-      properties:
-        alwaysTrue:
-          type: boolean
-        alwaysFalse:
-          type: boolean
     ApiResponseListGroupInfoOffsetMeta:
       type: object
       properties:

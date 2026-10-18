@@ -2,6 +2,7 @@ package io.taskmigo.authorization.object.application.service;
 
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
+import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryFieldDescriptor;
 import io.taskmigo.query.QueryOperator;
 import io.taskmigo.query.QueryPath;
@@ -13,27 +14,43 @@ final class ObjectAuthorizationExpressionValidator {
     private ObjectAuthorizationExpressionValidator() {}
 
     static void validate(ObjectAuthorizationExpression expression, QuerySchemaView schema) {
+        validate(expression, schema, QueryFieldContext.empty());
+    }
+
+    static void validate(
+        ObjectAuthorizationExpression expression,
+        QuerySchemaView schema,
+        QueryFieldContext queryContext
+    ) {
         switch (expression) {
             case ObjectAuthorizationExpression.Literal _ -> {
             }
-            case ObjectAuthorizationExpression.Reference reference -> validateReference(reference, schema);
-            case ObjectAuthorizationExpression.Binary binary -> validateBinary(binary, schema);
+            case ObjectAuthorizationExpression.Reference reference -> validateReference(
+                reference,
+                schema,
+                queryContext
+            );
+            case ObjectAuthorizationExpression.Binary binary -> validateBinary(binary, schema, queryContext);
             default -> throw invalid("unsupported object authorization expression");
         }
     }
 
-    private static void validateBinary(ObjectAuthorizationExpression.Binary binary, QuerySchemaView schema) {
+    private static void validateBinary(
+        ObjectAuthorizationExpression.Binary binary,
+        QuerySchemaView schema,
+        QueryFieldContext queryContext
+    ) {
         switch (binary.operator()) {
             case AND, OR -> {
-                validate(binary.left(), schema);
-                validate(binary.right(), schema);
+                validate(binary.left(), schema, queryContext);
+                validate(binary.right(), schema, queryContext);
             }
             case EQUAL, NOT_EQUAL, GREATER, GREATER_OR_EQUAL, LESS, LESS_OR_EQUAL, CONTAINS -> {
                 QueryOperator operator = operator(binary.operator());
-                requireOperator(binary.left(), operator, schema);
-                requireOperator(binary.right(), operator, schema);
-                validateOperand(binary.left(), schema);
-                validateOperand(binary.right(), schema);
+                requireOperator(binary.left(), operator, schema, queryContext);
+                requireOperator(binary.right(), operator, schema, queryContext);
+                validateOperand(binary.left(), schema, queryContext);
+                validateOperand(binary.right(), schema, queryContext);
             }
             case IN, ADD, SUBTRACT, MULTIPLY, DIVIDE, MODULO -> throw invalid(
                 "unsupported object authorization operator"
@@ -41,31 +58,46 @@ final class ObjectAuthorizationExpressionValidator {
         }
     }
 
-    private static void validateOperand(ObjectAuthorizationExpression expression, QuerySchemaView schema) {
+    private static void validateOperand(
+        ObjectAuthorizationExpression expression,
+        QuerySchemaView schema,
+        QueryFieldContext queryContext
+    ) {
         switch (expression) {
             case ObjectAuthorizationExpression.Literal _ -> {
             }
-            case ObjectAuthorizationExpression.Reference reference -> validateReference(reference, schema);
+            case ObjectAuthorizationExpression.Reference reference -> validateReference(
+                reference,
+                schema,
+                queryContext
+            );
             default -> throw invalid("comparison operands must be references or literals");
         }
     }
 
-    private static void validateReference(ObjectAuthorizationExpression.Reference reference, QuerySchemaView schema) {
+    private static void validateReference(
+        ObjectAuthorizationExpression.Reference reference,
+        QuerySchemaView schema,
+        QueryFieldContext queryContext
+    ) {
         if (reference.root().equals("object")) {
-            schema.field(new QueryPath(reference.path())).orElseThrow(() -> invalid("object path is not queryable"));
+            schema
+                .field(new QueryPath(reference.path()), queryContext)
+                .orElseThrow(() -> invalid("object path is not queryable"));
         }
     }
 
     private static void requireOperator(
         ObjectAuthorizationExpression expression,
         QueryOperator operator,
-        QuerySchemaView schema
+        QuerySchemaView schema,
+        QueryFieldContext queryContext
     ) {
         if (
             expression instanceof ObjectAuthorizationExpression.Reference reference && reference.root().equals("object")
         ) {
             QueryFieldDescriptor field = schema
-                .field(new QueryPath(reference.path()))
+                .field(new QueryPath(reference.path()), queryContext)
                 .orElseThrow(() -> invalid("object path is not queryable"));
             if (!field.supports(operator)) {
                 throw invalid("operator is not supported for object path " + field.path().text());

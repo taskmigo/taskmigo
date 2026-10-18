@@ -20,10 +20,12 @@ import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageType;
 import io.taskmigo.language.PartialProgram;
+import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QuerySchemaView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /// Orchestrates Object Authorization Language work and delegates final predicate composition to the pure domain composer.
 public final class ObjectAuthorizationService implements ObjectAuthorization {
@@ -40,7 +42,12 @@ public final class ObjectAuthorizationService implements ObjectAuthorization {
     }
 
     @Override
-    public <Q> ObjectAuthorizationPredicate<Q> authorize(AuthorizationContext context, QuerySchemaView schema) {
+    public <Q> ObjectAuthorizationPredicate<Q> authorize(
+        AuthorizationContext context,
+        QuerySchemaView schema,
+        QueryFieldContext queryContext
+    ) {
+        Objects.requireNonNull(queryContext);
         if (!(context instanceof AuthorizationOperation operation)) {
             throw new AuthorizationException("authorization context is not valid for this operation");
         }
@@ -50,18 +57,19 @@ public final class ObjectAuthorizationService implements ObjectAuthorization {
                 var statement = artifact.statement();
                 if (statement.scope() == Scope.OBJECT && artifact.matches(operation.method(), operation.path())) {
                     CompiledSource policy = artifact.policy();
-                    ObjectAuthorizationExpressionValidator.validate(
-                        policy.map(LanguageObjectAuthorizationExpressionVisitor.INSTANCE),
-                        schema
+                    ObjectAuthorizationExpression expression = policy.map(
+                        LanguageObjectAuthorizationExpressionVisitor.INSTANCE
                     );
+                    ObjectAuthorizationExpressionValidator.validate(expression, schema, queryContext);
                     ObjectAuthorizationPredicate<Q> predicate = ObjectAuthorizationPredicateModels.from(
                         schema,
+                        queryContext,
                         this.partial(policy, operation.snapshot().roots())
                     );
                     rules.add(new Rule<>(statement.effect(), predicate));
                 }
             }
-            return COMPOSER.compose(ObjectAuthorizationPredicateModels.constant(schema, false), rules);
+            return COMPOSER.compose(ObjectAuthorizationPredicateModels.constant(schema, queryContext, false), rules);
         } catch (EmbeddedLanguageException | IllegalArgumentException exception) {
             throw new AuthorizationException("Invalid Object authorization policy: " + exception.getMessage());
         }

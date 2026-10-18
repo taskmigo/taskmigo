@@ -1,10 +1,8 @@
 package io.taskmigo.web.api.v0.auth.user;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.UserMutationActor;
@@ -12,6 +10,10 @@ import io.taskmigo.identity.user.application.api.UserRegistrationService;
 import io.taskmigo.identity.user.application.api.UserService;
 import io.taskmigo.query.FilteredQuery;
 import io.taskmigo.query.QueryOperation;
+import io.taskmigo.web.api.support.objectauthorization.ObjectAuthorizationResolver;
+import io.taskmigo.web.api.support.objectauthorization.ResolvedObjectAuthorization;
+import io.taskmigo.web.api.support.query.FilteredQueryRequest;
+import io.taskmigo.web.api.support.query.FilteredQueryRequestResolver;
 import io.taskmigo.web.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.api.v0.support.response.ApiResponseFactory;
@@ -54,11 +56,21 @@ class UserController {
 
     private final UserService users;
     private final UserRegistrationService registrations;
+    private final FilteredQueryRequestResolver queryResolver;
+    private final ObjectAuthorizationResolver objectAuthorization;
     private final ApiResponseFactory responses;
 
-    UserController(UserService users, UserRegistrationService registrations, ApiResponseFactory responses) {
+    UserController(
+        UserService users,
+        UserRegistrationService registrations,
+        FilteredQueryRequestResolver queryResolver,
+        ObjectAuthorizationResolver objectAuthorization,
+        ApiResponseFactory responses
+    ) {
         this.users = users;
         this.registrations = registrations;
+        this.queryResolver = queryResolver;
+        this.objectAuthorization = objectAuthorization;
         this.responses = responses;
     }
 
@@ -68,14 +80,15 @@ class UserController {
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
-        FilteredQuery<UserInfo> filter,
-        ObjectAuthorizationPredicate<UserInfo> authorization
+        @ParameterObject @Valid FilteredQueryRequest query
     ) {
+        FilteredQuery<UserInfo> filter = this.queryResolver.resolve(query);
+        ResolvedObjectAuthorization<UserInfo> authorization = this.objectAuthorization.resolve();
         OffsetPage<UserInfo> users = this.users.list(
             pagination.getPage(),
             pagination.getPageSize(),
             filter.predicate(),
-            authorization
+            authorization.predicate()
         );
         return this.responses.ok(
             users.items().stream().map(Response::from).toList(),
@@ -92,10 +105,10 @@ class UserController {
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> delete(
         @PathVariable UUID userId,
-        @Parameter(hidden = true) ObjectAuthorizationPredicate<UserInfo> authorization,
         JwtAuthenticationToken authentication
     ) {
-        this.users.delete(userId, authorization, actor(authentication));
+        ResolvedObjectAuthorization<UserInfo> authorization = this.objectAuthorization.resolve();
+        this.users.delete(userId, authorization.predicate(), actor(authentication));
         return this.responses.ok("resource.user.deleted", "User deleted");
     }
 
@@ -108,13 +121,13 @@ class UserController {
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setStatements(
         @PathVariable UUID userId,
         @Valid @RequestBody StatementAssignmentRequest request,
-        @Parameter(hidden = true) ObjectAuthorizationPredicate<UserInfo> authorization,
         JwtAuthenticationToken authentication
     ) {
+        ResolvedObjectAuthorization<UserInfo> authorization = this.objectAuthorization.resolve();
         this.users.setStatements(
             userId,
             request.statementIds() == null ? Set.of() : request.statementIds(),
-            authorization,
+            authorization.predicate(),
             actor(authentication)
         );
         return this.responses.ok("resource.user.statements.updated", "User statements updated");

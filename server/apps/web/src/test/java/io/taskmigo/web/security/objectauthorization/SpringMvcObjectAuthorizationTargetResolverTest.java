@@ -3,7 +3,6 @@ package io.taskmigo.web.security.objectauthorization;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import io.taskmigo.query.QueryOperation;
 import io.taskmigo.query.QuerySchemaView;
@@ -46,14 +45,14 @@ class SpringMvcObjectAuthorizationTargetResolverTest {
     private QuerySchemaView otherSchema;
 
     /**
-     * Given: an MVC route with an explicit query operation and multiple schemas for the same object DTO.
-     * Expect: target discovery maps the route to the schema with the declared operation ID.
+     * Given: an MVC route with an explicit query operation and multiple schemas.
+     * Expect: target discovery maps the route to the schema with the declared operation ID without controller internals.
      */
     @Test
     @DisplayName("derives an object schema route from the declared query operation")
     void shouldResolveSchemaWhenOperationHandlerMappingMatchesStatementTarget() throws NoSuchMethodException {
         // Arrange
-        Method method = TestController.class.getDeclaredMethod("list", ObjectAuthorizationPredicate.class);
+        Method method = TestController.class.getDeclaredMethod("list");
         HandlerMethod handler = new HandlerMethod(new TestController(), method);
         when(this.handlerMappings.getObject()).thenReturn(this.handlerMapping);
         when(this.handlerMapping.getHandlerMethods()).thenReturn(Map.of(this.mapping, handler));
@@ -82,8 +81,6 @@ class SpringMvcObjectAuthorizationTargetResolverTest {
     private static final class TestController {
 
         @QueryOperation("test.objects.list")
-        void list(ObjectAuthorizationPredicate<TestObject> authorization) {}
+        void list() {}
     }
-
-    private static final class TestObject {}
 }
