@@ -14,6 +14,7 @@ import io.taskmigo.query.QuerySchemaView;
 import io.taskmigo.web.api.support.query.QueryFieldContextResolver;
 import io.taskmigo.web.api.support.query.QueryFieldContextSource;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -86,6 +87,44 @@ class ObjectAuthorizationPredicateArgumentResolverTest {
         assertThat(second).isSameAs(this.predicate);
         assertThat(sourceCalls).hasValue(1);
         verify(this.authorization, times(2)).authorize(this.context, this.schema, queryContext);
+    }
+
+    /**
+     * Verifies that client-controlled request data cannot replace the server-owned Object Authorization predicate.
+     *
+     * Given: the request supplies an `authorization` query parameter and JSON body value while Spring Security has
+     * established the request AuthorizationContext.
+     * Expect: the resolver ignores both client values and returns only the predicate derived from the server context.
+     */
+    @Test
+    @DisplayName("ignores client-supplied authorization data when resolving the server-owned predicate")
+    void shouldIgnoreClientAuthorizationWhenRequestSuppliesAuthorizationData() throws NoSuchMethodException {
+        // Arrange
+        Method method = TestController.class.getDeclaredMethod("list", ObjectAuthorizationPredicate.class);
+        MethodParameter parameter = new MethodParameter(method, 0);
+        QueryFieldContext queryContext = QueryFieldContext.empty();
+        when(this.schema.operation()).thenReturn("test.objects.list");
+        when(this.authorization.<TestObject>authorize(this.context, this.schema, queryContext)).thenReturn(
+            this.predicate
+        );
+        ObjectAuthorizationPredicateArgumentResolver resolver = new ObjectAuthorizationPredicateArgumentResolver(
+            this.authorization,
+            List.of(this.schema),
+            new QueryFieldContextResolver(List.of())
+        );
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setParameter("authorization", "client-allow-all");
+        request.setContentType("application/json");
+        request.setContent("{\"authorization\":\"client-allow-all\"}".getBytes(StandardCharsets.UTF_8));
+        request.setAttribute(AuthorizationContext.ATTRIBUTE, this.context);
+        ServletWebRequest webRequest = new ServletWebRequest(request);
+
+        // Act
+        Object resolved = resolver.resolveArgument(parameter, null, webRequest, null);
+
+        // Assert
+        assertThat(resolved).isSameAs(this.predicate);
+        verify(this.authorization).authorize(this.context, this.schema, queryContext);
     }
 
     private static final class TestController {

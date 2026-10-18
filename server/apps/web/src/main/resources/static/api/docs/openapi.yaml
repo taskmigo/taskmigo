@@ -35,16 +35,38 @@ paths:
           description: Number of items per page
           maximum: 100
           minimum: 1
-      - name: filter
+      - name: filterBy
         in: query
-        required: true
+        description: Filter expression using the Taskmigo FilterBy DSL.
+        required: false
         schema:
-          $ref: "#/components/schemas/FilteredQueryUserInfo"
-      - name: authorization
+          type:
+          - string
+          - "null"
+          description: Filter expression using the Taskmigo FilterBy DSL.
+      - name: sortBy
         in: query
-        required: true
+        description: Field path to sort by.
+        required: false
         schema:
-          $ref: "#/components/schemas/ObjectAuthorizationPredicateUserInfo"
+          type:
+          - string
+          - "null"
+          description: Field path to sort by.
+      - name: sortOrder
+        in: query
+        description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+          is present.
+        required: false
+        schema:
+          type:
+          - string
+          - "null"
+          description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+            is present.
+          enum:
+          - ASC
+          - DESC
       responses:
         "200":
           description: OK
@@ -176,11 +198,38 @@ paths:
         schema:
           type: string
           format: uuid
-      - name: filter
+      - name: filterBy
         in: query
-        required: true
+        description: Filter expression using the Taskmigo FilterBy DSL.
+        required: false
         schema:
-          $ref: "#/components/schemas/FilteredQueryTicketInfo"
+          type:
+          - string
+          - "null"
+          description: Filter expression using the Taskmigo FilterBy DSL.
+      - name: sortBy
+        in: query
+        description: Field path to sort by.
+        required: false
+        schema:
+          type:
+          - string
+          - "null"
+          description: Field path to sort by.
+      - name: sortOrder
+        in: query
+        description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+          is present.
+        required: false
+        schema:
+          type:
+          - string
+          - "null"
+          description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+            is present.
+          enum:
+          - ASC
+          - DESC
       responses:
         "200":
           description: OK
@@ -616,16 +665,38 @@ paths:
           description: Number of items per page
           maximum: 100
           minimum: 1
-      - name: filter
+      - name: filterBy
         in: query
-        required: true
+        description: Filter expression using the Taskmigo FilterBy DSL.
+        required: false
         schema:
-          $ref: "#/components/schemas/FilteredQueryStatementInfo"
-      - name: authorization
+          type:
+          - string
+          - "null"
+          description: Filter expression using the Taskmigo FilterBy DSL.
+      - name: sortBy
         in: query
-        required: true
+        description: Field path to sort by.
+        required: false
         schema:
-          $ref: "#/components/schemas/ObjectAuthorizationPredicateStatementInfo"
+          type:
+          - string
+          - "null"
+          description: Field path to sort by.
+      - name: sortOrder
+        in: query
+        description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+          is present.
+        required: false
+        schema:
+          type:
+          - string
+          - "null"
+          description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+            is present.
+          enum:
+          - ASC
+          - DESC
       responses:
         "200":
           description: OK
@@ -751,16 +822,38 @@ paths:
           description: Number of items per page
           maximum: 100
           minimum: 1
-      - name: filter
+      - name: filterBy
         in: query
-        required: true
+        description: Filter expression using the Taskmigo FilterBy DSL.
+        required: false
         schema:
-          $ref: "#/components/schemas/FilteredQueryRoleInfo"
-      - name: authorization
+          type:
+          - string
+          - "null"
+          description: Filter expression using the Taskmigo FilterBy DSL.
+      - name: sortBy
         in: query
-        required: true
+        description: Field path to sort by.
+        required: false
         schema:
-          $ref: "#/components/schemas/ObjectAuthorizationPredicateRoleInfo"
+          type:
+          - string
+          - "null"
+          description: Field path to sort by.
+      - name: sortOrder
+        in: query
+        description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+          is present.
+        required: false
+        schema:
+          type:
+          - string
+          - "null"
+          description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+            is present.
+          enum:
+          - ASC
+          - DESC
       responses:
         "200":
           description: OK
@@ -886,16 +979,38 @@ paths:
           description: Number of items per page
           maximum: 100
           minimum: 1
-      - name: filter
+      - name: filterBy
         in: query
-        required: true
+        description: Filter expression using the Taskmigo FilterBy DSL.
+        required: false
         schema:
-          $ref: "#/components/schemas/FilteredQueryGroupInfo"
-      - name: authorization
+          type:
+          - string
+          - "null"
+          description: Filter expression using the Taskmigo FilterBy DSL.
+      - name: sortBy
         in: query
-        required: true
+        description: Field path to sort by.
+        required: false
         schema:
-          $ref: "#/components/schemas/ObjectAuthorizationPredicateGroupInfo"
+          type:
+          - string
+          - "null"
+          description: Field path to sort by.
+      - name: sortOrder
+        in: query
+        description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+          is present.
+        required: false
+        schema:
+          type:
+          - string
+          - "null"
+          description: Sort direction. Requires sortBy; defaults to ASC when sortBy
+            is present.
+          enum:
+          - ASC
+          - DESC
       responses:
         "200":
           description: OK
@@ -2308,54 +2423,6 @@ components:
       properties:
         user:
           type: string
-    FilteredQueryUserInfo:
-      type: object
-      properties:
-        predicate:
-          $ref: "#/components/schemas/QueryPredicateUserInfo"
-        context:
-          $ref: "#/components/schemas/QueryFieldContext"
-        sorting:
-          type: array
-          items:
-            $ref: "#/components/schemas/QuerySort"
-    QueryFieldContext:
-      type: object
-      properties:
-        values:
-          type: object
-          additionalProperties: {}
-    QueryPath:
-      type: object
-      properties:
-        segments:
-          type: array
-          items:
-            type: string
-    QueryPredicateUserInfo:
-      type: object
-      properties:
-        alwaysTrue:
-          type: boolean
-        alwaysFalse:
-          type: boolean
-    QuerySort:
-      type: object
-      properties:
-        path:
-          $ref: "#/components/schemas/QueryPath"
-        direction:
-          type: string
-          enum:
-          - ASC
-          - DESC
-    ObjectAuthorizationPredicateUserInfo:
-      type: object
-      properties:
-        alwaysTrue:
-          type: boolean
-        alwaysFalse:
-          type: boolean
     ApiResponseListUserInfoOffsetMeta:
       type: object
       properties:
@@ -2475,24 +2542,6 @@ components:
         retainedAt:
           type: string
           format: date-time
-    FilteredQueryTicketInfo:
-      type: object
-      properties:
-        predicate:
-          $ref: "#/components/schemas/QueryPredicateTicketInfo"
-        context:
-          $ref: "#/components/schemas/QueryFieldContext"
-        sorting:
-          type: array
-          items:
-            $ref: "#/components/schemas/QuerySort"
-    QueryPredicateTicketInfo:
-      type: object
-      properties:
-        alwaysTrue:
-          type: boolean
-        alwaysFalse:
-          type: boolean
     ApiResponseListTicketInfoOffsetMeta:
       type: object
       properties:
@@ -2527,31 +2576,6 @@ components:
       - meta
       - statusCode
       - success
-    FilteredQueryStatementInfo:
-      type: object
-      properties:
-        predicate:
-          $ref: "#/components/schemas/QueryPredicateStatementInfo"
-        context:
-          $ref: "#/components/schemas/QueryFieldContext"
-        sorting:
-          type: array
-          items:
-            $ref: "#/components/schemas/QuerySort"
-    QueryPredicateStatementInfo:
-      type: object
-      properties:
-        alwaysTrue:
-          type: boolean
-        alwaysFalse:
-          type: boolean
-    ObjectAuthorizationPredicateStatementInfo:
-      type: object
-      properties:
-        alwaysTrue:
-          type: boolean
-        alwaysFalse:
-          type: boolean
     ApiResponseData:
       type: object
       properties:
@@ -2622,31 +2646,6 @@ components:
       properties:
         api:
           $ref: "#/components/schemas/ApiResponseData"
-    FilteredQueryRoleInfo:
-      type: object
-      properties:
-        predicate:
-          $ref: "#/components/schemas/QueryPredicateRoleInfo"
-        context:
-          $ref: "#/components/schemas/QueryFieldContext"
-        sorting:
-          type: array
-          items:
-            $ref: "#/components/schemas/QuerySort"
-    QueryPredicateRoleInfo:
-      type: object
-      properties:
-        alwaysTrue:
-          type: boolean
-        alwaysFalse:
-          type: boolean
-    ObjectAuthorizationPredicateRoleInfo:
-      type: object
-      properties:
-        alwaysTrue:
-          type: boolean
-        alwaysFalse:
-          type: boolean
     ApiResponseListRoleInfoOffsetMeta:
       type: object
       properties:
@@ -2697,31 +2696,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/RoleInfo"
-    FilteredQueryGroupInfo:
-      type: object
-      properties:
-        predicate:
-          $ref: "#/components/schemas/QueryPredicateGroupInfo"
-        context:
-          $ref: "#/components/schemas/QueryFieldContext"
-        sorting:
-          type: array
-          items:
-            $ref: "#/components/schemas/QuerySort"
-    QueryPredicateGroupInfo:
-      type: object
-      properties:
-        alwaysTrue:
-          type: boolean
-        alwaysFalse:
-          type: boolean
-    ObjectAuthorizationPredicateGroupInfo:
-      type: object
-      properties:
-        alwaysTrue:
-          type: boolean
-        alwaysFalse:
-          type: boolean
     ApiResponseListGroupInfoOffsetMeta:
       type: object
       properties:

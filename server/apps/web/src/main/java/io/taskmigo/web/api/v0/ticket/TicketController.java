@@ -12,6 +12,8 @@ import io.taskmigo.query.QueryOperation;
 import io.taskmigo.ticket.application.api.TicketInfo;
 import io.taskmigo.ticket.application.api.TicketPatch;
 import io.taskmigo.ticket.application.api.TicketService;
+import io.taskmigo.web.api.support.query.FilteredQueryRequest;
+import io.taskmigo.web.api.support.query.FilteredQueryRequestCompiler;
 import io.taskmigo.web.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.api.v0.support.response.ApiResponseFactory;
@@ -50,11 +52,15 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Ticket")
 class TicketController {
 
+    private static final String LIST_OPERATION = "tickets.list";
+
     private final TicketService tickets;
+    private final FilteredQueryRequestCompiler queryCompiler;
     private final ApiResponseFactory responses;
 
-    TicketController(TicketService tickets, ApiResponseFactory responses) {
+    TicketController(TicketService tickets, FilteredQueryRequestCompiler queryCompiler, ApiResponseFactory responses) {
         this.tickets = tickets;
+        this.queryCompiler = queryCompiler;
         this.responses = responses;
     }
 
@@ -82,15 +88,17 @@ class TicketController {
     }
 
     @GetMapping("/tickets")
-    @QueryOperation("tickets.list")
+    @QueryOperation(LIST_OPERATION)
     @Operation(summary = "List Tickets")
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         @RequestParam(required = false) @Nullable UUID ticketTypeId,
-        FilteredQuery<TicketInfo> filter,
+        @ParameterObject @Valid FilteredQueryRequest query,
+        @Parameter(hidden = true) QueryFieldContext queryContext,
         @Parameter(hidden = true) ObjectAuthorizationPredicate<TicketInfo> authorization
     ) {
+        FilteredQuery<TicketInfo> filter = this.queryCompiler.compile(LIST_OPERATION, query, queryContext);
         OffsetPage<TicketInfo> page = this.tickets.list(
             pagination.getPage(),
             pagination.getPageSize(),

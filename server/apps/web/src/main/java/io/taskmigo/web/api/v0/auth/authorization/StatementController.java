@@ -1,6 +1,7 @@
 package io.taskmigo.web.api.v0.auth.authorization;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
@@ -11,7 +12,10 @@ import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.application.api.StatementService;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.FilteredQuery;
+import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryOperation;
+import io.taskmigo.web.api.support.query.FilteredQueryRequest;
+import io.taskmigo.web.api.support.query.FilteredQueryRequestCompiler;
 import io.taskmigo.web.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.api.v0.support.response.ApiResponseFactory;
@@ -47,11 +51,19 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Statement")
 class StatementController {
 
+    private static final String LIST_OPERATION = "access-control.statements.list";
+
     private final StatementService statements;
+    private final FilteredQueryRequestCompiler queryCompiler;
     private final ApiResponseFactory responses;
 
-    StatementController(StatementService statements, ApiResponseFactory responses) {
+    StatementController(
+        StatementService statements,
+        FilteredQueryRequestCompiler queryCompiler,
+        ApiResponseFactory responses
+    ) {
         this.statements = statements;
+        this.queryCompiler = queryCompiler;
         this.responses = responses;
     }
 
@@ -88,14 +100,16 @@ class StatementController {
     }
 
     @GetMapping("/statements")
-    @QueryOperation("access-control.statements.list")
+    @QueryOperation(LIST_OPERATION)
     @Operation(summary = "List authorization statements")
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
-        FilteredQuery<StatementInfo> filter,
-        ObjectAuthorizationPredicate<StatementInfo> authorization
+        @ParameterObject @Valid FilteredQueryRequest query,
+        @Parameter(hidden = true) QueryFieldContext queryContext,
+        @Parameter(hidden = true) ObjectAuthorizationPredicate<StatementInfo> authorization
     ) {
+        FilteredQuery<StatementInfo> filter = this.queryCompiler.compile(LIST_OPERATION, query, queryContext);
         OffsetPage<StatementInfo> page = this.statements.list(
             pagination.getPage(),
             pagination.getPageSize(),

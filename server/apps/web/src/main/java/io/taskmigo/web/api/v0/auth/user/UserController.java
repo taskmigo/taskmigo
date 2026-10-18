@@ -11,7 +11,10 @@ import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.application.api.UserRegistrationService;
 import io.taskmigo.identity.user.application.api.UserService;
 import io.taskmigo.query.FilteredQuery;
+import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryOperation;
+import io.taskmigo.web.api.support.query.FilteredQueryRequest;
+import io.taskmigo.web.api.support.query.FilteredQueryRequestCompiler;
 import io.taskmigo.web.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.api.v0.support.response.ApiResponseFactory;
@@ -52,25 +55,36 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "User")
 class UserController {
 
+    private static final String LIST_OPERATION = "identity.users.list";
+
     private final UserService users;
     private final UserRegistrationService registrations;
+    private final FilteredQueryRequestCompiler queryCompiler;
     private final ApiResponseFactory responses;
 
-    UserController(UserService users, UserRegistrationService registrations, ApiResponseFactory responses) {
+    UserController(
+        UserService users,
+        UserRegistrationService registrations,
+        FilteredQueryRequestCompiler queryCompiler,
+        ApiResponseFactory responses
+    ) {
         this.users = users;
         this.registrations = registrations;
+        this.queryCompiler = queryCompiler;
         this.responses = responses;
     }
 
     @GetMapping("/users")
-    @QueryOperation("identity.users.list")
+    @QueryOperation(LIST_OPERATION)
     @Operation(summary = "List users")
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
-        FilteredQuery<UserInfo> filter,
-        ObjectAuthorizationPredicate<UserInfo> authorization
+        @ParameterObject @Valid FilteredQueryRequest query,
+        @Parameter(hidden = true) QueryFieldContext queryContext,
+        @Parameter(hidden = true) ObjectAuthorizationPredicate<UserInfo> authorization
     ) {
+        FilteredQuery<UserInfo> filter = this.queryCompiler.compile(LIST_OPERATION, query, queryContext);
         OffsetPage<UserInfo> users = this.users.list(
             pagination.getPage(),
             pagination.getPageSize(),

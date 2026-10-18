@@ -47,6 +47,20 @@ public class FilterByCompiler {
 
     /// Compiles against an operation-scoped schema and its runtime field context.
     public QueryPredicate<?> compile(QuerySchemaView schema, QueryFieldContext context, @Nullable String source) {
+        return this.compileTyped(schema, context, source);
+    }
+
+    /// Compiles against an operation-scoped schema with an empty runtime context.
+    public QueryPredicate<?> compile(QuerySchemaView schema, @Nullable String source) {
+        return this.compile(schema, QueryFieldContext.empty(), source);
+    }
+
+    /// Compiles and binds the opaque predicate to the caller's Query Contract type.
+    public <Q> QueryPredicate<Q> compileTyped(
+        QuerySchemaView schema,
+        QueryFieldContext context,
+        @Nullable String source
+    ) {
         String identity = schema.identity(context);
         if (source == null || source.isBlank()) {
             return QueryPredicateFactory.wrap(identity, new QueryExpression.Literal(true));
@@ -64,9 +78,9 @@ public class FilterByCompiler {
         }
     }
 
-    /// Compiles against an operation-scoped schema with an empty runtime context.
-    public QueryPredicate<?> compile(QuerySchemaView schema, @Nullable String source) {
-        return this.compile(schema, QueryFieldContext.empty(), source);
+    /// Compiles and binds to the caller's Query Contract type with an empty runtime context.
+    public <Q> QueryPredicate<Q> compileTyped(QuerySchemaView schema, @Nullable String source) {
+        return this.compileTyped(schema, QueryFieldContext.empty(), source);
     }
 
     private static EnvironmentSchema environment(QuerySchemaView schema, QueryFieldContext context) {

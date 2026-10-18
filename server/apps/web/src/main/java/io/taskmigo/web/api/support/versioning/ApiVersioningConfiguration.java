@@ -2,7 +2,6 @@ package io.taskmigo.web.api.support.versioning;
 
 import io.taskmigo.web.api.support.objectauthorization.AuthorizationContextArgumentResolver;
 import io.taskmigo.web.api.support.objectauthorization.ObjectAuthorizationPredicateArgumentResolver;
-import io.taskmigo.web.api.support.query.FilteredQueryArgumentResolver;
 import io.taskmigo.web.api.support.query.QueryFieldContextArgumentResolver;
 import java.util.List;
 import org.springframework.context.annotation.Configuration;
@@ -18,18 +17,15 @@ class ApiVersioningConfiguration implements WebMvcConfigurer {
 
     private final AuthorizationContextArgumentResolver authorizationContext;
     private final ObjectAuthorizationPredicateArgumentResolver objectAuthorization;
-    private final FilteredQueryArgumentResolver filteredQuery;
     private final QueryFieldContextArgumentResolver queryFieldContext;
 
     ApiVersioningConfiguration(
         AuthorizationContextArgumentResolver authorizationContext,
         ObjectAuthorizationPredicateArgumentResolver objectAuthorization,
-        FilteredQueryArgumentResolver filteredQuery,
         QueryFieldContextArgumentResolver queryFieldContext
     ) {
         this.authorizationContext = authorizationContext;
         this.objectAuthorization = objectAuthorization;
-        this.filteredQuery = filteredQuery;
         this.queryFieldContext = queryFieldContext;
     }
 
@@ -51,7 +47,6 @@ class ApiVersioningConfiguration implements WebMvcConfigurer {
     public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
         resolvers.add(this.authorizationContext);
         resolvers.add(this.objectAuthorization);
-        resolvers.add(this.filteredQuery);
         resolvers.add(this.queryFieldContext);
     }
 }

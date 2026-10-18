@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration(proxyBeanMethods = false)
 class QuerySupportConfiguration {
 
-    /// Exposes the filter compiler required by the Spring MVC Query argument resolver.
+    /// Exposes the filter compiler required by the HTTP query request compiler.
     @Bean
     FilterByCompiler filterByCompiler() {
         return new FilterByCompiler();

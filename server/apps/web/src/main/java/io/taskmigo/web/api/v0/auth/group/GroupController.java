@@ -2,6 +2,7 @@ package io.taskmigo.web.api.v0.auth.group;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
@@ -9,7 +10,10 @@ import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.group.GroupInfo;
 import io.taskmigo.identity.group.application.api.GroupService;
 import io.taskmigo.query.FilteredQuery;
+import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryOperation;
+import io.taskmigo.web.api.support.query.FilteredQueryRequest;
+import io.taskmigo.web.api.support.query.FilteredQueryRequestCompiler;
 import io.taskmigo.web.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.api.v0.support.response.ApiResponseFactory;
@@ -42,23 +46,29 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Group")
 class GroupController {
 
+    private static final String LIST_OPERATION = "identity.groups.list";
+
     private final GroupService groups;
+    private final FilteredQueryRequestCompiler queryCompiler;
     private final ApiResponseFactory responses;
 
-    GroupController(GroupService groups, ApiResponseFactory responses) {
+    GroupController(GroupService groups, FilteredQueryRequestCompiler queryCompiler, ApiResponseFactory responses) {
         this.groups = groups;
+        this.queryCompiler = queryCompiler;
         this.responses = responses;
     }
 
     @GetMapping("/groups")
-    @QueryOperation("identity.groups.list")
+    @QueryOperation(LIST_OPERATION)
     @Operation(summary = "List groups")
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
-        FilteredQuery<GroupInfo> filter,
-        ObjectAuthorizationPredicate<GroupInfo> authorization
+        @ParameterObject @Valid FilteredQueryRequest query,
+        @Parameter(hidden = true) QueryFieldContext queryContext,
+        @Parameter(hidden = true) ObjectAuthorizationPredicate<GroupInfo> authorization
     ) {
+        FilteredQuery<GroupInfo> filter = this.queryCompiler.compile(LIST_OPERATION, query, queryContext);
         OffsetPage<GroupInfo> groups = this.groups.list(
             pagination.getPage(),
             pagination.getPageSize(),
