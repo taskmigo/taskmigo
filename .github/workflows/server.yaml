@@ -65,7 +65,7 @@ jobs:
       - name: Verify OpenAPI snapshot
         id: verify-openapi
         run: |
-          ./gradlew --no-daemon --console=plain :apps:web:generateOpenApi
+          ./gradlew --no-daemon --console=plain :apps:openapi-generator:generateOpenApi
           if git diff --quiet -- apps/web/src/main/resources/static/api/docs/openapi.yaml; then
             echo "snapshot_changed=false" >> "$GITHUB_OUTPUT"
             exit 0

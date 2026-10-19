@@ -21,6 +21,7 @@ COPY modules/ticket/build.gradle.kts modules/ticket/build.gradle.kts
 COPY benchmarks/authorization/build.gradle.kts benchmarks/authorization/build.gradle.kts
 COPY testing/architecture/build.gradle.kts testing/architecture/build.gradle.kts
 COPY apps/migration/build.gradle.kts apps/migration/build.gradle.kts
+COPY apps/openapi-generator/build.gradle.kts apps/openapi-generator/build.gradle.kts
 COPY apps/web/build.gradle.kts apps/web/build.gradle.kts
 COPY apps/worker/build.gradle.kts apps/worker/build.gradle.kts
 

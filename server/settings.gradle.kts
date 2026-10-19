@@ -22,6 +22,7 @@ include(
     ":benchmarks:authorization",
     ":testing:architecture",
     ":apps:migration",
+    ":apps:openapi-generator",
     ":apps:web",
     ":apps:worker",
 )
