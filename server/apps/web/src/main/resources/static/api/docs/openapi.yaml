@@ -44,6 +44,32 @@ paths:
           - string
           - "null"
           description: Filter expression using the Taskmigo FilterBy DSL.
+        x-filter-by:
+          firstName:
+          - EQ
+          - NE
+          - CONTAINS
+          id:
+          - EQ
+          - NE
+          lastName:
+          - EQ
+          - NE
+          - CONTAINS
+          retainedAt:
+          - EQ
+          - NE
+          - GT
+          - GTE
+          - LT
+          - LTE
+          status:
+          - EQ
+          - NE
+          username:
+          - EQ
+          - NE
+          - CONTAINS
       - name: sortBy
         in: query
         description: Field path to sort by.
@@ -207,6 +233,38 @@ paths:
           - string
           - "null"
           description: Filter expression using the Taskmigo FilterBy DSL.
+        x-filter-by:
+          createdAt:
+          - EQ
+          - NE
+          - GT
+          - GTE
+          - LT
+          - LTE
+          createdBy:
+          - EQ
+          - NE
+          id:
+          - EQ
+          - NE
+          status:
+          - EQ
+          - NE
+          - CONTAINS
+          ticketTypeId:
+          - EQ
+          - NE
+          title:
+          - EQ
+          - NE
+          - CONTAINS
+          updatedAt:
+          - EQ
+          - NE
+          - GT
+          - GTE
+          - LT
+          - LTE
       - name: sortBy
         in: query
         description: Field path to sort by.
@@ -674,6 +732,26 @@ paths:
           - string
           - "null"
           description: Filter expression using the Taskmigo FilterBy DSL.
+        x-filter-by:
+          code:
+          - EQ
+          - NE
+          - CONTAINS
+          description:
+          - EQ
+          - NE
+          - CONTAINS
+          id:
+          - EQ
+          - NE
+          method:
+          - EQ
+          - NE
+          - CONTAINS
+          path:
+          - EQ
+          - NE
+          - CONTAINS
       - name: sortBy
         in: query
         description: Field path to sort by.
@@ -831,6 +909,22 @@ paths:
           - string
           - "null"
           description: Filter expression using the Taskmigo FilterBy DSL.
+        x-filter-by:
+          code:
+          - EQ
+          - NE
+          - CONTAINS
+          description:
+          - EQ
+          - NE
+          - CONTAINS
+          displayName:
+          - EQ
+          - NE
+          - CONTAINS
+          id:
+          - EQ
+          - NE
       - name: sortBy
         in: query
         description: Field path to sort by.
@@ -988,6 +1082,22 @@ paths:
           - string
           - "null"
           description: Filter expression using the Taskmigo FilterBy DSL.
+        x-filter-by:
+          code:
+          - EQ
+          - NE
+          - CONTAINS
+          description:
+          - EQ
+          - NE
+          - CONTAINS
+          displayName:
+          - EQ
+          - NE
+          - CONTAINS
+          id:
+          - EQ
+          - NE
       - name: sortBy
         in: query
         description: Field path to sort by.
