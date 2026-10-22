@@ -5,6 +5,7 @@ import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
 import java.util.UUID;
@@ -26,8 +27,18 @@ public interface StatementService {
     OffsetPage<StatementInfo> list(
         int page,
         int perPage,
-        QueryPredicate<StatementInfo> filter,
+        ListQuerySpec<StatementInfo> query,
         ObjectAuthorizationPredicate<StatementInfo> authorization
     );
+
+    default OffsetPage<StatementInfo> list(
+        int page,
+        int perPage,
+        QueryPredicate<StatementInfo> filter,
+        ObjectAuthorizationPredicate<StatementInfo> authorization
+    ) {
+        return this.list(page, perPage, new ListQuerySpec<>(filter), authorization);
+    }
+
     void requireStatements(Collection<UUID> ids);
 }

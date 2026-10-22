@@ -8,12 +8,12 @@ import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.application.api.UserRegistrationService;
 import io.taskmigo.identity.user.application.api.UserService;
-import io.taskmigo.query.FilteredQuery;
+import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryOperation;
 import io.taskmigo.web.api.support.objectauthorization.ObjectAuthorizationResolver;
 import io.taskmigo.web.api.support.objectauthorization.ResolvedObjectAuthorization;
-import io.taskmigo.web.api.support.query.FilteredQueryRequest;
-import io.taskmigo.web.api.support.query.FilteredQueryRequestResolver;
+import io.taskmigo.web.api.support.query.ListQueryOptions;
+import io.taskmigo.web.api.support.query.ListQueryResolver;
 import io.taskmigo.web.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.api.v0.support.response.ApiResponseFactory;
@@ -56,14 +56,14 @@ class UserController {
 
     private final UserService users;
     private final UserRegistrationService registrations;
-    private final FilteredQueryRequestResolver queryResolver;
+    private final ListQueryResolver queryResolver;
     private final ObjectAuthorizationResolver objectAuthorization;
     private final ApiResponseFactory responses;
 
     UserController(
         UserService users,
         UserRegistrationService registrations,
-        FilteredQueryRequestResolver queryResolver,
+        ListQueryResolver queryResolver,
         ObjectAuthorizationResolver objectAuthorization,
         ApiResponseFactory responses
     ) {
@@ -80,14 +80,14 @@ class UserController {
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
-        @ParameterObject @Valid FilteredQueryRequest query
+        @ParameterObject @Valid ListQueryOptions query
     ) {
-        FilteredQuery<UserInfo> filter = this.queryResolver.resolve(query);
+        ListQuerySpec<UserInfo> filter = this.queryResolver.resolve(query);
         ResolvedObjectAuthorization<UserInfo> authorization = this.objectAuthorization.resolve();
         OffsetPage<UserInfo> users = this.users.list(
             pagination.getPage(),
             pagination.getPageSize(),
-            filter.predicate(),
+            filter,
             authorization.predicate()
         );
         return this.responses.ok(

@@ -8,8 +8,9 @@ import io.taskmigo.authorization.querybinding.jpa.QueryPredicateBinder;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.application.StatementQueryRepository;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.jpaquery.JpaQuerySortSpecifications;
 import io.taskmigo.jpaquery.JpaQuerySpecifications;
-import io.taskmigo.query.QueryPredicate;
+import io.taskmigo.query.ListQuerySpec;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
@@ -23,11 +24,13 @@ import org.springframework.stereotype.Repository;
 public class JpaStatementQueryRepository implements StatementQueryRepository {
 
     private final StatementRepository statements;
+    private final ListStatementsQuerySchema listSchema;
     private final QueryPredicateBinder<StatementInfo, StatementEntity> queryBinder;
     private final ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> objectBinder;
 
     JpaStatementQueryRepository(StatementRepository statements, ListStatementsQuerySchema schema) {
         this.statements = statements;
+        this.listSchema = schema;
         this.queryBinder = new JpaQueryPredicateBinder<>(StatementInfo.class, schema);
         this.objectBinder = new JpaObjectAuthorizationPredicateBinder<>(StatementInfo.class, schema);
     }
@@ -52,14 +55,16 @@ public class JpaStatementQueryRepository implements StatementQueryRepository {
     public OffsetPage<StatementInfo> list(
         int page,
         int perPage,
-        QueryPredicate<StatementInfo> filter,
+        ListQuerySpec<StatementInfo> query,
         ObjectAuthorizationPredicate<StatementInfo> authorization
     ) {
-        var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
+        Sort pageableSort = JpaQuerySortSpecifications.hasSorting(query) ? Sort.unsorted() : Sort.by("id");
+        var pageable = PageRequest.of(page - 1, perPage, pageableSort);
         Specification<StatementEntity> authorizationSpec = this.objectBinder.bind(authorization);
-        Specification<StatementEntity> clientFilter = this.queryBinder.bind(filter);
+        Specification<StatementEntity> clientFilter = this.queryBinder.bind(query.predicate());
+        Specification<StatementEntity> ordering = JpaQuerySortSpecifications.bind(query, this.listSchema);
         var result = this.statements.findAll(
-            JpaQuerySpecifications.authorized(authorizationSpec, clientFilter),
+            JpaQuerySpecifications.authorized(authorizationSpec, clientFilter).and(ordering),
             pageable
         );
         return new OffsetPage<>(

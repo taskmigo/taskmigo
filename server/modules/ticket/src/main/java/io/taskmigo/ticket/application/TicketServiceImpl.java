@@ -7,7 +7,7 @@ import io.taskmigo.eav.schema.domain.EavSchemaStatus;
 import io.taskmigo.eav.value.application.EavInstanceService;
 import io.taskmigo.eav.value.application.EavInstanceView;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.query.FilteredQuery;
+import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.ticket.application.api.TicketInfo;
 import io.taskmigo.ticket.application.api.TicketPatch;
@@ -100,7 +100,7 @@ public final class TicketServiceImpl implements TicketService {
         int page,
         int perPage,
         @Nullable UUID ticketTypeId,
-        FilteredQuery<TicketInfo> query,
+        ListQuerySpec<TicketInfo> query,
         ObjectAuthorizationPredicate<TicketInfo> authorization
     ) {
         Objects.requireNonNull(query);

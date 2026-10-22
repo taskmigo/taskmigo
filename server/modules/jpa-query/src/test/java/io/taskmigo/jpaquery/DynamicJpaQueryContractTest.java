@@ -122,8 +122,8 @@ class DynamicJpaQueryContractTest {
     }
 
     @Test
-    @DisplayName("sort binder applies missing-last ordering and a stable tie breaker but skips count queries")
-    void shouldApplyStableSortingAndSkipCountQueries() {
+    @DisplayName("sort binder skips ordering for count queries")
+    void shouldSkipSortingWhenCriteriaQueryCountsRows() {
         JpaQueryValueExpression<TestEntity, String> expression = new JpaQueryValueExpression<>() {
             @Override
             public Expression<String> resolve(Root<TestEntity> root, CriteriaQuery<?> query, CriteriaBuilder builder) {
@@ -160,7 +160,6 @@ class DynamicJpaQueryContractTest {
         };
         Root<TestEntity> root = mock(Root.class);
         CriteriaBuilder builder = mock(CriteriaBuilder.class);
-        JpaPath<TestEntity, ?> tieBreaker = mock(JpaPath.class);
         CriteriaQuery<?> countQuery = mock(CriteriaQuery.class);
         Mockito.doReturn(Long.class).when(countQuery).getResultType();
 
@@ -170,8 +169,7 @@ class DynamicJpaQueryContractTest {
             builder,
             schema,
             QueryFieldContext.empty(),
-            List.of(new QuerySort(QueryPath.of("severity"), QuerySort.Direction.ASC)),
-            tieBreaker
+            List.of(new QuerySort(QueryPath.of("severity"), QuerySort.Direction.ASC))
         );
 
         verify(countQuery, Mockito.never()).orderBy(ArgumentMatchers.<Order>anyList());

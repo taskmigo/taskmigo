@@ -27,11 +27,11 @@ final class ListStatementsQuerySchema extends QuerySchema<StatementEntity> {
     @Override
     protected Collection<QueryField<StatementEntity, ?>> staticFields() {
         return List.of(
-            field(StatementEntity_.id).operators(EQ, NE),
-            field(StatementEntity_.code).operators(EQ, NE, CONTAINS),
-            field(StatementEntity_.description).operators(EQ, NE, CONTAINS),
-            field(StatementEntity_.method).operators(EQ, NE, CONTAINS),
-            field(StatementEntity_.path).operators(EQ, NE, CONTAINS)
+            field(StatementEntity_.id).operators(EQ, NE).sortable(),
+            field(StatementEntity_.code).operators(EQ, NE, CONTAINS).sortable(),
+            field(StatementEntity_.description).operators(EQ, NE, CONTAINS).sortable(),
+            field(StatementEntity_.method).operators(EQ, NE, CONTAINS).sortable(),
+            field(StatementEntity_.path).operators(EQ, NE, CONTAINS).sortable()
         );
     }
 

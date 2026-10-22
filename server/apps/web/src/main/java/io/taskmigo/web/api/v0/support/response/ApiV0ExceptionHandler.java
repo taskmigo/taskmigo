@@ -1,6 +1,7 @@
 package io.taskmigo.web.api.v0.support.response;
 
 import io.taskmigo.query.FilterByException;
+import io.taskmigo.web.api.support.query.SortByException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -65,6 +66,18 @@ final class ApiV0ExceptionHandler {
             "query.filter.invalid",
             message,
             new ApiResponse.Error("INVALID_FILTER", message, null)
+        );
+    }
+
+    @ExceptionHandler(SortByException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> handleSortBy(SortByException exception) {
+        String message = exception.getMessage() == null ? "sortBy is invalid" : exception.getMessage();
+        return this.responses.failure(
+            HttpStatus.BAD_REQUEST,
+            "query.sort.invalid",
+            message,
+            new ApiResponse.Error("INVALID_SORT", message, null)
         );
     }
 

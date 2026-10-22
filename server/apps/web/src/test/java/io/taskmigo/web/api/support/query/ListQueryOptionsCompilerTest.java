@@ -7,8 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.query.FilterByCompiler;
-import io.taskmigo.query.FilterByException;
-import io.taskmigo.query.FilteredQuery;
+import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryFieldDescriptor;
 import io.taskmigo.query.QueryOperator;
@@ -29,7 +28,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class FilteredQueryRequestCompilerTest {
+class ListQueryOptionsCompilerTest {
 
     @Mock
     private FilterByCompiler filters;
@@ -43,23 +42,23 @@ class FilteredQueryRequestCompilerTest {
     /**
      * Verifies that the HTTP query model is compiled into the internal Query representation.
      *
-     * Given: filterBy, sortBy, sortOrder, an operation schema, and a server-owned runtime context.
+     * Given: filterBy, descending sort syntax, an operation schema, and a server-owned runtime context.
      * Expect: the compiler returns the typed predicate, preserves the context, and resolves sorting against the schema.
      */
     @Test
-    @DisplayName("compiles FilteredQueryRequest into the internal FilteredQuery")
-    void shouldCompileFilteredQueryWhenRequestContainsWireParameters() {
+    @DisplayName("compiles ListQueryOptions into the internal ListQuerySpec")
+    void shouldCompileListQueryWhenRequestContainsWireParameters() {
         // Arrange
         QueryFieldContext context = new QueryFieldContext(Map.of("type", "incident"));
         QueryFieldDescriptor name = sortableField("name");
         when(this.schema.operation()).thenReturn("test.objects.list");
         when(this.schema.field(QueryPath.of("name"), context)).thenReturn(Optional.of(name));
         doReturn(this.predicate).when(this.filters).compileTyped(this.schema, context, "object.name == \"alice\"");
-        FilteredQueryRequestCompiler compiler = new FilteredQueryRequestCompiler(List.of(this.schema), this.filters);
-        FilteredQueryRequest request = request("object.name == \"alice\"", "name", "desc");
+        ListQueryOptionsCompiler compiler = new ListQueryOptionsCompiler(List.of(this.schema), this.filters);
+        ListQueryOptions request = request("object.name == \"alice\"", List.of("-name"));
 
         // Act
-        FilteredQuery<TestObject> result = compiler.compile("test.objects.list", request, context);
+        ListQuerySpec<TestObject> result = compiler.compile("test.objects.list", request, context);
 
         // Assert
         assertThat(result.predicate()).isSameAs(this.predicate);
@@ -71,35 +70,39 @@ class FilteredQueryRequestCompilerTest {
     /**
      * Verifies the default sort direction exposed by the HTTP contract.
      *
-     * Given: sortBy is present while sortOrder is omitted.
+     * Given: a sort field without a direction prefix.
      * Expect: compilation requests ascending database-side ordering.
      */
     @Test
-    @DisplayName("defaults sortOrder to ascending when sortBy is present")
-    void shouldDefaultToAscendingWhenSortOrderIsAbsent() {
+    @DisplayName("defaults sort direction to ascending when the prefix is absent")
+    void shouldDefaultToAscendingWhenSortPrefixIsAbsent() {
         // Arrange
         QueryFieldContext context = QueryFieldContext.empty();
         when(this.schema.operation()).thenReturn("test.objects.list");
         when(this.schema.field(QueryPath.of("name"), context)).thenReturn(Optional.of(sortableField("name")));
         doReturn(this.predicate).when(this.filters).compileTyped(this.schema, context, null);
-        FilteredQueryRequestCompiler compiler = new FilteredQueryRequestCompiler(List.of(this.schema), this.filters);
+        ListQueryOptionsCompiler compiler = new ListQueryOptionsCompiler(List.of(this.schema), this.filters);
 
         // Act
-        FilteredQuery<TestObject> result = compiler.compile("test.objects.list", request(null, "name", null), context);
+        ListQuerySpec<TestObject> result = compiler.compile(
+            "test.objects.list",
+            request(null, List.of("name")),
+            context
+        );
 
         // Assert
         assertThat(result.sorting()).containsExactly(new QuerySort(QueryPath.of("name"), QuerySort.Direction.ASC));
     }
 
     /**
-     * Verifies that invalid HTTP sorting input keeps the existing resolver validation semantics.
+     * Verifies that malformed, unknown, and non-sortable fields fail closed.
      *
-     * Given: incomplete, malformed, unknown, or non-sortable sorting requests.
-     * Expect: each request fails with FilterByException before executing the query.
+     * Given: invalid public sort values.
+     * Expect: each request fails with SortByException before executing the query.
      */
     @Test
-    @DisplayName("rejects invalid sorting wire parameters")
-    void shouldRejectInvalidSortingWhenRequestIsInvalid() {
+    @DisplayName("rejects invalid sort values")
+    void shouldRejectSortingWhenSortValueIsInvalid() {
         // Arrange
         QueryFieldContext context = QueryFieldContext.empty();
         QueryFieldDescriptor secret = new QueryFieldDescriptor(
@@ -110,14 +113,35 @@ class FilteredQueryRequestCompilerTest {
             false
         );
         when(this.schema.operation()).thenReturn("test.objects.list");
-        when(this.schema.field(QueryPath.of("secret"), context)).thenReturn(Optional.of(secret));
-        FilteredQueryRequestCompiler compiler = new FilteredQueryRequestCompiler(List.of(this.schema), this.filters);
+        doReturn(Optional.empty()).when(this.schema).field(QueryPath.of("missing"), context);
+        doReturn(Optional.of(secret)).when(this.schema).field(QueryPath.of("secret"), context);
+        ListQueryOptionsCompiler compiler = new ListQueryOptionsCompiler(List.of(this.schema), this.filters);
 
         // Act / Assert
-        assertInvalidSort(compiler, request(null, null, "desc"), context);
-        assertInvalidSort(compiler, request(null, "secret", "sideways"), context);
-        assertInvalidSort(compiler, request(null, "missing", null), context);
-        assertInvalidSort(compiler, request(null, "secret", null), context);
+        assertInvalidSort(compiler, request(null, List.of("")), context);
+        assertInvalidSort(compiler, request(null, List.of("-")), context);
+        assertInvalidSort(compiler, request(null, List.of("+name")), context);
+        assertInvalidSort(compiler, request(null, List.of("missing")), context);
+        assertInvalidSort(compiler, request(null, List.of("secret")), context);
+    }
+
+    /**
+     * Verifies that one logical field cannot be requested more than once with conflicting or duplicate directions.
+     *
+     * Given: the same sortable field appears twice in one ordered sort request.
+     * Expect: compilation rejects the request instead of producing ambiguous ordering.
+     */
+    @Test
+    @DisplayName("rejects duplicate sort fields")
+    void shouldRejectSortingWhenFieldIsDuplicated() {
+        // Arrange
+        QueryFieldContext context = QueryFieldContext.empty();
+        when(this.schema.operation()).thenReturn("test.objects.list");
+        when(this.schema.field(QueryPath.of("name"), context)).thenReturn(Optional.of(sortableField("name")));
+        ListQueryOptionsCompiler compiler = new ListQueryOptionsCompiler(List.of(this.schema), this.filters);
+
+        // Act / Assert
+        assertInvalidSort(compiler, request(null, List.of("name", "-name")), context);
     }
 
     /**
@@ -131,23 +155,23 @@ class FilteredQueryRequestCompilerTest {
     void shouldRejectCompilationWhenOperationSchemaIsMissing() {
         // Arrange
         when(this.schema.operation()).thenReturn("test.objects.other");
-        FilteredQueryRequestCompiler compiler = new FilteredQueryRequestCompiler(List.of(this.schema), this.filters);
+        ListQueryOptionsCompiler compiler = new ListQueryOptionsCompiler(List.of(this.schema), this.filters);
 
         // Act / Assert
         assertThatThrownBy(() ->
-            compiler.compile("test.objects.list", new FilteredQueryRequest(), QueryFieldContext.empty())
+            compiler.compile("test.objects.list", new ListQueryOptions(), QueryFieldContext.empty())
         )
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("found 0");
     }
 
     private static void assertInvalidSort(
-        FilteredQueryRequestCompiler compiler,
-        FilteredQueryRequest request,
+        ListQueryOptionsCompiler compiler,
+        ListQueryOptions request,
         QueryFieldContext context
     ) {
         assertThatThrownBy(() -> compiler.compile("test.objects.list", request, context)).isInstanceOf(
-            FilterByException.class
+            SortByException.class
         );
     }
 
@@ -161,15 +185,10 @@ class FilteredQueryRequestCompilerTest {
         );
     }
 
-    private static FilteredQueryRequest request(
-        @Nullable String filterBy,
-        @Nullable String sortBy,
-        @Nullable String sortOrder
-    ) {
-        FilteredQueryRequest request = new FilteredQueryRequest();
+    private static ListQueryOptions request(@Nullable String filterBy, List<String> sortBy) {
+        ListQueryOptions request = new ListQueryOptions();
         request.setFilterBy(filterBy);
         request.setSortBy(sortBy);
-        request.setSortOrder(sortOrder);
         return request;
     }
 

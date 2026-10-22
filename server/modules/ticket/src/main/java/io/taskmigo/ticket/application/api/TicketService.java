@@ -2,7 +2,7 @@ package io.taskmigo.ticket.application.api;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.query.FilteredQuery;
+import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryFieldContext;
 import java.util.Map;
 import java.util.UUID;
@@ -16,7 +16,7 @@ public interface TicketService {
         int page,
         int perPage,
         @Nullable UUID ticketTypeId,
-        FilteredQuery<TicketInfo> query,
+        ListQuerySpec<TicketInfo> query,
         ObjectAuthorizationPredicate<TicketInfo> authorization
     );
 

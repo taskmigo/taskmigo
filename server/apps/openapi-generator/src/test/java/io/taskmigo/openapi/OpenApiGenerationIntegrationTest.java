@@ -147,6 +147,62 @@ class OpenApiGenerationIntegrationTest {
         });
     }
 
+    /// Verifies that generated sort metadata is operation-scoped and sourced from Query Schema sortability.
+    @Test
+    @DisplayName("documents operation-specific sortBy fields")
+    void shouldDocumentOperationSpecificSortCapabilities() {
+        JsonNode document = this.generatedOpenApiDocument();
+
+        assertThat(textValues(sortByExtension(document, "/api/v0/users"))).containsExactly(
+            "firstName",
+            "id",
+            "lastName",
+            "retainedAt",
+            "status",
+            "username"
+        );
+        assertThat(textValues(sortByExtension(document, "/api/v0/groups"))).containsExactly(
+            "code",
+            "description",
+            "displayName",
+            "id"
+        );
+        assertThat(textValues(sortByExtension(document, "/api/v0/tickets"))).containsExactly(
+            "createdAt",
+            "status",
+            "title",
+            "updatedAt"
+        );
+    }
+
+    /// Verifies that every generated sortBy parameter advertises its exact machine-readable allow-list.
+    @Test
+    @DisplayName("documents every generated sortBy query parameter")
+    void shouldDocumentEverySortParameter() {
+        JsonNode document = this.generatedOpenApiDocument();
+        List<JsonNode> sortParameters = new ArrayList<>();
+
+        document.path("paths").forEach(path ->
+            path.forEach(operation ->
+                operation.path("parameters").forEach(parameter -> {
+                    if (
+                        "sortBy".equals(parameter.path("name").asText()) &&
+                        "query".equals(parameter.path("in").asText())
+                    ) {
+                        sortParameters.add(parameter);
+                    }
+                })
+            )
+        );
+
+        assertThat(sortParameters).isNotEmpty();
+        assertThat(sortParameters).allSatisfy(parameter -> {
+            JsonNode extension = parameter.path("x-sort-by");
+            assertThat(extension.isArray()).isTrue();
+            assertThat(extension.isEmpty()).isFalse();
+        });
+    }
+
     @AfterAll
     void writeCommittedOpenApiYaml() throws IOException {
         JsonNode generated = this.generatedOpenApiDocument();
@@ -201,6 +257,19 @@ class OpenApiGenerationIntegrationTest {
             }
         }
         throw new AssertionError(path + " must define a filterBy query parameter");
+    }
+
+    private static JsonNode sortByExtension(JsonNode document, String path) {
+        for (JsonNode parameter : document.path("paths").path(path).path("get").path("parameters")) {
+            if ("sortBy".equals(parameter.path("name").asText()) && "query".equals(parameter.path("in").asText())) {
+                JsonNode extension = parameter.path("x-sort-by");
+                if (extension.isMissingNode()) {
+                    throw new AssertionError(path + " sortBy parameter must define x-sort-by");
+                }
+                return extension;
+            }
+        }
+        throw new AssertionError(path + " must define a sortBy query parameter");
     }
 
     private static List<String> textValues(JsonNode values) {

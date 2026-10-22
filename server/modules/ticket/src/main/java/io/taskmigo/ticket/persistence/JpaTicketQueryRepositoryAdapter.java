@@ -4,10 +4,9 @@ import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationPredicateModel;
 import io.taskmigo.authorization.querybinding.jpa.JpaObjectAuthorizationPredicateBinder;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.jpaquery.JpaPath;
 import io.taskmigo.jpaquery.JpaQueryExpressionBinder;
 import io.taskmigo.jpaquery.JpaQuerySortBinder;
-import io.taskmigo.query.FilteredQuery;
+import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.model.QueryPredicateModel;
 import io.taskmigo.ticket.application.TicketQueryRepository;
@@ -77,7 +76,7 @@ class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository {
         int page,
         int perPage,
         @Nullable UUID ticketTypeId,
-        FilteredQuery<TicketInfo> query,
+        ListQuerySpec<TicketInfo> query,
         ObjectAuthorizationPredicate<TicketInfo> authorization
     ) {
         Objects.requireNonNull(query);
@@ -128,7 +127,7 @@ class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository {
         );
     }
 
-    private Specification<TicketEntity> bindFilter(FilteredQuery<TicketInfo> query) {
+    private Specification<TicketEntity> bindFilter(ListQuerySpec<TicketInfo> query) {
         if (!(query.predicate() instanceof QueryPredicateModel model)) {
             throw new IllegalArgumentException("Unsupported Ticket Query Predicate implementation");
         }
@@ -139,7 +138,7 @@ class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository {
         return JpaQueryExpressionBinder.bind(model.expression(), this.listSchema, query.context());
     }
 
-    private Specification<TicketEntity> sorting(FilteredQuery<TicketInfo> query) {
+    private Specification<TicketEntity> sorting(ListQuerySpec<TicketInfo> query) {
         return (root, criteria, builder) -> {
             JpaQuerySortBinder.apply(
                 Objects.requireNonNull(criteria),
@@ -147,8 +146,7 @@ class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository {
                 builder,
                 this.listSchema,
                 query.context(),
-                query.sorting(),
-                JpaPath.of(TicketEntity_.id)
+                query.sorting()
             );
             return builder.conjunction();
         };

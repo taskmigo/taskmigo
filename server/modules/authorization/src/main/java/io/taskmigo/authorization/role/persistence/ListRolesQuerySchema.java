@@ -27,10 +27,10 @@ final class ListRolesQuerySchema extends QuerySchema<RoleEntity> {
     @Override
     protected Collection<QueryField<RoleEntity, ?>> staticFields() {
         return List.of(
-            field(RoleEntity_.id).operators(EQ, NE),
-            field(RoleEntity_.code).operators(EQ, NE, CONTAINS),
-            field(RoleEntity_.displayName).operators(EQ, NE, CONTAINS),
-            field(RoleEntity_.description).operators(EQ, NE, CONTAINS)
+            field(RoleEntity_.id).operators(EQ, NE).sortable(),
+            field(RoleEntity_.code).operators(EQ, NE, CONTAINS).sortable(),
+            field(RoleEntity_.displayName).operators(EQ, NE, CONTAINS).sortable(),
+            field(RoleEntity_.description).operators(EQ, NE, CONTAINS).sortable()
         );
     }
 

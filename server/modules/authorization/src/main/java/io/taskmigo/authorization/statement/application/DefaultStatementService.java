@@ -11,7 +11,7 @@ import io.taskmigo.authorization.statement.application.internal.StatementCommand
 import io.taskmigo.authorization.statement.domain.StatementRuleViolation;
 import io.taskmigo.authorization.transaction.TransactionRunner;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.query.QueryPredicate;
+import io.taskmigo.query.ListQuerySpec;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
@@ -72,10 +72,10 @@ public final class DefaultStatementService implements StatementService {
     public OffsetPage<StatementInfo> list(
         int page,
         int perPage,
-        QueryPredicate<StatementInfo> filter,
+        ListQuerySpec<StatementInfo> query,
         ObjectAuthorizationPredicate<StatementInfo> authorization
     ) {
-        return this.transactions.read(() -> this.statements.list(page, perPage, filter, authorization));
+        return this.transactions.read(() -> this.statements.list(page, perPage, query, authorization));
     }
 
     @Override
