@@ -10,7 +10,7 @@ import io.taskmigo.authorization.role.domain.hierarchy.RoleHierarchy;
 import io.taskmigo.authorization.role.domain.hierarchy.RoleHierarchyException;
 import io.taskmigo.authorization.transaction.TransactionRunner;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.query.QueryPredicate;
+import io.taskmigo.query.ListQuerySpec;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -80,10 +80,10 @@ public final class DefaultRoleService implements RoleService {
     public OffsetPage<RoleInfo> listRoles(
         int page,
         int perPage,
-        QueryPredicate<RoleInfo> filter,
+        ListQuerySpec<RoleInfo> query,
         ObjectAuthorizationPredicate<RoleInfo> authorization
     ) {
-        return this.transactions.read(() -> this.roles.list(page, perPage, filter, authorization));
+        return this.transactions.read(() -> this.roles.list(page, perPage, query, authorization));
     }
 
     @Override

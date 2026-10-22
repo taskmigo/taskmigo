@@ -27,10 +27,10 @@ final class ListGroupsQuerySchema extends QuerySchema<GroupEntity> {
     @Override
     protected Collection<QueryField<GroupEntity, ?>> staticFields() {
         return List.of(
-            field(GroupEntity_.id).operators(EQ, NE),
-            field(GroupEntity_.code).operators(EQ, NE, CONTAINS),
-            field(GroupEntity_.displayName).operators(EQ, NE, CONTAINS),
-            field(GroupEntity_.description).operators(EQ, NE, CONTAINS)
+            field(GroupEntity_.id).operators(EQ, NE).sortable(),
+            field(GroupEntity_.code).operators(EQ, NE, CONTAINS).sortable(),
+            field(GroupEntity_.displayName).operators(EQ, NE, CONTAINS).sortable(),
+            field(GroupEntity_.description).operators(EQ, NE, CONTAINS).sortable()
         );
     }
 

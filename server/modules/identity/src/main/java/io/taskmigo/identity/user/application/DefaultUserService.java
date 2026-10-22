@@ -22,7 +22,7 @@ import io.taskmigo.identity.user.application.internal.UserCommandService;
 import io.taskmigo.identity.user.application.internal.UserDeletionLifecycleService;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.UserRuleViolation;
-import io.taskmigo.query.QueryPredicate;
+import io.taskmigo.query.ListQuerySpec;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Collection;
@@ -86,10 +86,10 @@ public final class DefaultUserService implements UserService {
     public OffsetPage<UserInfo> list(
         int page,
         int perPage,
-        QueryPredicate<UserInfo> filter,
+        ListQuerySpec<UserInfo> query,
         ObjectAuthorizationPredicate<UserInfo> authorization
     ) {
-        return this.transactions.read(() -> this.users.list(page, perPage, filter, authorization));
+        return this.transactions.read(() -> this.users.list(page, perPage, query, authorization));
     }
 
     @Override

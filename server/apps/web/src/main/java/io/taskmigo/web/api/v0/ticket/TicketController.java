@@ -4,15 +4,15 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.query.FilteredQuery;
+import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryOperation;
 import io.taskmigo.ticket.application.api.TicketInfo;
 import io.taskmigo.ticket.application.api.TicketPatch;
 import io.taskmigo.ticket.application.api.TicketService;
 import io.taskmigo.web.api.support.objectauthorization.ObjectAuthorizationResolver;
 import io.taskmigo.web.api.support.objectauthorization.ResolvedObjectAuthorization;
-import io.taskmigo.web.api.support.query.FilteredQueryRequest;
-import io.taskmigo.web.api.support.query.FilteredQueryRequestResolver;
+import io.taskmigo.web.api.support.query.ListQueryOptions;
+import io.taskmigo.web.api.support.query.ListQueryResolver;
 import io.taskmigo.web.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.api.v0.support.response.ApiResponseFactory;
@@ -52,13 +52,13 @@ import org.springframework.web.bind.annotation.RestController;
 class TicketController {
 
     private final TicketService tickets;
-    private final FilteredQueryRequestResolver queryResolver;
+    private final ListQueryResolver queryResolver;
     private final ObjectAuthorizationResolver objectAuthorization;
     private final ApiResponseFactory responses;
 
     TicketController(
         TicketService tickets,
-        FilteredQueryRequestResolver queryResolver,
+        ListQueryResolver queryResolver,
         ObjectAuthorizationResolver objectAuthorization,
         ApiResponseFactory responses
     ) {
@@ -98,9 +98,9 @@ class TicketController {
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         @RequestParam(required = false) @Nullable UUID ticketTypeId,
-        @ParameterObject @Valid FilteredQueryRequest query
+        @ParameterObject @Valid ListQueryOptions query
     ) {
-        FilteredQuery<TicketInfo> filter = this.queryResolver.resolve(query);
+        ListQuerySpec<TicketInfo> filter = this.queryResolver.resolve(query);
         ResolvedObjectAuthorization<TicketInfo> authorization = this.objectAuthorization.resolve();
         OffsetPage<TicketInfo> page = this.tickets.list(
             pagination.getPage(),

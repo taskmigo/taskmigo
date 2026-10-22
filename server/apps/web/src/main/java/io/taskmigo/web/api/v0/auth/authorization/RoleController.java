@@ -8,12 +8,12 @@ import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.role.application.api.RoleAuthorizationService;
 import io.taskmigo.authorization.role.application.api.RoleService;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.query.FilteredQuery;
+import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryOperation;
 import io.taskmigo.web.api.support.objectauthorization.ObjectAuthorizationResolver;
 import io.taskmigo.web.api.support.objectauthorization.ResolvedObjectAuthorization;
-import io.taskmigo.web.api.support.query.FilteredQueryRequest;
-import io.taskmigo.web.api.support.query.FilteredQueryRequestResolver;
+import io.taskmigo.web.api.support.query.ListQueryOptions;
+import io.taskmigo.web.api.support.query.ListQueryResolver;
 import io.taskmigo.web.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.api.v0.support.response.ApiResponseFactory;
@@ -50,14 +50,14 @@ class RoleController {
 
     private final RoleService access;
     private final RoleAuthorizationService roleAuthorization;
-    private final FilteredQueryRequestResolver queryResolver;
+    private final ListQueryResolver queryResolver;
     private final ObjectAuthorizationResolver objectAuthorization;
     private final ApiResponseFactory responses;
 
     RoleController(
         RoleService access,
         RoleAuthorizationService roleAuthorization,
-        FilteredQueryRequestResolver queryResolver,
+        ListQueryResolver queryResolver,
         ObjectAuthorizationResolver objectAuthorization,
         ApiResponseFactory responses
     ) {
@@ -89,14 +89,14 @@ class RoleController {
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
-        @ParameterObject @Valid FilteredQueryRequest query
+        @ParameterObject @Valid ListQueryOptions query
     ) {
-        FilteredQuery<RoleInfo> filter = this.queryResolver.resolve(query);
+        ListQuerySpec<RoleInfo> filter = this.queryResolver.resolve(query);
         ResolvedObjectAuthorization<RoleInfo> authorization = this.objectAuthorization.resolve();
         OffsetPage<RoleInfo> roles = this.access.listRoles(
             pagination.getPage(),
             pagination.getPageSize(),
-            filter.predicate(),
+            filter,
             authorization.predicate()
         );
         return this.responses.ok(

@@ -8,8 +8,9 @@ import io.taskmigo.authorization.querybinding.jpa.QueryPredicateBinder;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.role.application.RoleQueryRepository;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.jpaquery.JpaQuerySortSpecifications;
 import io.taskmigo.jpaquery.JpaQuerySpecifications;
-import io.taskmigo.query.QueryPredicate;
+import io.taskmigo.query.ListQuerySpec;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -25,11 +26,13 @@ import org.springframework.stereotype.Repository;
 public class JpaRoleQueryRepository implements RoleQueryRepository {
 
     private final RoleRepository roles;
+    private final ListRolesQuerySchema listSchema;
     private final QueryPredicateBinder<RoleInfo, RoleEntity> queryBinder;
     private final ObjectAuthorizationPredicateBinder<RoleInfo, RoleEntity> objectBinder;
 
     JpaRoleQueryRepository(RoleRepository roles, ListRolesQuerySchema schema) {
         this.roles = roles;
+        this.listSchema = schema;
         this.queryBinder = new JpaQueryPredicateBinder<>(RoleInfo.class, schema);
         this.objectBinder = new JpaObjectAuthorizationPredicateBinder<>(RoleInfo.class, schema);
     }
@@ -44,13 +47,18 @@ public class JpaRoleQueryRepository implements RoleQueryRepository {
     public OffsetPage<RoleInfo> list(
         int page,
         int perPage,
-        QueryPredicate<RoleInfo> filter,
+        ListQuerySpec<RoleInfo> query,
         ObjectAuthorizationPredicate<RoleInfo> authorization
     ) {
-        var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
+        Sort pageableSort = JpaQuerySortSpecifications.hasSorting(query) ? Sort.unsorted() : Sort.by("id");
+        var pageable = PageRequest.of(page - 1, perPage, pageableSort);
         Specification<RoleEntity> authorizationSpec = this.objectBinder.bind(authorization);
-        Specification<RoleEntity> clientFilter = this.queryBinder.bind(filter);
-        var result = this.roles.findAll(JpaQuerySpecifications.authorized(authorizationSpec, clientFilter), pageable);
+        Specification<RoleEntity> clientFilter = this.queryBinder.bind(query.predicate());
+        Specification<RoleEntity> ordering = JpaQuerySortSpecifications.bind(query, this.listSchema);
+        var result = this.roles.findAll(
+            JpaQuerySpecifications.authorized(authorizationSpec, clientFilter).and(ordering),
+            pageable
+        );
         return new OffsetPage<>(
             result.map(JpaRoleQueryRepository::info).getContent(),
             result.getTotalElements(),

@@ -6,7 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.query.FilterByCompiler;
-import io.taskmigo.query.FilteredQuery;
+import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryOperation;
 import io.taskmigo.query.QueryPredicate;
@@ -23,7 +23,7 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerMapping;
 
 @ExtendWith(MockitoExtension.class)
-class FilteredQueryRequestResolverTest {
+class ListQueryResolverTest {
 
     @Mock
     private FilterByCompiler filters;
@@ -53,18 +53,18 @@ class FilteredQueryRequestResolverTest {
         QueryFieldContext context = QueryFieldContext.empty();
         when(this.schema.operation()).thenReturn("test.objects.list");
         doReturn(this.predicate).when(this.filters).compileTyped(this.schema, context, "object.name == \"alice\"");
-        FilteredQueryRequestCompiler compiler = new FilteredQueryRequestCompiler(List.of(this.schema), this.filters);
+        ListQueryOptionsCompiler compiler = new ListQueryOptionsCompiler(List.of(this.schema), this.filters);
         QueryRequestContextResolver contexts = new QueryRequestContextResolver(
             List.of(this.schema),
             new QueryFieldContextResolver(List.of()),
             servletRequest
         );
-        FilteredQueryRequestResolver resolver = new FilteredQueryRequestResolver(compiler, contexts);
-        FilteredQueryRequest request = new FilteredQueryRequest();
+        ListQueryResolver resolver = new ListQueryResolver(compiler, contexts);
+        ListQueryOptions request = new ListQueryOptions();
         request.setFilterBy("object.name == \"alice\"");
 
         // Act
-        FilteredQuery<TestObject> result = resolver.resolve(request);
+        ListQuerySpec<TestObject> result = resolver.resolve(request);
 
         // Assert
         assertThat(result.predicate()).isSameAs(this.predicate);

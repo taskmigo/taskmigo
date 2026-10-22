@@ -17,7 +17,8 @@ import org.springframework.web.method.HandlerMethod;
 
 final class FilterByOpenApiCustomizer implements OperationCustomizer {
 
-    private static final String EXTENSION = "x-filter-by";
+    private static final String FILTER_EXTENSION = "x-filter-by";
+    private static final String SORT_EXTENSION = "x-sort-by";
     private static final Comparator<QueryOperator> OPERATOR_ORDER = Comparator.comparingInt(QueryOperator::ordinal);
 
     private final List<QuerySchemaView> schemas;
@@ -28,17 +29,23 @@ final class FilterByOpenApiCustomizer implements OperationCustomizer {
 
     @Override
     public Operation customize(Operation operation, HandlerMethod handlerMethod) {
-        Optional<Parameter> filterBy = filterByParameter(operation);
-        if (filterBy.isEmpty()) {
+        Optional<Parameter> filterBy = parameter(operation, "filterBy");
+        Optional<Parameter> sortBy = parameter(operation, "sortBy");
+        if (filterBy.isEmpty() && sortBy.isEmpty()) {
             return operation;
         }
 
         QueryOperation queryOperation = handlerMethod.getMethodAnnotation(QueryOperation.class);
         if (queryOperation == null) {
-            throw new IllegalStateException("filterBy handler must declare @QueryOperation");
+            throw new IllegalStateException("query handler must declare @QueryOperation");
         }
 
-        filterBy.orElseThrow().addExtension(EXTENSION, metadata(this.schema(queryOperation.value())));
+        QuerySchemaView schema = this.schema(queryOperation.value());
+        filterBy.ifPresent(parameter -> parameter.addExtension(FILTER_EXTENSION, filterMetadata(schema)));
+        List<String> sortableFields = sortMetadata(schema);
+        if (!sortableFields.isEmpty()) {
+            sortBy.ifPresent(parameter -> parameter.addExtension(SORT_EXTENSION, sortableFields));
+        }
         return operation;
     }
 
@@ -55,18 +62,18 @@ final class FilterByOpenApiCustomizer implements OperationCustomizer {
         return matches.getFirst();
     }
 
-    private static Optional<Parameter> filterByParameter(Operation operation) {
+    private static Optional<Parameter> parameter(Operation operation, String name) {
         if (operation.getParameters() == null) {
             return Optional.empty();
         }
         return operation
             .getParameters()
             .stream()
-            .filter(parameter -> "filterBy".equals(parameter.getName()) && "query".equals(parameter.getIn()))
+            .filter(parameter -> name.equals(parameter.getName()) && "query".equals(parameter.getIn()))
             .findFirst();
     }
 
-    private static Map<String, Object> metadata(QuerySchemaView schema) {
+    private static Map<String, Object> filterMetadata(QuerySchemaView schema) {
         List<QueryFieldDescriptor> fields = schema
             .fields()
             .stream()
@@ -82,5 +89,15 @@ final class FilterByOpenApiCustomizer implements OperationCustomizer {
             );
         }
         return documentedFields;
+    }
+
+    private static List<String> sortMetadata(QuerySchemaView schema) {
+        return schema
+            .fields()
+            .stream()
+            .filter(QueryFieldDescriptor::sortable)
+            .map(field -> field.path().text())
+            .sorted()
+            .toList();
     }
 }

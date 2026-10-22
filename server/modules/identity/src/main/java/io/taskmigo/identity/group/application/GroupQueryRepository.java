@@ -3,6 +3,7 @@ package io.taskmigo.identity.group.application;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.group.GroupInfo;
+import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
 import java.util.UUID;
@@ -16,7 +17,16 @@ public interface GroupQueryRepository {
     OffsetPage<GroupInfo> list(
         int page,
         int perPage,
-        QueryPredicate<GroupInfo> filter,
+        ListQuerySpec<GroupInfo> query,
         ObjectAuthorizationPredicate<GroupInfo> authorization
     );
+
+    default OffsetPage<GroupInfo> list(
+        int page,
+        int perPage,
+        QueryPredicate<GroupInfo> filter,
+        ObjectAuthorizationPredicate<GroupInfo> authorization
+    ) {
+        return this.list(page, perPage, new ListQuerySpec<>(filter), authorization);
+    }
 }

@@ -5,6 +5,7 @@ import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.user.AuthenticationInfo;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.domain.User;
+import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,7 +20,16 @@ public interface UserQueryRepository {
     OffsetPage<UserInfo> list(
         int page,
         int perPage,
-        QueryPredicate<UserInfo> filter,
+        ListQuerySpec<UserInfo> query,
         ObjectAuthorizationPredicate<UserInfo> authorization
     );
+
+    default OffsetPage<UserInfo> list(
+        int page,
+        int perPage,
+        QueryPredicate<UserInfo> filter,
+        ObjectAuthorizationPredicate<UserInfo> authorization
+    ) {
+        return this.list(page, perPage, new ListQuerySpec<>(filter), authorization);
+    }
 }

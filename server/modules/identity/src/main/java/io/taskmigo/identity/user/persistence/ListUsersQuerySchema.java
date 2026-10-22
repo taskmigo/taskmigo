@@ -31,12 +31,12 @@ final class ListUsersQuerySchema extends QuerySchema<UserEntity> {
     @Override
     protected Collection<QueryField<UserEntity, ?>> staticFields() {
         return List.of(
-            field(UserEntity_.id).operators(EQ, NE),
-            field(UserEntity_.username).operators(EQ, NE, CONTAINS),
-            field(UserEntity_.firstName).operators(EQ, NE, CONTAINS),
-            field(UserEntity_.lastName).operators(EQ, NE, CONTAINS),
-            field(UserEntity_.status).operators(EQ, NE),
-            field(UserEntity_.retainedAt).operators(EQ, NE, GT, GTE, LT, LTE)
+            field(UserEntity_.id).operators(EQ, NE).sortable(),
+            field(UserEntity_.username).operators(EQ, NE, CONTAINS).sortable(),
+            field(UserEntity_.firstName).operators(EQ, NE, CONTAINS).sortable(),
+            field(UserEntity_.lastName).operators(EQ, NE, CONTAINS).sortable(),
+            field(UserEntity_.status).operators(EQ, NE).sortable(),
+            field(UserEntity_.retainedAt).operators(EQ, NE, GT, GTE, LT, LTE).sortable()
         );
     }
 

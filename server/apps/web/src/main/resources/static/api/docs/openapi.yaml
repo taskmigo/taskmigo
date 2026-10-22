@@ -72,27 +72,26 @@ paths:
           - CONTAINS
       - name: sortBy
         in: query
-        description: Field path to sort by.
+        description: Sort fields in priority order. Prefix a field with '-' for descending
+          order; ascending is the default. Repeat the parameter for multiple fields.
         required: false
         schema:
-          type:
-          - string
-          - "null"
-          description: Field path to sort by.
-      - name: sortOrder
-        in: query
-        description: Sort direction. Requires sortBy; defaults to ASC when sortBy
-          is present.
-        required: false
-        schema:
-          type:
-          - string
-          - "null"
-          description: Sort direction. Requires sortBy; defaults to ASC when sortBy
-            is present.
-          enum:
-          - ASC
-          - DESC
+          type: array
+          description: Sort fields in priority order. Prefix a field with '-' for
+            descending order; ascending is the default. Repeat the parameter for multiple
+            fields.
+          items:
+            type: string
+            description: Sort fields in priority order. Prefix a field with '-' for
+              descending order; ascending is the default. Repeat the parameter for
+              multiple fields.
+        x-sort-by:
+        - firstName
+        - id
+        - lastName
+        - retainedAt
+        - status
+        - username
       responses:
         "200":
           description: OK
@@ -267,27 +266,24 @@ paths:
           - LTE
       - name: sortBy
         in: query
-        description: Field path to sort by.
+        description: Sort fields in priority order. Prefix a field with '-' for descending
+          order; ascending is the default. Repeat the parameter for multiple fields.
         required: false
         schema:
-          type:
-          - string
-          - "null"
-          description: Field path to sort by.
-      - name: sortOrder
-        in: query
-        description: Sort direction. Requires sortBy; defaults to ASC when sortBy
-          is present.
-        required: false
-        schema:
-          type:
-          - string
-          - "null"
-          description: Sort direction. Requires sortBy; defaults to ASC when sortBy
-            is present.
-          enum:
-          - ASC
-          - DESC
+          type: array
+          description: Sort fields in priority order. Prefix a field with '-' for
+            descending order; ascending is the default. Repeat the parameter for multiple
+            fields.
+          items:
+            type: string
+            description: Sort fields in priority order. Prefix a field with '-' for
+              descending order; ascending is the default. Repeat the parameter for
+              multiple fields.
+        x-sort-by:
+        - createdAt
+        - status
+        - title
+        - updatedAt
       responses:
         "200":
           description: OK
@@ -754,27 +750,25 @@ paths:
           - CONTAINS
       - name: sortBy
         in: query
-        description: Field path to sort by.
+        description: Sort fields in priority order. Prefix a field with '-' for descending
+          order; ascending is the default. Repeat the parameter for multiple fields.
         required: false
         schema:
-          type:
-          - string
-          - "null"
-          description: Field path to sort by.
-      - name: sortOrder
-        in: query
-        description: Sort direction. Requires sortBy; defaults to ASC when sortBy
-          is present.
-        required: false
-        schema:
-          type:
-          - string
-          - "null"
-          description: Sort direction. Requires sortBy; defaults to ASC when sortBy
-            is present.
-          enum:
-          - ASC
-          - DESC
+          type: array
+          description: Sort fields in priority order. Prefix a field with '-' for
+            descending order; ascending is the default. Repeat the parameter for multiple
+            fields.
+          items:
+            type: string
+            description: Sort fields in priority order. Prefix a field with '-' for
+              descending order; ascending is the default. Repeat the parameter for
+              multiple fields.
+        x-sort-by:
+        - code
+        - description
+        - id
+        - method
+        - path
       responses:
         "200":
           description: OK
@@ -927,27 +921,24 @@ paths:
           - NE
       - name: sortBy
         in: query
-        description: Field path to sort by.
+        description: Sort fields in priority order. Prefix a field with '-' for descending
+          order; ascending is the default. Repeat the parameter for multiple fields.
         required: false
         schema:
-          type:
-          - string
-          - "null"
-          description: Field path to sort by.
-      - name: sortOrder
-        in: query
-        description: Sort direction. Requires sortBy; defaults to ASC when sortBy
-          is present.
-        required: false
-        schema:
-          type:
-          - string
-          - "null"
-          description: Sort direction. Requires sortBy; defaults to ASC when sortBy
-            is present.
-          enum:
-          - ASC
-          - DESC
+          type: array
+          description: Sort fields in priority order. Prefix a field with '-' for
+            descending order; ascending is the default. Repeat the parameter for multiple
+            fields.
+          items:
+            type: string
+            description: Sort fields in priority order. Prefix a field with '-' for
+              descending order; ascending is the default. Repeat the parameter for
+              multiple fields.
+        x-sort-by:
+        - code
+        - description
+        - displayName
+        - id
       responses:
         "200":
           description: OK
@@ -1100,27 +1091,24 @@ paths:
           - NE
       - name: sortBy
         in: query
-        description: Field path to sort by.
+        description: Sort fields in priority order. Prefix a field with '-' for descending
+          order; ascending is the default. Repeat the parameter for multiple fields.
         required: false
         schema:
-          type:
-          - string
-          - "null"
-          description: Field path to sort by.
-      - name: sortOrder
-        in: query
-        description: Sort direction. Requires sortBy; defaults to ASC when sortBy
-          is present.
-        required: false
-        schema:
-          type:
-          - string
-          - "null"
-          description: Sort direction. Requires sortBy; defaults to ASC when sortBy
-            is present.
-          enum:
-          - ASC
-          - DESC
+          type: array
+          description: Sort fields in priority order. Prefix a field with '-' for
+            descending order; ascending is the default. Repeat the parameter for multiple
+            fields.
+          items:
+            type: string
+            description: Sort fields in priority order. Prefix a field with '-' for
+              descending order; ascending is the default. Repeat the parameter for
+              multiple fields.
+        x-sort-by:
+        - code
+        - description
+        - displayName
+        - id
       responses:
         "200":
           description: OK

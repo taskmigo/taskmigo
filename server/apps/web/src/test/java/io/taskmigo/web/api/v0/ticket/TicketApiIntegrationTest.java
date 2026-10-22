@@ -54,7 +54,7 @@ class TicketApiIntegrationTest extends ApiIntegrationTestSupport {
         this.tickets.create(typeId, "High score", "OPEN", Map.of("score", 3), actor);
 
         String body = this.api().get(
-            "/api/v0/tickets?ticketTypeId=" + typeId + "&filterBy=object.score >= 2&sortBy=score&sortOrder=desc"
+            "/api/v0/tickets?ticketTypeId=" + typeId + "&filterBy=object.score >= 2&sortBy=-score"
         );
 
         assertThat(body)

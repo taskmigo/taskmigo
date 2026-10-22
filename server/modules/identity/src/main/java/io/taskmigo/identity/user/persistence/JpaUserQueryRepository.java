@@ -12,8 +12,9 @@ import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.UserQueryRepository;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.UserProfile;
+import io.taskmigo.jpaquery.JpaQuerySortSpecifications;
 import io.taskmigo.jpaquery.JpaQuerySpecifications;
-import io.taskmigo.query.QueryPredicate;
+import io.taskmigo.query.ListQuerySpec;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,6 +28,7 @@ import org.springframework.stereotype.Repository;
 public class JpaUserQueryRepository implements UserQueryRepository {
 
     private final JpaUserRepository users;
+    private final ListUsersQuerySchema listSchema;
     private final QueryPredicateBinder<UserInfo, UserEntity> listFilterBinder;
     private final ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> listAuthorizationBinder;
     private final ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> deleteAuthorizationBinder;
@@ -39,6 +41,7 @@ public class JpaUserQueryRepository implements UserQueryRepository {
         UpdateUserStatementsQuerySchema statementUpdateSchema
     ) {
         this.users = users;
+        this.listSchema = listSchema;
         this.listFilterBinder = new JpaQueryPredicateBinder<>(UserInfo.class, listSchema);
         this.listAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(UserInfo.class, listSchema);
         this.deleteAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(UserInfo.class, deleteSchema);
@@ -83,16 +86,18 @@ public class JpaUserQueryRepository implements UserQueryRepository {
     public OffsetPage<UserInfo> list(
         int page,
         int perPage,
-        QueryPredicate<UserInfo> filter,
+        ListQuerySpec<UserInfo> query,
         ObjectAuthorizationPredicate<UserInfo> authorization
     ) {
-        var pageable = PageRequest.of(page - 1, perPage, Sort.by("id"));
-        Specification<UserEntity> visible = (root, query, builder) ->
+        Sort pageableSort = JpaQuerySortSpecifications.hasSorting(query) ? Sort.unsorted() : Sort.by("id");
+        var pageable = PageRequest.of(page - 1, perPage, pageableSort);
+        Specification<UserEntity> visible = (root, criteria, builder) ->
             builder.notEqual(root.get(UserEntity_.status), UserStatus.TOMBSTONE);
         Specification<UserEntity> authorizationSpec = this.listAuthorizationBinder.bind(authorization);
-        Specification<UserEntity> clientFilter = this.listFilterBinder.bind(filter);
+        Specification<UserEntity> clientFilter = this.listFilterBinder.bind(query.predicate());
+        Specification<UserEntity> ordering = JpaQuerySortSpecifications.bind(query, this.listSchema);
         Specification<UserEntity> authorized = JpaQuerySpecifications.authorized(authorizationSpec, clientFilter);
-        var result = this.users.findAll(visible.and(authorized), pageable);
+        var result = this.users.findAll(visible.and(authorized).and(ordering), pageable);
         return new OffsetPage<>(
             result.map(JpaUserQueryRepository::info).getContent(),
             result.getTotalElements(),

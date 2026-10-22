@@ -3,6 +3,7 @@ package io.taskmigo.authorization.role.application.api;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
 import java.util.List;
@@ -21,9 +22,19 @@ public interface RoleService {
     OffsetPage<RoleInfo> listRoles(
         int page,
         int perPage,
-        QueryPredicate<RoleInfo> filter,
+        ListQuerySpec<RoleInfo> query,
         ObjectAuthorizationPredicate<RoleInfo> authorization
     );
+
+    default OffsetPage<RoleInfo> listRoles(
+        int page,
+        int perPage,
+        QueryPredicate<RoleInfo> filter,
+        ObjectAuthorizationPredicate<RoleInfo> authorization
+    ) {
+        return this.listRoles(page, perPage, new ListQuerySpec<>(filter), authorization);
+    }
+
     void setChildRoles(UUID parentRoleId, Collection<UUID> childRoleIds);
     List<RoleInfo> descendantRoles(UUID roleId);
     List<RoleInfo> effectiveRoles(Collection<UUID> roleIds);

@@ -3,6 +3,7 @@ package io.taskmigo.authorization.statement.application;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryPredicate;
 import java.util.Collection;
 import java.util.UUID;
@@ -16,7 +17,16 @@ public interface StatementQueryRepository {
     OffsetPage<StatementInfo> list(
         int page,
         int perPage,
-        QueryPredicate<StatementInfo> filter,
+        ListQuerySpec<StatementInfo> query,
         ObjectAuthorizationPredicate<StatementInfo> authorization
     );
+
+    default OffsetPage<StatementInfo> list(
+        int page,
+        int perPage,
+        QueryPredicate<StatementInfo> filter,
+        ObjectAuthorizationPredicate<StatementInfo> authorization
+    ) {
+        return this.list(page, perPage, new ListQuerySpec<>(filter), authorization);
+    }
 }

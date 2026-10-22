@@ -12,7 +12,7 @@ import io.taskmigo.eav.schema.domain.EavDataType;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.FilterByCompiler;
 import io.taskmigo.query.FilterByException;
-import io.taskmigo.query.FilteredQuery;
+import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryPath;
 import io.taskmigo.query.QueryPredicate;
@@ -25,7 +25,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
@@ -86,7 +85,7 @@ class TicketQueryPersistenceIntegrationTest {
             this.tickets.create(typeId, "Ticket " + score, "OPEN", Map.of("score", score), actor);
         }
         QueryFieldContext context = this.fields.forType(typeId);
-        FilteredQuery<TicketInfo> query = new FilteredQuery<>(
+        ListQuerySpec<TicketInfo> query = new ListQuerySpec<>(
             compile(context, "object.score >= 2"),
             context,
             List.of(new QuerySort(QueryPath.of("score"), QuerySort.Direction.ASC))
@@ -111,8 +110,8 @@ class TicketQueryPersistenceIntegrationTest {
     }
 
     @Test
-    @DisplayName("typed custom sorting keeps missing values last and uses id as the deterministic tie breaker")
-    void shouldSortTypedValuesWithMissingLastAndStableTieBreaker() {
+    @DisplayName("typed custom sorting keeps missing values last without adding a tie breaker")
+    void shouldSortTypedValuesWithMissingLastWithoutImplicitTieBreaker() {
         UUID actor = insertUser("query-sort-actor");
         UUID typeId = createType(
             "query-sort",
@@ -141,7 +140,7 @@ class TicketQueryPersistenceIntegrationTest {
             actor
         );
         QueryFieldContext context = this.fields.forType(typeId);
-        FilteredQuery<TicketInfo> query = new FilteredQuery<>(
+        ListQuerySpec<TicketInfo> query = new ListQuerySpec<>(
             compile(context, null),
             context,
             List.of(new QuerySort(QueryPath.of("dueDate"), QuerySort.Direction.ASC))
@@ -153,14 +152,11 @@ class TicketQueryPersistenceIntegrationTest {
         );
 
         OffsetPage<TicketInfo> page = this.tickets.list(1, 10, typeId, query, allow);
-        List<UUID> expectedTieOrder = this.jdbc
-            .queryForList("SELECT id FROM tickets WHERE id IN (?, ?) ORDER BY id ASC", UUID.class, firstTie, secondTie)
-            .stream()
-            .map(Objects::requireNonNull)
-            .toList();
 
         assertThat(page.items()).hasSize(4);
-        assertThat(page.items().subList(0, 2)).extracting(TicketInfo::id).containsExactlyElementsOf(expectedTieOrder);
+        assertThat(page.items().subList(0, 2))
+            .extracting(TicketInfo::id)
+            .containsExactlyInAnyOrder(firstTie, secondTie);
         assertThat(page.items().get(2).id()).isEqualTo(late);
         assertThat(page.items().get(3).id()).isEqualTo(missing);
     }

@@ -12,7 +12,7 @@ import io.taskmigo.identity.group.application.internal.GroupCommandService;
 import io.taskmigo.identity.group.domain.GroupRuleViolation;
 import io.taskmigo.identity.group.domain.hierarchy.GroupHierarchy;
 import io.taskmigo.identity.group.domain.hierarchy.GroupHierarchyException;
-import io.taskmigo.query.QueryPredicate;
+import io.taskmigo.query.ListQuerySpec;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
@@ -45,10 +45,10 @@ public final class DefaultGroupService implements GroupService {
     public OffsetPage<GroupInfo> list(
         int page,
         int perPage,
-        QueryPredicate<GroupInfo> filter,
+        ListQuerySpec<GroupInfo> query,
         ObjectAuthorizationPredicate<GroupInfo> authorization
     ) {
-        return this.transactions.read(() -> this.groups.list(page, perPage, filter, authorization));
+        return this.transactions.read(() -> this.groups.list(page, perPage, query, authorization));
     }
 
     @Override
