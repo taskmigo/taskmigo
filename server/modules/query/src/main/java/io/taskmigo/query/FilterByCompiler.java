@@ -40,8 +40,7 @@ public class FilterByCompiler {
         this(new LanguageCompiler());
     }
 
-    /// Creates a filter compiler with an application-configured Language compiler.
-    public FilterByCompiler(LanguageCompiler compiler) {
+    FilterByCompiler(LanguageCompiler compiler) {
         this.compiler = compiler;
     }
 

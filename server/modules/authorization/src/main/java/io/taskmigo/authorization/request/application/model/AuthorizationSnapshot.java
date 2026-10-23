@@ -1,6 +1,5 @@
 package io.taskmigo.authorization.request.application.model;
 
-import io.taskmigo.authorization.statement.StatementExecutionArtifact;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;

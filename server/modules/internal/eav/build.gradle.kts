@@ -12,7 +12,7 @@ dependencies {
 
     implementation(platform(libs.spring.boot.bom))
     api(project(":modules:query"))
-    api(project(":modules:jpa-query"))
+    api(project(":modules:internal:jpa-query"))
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.boot.core.starter)
     implementation(libs.jackson.databind)

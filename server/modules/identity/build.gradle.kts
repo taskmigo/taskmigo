@@ -18,8 +18,8 @@ dependencies {
     implementation(project(":modules:audit"))
     api(project(":modules:query"))
     api(project(":modules:authorization"))
-    implementation(project(":modules:jpa-query"))
-    implementation(project(":modules:language"))
+    implementation(project(":modules:internal:jpa-query"))
+    implementation(project(":modules:internal:language"))
 
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.jackson.databind)

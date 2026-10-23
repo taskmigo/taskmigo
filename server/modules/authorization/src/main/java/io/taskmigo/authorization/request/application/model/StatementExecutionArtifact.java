@@ -1,5 +1,7 @@
-package io.taskmigo.authorization.statement;
+package io.taskmigo.authorization.request.application.model;
 
+import io.taskmigo.authorization.statement.StatementInfo;
+import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import io.taskmigo.language.CompiledSource;
 
 /// Holds the executable derivatives of one database-loaded Statement for one authorization operation.
