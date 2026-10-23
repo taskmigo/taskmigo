@@ -23,8 +23,11 @@ jobs:
           node-version: '24'
           cache: npm
 
-      - run: npm ci
-      - run: npm run format:fix
+      - name: Apply repository formatter
+        run: |
+          npm ci
+          npm run format:fix
+
       - name: Commit formatting
         run: |
           git config user.name github-actions[bot]
