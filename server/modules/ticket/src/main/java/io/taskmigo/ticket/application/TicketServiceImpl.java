@@ -1,16 +1,22 @@
 package io.taskmigo.ticket.application;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.authorization.object.application.api.ObjectAuthorization;
+import io.taskmigo.authorization.request.AuthorizationContext;
 import io.taskmigo.eav.schema.application.EavSchemaService;
 import io.taskmigo.eav.schema.application.EavSchemaVersionInfo;
 import io.taskmigo.eav.schema.domain.EavSchemaStatus;
 import io.taskmigo.eav.value.application.EavInstanceService;
 import io.taskmigo.eav.value.application.EavInstanceView;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.query.ListQueryCompiler;
+import io.taskmigo.query.ListQueryRequest;
 import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryFieldContext;
+import io.taskmigo.query.QuerySchemaView;
 import io.taskmigo.ticket.application.api.TicketInfo;
 import io.taskmigo.ticket.application.api.TicketPatch;
+import io.taskmigo.ticket.application.api.TicketQueryFieldContexts;
 import io.taskmigo.ticket.application.api.TicketService;
 import io.taskmigo.ticket.domain.Ticket;
 import io.taskmigo.ticket.type.application.TicketTypeRepository;
@@ -29,11 +35,19 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class TicketServiceImpl implements TicketService {
 
+    private static final String LIST_OPERATION = "tickets.list";
+    private static final String READ_OPERATION = "tickets.read";
+    private static final String UPDATE_OPERATION = "tickets.update";
+
     private final TicketTypeRepository ticketTypes;
     private final EavSchemaService schemas;
     private final EavInstanceService instances;
     private final TicketRepository tickets;
     private final TicketQueryRepository queries;
+    private final TicketQueryFieldContexts queryFields;
+    private final List<QuerySchemaView> querySchemas;
+    private final ObjectAuthorization objectAuthorization;
+    private final ListQueryCompiler queryCompiler;
     private final Clock clock;
 
     public TicketServiceImpl(
@@ -42,6 +56,10 @@ public class TicketServiceImpl implements TicketService {
         EavInstanceService instances,
         TicketRepository tickets,
         TicketQueryRepository queries,
+        TicketQueryFieldContexts queryFields,
+        List<QuerySchemaView> querySchemas,
+        ObjectAuthorization objectAuthorization,
+        ListQueryCompiler queryCompiler,
         Clock clock
     ) {
         this.ticketTypes = Objects.requireNonNull(ticketTypes);
@@ -49,6 +67,10 @@ public class TicketServiceImpl implements TicketService {
         this.instances = Objects.requireNonNull(instances);
         this.tickets = Objects.requireNonNull(tickets);
         this.queries = Objects.requireNonNull(queries);
+        this.queryFields = Objects.requireNonNull(queryFields);
+        this.querySchemas = List.copyOf(querySchemas);
+        this.objectAuthorization = Objects.requireNonNull(objectAuthorization);
+        this.queryCompiler = Objects.requireNonNull(queryCompiler);
         this.clock = Objects.requireNonNull(clock);
     }
 
@@ -86,11 +108,19 @@ public class TicketServiceImpl implements TicketService {
         int page,
         int perPage,
         @Nullable UUID ticketTypeId,
-        ListQuerySpec<TicketInfo> query,
-        ObjectAuthorizationPredicate<TicketInfo> authorization
+        ListQueryRequest request,
+        AuthorizationContext authorizationContext
     ) {
-        Objects.requireNonNull(query);
-        Objects.requireNonNull(authorization);
+        Objects.requireNonNull(request);
+        Objects.requireNonNull(authorizationContext);
+        QueryFieldContext context = ticketTypeId == null ? this.queryFields.global() : this.queryFields.forType(ticketTypeId);
+        QuerySchemaView schema = this.schema(LIST_OPERATION);
+        ListQuerySpec<TicketInfo> query = this.queryCompiler.compile(schema, context, request);
+        ObjectAuthorizationPredicate<TicketInfo> authorization = this.objectAuthorization.authorize(
+            authorizationContext,
+            schema,
+            context
+        );
         OffsetPage<Ticket> result = this.queries.list(page, perPage, ticketTypeId, query, authorization);
         List<TicketInfo> items = result
             .items()
@@ -107,12 +137,8 @@ public class TicketServiceImpl implements TicketService {
 
     @Transactional(readOnly = true)
     @Override
-    public TicketInfo read(
-        UUID ticketId,
-        ObjectAuthorizationPredicate<TicketInfo> authorization,
-        QueryFieldContext context
-    ) {
-        Ticket ticket = this.requireAuthorized(ticketId, authorization, context);
+    public TicketInfo read(UUID ticketId, AuthorizationContext authorizationContext) {
+        Ticket ticket = this.requireAuthorized(ticketId, READ_OPERATION, authorizationContext);
         TicketType type = this.requireType(ticket.ticketTypeId());
         EavInstanceView instance = this.instances.get(ticket.schemaInstanceId());
         requireOwnedInstance(type, instance);
@@ -120,14 +146,9 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public TicketInfo update(
-        UUID ticketId,
-        TicketPatch patch,
-        ObjectAuthorizationPredicate<TicketInfo> authorization,
-        QueryFieldContext context
-    ) {
+    public TicketInfo update(UUID ticketId, TicketPatch patch, AuthorizationContext authorizationContext) {
         Objects.requireNonNull(patch);
-        Ticket ticket = this.requireAuthorized(ticketId, authorization, context);
+        Ticket ticket = this.requireAuthorized(ticketId, UPDATE_OPERATION, authorizationContext);
         TicketType type = this.requireType(ticket.ticketTypeId());
 
         if (!patch.hasChanges()) {
@@ -148,17 +169,27 @@ public class TicketServiceImpl implements TicketService {
         return toInfo(updated, instance);
     }
 
-    private Ticket requireAuthorized(
-        UUID ticketId,
-        ObjectAuthorizationPredicate<TicketInfo> authorization,
-        QueryFieldContext context
-    ) {
+    private Ticket requireAuthorized(UUID ticketId, String operation, AuthorizationContext authorizationContext) {
         Objects.requireNonNull(ticketId);
-        Objects.requireNonNull(authorization);
-        Objects.requireNonNull(context);
+        Objects.requireNonNull(authorizationContext);
+        QueryFieldContext context = this.queryFields.forTicket(ticketId);
+        QuerySchemaView schema = this.schema(operation);
+        ObjectAuthorizationPredicate<TicketInfo> authorization = this.objectAuthorization.authorize(
+            authorizationContext,
+            schema,
+            context
+        );
         return this.queries
             .findAuthorized(ticketId, authorization, context)
             .orElseThrow(() -> new IllegalArgumentException("Unknown or unauthorized Ticket"));
+    }
+
+    private QuerySchemaView schema(String operation) {
+        List<QuerySchemaView> matches = this.querySchemas.stream().filter(schema -> schema.operation().equals(operation)).toList();
+        if (matches.size() != 1) {
+            throw new IllegalStateException("Expected exactly one Query Schema for operation '" + operation + "' but found " + matches.size());
+        }
+        return matches.getFirst();
     }
 
     private TicketType requireType(UUID id) {
@@ -175,15 +206,8 @@ public class TicketServiceImpl implements TicketService {
 
     private static TicketInfo toInfo(Ticket ticket, EavInstanceView instance) {
         return new TicketInfo(
-            ticket.id(),
-            ticket.ticketTypeId(),
-            instance.schemaVersionId(),
-            ticket.title(),
-            ticket.status(),
-            ticket.createdBy(),
-            ticket.createdAt(),
-            ticket.updatedAt(),
-            instance.values()
+            ticket.id(), ticket.ticketTypeId(), instance.schemaVersionId(), ticket.title(), ticket.status(),
+            ticket.createdBy(), ticket.createdAt(), ticket.updatedAt(), instance.values()
         );
     }
 

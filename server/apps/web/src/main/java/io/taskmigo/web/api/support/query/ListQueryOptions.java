@@ -1,6 +1,7 @@
 package io.taskmigo.web.api.support.query;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.taskmigo.query.ListQueryRequest;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -29,5 +30,10 @@ public final class ListQueryOptions {
 
     public void setSortBy(@Nullable List<String> sortBy) {
         this.sortBy = sortBy == null ? List.of() : List.copyOf(sortBy);
+    }
+
+    /// Converts HTTP-bound values into transport-neutral list-query intent.
+    public ListQueryRequest toRequest() {
+        return new ListQueryRequest(this.filterBy, this.sortBy);
     }
 }

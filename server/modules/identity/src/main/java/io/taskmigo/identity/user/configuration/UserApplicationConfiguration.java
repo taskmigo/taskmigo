@@ -1,5 +1,6 @@
 package io.taskmigo.identity.user.configuration;
 
+import io.taskmigo.authorization.object.application.api.ObjectAuthorization;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
 import io.taskmigo.identity.configuration.application.api.ConfigurationService;
@@ -27,7 +28,10 @@ import io.taskmigo.identity.user.application.api.UserSessionLifecycleService;
 import io.taskmigo.identity.user.application.internal.UserCommandService;
 import io.taskmigo.identity.user.application.internal.UserDeletionLifecycleService;
 import io.taskmigo.identity.user.application.internal.UserTombstoneService;
+import io.taskmigo.query.ListQueryCompiler;
+import io.taskmigo.query.QuerySchemaView;
 import java.time.Clock;
+import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -82,7 +86,9 @@ class UserApplicationConfiguration {
         SubjectGrantQueryService grantQueries,
         SubjectGrantAssignmentService grantAssignments,
         UserDeletionLifecycleService deletion,
-        UserAuditAppender audits
+        UserAuditAppender audits,
+        List<QuerySchemaView> querySchemas,
+        ObjectAuthorization objectAuthorization
     ) {
         return new DefaultUserService(
             users,
@@ -91,6 +97,9 @@ class UserApplicationConfiguration {
             grantAssignments,
             deletion,
             audits,
+            querySchemas,
+            objectAuthorization,
+            new ListQueryCompiler(),
             Clock.systemUTC()
         );
     }

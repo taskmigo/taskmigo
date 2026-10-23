@@ -1,12 +1,11 @@
 package io.taskmigo.identity.user.application.api;
 
-import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.authorization.request.AuthorizationContext;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.user.AuthenticationInfo;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.UserMutationActor;
-import io.taskmigo.query.ListQuerySpec;
-import io.taskmigo.query.QueryPredicate;
+import io.taskmigo.query.ListQueryRequest;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
@@ -17,30 +16,15 @@ public interface UserService {
     UserInfo require(UUID id);
     Optional<UserInfo> find(UUID id);
     Optional<AuthenticationInfo> findForAuthentication(String username);
-    OffsetPage<UserInfo> list(
-        int page,
-        int perPage,
-        ListQuerySpec<UserInfo> query,
-        ObjectAuthorizationPredicate<UserInfo> authorization
-    );
-
-    default OffsetPage<UserInfo> list(
-        int page,
-        int perPage,
-        QueryPredicate<UserInfo> filter,
-        ObjectAuthorizationPredicate<UserInfo> authorization
-    ) {
-        return this.list(page, perPage, new ListQuerySpec<>(filter), authorization);
-    }
-
+    OffsetPage<UserInfo> list(int page, int perPage, ListQueryRequest query, AuthorizationContext authorization);
     Set<UUID> roleIds(UUID userId);
     void setStatements(UUID userId, Collection<UUID> statementIds, UserMutationActor actor);
     void setStatements(
         UUID userId,
         Collection<UUID> statementIds,
-        ObjectAuthorizationPredicate<UserInfo> authorization,
+        AuthorizationContext authorization,
         UserMutationActor actor
     );
     void setRoles(UUID userId, Collection<UUID> roleIds, UserMutationActor actor);
-    void delete(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization, UserMutationActor actor);
+    void delete(UUID userId, AuthorizationContext authorization, UserMutationActor actor);
 }

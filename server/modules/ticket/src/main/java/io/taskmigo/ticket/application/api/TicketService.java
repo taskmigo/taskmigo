@@ -1,9 +1,8 @@
 package io.taskmigo.ticket.application.api;
 
-import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.authorization.request.AuthorizationContext;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.query.ListQuerySpec;
-import io.taskmigo.query.QueryFieldContext;
+import io.taskmigo.query.ListQueryRequest;
 import java.util.Map;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -16,16 +15,11 @@ public interface TicketService {
         int page,
         int perPage,
         @Nullable UUID ticketTypeId,
-        ListQuerySpec<TicketInfo> query,
-        ObjectAuthorizationPredicate<TicketInfo> authorization
+        ListQueryRequest query,
+        AuthorizationContext authorization
     );
 
-    TicketInfo read(UUID ticketId, ObjectAuthorizationPredicate<TicketInfo> authorization, QueryFieldContext context);
+    TicketInfo read(UUID ticketId, AuthorizationContext authorization);
 
-    TicketInfo update(
-        UUID ticketId,
-        TicketPatch patch,
-        ObjectAuthorizationPredicate<TicketInfo> authorization,
-        QueryFieldContext context
-    );
+    TicketInfo update(UUID ticketId, TicketPatch patch, AuthorizationContext authorization);
 }

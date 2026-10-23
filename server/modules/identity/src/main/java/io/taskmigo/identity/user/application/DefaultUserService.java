@@ -4,6 +4,8 @@ import io.taskmigo.audit.event.AuditEvent;
 import io.taskmigo.audit.model.AuditActor;
 import io.taskmigo.audit.model.AuditChange;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.authorization.object.application.api.ObjectAuthorization;
+import io.taskmigo.authorization.request.AuthorizationContext;
 import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
@@ -21,7 +23,11 @@ import io.taskmigo.identity.user.application.internal.UserCommandService;
 import io.taskmigo.identity.user.application.internal.UserDeletionLifecycleService;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.UserRuleViolation;
+import io.taskmigo.query.ListQueryCompiler;
+import io.taskmigo.query.ListQueryRequest;
 import io.taskmigo.query.ListQuerySpec;
+import io.taskmigo.query.QueryFieldContext;
+import io.taskmigo.query.QuerySchemaView;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Collection;
@@ -36,6 +42,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class DefaultUserService implements UserService {
 
     private static final String ENTITY_TYPE = "user";
+    private static final String LIST_OPERATION = "identity.users.list";
+    private static final String DELETE_OPERATION = "identity.users.delete";
+    private static final String UPDATE_STATEMENTS_OPERATION = "identity.users.update-statements";
 
     private final UserQueryRepository users;
     private final UserCommandService commands;
@@ -43,6 +52,9 @@ public class DefaultUserService implements UserService {
     private final SubjectGrantAssignmentService grantAssignments;
     private final UserDeletionLifecycleService deletion;
     private final UserAuditAppender audits;
+    private final List<QuerySchemaView> querySchemas;
+    private final ObjectAuthorization objectAuthorization;
+    private final ListQueryCompiler queryCompiler;
     private final Clock clock;
 
     public DefaultUserService(
@@ -52,6 +64,9 @@ public class DefaultUserService implements UserService {
         SubjectGrantAssignmentService grantAssignments,
         UserDeletionLifecycleService deletion,
         UserAuditAppender audits,
+        List<QuerySchemaView> querySchemas,
+        ObjectAuthorization objectAuthorization,
+        ListQueryCompiler queryCompiler,
         Clock clock
     ) {
         this.users = users;
@@ -60,6 +75,9 @@ public class DefaultUserService implements UserService {
         this.grantAssignments = grantAssignments;
         this.deletion = deletion;
         this.audits = audits;
+        this.querySchemas = List.copyOf(querySchemas);
+        this.objectAuthorization = objectAuthorization;
+        this.queryCompiler = queryCompiler;
         this.clock = clock;
     }
 
@@ -86,9 +104,17 @@ public class DefaultUserService implements UserService {
     public OffsetPage<UserInfo> list(
         int page,
         int perPage,
-        ListQuerySpec<UserInfo> query,
-        ObjectAuthorizationPredicate<UserInfo> authorization
+        ListQueryRequest request,
+        AuthorizationContext authorizationContext
     ) {
+        QueryFieldContext context = QueryFieldContext.empty();
+        QuerySchemaView schema = this.schema(LIST_OPERATION);
+        ListQuerySpec<UserInfo> query = this.queryCompiler.compile(schema, context, request);
+        ObjectAuthorizationPredicate<UserInfo> authorization = this.objectAuthorization.authorize(
+            authorizationContext,
+            schema,
+            context
+        );
         return this.users.list(page, perPage, query, authorization);
     }
 
@@ -109,9 +135,13 @@ public class DefaultUserService implements UserService {
     public void setStatements(
         UUID userId,
         Collection<UUID> statementIds,
-        ObjectAuthorizationPredicate<UserInfo> authorization,
+        AuthorizationContext authorizationContext,
         UserMutationActor actor
     ) {
+        ObjectAuthorizationPredicate<UserInfo> authorization = this.authorize(
+            UPDATE_STATEMENTS_OPERATION,
+            authorizationContext
+        );
         User target = this.requireAuthorizedStatementTarget(userId, authorization);
         this.requireMutable(target);
         this.replaceStatements(userId, statementIds, actor);
@@ -132,13 +162,27 @@ public class DefaultUserService implements UserService {
     }
 
     @Override
-    public void delete(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization, UserMutationActor actor) {
+    public void delete(UUID userId, AuthorizationContext authorizationContext, UserMutationActor actor) {
+        ObjectAuthorizationPredicate<UserInfo> authorization = this.authorize(DELETE_OPERATION, authorizationContext);
         User target = this.requireAuthorizedDeleteTarget(userId, authorization);
         try {
             this.deletion.delete(target, actor, this.clock.instant());
         } catch (UserRuleViolation violation) {
             throw translate(violation);
         }
+    }
+
+    private ObjectAuthorizationPredicate<UserInfo> authorize(String operation, AuthorizationContext context) {
+        QuerySchemaView schema = this.schema(operation);
+        return this.objectAuthorization.authorize(context, schema, QueryFieldContext.empty());
+    }
+
+    private QuerySchemaView schema(String operation) {
+        List<QuerySchemaView> matches = this.querySchemas.stream().filter(schema -> schema.operation().equals(operation)).toList();
+        if (matches.size() != 1) {
+            throw new IllegalStateException("Expected exactly one Query Schema for operation '" + operation + "' but found " + matches.size());
+        }
+        return matches.getFirst();
     }
 
     private User requireAuthorizedDeleteTarget(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization) {
@@ -221,10 +265,7 @@ public class DefaultUserService implements UserService {
     private static UserException translate(UserRuleViolation violation) {
         UserException.Type type = switch (violation.reason()) {
             case SYSTEM_USER_DELETION_FORBIDDEN, RETAINED_USER_READ_ONLY -> UserException.Type.CONFLICT;
-            case
-                REQUIRED_FIELD,
-                RESERVED_SYSTEM_USERNAME,
-                SYSTEM_INITIAL_PASSWORD_REQUIRED -> UserException.Type.INVALID_INPUT;
+            case REQUIRED_FIELD, RESERVED_SYSTEM_USERNAME, SYSTEM_INITIAL_PASSWORD_REQUIRED -> UserException.Type.INVALID_INPUT;
         };
         return new UserException(type, violation.detail(), violation);
     }

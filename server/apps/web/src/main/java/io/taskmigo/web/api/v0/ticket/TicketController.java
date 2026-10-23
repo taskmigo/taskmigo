@@ -3,16 +3,13 @@ package io.taskmigo.web.api.v0.ticket;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.taskmigo.authorization.request.AuthorizationContext;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryOperation;
 import io.taskmigo.ticket.application.api.TicketInfo;
 import io.taskmigo.ticket.application.api.TicketPatch;
 import io.taskmigo.ticket.application.api.TicketService;
-import io.taskmigo.web.api.support.objectauthorization.ObjectAuthorizationResolver;
-import io.taskmigo.web.api.support.objectauthorization.ResolvedObjectAuthorization;
 import io.taskmigo.web.api.support.query.ListQueryOptions;
-import io.taskmigo.web.api.support.query.ListQueryResolver;
 import io.taskmigo.web.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.api.v0.support.response.ApiResponseFactory;
@@ -52,19 +49,10 @@ import org.springframework.web.bind.annotation.RestController;
 class TicketController {
 
     private final TicketService tickets;
-    private final ListQueryResolver queryResolver;
-    private final ObjectAuthorizationResolver objectAuthorization;
     private final ApiResponseFactory responses;
 
-    TicketController(
-        TicketService tickets,
-        ListQueryResolver queryResolver,
-        ObjectAuthorizationResolver objectAuthorization,
-        ApiResponseFactory responses
-    ) {
+    TicketController(TicketService tickets, ApiResponseFactory responses) {
         this.tickets = tickets;
-        this.queryResolver = queryResolver;
-        this.objectAuthorization = objectAuthorization;
         this.responses = responses;
     }
 
@@ -77,17 +65,10 @@ class TicketController {
         JwtAuthenticationToken authentication
     ) {
         UUID id = this.tickets.create(
-            request.ticketTypeId(),
-            request.title(),
-            request.status(),
-            createFields(request.customFields()),
-            actorId(authentication)
+            request.ticketTypeId(), request.title(), request.status(), createFields(request.customFields()), actorId(authentication)
         );
         return this.responses.created(
-            URI.create("/api/v0/tickets/" + id),
-            Map.of("id", id),
-            "resource.ticket.created",
-            "Ticket created"
+            URI.create("/api/v0/tickets/" + id), Map.of("id", id), "resource.ticket.created", "Ticket created"
         );
     }
 
@@ -98,16 +79,11 @@ class TicketController {
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         @RequestParam(required = false) @Nullable UUID ticketTypeId,
-        @ParameterObject @Valid ListQueryOptions query
+        @ParameterObject @Valid ListQueryOptions query,
+        AuthorizationContext authorization
     ) {
-        ListQuerySpec<TicketInfo> filter = this.queryResolver.resolve(query);
-        ResolvedObjectAuthorization<TicketInfo> authorization = this.objectAuthorization.resolve();
         OffsetPage<TicketInfo> page = this.tickets.list(
-            pagination.getPage(),
-            pagination.getPageSize(),
-            ticketTypeId,
-            filter,
-            authorization.predicate()
+            pagination.getPage(), pagination.getPageSize(), ticketTypeId, query.toRequest(), authorization
         );
         return this.responses.ok(
             page.items().stream().map(Response::from).toList(),
@@ -122,12 +98,12 @@ class TicketController {
     @Operation(summary = "Get a Ticket")
     @OpenApiNotFound
     @ResponseStatus(HttpStatus.OK)
-    ResponseEntity<ApiResponse<Response, ApiResponse.BasicMeta>> read(@PathVariable UUID ticketId) {
-        ResolvedObjectAuthorization<TicketInfo> authorization = this.objectAuthorization.resolve();
+    ResponseEntity<ApiResponse<Response, ApiResponse.BasicMeta>> read(
+        @PathVariable UUID ticketId,
+        AuthorizationContext authorization
+    ) {
         return this.responses.ok(
-            Response.from(this.tickets.read(ticketId, authorization.predicate(), authorization.queryContext())),
-            "resource.ticket.read",
-            "Ticket read"
+            Response.from(this.tickets.read(ticketId, authorization)), "resource.ticket.read", "Ticket read"
         );
     }
 
@@ -139,15 +115,12 @@ class TicketController {
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<Response, ApiResponse.BasicMeta>> update(
         @PathVariable UUID ticketId,
-        @Valid @RequestBody UpdateRequest request
+        @Valid @RequestBody UpdateRequest request,
+        AuthorizationContext authorization
     ) {
-        ResolvedObjectAuthorization<TicketInfo> authorization = this.objectAuthorization.resolve();
         Map<String, @Nullable Object> customFields = request.customFields() == null ? Map.of() : request.customFields();
         TicketInfo updated = this.tickets.update(
-            ticketId,
-            new TicketPatch(request.title(), request.status(), customFields),
-            authorization.predicate(),
-            authorization.queryContext()
+            ticketId, new TicketPatch(request.title(), request.status(), customFields), authorization
         );
         return this.responses.ok(Response.from(updated), "resource.ticket.updated", "Ticket updated");
     }
@@ -185,15 +158,8 @@ class TicketController {
     ) {
         static Response from(TicketInfo ticket) {
             return new Response(
-                ticket.id(),
-                ticket.ticketTypeId(),
-                ticket.templateVersionId(),
-                ticket.title(),
-                ticket.status(),
-                ticket.createdBy(),
-                ticket.createdAt(),
-                ticket.updatedAt(),
-                ticket.customFields()
+                ticket.id(), ticket.ticketTypeId(), ticket.templateVersionId(), ticket.title(), ticket.status(),
+                ticket.createdBy(), ticket.createdAt(), ticket.updatedAt(), ticket.customFields()
             );
         }
     }
