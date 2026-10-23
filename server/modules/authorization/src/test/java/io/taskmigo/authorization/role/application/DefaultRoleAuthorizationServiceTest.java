@@ -4,11 +4,9 @@ import static org.mockito.Mockito.verify;
 
 import io.taskmigo.authorization.role.application.internal.RoleCommandService;
 import io.taskmigo.authorization.statement.application.api.StatementService;
-import io.taskmigo.authorization.transaction.TransactionRunner;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,11 +36,7 @@ class DefaultRoleAuthorizationServiceTest {
         // Arrange
         UUID roleId = UUID.randomUUID();
         UUID statementId = UUID.randomUUID();
-        DefaultRoleAuthorizationService service = new DefaultRoleAuthorizationService(
-            this.roles,
-            this.statements,
-            directTransactions()
-        );
+        DefaultRoleAuthorizationService service = new DefaultRoleAuthorizationService(this.roles, this.statements);
 
         // Act
         service.setStatements(roleId, List.of(statementId, statementId));
@@ -50,24 +44,5 @@ class DefaultRoleAuthorizationServiceTest {
         // Assert
         verify(this.statements).requireStatements(Set.of(statementId));
         verify(this.roles).replaceStatements(roleId, Set.of(statementId));
-    }
-
-    private static TransactionRunner directTransactions() {
-        return new TransactionRunner() {
-            @Override
-            public <T> T read(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public <T> T write(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public void write(Runnable work) {
-                work.run();
-            }
-        };
     }
 }

@@ -6,7 +6,6 @@ import io.taskmigo.authorization.role.application.RoleHierarchyRepository;
 import io.taskmigo.authorization.role.application.internal.RoleCommandService;
 import io.taskmigo.authorization.statement.application.api.StatementService;
 import io.taskmigo.authorization.statement.application.internal.StatementCommandService;
-import io.taskmigo.authorization.transaction.TransactionRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -18,15 +17,8 @@ class AuthorizationProvisioningApplicationConfiguration {
         RoleCommandService roles,
         RoleHierarchyRepository hierarchies,
         StatementService statementService,
-        StatementCommandService statementCommands,
-        TransactionRunner transactions
+        StatementCommandService statementCommands
     ) {
-        return new DefaultAuthorizationProvisioningService(
-            roles,
-            hierarchies,
-            statementService,
-            statementCommands,
-            transactions
-        );
+        return new DefaultAuthorizationProvisioningService(roles, hierarchies, statementService, statementCommands);
     }
 }

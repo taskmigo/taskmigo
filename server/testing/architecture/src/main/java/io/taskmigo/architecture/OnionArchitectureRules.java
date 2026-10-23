@@ -2,6 +2,8 @@ package io.taskmigo.architecture;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -9,6 +11,7 @@ import com.tngtech.archunit.lang.ArchRule;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 /// Reusable ArchUnit rules for Taskmigo's responsibility-oriented DDD and Onion architecture.
 public final class OnionArchitectureRules {
@@ -19,6 +22,11 @@ public final class OnionArchitectureRules {
         "io.taskmigo.migration..",
         "io.taskmigo.rest..",
         "io.taskmigo.internal.."
+    );
+    private static final Set<String> APPLICATION_ALLOWED_SPRING_TYPES = Set.of(
+        "org.springframework.transaction.annotation.Transactional",
+        "org.springframework.transaction.annotation.Propagation",
+        "org.springframework.transaction.annotation.Isolation"
     );
 
     private OnionArchitectureRules() {}
@@ -80,6 +88,7 @@ public final class OnionArchitectureRules {
         rules.add(domainRule(context));
         if (!context.applicationPackages().isEmpty()) {
             rules.add(applicationRule(context));
+            rules.add(applicationContractRule(context));
         }
         rules.add(moduleIsolationRule(context));
         rules.add(persistenceFrameworkContainmentRule(context));
@@ -115,10 +124,26 @@ public final class OnionArchitectureRules {
             .and()
             .doNotHaveSimpleName("package-info")
             .should()
-            .dependOnClassesThat()
-            .resideInAnyPackage(applicationForbiddenPackages(context))
+            .dependOnClassesThat(applicationForbiddenDependencyPredicate(context))
             .allowEmptyShould(true)
-            .as("application code remains framework neutral and independent from outward implementations");
+            .as(
+                "application code allows only approved Spring transaction declaration types and remains independent from outward implementations"
+            );
+    }
+
+    static ArchRule applicationContractRule(Context context) {
+        return noClasses()
+            .that()
+            .resideInAnyPackage(context.applicationPackages().toArray(String[]::new))
+            .and()
+            .doNotHaveSimpleName("package-info")
+            .and()
+            .areInterfaces()
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage("org.springframework..")
+            .allowEmptyShould(true)
+            .as("application interfaces remain framework neutral");
     }
 
     static ArchRule moduleIsolationRule(Context context) {
@@ -180,6 +205,24 @@ public final class OnionArchitectureRules {
             .as("application tests remain independent from outward implementations and Spring test contexts");
     }
 
+    private static DescribedPredicate<JavaClass> applicationForbiddenDependencyPredicate(Context context) {
+        DescribedPredicate<JavaClass> forbiddenPackages = JavaClass.Predicates.resideInAnyPackage(
+            applicationForbiddenPackages(context)
+        );
+        DescribedPredicate<JavaClass> unapprovedSpringType = new DescribedPredicate<>(
+            "be a Spring type outside the approved application transaction declaration allowlist"
+        ) {
+            @Override
+            public boolean test(JavaClass input) {
+                return (
+                    input.getName().startsWith("org.springframework.") &&
+                    !APPLICATION_ALLOWED_SPRING_TYPES.contains(input.getName())
+                );
+            }
+        };
+        return forbiddenPackages.or(unapprovedSpringType);
+    }
+
     private static String[] domainForbiddenPackages(Context context) {
         ArrayList<String> packages = new ArrayList<>();
         packages.addAll(context.applicationPackages());
@@ -198,7 +241,6 @@ public final class OnionArchitectureRules {
         packages.addAll(context.frameworkConfigurationPackages());
         packages.addAll(context.additionalApplicationForbiddenPackages());
         packages.addAll(EXECUTABLE_APPLICATION_PACKAGES);
-        packages.add("org.springframework..");
         packages.add("jakarta.persistence..");
         return packages.toArray(String[]::new);
     }

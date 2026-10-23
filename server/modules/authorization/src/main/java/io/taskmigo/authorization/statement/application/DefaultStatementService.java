@@ -9,29 +9,24 @@ import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.application.api.StatementService;
 import io.taskmigo.authorization.statement.application.internal.StatementCommandService;
 import io.taskmigo.authorization.statement.domain.StatementRuleViolation;
-import io.taskmigo.authorization.transaction.TransactionRunner;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.ListQuerySpec;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
+import org.springframework.transaction.annotation.Transactional;
 
 /// Coordinates published runtime Statement commands and projection queries.
-public final class DefaultStatementService implements StatementService {
+@Transactional
+public class DefaultStatementService implements StatementService {
 
     private final StatementCommandService commands;
     private final StatementQueryRepository statements;
-    private final TransactionRunner transactions;
 
-    public DefaultStatementService(
-        StatementCommandService commands,
-        StatementQueryRepository statements,
-        TransactionRunner transactions
-    ) {
+    public DefaultStatementService(StatementCommandService commands, StatementQueryRepository statements) {
         this.commands = commands;
         this.statements = statements;
-        this.transactions = transactions;
     }
 
     @Override
@@ -44,30 +39,28 @@ public final class DefaultStatementService implements StatementService {
         @Nullable String path,
         @Nullable String policy
     ) {
-        return this.transactions.write(() -> {
-            try {
-                return this.commands.createRuntime(code, description, effect, scope, method, path, policy);
-            } catch (StatementRuleViolation exception) {
-                throw badRequest(exception);
-            }
-        });
+        try {
+            return this.commands.createRuntime(code, description, effect, scope, method, path, policy);
+        } catch (StatementRuleViolation exception) {
+            throw badRequest(exception);
+        }
     }
 
     @Override
     public void deleteStatement(UUID id) {
-        this.transactions.write(() -> {
-            var statement = this.commands
-                .findById(id)
-                .orElseThrow(() -> new StatementException(StatementException.Type.NOT_FOUND, "Statement not found"));
-            this.commands.delete(statement);
-        });
+        var statement = this.commands
+            .findById(id)
+            .orElseThrow(() -> new StatementException(StatementException.Type.NOT_FOUND, "Statement not found"));
+        this.commands.delete(statement);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public OffsetPage<StatementInfo> list(int page, int perPage) {
-        return this.transactions.read(() -> this.statements.list(page, perPage));
+        return this.statements.list(page, perPage);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public OffsetPage<StatementInfo> list(
         int page,
@@ -75,17 +68,15 @@ public final class DefaultStatementService implements StatementService {
         ListQuerySpec<StatementInfo> query,
         ObjectAuthorizationPredicate<StatementInfo> authorization
     ) {
-        return this.transactions.read(() -> this.statements.list(page, perPage, query, authorization));
+        return this.statements.list(page, perPage, query, authorization);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public void requireStatements(Collection<UUID> ids) {
-        this.transactions.read(() -> {
-            if (!this.statements.containsAll(Set.copyOf(ids))) {
-                throw new AuthorizationException("One or more Statements do not exist");
-            }
-            return Boolean.TRUE;
-        });
+        if (!this.statements.containsAll(Set.copyOf(ids))) {
+            throw new AuthorizationException("One or more Statements do not exist");
+        }
     }
 
     private static AuthorizationException badRequest(StatementRuleViolation exception) {

@@ -10,7 +10,6 @@ import io.taskmigo.audit.model.AuditChange;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Supplier;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -18,7 +17,7 @@ import org.mockito.Mockito;
 class DefaultAuditAppendServiceTest {
 
     /**
-     * Verifies that synchronous audit work is appended inside the caller-owned transaction.
+     * Verifies that synchronous audit work delegates directly to the audit store.
      *
      * Given: one audit event and a healthy store.
      * Expect: the store receives exactly one append request for that event.
@@ -29,7 +28,7 @@ class DefaultAuditAppendServiceTest {
         // Arrange
         AuditLogStore logs = Mockito.mock(AuditLogStore.class);
         AuditEvent event = event();
-        DefaultAuditAppendService service = new DefaultAuditAppendService(logs, directTransactions());
+        DefaultAuditAppendService service = new DefaultAuditAppendService(logs);
 
         // Act
         service.append(event);
@@ -52,7 +51,7 @@ class DefaultAuditAppendServiceTest {
         AuditEvent event = event();
         RuntimeException failure = new IllegalStateException("storage unavailable");
         doThrow(failure).when(logs).append(event);
-        DefaultAuditAppendService service = new DefaultAuditAppendService(logs, directTransactions());
+        DefaultAuditAppendService service = new DefaultAuditAppendService(logs);
 
         // Act + Assert
         assertThatThrownBy(() -> service.append(event)).isSameAs(failure);
@@ -67,19 +66,5 @@ class DefaultAuditAppendServiceTest {
             Instant.parse("2026-09-28T00:00:00Z"),
             List.of(AuditChange.visible("displayName", "Before", "After"))
         );
-    }
-
-    private static AuditTransactionRunner directTransactions() {
-        return new AuditTransactionRunner() {
-            @Override
-            public <T> T read(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public void write(Runnable work) {
-                work.run();
-            }
-        };
     }
 }

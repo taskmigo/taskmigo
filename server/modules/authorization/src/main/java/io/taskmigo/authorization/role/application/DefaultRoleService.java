@@ -8,7 +8,6 @@ import io.taskmigo.authorization.role.application.internal.RoleCommandService;
 import io.taskmigo.authorization.role.domain.RoleRuleViolation;
 import io.taskmigo.authorization.role.domain.hierarchy.RoleHierarchy;
 import io.taskmigo.authorization.role.domain.hierarchy.RoleHierarchyException;
-import io.taskmigo.authorization.transaction.TransactionRunner;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.ListQuerySpec;
 import java.util.Collection;
@@ -16,25 +15,24 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
+import org.springframework.transaction.annotation.Transactional;
 
 /// Coordinates runtime Role profile, hierarchy, and read use cases through application-owned contracts.
-public final class DefaultRoleService implements RoleService {
+@Transactional
+public class DefaultRoleService implements RoleService {
 
     private final RoleCommandService commands;
     private final RoleQueryRepository roles;
     private final RoleHierarchyRepository hierarchies;
-    private final TransactionRunner transactions;
 
     public DefaultRoleService(
         RoleCommandService commands,
         RoleQueryRepository roles,
-        RoleHierarchyRepository hierarchies,
-        TransactionRunner transactions
+        RoleHierarchyRepository hierarchies
     ) {
         this.commands = commands;
         this.roles = roles;
         this.hierarchies = hierarchies;
-        this.transactions = transactions;
     }
 
     @Override
@@ -44,38 +42,35 @@ public final class DefaultRoleService implements RoleService {
         @Nullable String description,
         @Nullable Collection<UUID> childRoleIds
     ) {
-        return this.transactions.write(() -> {
-            Set<UUID> requestedChildIds = childRoleIds == null ? Set.of() : Set.copyOf(childRoleIds);
-            RoleHierarchy current = this.hierarchies.loadForMutation();
-            requireChildren(requestedChildIds, current);
+        Set<UUID> requestedChildIds = childRoleIds == null ? Set.of() : Set.copyOf(childRoleIds);
+        RoleHierarchy current = this.hierarchies.loadForMutation();
+        requireChildren(requestedChildIds, current);
 
-            UUID id;
-            try {
-                id = this.commands.createRuntime(code, displayName, description);
-            } catch (RoleRuleViolation exception) {
-                throw invalidInput(exception);
-            }
+        UUID id;
+        try {
+            id = this.commands.createRuntime(code, displayName, description);
+        } catch (RoleRuleViolation exception) {
+            throw invalidInput(exception);
+        }
 
-            RoleHierarchy requested;
-            try {
-                requested = current.replacingChildren(id, requestedChildIds);
-            } catch (RoleHierarchyException exception) {
-                throw new RoleException(RoleException.Type.INVALID_INPUT, hierarchyFailureMessage(exception));
-            }
+        RoleHierarchy requested;
+        try {
+            requested = current.replacingChildren(id, requestedChildIds);
+        } catch (RoleHierarchyException exception) {
+            throw new RoleException(RoleException.Type.INVALID_INPUT, hierarchyFailureMessage(exception));
+        }
 
-            this.hierarchies.replaceChildren(id, requestedChildIds, requested);
-            return id;
-        });
+        this.hierarchies.replaceChildren(id, requestedChildIds, requested);
+        return id;
     }
 
+    @Transactional(readOnly = true)
     @Override
     public void requireRoles(Collection<UUID> ids) {
-        this.transactions.read(() -> {
-            this.requireRolesDirect(ids);
-            return true;
-        });
+        this.requireRolesDirect(ids);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public OffsetPage<RoleInfo> listRoles(
         int page,
@@ -83,42 +78,40 @@ public final class DefaultRoleService implements RoleService {
         ListQuerySpec<RoleInfo> query,
         ObjectAuthorizationPredicate<RoleInfo> authorization
     ) {
-        return this.transactions.read(() -> this.roles.list(page, perPage, query, authorization));
+        return this.roles.list(page, perPage, query, authorization);
     }
 
     @Override
     public void setChildRoles(UUID parentRoleId, Collection<UUID> childRoleIds) {
-        this.transactions.write(() -> {
-            Set<UUID> requestedIds = Set.copyOf(childRoleIds);
-            RoleHierarchy current = this.hierarchies.loadForMutation();
-            requireRole(parentRoleId, current);
-            requireChildren(requestedIds, current);
+        Set<UUID> requestedIds = Set.copyOf(childRoleIds);
+        RoleHierarchy current = this.hierarchies.loadForMutation();
+        requireRole(parentRoleId, current);
+        requireChildren(requestedIds, current);
 
-            RoleHierarchy requested;
-            try {
-                requested = current.replacingChildren(parentRoleId, requestedIds);
-            } catch (RoleHierarchyException exception) {
-                throw new RoleException(RoleException.Type.INVALID_INPUT, hierarchyFailureMessage(exception));
-            }
+        RoleHierarchy requested;
+        try {
+            requested = current.replacingChildren(parentRoleId, requestedIds);
+        } catch (RoleHierarchyException exception) {
+            throw new RoleException(RoleException.Type.INVALID_INPUT, hierarchyFailureMessage(exception));
+        }
 
-            this.hierarchies.replaceChildren(parentRoleId, requestedIds, requested);
-        });
+        this.hierarchies.replaceChildren(parentRoleId, requestedIds, requested);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<RoleInfo> descendantRoles(UUID roleId) {
-        return this.transactions.read(() -> {
-            this.requireRolesDirect(Set.of(roleId));
-            return this.effectiveRolesDirect(Set.of(roleId))
-                .stream()
-                .filter(role -> !role.id().equals(roleId))
-                .toList();
-        });
+        this.requireRolesDirect(Set.of(roleId));
+        return this.effectiveRolesDirect(Set.of(roleId))
+            .stream()
+            .filter(role -> !role.id().equals(roleId))
+            .toList();
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<RoleInfo> effectiveRoles(Collection<UUID> roleIds) {
-        return this.transactions.read(() -> this.effectiveRolesDirect(roleIds));
+        return this.effectiveRolesDirect(roleIds);
     }
 
     private List<RoleInfo> effectiveRolesDirect(Collection<UUID> roleIds) {

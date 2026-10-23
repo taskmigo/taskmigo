@@ -5,7 +5,6 @@ import io.taskmigo.audit.model.AuditActor;
 import io.taskmigo.audit.model.AuditChange;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
-import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.membership.application.api.MembershipService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningException;
@@ -28,9 +27,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
+import org.springframework.transaction.annotation.Transactional;
 
 /// Reconciles managed Identity state through canonical User, Membership, and Access Control contracts.
-public final class DefaultIdentityProvisioningService implements IdentityProvisioningService {
+@Transactional
+public class DefaultIdentityProvisioningService implements IdentityProvisioningService {
 
     private static final String ENTITY_TYPE = "user";
 
@@ -40,7 +41,6 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
     private final MembershipService memberships;
     private final UserDeletionLifecycleService deletion;
     private final UserAuditAppender audits;
-    private final TransactionRunner transactions;
     private final Clock clock;
 
     public DefaultIdentityProvisioningService(
@@ -50,7 +50,6 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
         MembershipService memberships,
         UserDeletionLifecycleService deletion,
         UserAuditAppender audits,
-        TransactionRunner transactions,
         Clock clock
     ) {
         this.users = users;
@@ -59,7 +58,6 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
         this.memberships = memberships;
         this.deletion = deletion;
         this.audits = audits;
-        this.transactions = transactions;
         this.clock = clock;
     }
 
@@ -73,22 +71,20 @@ public final class DefaultIdentityProvisioningService implements IdentityProvisi
         Collection<UUID> roleIds,
         Collection<UUID> groupIds
     ) {
-        return this.transactions.write(() ->
-            this.reconcileUserInTransaction(
-                username,
-                initialPasswordHash,
-                emails,
-                firstName,
-                lastName,
-                roleIds,
-                groupIds
-            )
+        return this.reconcileUserInTransaction(
+            username,
+            initialPasswordHash,
+            emails,
+            firstName,
+            lastName,
+            roleIds,
+            groupIds
         );
     }
 
     @Override
     public boolean deleteUser(String username) {
-        return this.transactions.write(() -> this.deleteUserInTransaction(username));
+        return this.deleteUserInTransaction(username);
     }
 
     private IdentityProvisioningResult<UUID> reconcileUserInTransaction(

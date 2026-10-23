@@ -10,7 +10,6 @@ import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentS
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
 import io.taskmigo.authorization.subject.application.api.SubjectRoleQueryService;
 import io.taskmigo.authorization.subject.application.resolution.EffectiveSubjectResolver;
-import io.taskmigo.authorization.transaction.TransactionRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -21,27 +20,22 @@ class SubjectApplicationConfiguration {
     SubjectGrantAssignmentService defaultSubjectGrantAssignmentService(
         RoleService roles,
         StatementService statements,
-        SubjectGrantRepository grants,
-        TransactionRunner transactions
+        SubjectGrantRepository grants
     ) {
-        return new DefaultSubjectGrantAssignmentService(roles, statements, grants, transactions);
+        return new DefaultSubjectGrantAssignmentService(roles, statements, grants);
     }
 
     @Bean
-    SubjectGrantQueryService defaultSubjectGrantQueryService(
-        SubjectGrantRepository grants,
-        TransactionRunner transactions
-    ) {
-        return new DefaultSubjectGrantQueryService(grants, transactions);
+    SubjectGrantQueryService defaultSubjectGrantQueryService(SubjectGrantRepository grants) {
+        return new DefaultSubjectGrantQueryService(grants);
     }
 
     @Bean
     SubjectRoleQueryService defaultSubjectRoleQueryService(
         EffectiveSubjectResolver subjects,
         SubjectGrantRepository grants,
-        RoleService roles,
-        TransactionRunner transactions
+        RoleService roles
     ) {
-        return new DefaultSubjectRoleQueryService(subjects, grants, roles, transactions);
+        return new DefaultSubjectRoleQueryService(subjects, grants, roles);
     }
 }

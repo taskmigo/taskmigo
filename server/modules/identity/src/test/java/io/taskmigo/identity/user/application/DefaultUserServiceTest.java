@@ -11,7 +11,6 @@ import io.taskmigo.audit.event.AuditEvent;
 import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
-import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.UserStatus;
@@ -25,7 +24,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Supplier;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -168,7 +166,7 @@ class DefaultUserServiceTest {
      * Verifies that a no-op User Role mutation still acquires the User lock but writes no audit.
      *
      * Given: a User already has exactly the requested direct Role set.
-     * Expect: the User lock is acquired and neither assignment nor audit persistence is invoked.
+     * Expect: the lock is acquired and neither assignment nor audit persistence is invoked.
      */
     @Test
     @DisplayName("locks but does not audit unchanged direct roles")
@@ -209,31 +207,11 @@ class DefaultUserServiceTest {
             assignments,
             Mockito.mock(UserDeletionLifecycleService.class),
             audits,
-            directTransactions(),
             Clock.fixed(NOW, ZoneOffset.UTC)
         );
     }
 
     private static User activeUser(UUID id) {
         return User.restore(id, "test-user", Set.of(), "Test", "User", UserStatus.ACTIVE, null);
-    }
-
-    private static TransactionRunner directTransactions() {
-        return new TransactionRunner() {
-            @Override
-            public <T> T read(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public <T> T write(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public void write(Runnable work) {
-                work.run();
-            }
-        };
     }
 }

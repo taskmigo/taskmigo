@@ -13,12 +13,10 @@ import io.taskmigo.authorization.statement.StatementException;
 import io.taskmigo.authorization.statement.application.internal.StatementCommandService;
 import io.taskmigo.authorization.statement.domain.Statement;
 import io.taskmigo.authorization.statement.domain.StatementRuleViolation;
-import io.taskmigo.authorization.transaction.TransactionRunner;
 import io.taskmigo.foundation.DomainFailureType;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,11 +26,7 @@ class DefaultStatementServiceTest {
 
     private final StatementCommandService commands = mock(StatementCommandService.class);
     private final StatementQueryRepository statements = mock(StatementQueryRepository.class);
-    private final DefaultStatementService service = new DefaultStatementService(
-        this.commands,
-        this.statements,
-        directTransactions()
-    );
+    private final DefaultStatementService service = new DefaultStatementService(this.commands, this.statements);
 
     /**
      * Verifies domain rule violations are translated at the published Statement application boundary.
@@ -125,24 +119,5 @@ class DefaultStatementServiceTest {
         assertThatThrownBy(() -> this.service.requireStatements(Set.of(id)))
             .isInstanceOf(AuthorizationException.class)
             .hasMessage("One or more Statements do not exist");
-    }
-
-    private static TransactionRunner directTransactions() {
-        return new TransactionRunner() {
-            @Override
-            public <T> T read(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public <T> T write(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public void write(Runnable work) {
-                work.run();
-            }
-        };
     }
 }

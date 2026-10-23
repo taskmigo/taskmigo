@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
 import io.taskmigo.audit.application.append.AuditAppendService;
+import io.taskmigo.audit.application.privacy.AuditPrivacyService;
 import io.taskmigo.audit.event.AuditEvent;
 import io.taskmigo.audit.model.AuditActor;
 import io.taskmigo.audit.model.AuditChange;
@@ -48,6 +49,7 @@ class AuditTransactionIntegrationTest {
 
     private final JdbcTemplate jdbc;
     private final AuditAppendService audits;
+    private final AuditPrivacyService privacy;
     private final UserService users;
     private final IdentityProvisioningService provisioning;
     private final PlatformTransactionManager transactions;
@@ -55,12 +57,14 @@ class AuditTransactionIntegrationTest {
     AuditTransactionIntegrationTest(
         JdbcTemplate jdbc,
         AuditAppendService audits,
+        AuditPrivacyService privacy,
         UserService users,
         IdentityProvisioningService provisioning,
         PlatformTransactionManager transactions
     ) {
         this.jdbc = jdbc;
         this.audits = audits;
+        this.privacy = privacy;
         this.users = users;
         this.provisioning = provisioning;
         this.transactions = transactions;
@@ -129,6 +133,22 @@ class AuditTransactionIntegrationTest {
 
         // Act + Assert
         assertThatThrownBy(() -> this.audits.append(event)).isInstanceOf(IllegalTransactionStateException.class);
+    }
+
+    /**
+     * Verifies that privacy scrubbing cannot create its own independent transaction.
+     *
+     * Given: a User id passed directly to the privacy boundary without an owning business transaction.
+     * Expect: the privacy boundary rejects the call because caller-owned transaction propagation is mandatory.
+     */
+    @Test
+    @DisplayName("requires an existing transaction for audit privacy scrubbing")
+    void shouldRequireExistingTransactionWhenAuditPrivacyScrubIsCalledDirectly() {
+        // Arrange
+        UUID userId = UUID.randomUUID();
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.privacy.scrubUser(userId)).isInstanceOf(IllegalTransactionStateException.class);
     }
 
     /**

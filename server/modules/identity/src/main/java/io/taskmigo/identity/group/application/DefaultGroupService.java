@@ -3,7 +3,6 @@ package io.taskmigo.identity.group.application;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.group.GroupException;
 import io.taskmigo.identity.group.GroupInfo;
@@ -17,30 +16,30 @@ import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
+import org.springframework.transaction.annotation.Transactional;
 
 /// Coordinates runtime Group profile, hierarchy, and grant-assignment use cases.
-public final class DefaultGroupService implements GroupService {
+@Transactional
+public class DefaultGroupService implements GroupService {
 
     private final GroupCommandService commands;
     private final GroupQueryRepository groups;
     private final GroupHierarchyRepository hierarchies;
     private final SubjectGrantAssignmentService grantAssignments;
-    private final TransactionRunner transactions;
 
     public DefaultGroupService(
         GroupCommandService commands,
         GroupQueryRepository groups,
         GroupHierarchyRepository hierarchies,
-        SubjectGrantAssignmentService grantAssignments,
-        TransactionRunner transactions
+        SubjectGrantAssignmentService grantAssignments
     ) {
         this.commands = commands;
         this.groups = groups;
         this.hierarchies = hierarchies;
         this.grantAssignments = grantAssignments;
-        this.transactions = transactions;
     }
 
+    @Transactional(readOnly = true)
     @Override
     public OffsetPage<GroupInfo> list(
         int page,
@@ -48,7 +47,7 @@ public final class DefaultGroupService implements GroupService {
         ListQuerySpec<GroupInfo> query,
         ObjectAuthorizationPredicate<GroupInfo> authorization
     ) {
-        return this.transactions.read(() -> this.groups.list(page, perPage, query, authorization));
+        return this.groups.list(page, perPage, query, authorization);
     }
 
     @Override
@@ -64,67 +63,59 @@ public final class DefaultGroupService implements GroupService {
         @Nullable Collection<UUID> childGroupIds,
         @Nullable Collection<UUID> roleIds
     ) {
-        return this.transactions.write(() -> {
-            Set<UUID> requestedChildIds = childGroupIds == null ? Set.of() : Set.copyOf(childGroupIds);
-            Set<UUID> requestedRoleIds = roleIds == null ? Set.of() : Set.copyOf(roleIds);
-            GroupHierarchy current = this.hierarchies.loadForMutation();
-            requireChildren(requestedChildIds, current);
+        Set<UUID> requestedChildIds = childGroupIds == null ? Set.of() : Set.copyOf(childGroupIds);
+        Set<UUID> requestedRoleIds = roleIds == null ? Set.of() : Set.copyOf(roleIds);
+        GroupHierarchy current = this.hierarchies.loadForMutation();
+        requireChildren(requestedChildIds, current);
 
-            UUID id;
-            try {
-                id = this.commands.createRuntime(code, displayName, description);
-            } catch (GroupRuleViolation exception) {
-                throw invalidInput(exception);
-            }
+        UUID id;
+        try {
+            id = this.commands.createRuntime(code, displayName, description);
+        } catch (GroupRuleViolation exception) {
+            throw invalidInput(exception);
+        }
 
-            GroupHierarchy requested;
-            try {
-                requested = current.replacingChildren(id, requestedChildIds);
-            } catch (GroupHierarchyException exception) {
-                throw new GroupException(GroupException.Type.INVALID_INPUT, hierarchyFailureMessage(exception));
-            }
+        GroupHierarchy requested;
+        try {
+            requested = current.replacingChildren(id, requestedChildIds);
+        } catch (GroupHierarchyException exception) {
+            throw new GroupException(GroupException.Type.INVALID_INPUT, hierarchyFailureMessage(exception));
+        }
 
-            this.hierarchies.replaceChildren(id, requestedChildIds, requested);
-            this.grantAssignments.setRoles(IdentitySubjects.group(id), requestedRoleIds);
-            return id;
-        });
+        this.hierarchies.replaceChildren(id, requestedChildIds, requested);
+        this.grantAssignments.setRoles(IdentitySubjects.group(id), requestedRoleIds);
+        return id;
     }
 
+    @Transactional(readOnly = true)
     @Override
     public void requireGroups(Collection<UUID> ids) {
-        this.transactions.read(() -> {
-            if (!this.groups.containsAll(Set.copyOf(ids))) {
-                throw new GroupException(GroupException.Type.INVALID_INPUT, "One or more Groups do not exist");
-            }
-            return true;
-        });
+        if (!this.groups.containsAll(Set.copyOf(ids))) {
+            throw new GroupException(GroupException.Type.INVALID_INPUT, "One or more Groups do not exist");
+        }
     }
 
     @Override
     public void setChildGroups(UUID parentGroupId, Collection<UUID> childGroupIds) {
-        this.transactions.write(() -> {
-            Set<UUID> requestedIds = Set.copyOf(childGroupIds);
-            GroupHierarchy current = this.hierarchies.loadForMutation();
-            requireGroup(parentGroupId, current);
-            requireChildren(requestedIds, current);
+        Set<UUID> requestedIds = Set.copyOf(childGroupIds);
+        GroupHierarchy current = this.hierarchies.loadForMutation();
+        requireGroup(parentGroupId, current);
+        requireChildren(requestedIds, current);
 
-            GroupHierarchy requested;
-            try {
-                requested = current.replacingChildren(parentGroupId, requestedIds);
-            } catch (GroupHierarchyException exception) {
-                throw new GroupException(GroupException.Type.INVALID_INPUT, hierarchyFailureMessage(exception));
-            }
+        GroupHierarchy requested;
+        try {
+            requested = current.replacingChildren(parentGroupId, requestedIds);
+        } catch (GroupHierarchyException exception) {
+            throw new GroupException(GroupException.Type.INVALID_INPUT, hierarchyFailureMessage(exception));
+        }
 
-            this.hierarchies.replaceChildren(parentGroupId, requestedIds, requested);
-        });
+        this.hierarchies.replaceChildren(parentGroupId, requestedIds, requested);
     }
 
     @Override
     public void setRoles(UUID groupId, Collection<UUID> roleIds) {
-        this.transactions.write(() -> {
-            this.requireGroup(groupId);
-            this.grantAssignments.setRoles(IdentitySubjects.group(groupId), roleIds);
-        });
+        this.requireGroup(groupId);
+        this.grantAssignments.setRoles(IdentitySubjects.group(groupId), roleIds);
     }
 
     private void requireGroup(UUID id) {

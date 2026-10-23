@@ -10,7 +10,6 @@ import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryServic
 import io.taskmigo.foundation.DomainException;
 import io.taskmigo.foundation.DomainFailureType;
 import io.taskmigo.foundation.OffsetPage;
-import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.user.AuthenticationInfo;
 import io.taskmigo.identity.user.UserException;
@@ -30,9 +29,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 /// Implements the User application API while serializing mutations per persisted User row.
-public final class DefaultUserService implements UserService {
+@Transactional
+public class DefaultUserService implements UserService {
 
     private static final String ENTITY_TYPE = "user";
 
@@ -42,7 +43,6 @@ public final class DefaultUserService implements UserService {
     private final SubjectGrantAssignmentService grantAssignments;
     private final UserDeletionLifecycleService deletion;
     private final UserAuditAppender audits;
-    private final TransactionRunner transactions;
     private final Clock clock;
 
     public DefaultUserService(
@@ -52,7 +52,6 @@ public final class DefaultUserService implements UserService {
         SubjectGrantAssignmentService grantAssignments,
         UserDeletionLifecycleService deletion,
         UserAuditAppender audits,
-        TransactionRunner transactions,
         Clock clock
     ) {
         this.users = users;
@@ -61,27 +60,28 @@ public final class DefaultUserService implements UserService {
         this.grantAssignments = grantAssignments;
         this.deletion = deletion;
         this.audits = audits;
-        this.transactions = transactions;
         this.clock = clock;
     }
 
+    @Transactional(readOnly = true)
     @Override
     public UserInfo require(UUID id) {
-        return this.transactions.read(() ->
-            this.users.find(id).orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"))
-        );
+        return this.users.find(id).orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"));
     }
 
+    @Transactional(readOnly = true)
     @Override
     public Optional<UserInfo> find(UUID id) {
-        return this.transactions.read(() -> this.users.find(id));
+        return this.users.find(id);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public Optional<AuthenticationInfo> findForAuthentication(String username) {
-        return this.transactions.read(() -> this.users.findForAuthentication(username));
+        return this.users.findForAuthentication(username);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public OffsetPage<UserInfo> list(
         int page,
@@ -89,23 +89,20 @@ public final class DefaultUserService implements UserService {
         ListQuerySpec<UserInfo> query,
         ObjectAuthorizationPredicate<UserInfo> authorization
     ) {
-        return this.transactions.read(() -> this.users.list(page, perPage, query, authorization));
+        return this.users.list(page, perPage, query, authorization);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public Set<UUID> roleIds(UUID userId) {
-        return this.transactions.read(() -> {
-            this.requireExisting(userId);
-            return this.grantQueries.roleIds(IdentitySubjects.user(userId));
-        });
+        this.requireExisting(userId);
+        return this.grantQueries.roleIds(IdentitySubjects.user(userId));
     }
 
     @Override
     public void setStatements(UUID userId, Collection<UUID> statementIds, UserMutationActor actor) {
-        this.transactions.write(() -> {
-            this.requireMutable(this.requireLocked(userId));
-            this.replaceStatements(userId, statementIds, actor);
-        });
+        this.requireMutable(this.requireLocked(userId));
+        this.replaceStatements(userId, statementIds, actor);
     }
 
     @Override
@@ -115,39 +112,33 @@ public final class DefaultUserService implements UserService {
         ObjectAuthorizationPredicate<UserInfo> authorization,
         UserMutationActor actor
     ) {
-        this.transactions.write(() -> {
-            User target = this.requireAuthorizedStatementTarget(userId, authorization);
-            this.requireMutable(target);
-            this.replaceStatements(userId, statementIds, actor);
-        });
+        User target = this.requireAuthorizedStatementTarget(userId, authorization);
+        this.requireMutable(target);
+        this.replaceStatements(userId, statementIds, actor);
     }
 
     @Override
     public void setRoles(UUID userId, Collection<UUID> roleIds, UserMutationActor actor) {
-        this.transactions.write(() -> {
-            this.requireMutable(this.requireLocked(userId));
-            SubjectRef subject = IdentitySubjects.user(userId);
-            Set<UUID> before = this.grantQueries.roleIds(subject);
-            Set<UUID> after = Set.copyOf(roleIds);
-            if (before.equals(after)) {
-                return;
-            }
+        this.requireMutable(this.requireLocked(userId));
+        SubjectRef subject = IdentitySubjects.user(userId);
+        Set<UUID> before = this.grantQueries.roleIds(subject);
+        Set<UUID> after = Set.copyOf(roleIds);
+        if (before.equals(after)) {
+            return;
+        }
 
-            this.grantAssignments.setRoles(subject, after);
-            this.append(userId, actor, UserAuditChanges.visible("roleIds", ordered(before), ordered(after)));
-        });
+        this.grantAssignments.setRoles(subject, after);
+        this.append(userId, actor, UserAuditChanges.visible("roleIds", ordered(before), ordered(after)));
     }
 
     @Override
     public void delete(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization, UserMutationActor actor) {
-        this.transactions.write(() -> {
-            User target = this.requireAuthorizedDeleteTarget(userId, authorization);
-            try {
-                this.deletion.delete(target, actor, this.clock.instant());
-            } catch (UserRuleViolation violation) {
-                throw translate(violation);
-            }
-        });
+        User target = this.requireAuthorizedDeleteTarget(userId, authorization);
+        try {
+            this.deletion.delete(target, actor, this.clock.instant());
+        } catch (UserRuleViolation violation) {
+            throw translate(violation);
+        }
     }
 
     private User requireAuthorizedDeleteTarget(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization) {

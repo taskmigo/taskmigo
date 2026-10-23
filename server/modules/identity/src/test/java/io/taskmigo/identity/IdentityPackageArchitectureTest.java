@@ -25,8 +25,8 @@ class IdentityPackageArchitectureTest {
             "io.taskmigo.identity.provisioning.configuration..",
             "io.taskmigo.identity.configuration.configuration.."
         ),
-        List.of("io.taskmigo.identity..integration..", "io.taskmigo.identity.transaction.."),
-        List.of("io.taskmigo.identity..integration..", "io.taskmigo.identity.transaction..")
+        List.of("io.taskmigo.identity..integration.."),
+        List.of("io.taskmigo.identity..integration..")
     );
 
     /**
@@ -52,6 +52,26 @@ class IdentityPackageArchitectureTest {
 
         // Act + Assert
         noRetiredPackages.check(classes);
+    }
+
+    /**
+     * Verifies the removed Identity transaction-runner architecture cannot return unnoticed.
+     *
+     * Given: all production classes in Identity after declarative transaction migration.
+     * Expect: neither the legacy runner type nor its transaction implementation package exists.
+     */
+    @Test
+    @DisplayName("rejects the legacy Identity transaction runner")
+    void shouldRejectLegacyTransactionRunnerWhenIdentityPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = productionClasses();
+
+        // Act + Assert
+        noClasses()
+            .should()
+            .haveFullyQualifiedName("io.taskmigo.identity.application.TransactionRunner")
+            .check(classes);
+        noClasses().should().resideInAnyPackage("io.taskmigo.identity.transaction..").check(classes);
     }
 
     /**
@@ -115,8 +135,7 @@ class IdentityPackageArchitectureTest {
                 "io.taskmigo.identity..application..",
                 "io.taskmigo.identity..persistence..",
                 "io.taskmigo.identity..integration..",
-                "io.taskmigo.identity..configuration.configuration..",
-                "io.taskmigo.identity.transaction.."
+                "io.taskmigo.identity..configuration.configuration.."
             );
 
         // Act + Assert

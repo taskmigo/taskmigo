@@ -20,12 +20,10 @@ import io.taskmigo.authorization.statement.application.api.StatementService;
 import io.taskmigo.authorization.statement.application.internal.StatementCommandService;
 import io.taskmigo.authorization.statement.application.internal.StatementMutationResult;
 import io.taskmigo.authorization.statement.domain.Statement;
-import io.taskmigo.authorization.transaction.TransactionRunner;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -249,8 +247,7 @@ class DefaultAuthorizationProvisioningServiceTest {
             roles,
             hierarchies,
             statements,
-            mock(StatementCommandService.class),
-            directTransactions()
+            mock(StatementCommandService.class)
         );
 
         // Act
@@ -348,28 +345,8 @@ class DefaultAuthorizationProvisioningServiceTest {
             roles,
             mock(RoleHierarchyRepository.class),
             statementService,
-            statements,
-            directTransactions()
+            statements
         );
-    }
-
-    private static TransactionRunner directTransactions() {
-        return new TransactionRunner() {
-            @Override
-            public <T> T read(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public <T> T write(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public void write(Runnable work) {
-                work.run();
-            }
-        };
     }
 
     private static Statement statement(String code) {

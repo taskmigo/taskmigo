@@ -16,7 +16,6 @@ import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
 import io.taskmigo.foundation.DomainFailureType;
-import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.user.UserException;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.UserMutationActor;
@@ -31,7 +30,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Supplier;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -237,7 +235,6 @@ class DefaultUserAuthorizationMutationTest {
             assignments,
             deletion,
             mock(UserAuditAppender.class),
-            directTransactions(),
             Clock.fixed(NOW, ZoneOffset.UTC)
         );
     }
@@ -272,24 +269,5 @@ class DefaultUserAuthorizationMutationTest {
             null,
             null
         );
-    }
-
-    private static TransactionRunner directTransactions() {
-        return new TransactionRunner() {
-            @Override
-            public <T> T read(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public <T> T write(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public void write(Runnable work) {
-                work.run();
-            }
-        };
     }
 }

@@ -56,7 +56,6 @@ class IdentityTacticalTestArchitectureTest {
             .resideInAnyPackage(
                 "io.taskmigo.identity..persistence..",
                 "io.taskmigo.identity..integration..",
-                "io.taskmigo.identity.transaction..",
                 "org.springframework.data..",
                 "jakarta.persistence..",
                 "org.springframework.boot.test.context..",

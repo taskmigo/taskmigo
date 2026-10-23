@@ -1,6 +1,5 @@
 package io.taskmigo.identity.membership.configuration;
 
-import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.group.application.api.GroupService;
 import io.taskmigo.identity.membership.application.DefaultMembershipCleanupService;
 import io.taskmigo.identity.membership.application.DefaultMembershipService;
@@ -23,9 +22,8 @@ class MembershipApplicationConfiguration {
     MembershipService defaultMembershipService(
         MembershipRepository memberships,
         GroupService groups,
-        UserCommandService users,
-        TransactionRunner transactions
+        UserCommandService users
     ) {
-        return new DefaultMembershipService(memberships, groups, users, transactions);
+        return new DefaultMembershipService(memberships, groups, users);
     }
 }

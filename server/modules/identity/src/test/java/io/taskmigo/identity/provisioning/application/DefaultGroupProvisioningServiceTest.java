@@ -8,7 +8,6 @@ import static org.mockito.Mockito.when;
 
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
-import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.group.application.GroupHierarchyRepository;
 import io.taskmigo.identity.group.application.internal.GroupCommandService;
@@ -21,7 +20,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -51,13 +49,7 @@ class DefaultGroupProvisioningServiceTest {
         when(hierarchies.loadForMutation()).thenReturn(hierarchy);
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
-        var service = new DefaultGroupProvisioningService(
-            groups,
-            hierarchies,
-            grantAssignments,
-            grantQueries,
-            directTransactions()
-        );
+        var service = new DefaultGroupProvisioningService(groups, hierarchies, grantAssignments, grantQueries);
 
         // Act
         IdentityProvisioningResult<UUID> result = service.reconcileGroup(
@@ -95,8 +87,7 @@ class DefaultGroupProvisioningServiceTest {
             groups,
             mock(GroupHierarchyRepository.class),
             grantAssignments,
-            grantQueries,
-            directTransactions()
+            grantQueries
         );
 
         // Act
@@ -129,13 +120,7 @@ class DefaultGroupProvisioningServiceTest {
         when(hierarchies.loadForMutation()).thenReturn(current);
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
-        var service = new DefaultGroupProvisioningService(
-            groups,
-            hierarchies,
-            grantAssignments,
-            grantQueries,
-            directTransactions()
-        );
+        var service = new DefaultGroupProvisioningService(groups, hierarchies, grantAssignments, grantQueries);
 
         // Act
         boolean removed = service.deleteGroup("engineering");
@@ -152,24 +137,5 @@ class DefaultGroupProvisioningServiceTest {
                     hierarchy.reachableFrom(root).equals(List.of(root))
             )
         );
-    }
-
-    private static TransactionRunner directTransactions() {
-        return new TransactionRunner() {
-            @Override
-            public <T> T read(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public <T> T write(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public void write(Runnable work) {
-                work.run();
-            }
-        };
     }
 }

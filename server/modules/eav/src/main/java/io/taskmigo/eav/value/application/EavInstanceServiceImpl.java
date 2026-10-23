@@ -3,7 +3,6 @@ package io.taskmigo.eav.value.application;
 import io.taskmigo.eav.schema.application.EavFieldSpec;
 import io.taskmigo.eav.schema.application.EavSchemaService;
 import io.taskmigo.eav.schema.application.EavSchemaVersionInfo;
-import io.taskmigo.eav.schema.application.EavTransactionRunner;
 import io.taskmigo.eav.schema.domain.EavFieldDefinition;
 import io.taskmigo.eav.schema.domain.EavSchemaStatus;
 import io.taskmigo.eav.schema.domain.EavValue;
@@ -13,25 +12,24 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
+import org.springframework.transaction.annotation.Transactional;
 
 /// Applies schema validation and historical-version pinning for generic EAV instances.
-public final class EavInstanceServiceImpl implements EavInstanceService {
+@Transactional
+public class EavInstanceServiceImpl implements EavInstanceService {
 
     private final EavSchemaService schemas;
     private final EavInstanceRepository instances;
     private final EavValueValidator validator;
-    private final EavTransactionRunner transactions;
 
     public EavInstanceServiceImpl(
         EavSchemaService schemas,
         EavInstanceRepository instances,
-        EavValueValidator validator,
-        EavTransactionRunner transactions
+        EavValueValidator validator
     ) {
         this.schemas = Objects.requireNonNull(schemas);
         this.instances = Objects.requireNonNull(instances);
         this.validator = Objects.requireNonNull(validator);
-        this.transactions = Objects.requireNonNull(transactions);
     }
 
     @Override
@@ -39,70 +37,59 @@ public final class EavInstanceServiceImpl implements EavInstanceService {
         Objects.requireNonNull(definitionId);
         Objects.requireNonNull(versionId);
         Map<String, @Nullable Object> supplied = new LinkedHashMap<>(Objects.requireNonNull(values));
-        return this.transactions.write(() -> {
-            EavSchemaVersionInfo version = this.schemas.version(definitionId, versionId);
-            if (version.status() != EavSchemaStatus.PUBLISHED) {
-                throw new IllegalStateException("New EAV instances require a published schema version");
-            }
-            Map<String, EavFieldSpec> fields = fieldsByKey(version);
-            rejectUnknownKeys(supplied, fields);
+        EavSchemaVersionInfo version = this.schemas.version(definitionId, versionId);
+        if (version.status() != EavSchemaStatus.PUBLISHED) {
+            throw new IllegalStateException("New EAV instances require a published schema version");
+        }
+        Map<String, EavFieldSpec> fields = fieldsByKey(version);
+        rejectUnknownKeys(supplied, fields);
 
-            Map<UUID, EavValue> normalized = new LinkedHashMap<>();
-            for (EavFieldSpec field : version.fields()) {
-                this.validator
-                    .validate(toDefinition(field), supplied.get(field.key()))
-                    .ifPresent(value -> normalized.put(field.fieldId(), value));
-            }
+        Map<UUID, EavValue> normalized = new LinkedHashMap<>();
+        for (EavFieldSpec field : version.fields()) {
+            this.validator
+                .validate(toDefinition(field), supplied.get(field.key()))
+                .ifPresent(value -> normalized.put(field.fieldId(), value));
+        }
 
-            EavInstanceState state = new EavInstanceState(UUID.randomUUID(), definitionId, versionId, normalized);
-            this.instances.create(state);
-            return toView(state, version);
-        });
+        EavInstanceState state = new EavInstanceState(UUID.randomUUID(), definitionId, versionId, normalized);
+        this.instances.create(state);
+        return toView(state, version);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public EavInstanceView get(UUID instanceId) {
         Objects.requireNonNull(instanceId);
-        return this.transactions.read(() -> {
-            EavInstanceState state = this.requireState(instanceId);
-            EavSchemaVersionInfo version = this.schemas.version(state.schemaDefinitionId(), state.schemaVersionId());
-            return toView(state, version);
-        });
+        EavInstanceState state = this.requireState(instanceId);
+        EavSchemaVersionInfo version = this.schemas.version(state.schemaDefinitionId(), state.schemaVersionId());
+        return toView(state, version);
     }
 
     @Override
     public EavInstanceView patch(UUID instanceId, Map<String, ? extends @Nullable Object> changes) {
         Objects.requireNonNull(instanceId);
         Objects.requireNonNull(changes);
-        return this.transactions.write(() -> {
-            EavInstanceState current = this.requireState(instanceId);
-            EavSchemaVersionInfo version = this.schemas.version(
-                current.schemaDefinitionId(),
-                current.schemaVersionId()
-            );
-            Map<String, EavFieldSpec> fields = fieldsByKey(version);
-            rejectUnknownKeys(changes, fields);
+        EavInstanceState current = this.requireState(instanceId);
+        EavSchemaVersionInfo version = this.schemas.version(current.schemaDefinitionId(), current.schemaVersionId());
+        Map<String, EavFieldSpec> fields = fieldsByKey(version);
+        rejectUnknownKeys(changes, fields);
 
-            Map<UUID, EavValue> updated = new LinkedHashMap<>(current.values());
-            for (Map.Entry<String, ? extends @Nullable Object> change : changes.entrySet()) {
-                EavFieldSpec field = requireField(fields, change.getKey());
-                this.validator
-                    .validate(toDefinition(field), change.getValue())
-                    .ifPresentOrElse(
-                        value -> updated.put(field.fieldId(), value),
-                        () -> updated.remove(field.fieldId())
-                    );
-            }
+        Map<UUID, EavValue> updated = new LinkedHashMap<>(current.values());
+        for (Map.Entry<String, ? extends @Nullable Object> change : changes.entrySet()) {
+            EavFieldSpec field = requireField(fields, change.getKey());
+            this.validator
+                .validate(toDefinition(field), change.getValue())
+                .ifPresentOrElse(value -> updated.put(field.fieldId(), value), () -> updated.remove(field.fieldId()));
+        }
 
-            EavInstanceState state = new EavInstanceState(
-                current.id(),
-                current.schemaDefinitionId(),
-                current.schemaVersionId(),
-                updated
-            );
-            this.instances.update(state);
-            return toView(state, version);
-        });
+        EavInstanceState state = new EavInstanceState(
+            current.id(),
+            current.schemaDefinitionId(),
+            current.schemaVersionId(),
+            updated
+        );
+        this.instances.update(state);
+        return toView(state, version);
     }
 
     private EavInstanceState requireState(UUID instanceId) {

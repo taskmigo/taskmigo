@@ -37,11 +37,7 @@ class IdentityProvisioningOnionArchitectureTest {
             .doNotHaveSimpleName("package-info")
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage(
-                "io.taskmigo.identity.provisioning.configuration..",
-                "org.springframework..",
-                "jakarta.persistence.."
-            )
+            .resideInAnyPackage("io.taskmigo.identity.provisioning.configuration..", "jakarta.persistence..")
             .check(provisioningProductionClasses());
     }
 

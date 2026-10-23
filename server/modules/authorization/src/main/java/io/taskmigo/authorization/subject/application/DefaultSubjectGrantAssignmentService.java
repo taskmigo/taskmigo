@@ -5,48 +5,42 @@ import io.taskmigo.authorization.statement.application.api.StatementService;
 import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.domain.SubjectGrants;
-import io.taskmigo.authorization.transaction.TransactionRunner;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 /// Coordinates direct Subject grant replacement and reference validation.
-public final class DefaultSubjectGrantAssignmentService implements SubjectGrantAssignmentService {
+@Transactional
+public class DefaultSubjectGrantAssignmentService implements SubjectGrantAssignmentService {
 
     private final RoleService roles;
     private final StatementService statements;
     private final SubjectGrantRepository grants;
-    private final TransactionRunner transactions;
 
     public DefaultSubjectGrantAssignmentService(
         RoleService roles,
         StatementService statements,
-        SubjectGrantRepository grants,
-        TransactionRunner transactions
+        SubjectGrantRepository grants
     ) {
         this.roles = roles;
         this.statements = statements;
         this.grants = grants;
-        this.transactions = transactions;
     }
 
     @Override
     public void setRoles(SubjectRef subject, Collection<UUID> roleIds) {
-        this.transactions.write(() -> {
-            Set<UUID> requested = Set.copyOf(roleIds);
-            this.roles.requireRoles(requested);
-            SubjectGrants current = this.grants.load(subject);
-            this.grants.saveRoles(current.replacingRoles(requested));
-        });
+        Set<UUID> requested = Set.copyOf(roleIds);
+        this.roles.requireRoles(requested);
+        SubjectGrants current = this.grants.load(subject);
+        this.grants.saveRoles(current.replacingRoles(requested));
     }
 
     @Override
     public void setStatements(SubjectRef subject, Collection<UUID> statementIds) {
-        this.transactions.write(() -> {
-            Set<UUID> requested = Set.copyOf(statementIds);
-            this.statements.requireStatements(requested);
-            SubjectGrants current = this.grants.load(subject);
-            this.grants.saveStatements(current.replacingStatements(requested));
-        });
+        Set<UUID> requested = Set.copyOf(statementIds);
+        this.statements.requireStatements(requested);
+        SubjectGrants current = this.grants.load(subject);
+        this.grants.saveStatements(current.replacingStatements(requested));
     }
 }

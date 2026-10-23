@@ -11,12 +11,10 @@ import io.taskmigo.authorization.role.RoleException;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.role.application.internal.RoleCommandService;
 import io.taskmigo.authorization.role.domain.hierarchy.RoleHierarchy;
-import io.taskmigo.authorization.transaction.TransactionRunner;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -50,12 +48,7 @@ class DefaultRoleServiceTest {
         UUID id = UUID.randomUUID();
         when(this.hierarchies.loadForMutation()).thenReturn(RoleHierarchy.from(Map.of()));
         when(this.commands.createRuntime("  administrator  ", "Administrator", null)).thenReturn(id);
-        DefaultRoleService service = new DefaultRoleService(
-            this.commands,
-            this.roles,
-            this.hierarchies,
-            directTransactions()
-        );
+        DefaultRoleService service = new DefaultRoleService(this.commands, this.roles, this.hierarchies);
 
         // Act
         UUID created = service.createRole("  administrator  ", "Administrator", null, Set.of());
@@ -79,12 +72,7 @@ class DefaultRoleServiceTest {
         UUID parent = UUID.randomUUID();
         UUID missing = UUID.randomUUID();
         when(this.hierarchies.loadForMutation()).thenReturn(RoleHierarchy.from(Map.of(parent, Set.of())));
-        DefaultRoleService service = new DefaultRoleService(
-            this.commands,
-            this.roles,
-            this.hierarchies,
-            directTransactions()
-        );
+        DefaultRoleService service = new DefaultRoleService(this.commands, this.roles, this.hierarchies);
 
         // Act + Assert
         assertThatThrownBy(() -> service.setChildRoles(parent, Set.of(missing)))
@@ -112,36 +100,12 @@ class DefaultRoleServiceTest {
                 new RoleInfo(first, "parent", "Parent", null, List.of())
             )
         );
-        DefaultRoleService service = new DefaultRoleService(
-            this.commands,
-            this.roles,
-            this.hierarchies,
-            directTransactions()
-        );
+        DefaultRoleService service = new DefaultRoleService(this.commands, this.roles, this.hierarchies);
 
         // Act
         List<RoleInfo> effective = service.effectiveRoles(Set.of(first));
 
         // Assert
         assertThat(effective).extracting(RoleInfo::id).containsExactly(first, child);
-    }
-
-    private static TransactionRunner directTransactions() {
-        return new TransactionRunner() {
-            @Override
-            public <T> T read(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public <T> T write(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public void write(Runnable work) {
-                work.run();
-            }
-        };
     }
 }

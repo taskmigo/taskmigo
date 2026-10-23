@@ -1,7 +1,6 @@
 package io.taskmigo.audit.configuration;
 
 import io.taskmigo.audit.application.AuditLogStore;
-import io.taskmigo.audit.application.AuditTransactionRunner;
 import io.taskmigo.audit.application.DefaultAuditAppendService;
 import io.taskmigo.audit.application.DefaultAuditPrivacyService;
 import io.taskmigo.audit.application.DefaultAuditQueryService;
@@ -18,17 +17,17 @@ import org.springframework.context.annotation.Configuration;
 class AuditApplicationConfiguration {
 
     @Bean
-    AuditAppendService defaultAuditAppendService(AuditLogStore logs, AuditTransactionRunner transactions) {
-        return new DefaultAuditAppendService(logs, transactions);
+    AuditAppendService defaultAuditAppendService(AuditLogStore logs) {
+        return new DefaultAuditAppendService(logs);
     }
 
     @Bean
-    AuditPrivacyService defaultAuditPrivacyService(AuditLogStore logs, AuditTransactionRunner transactions) {
-        return new DefaultAuditPrivacyService(logs, transactions);
+    AuditPrivacyService defaultAuditPrivacyService(AuditLogStore logs) {
+        return new DefaultAuditPrivacyService(logs);
     }
 
     @Bean
-    AuditQueryService defaultAuditQueryService(AuditLogStore logs, AuditTransactionRunner transactions) {
-        return new DefaultAuditQueryService(logs, transactions);
+    AuditQueryService defaultAuditQueryService(AuditLogStore logs) {
+        return new DefaultAuditQueryService(logs);
     }
 }
