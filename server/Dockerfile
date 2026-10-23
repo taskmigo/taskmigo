@@ -6,6 +6,7 @@ WORKDIR /workspace
 
 COPY --chmod=755 gradlew ./
 COPY gradle ./gradle
+COPY build-logic ./build-logic
 COPY settings.gradle.kts build.gradle.kts ./
 COPY modules/foundation/core/build.gradle.kts modules/foundation/core/build.gradle.kts
 COPY modules/foundation/spring/build.gradle.kts modules/foundation/spring/build.gradle.kts

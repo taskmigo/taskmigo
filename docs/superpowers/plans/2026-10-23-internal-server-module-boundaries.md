@@ -4,7 +4,7 @@
 
 **Goal:** Implement issue #294 by introducing a self-enforcing `server/modules/internal/` category without changing runtime behavior.
 
-**Architecture:** Keep Java package names and Spring Modulith logical module names stable while relocating implementation-only Gradle projects. Restrict non-internal Gradle/API exposure using project-path discovery and ABI inspection so future `:modules:internal:*` projects are protected automatically.
+**Architecture:** Keep Java package names and Spring Modulith logical module names stable while relocating implementation-only Gradle projects. Restrict non-internal Gradle/API exposure using project-path discovery and ABI inspection so future `:modules:internal:*` projects are protected automatically. Keep the root build declarative by implementing the boundary policy as an included-build Java Gradle plugin under `server/build-logic/`.
 
 **Spec:** [Issue #294](https://github.com/taskmigo/taskmigo/issues/294)
 
@@ -31,7 +31,9 @@
 
 **Files:**
 
-- Modify `server/build.gradle.kts`.
+- Add `server/build-logic/` with the Java internal-boundary Gradle plugin.
+- Keep `server/build.gradle.kts` limited to applying the policy alongside normal root build configuration.
+- Update `server/settings.gradle.kts` and `server/Dockerfile` so the included build is available in local and containerized builds.
 
 **Steps:**
 
@@ -40,7 +42,7 @@
 3. Fail verification when any non-internal `:modules:*` project exports an internal project through `api` or `compileOnlyApi`.
 4. Derive packages owned by internal projects from `src/main/java` and fail when application production sources import them.
 5. Derive public module packages from Spring Modulith `@ApplicationModule`, `@NamedInterface`, and `application.api` source packages; run `jdeps --api-only` against non-internal module JARs and fail if their supported ABI references an internal package.
-6. Wire the aggregate boundary verification into root `check`.
+6. Wire the aggregate boundary verification into root `check` through the build-logic plugin.
 
 ## Verification and CI repair
 
