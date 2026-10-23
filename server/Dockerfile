@@ -6,16 +6,17 @@ WORKDIR /workspace
 
 COPY --chmod=755 gradlew ./
 COPY gradle ./gradle
+COPY build-logic ./build-logic
 COPY settings.gradle.kts build.gradle.kts ./
 COPY modules/foundation/core/build.gradle.kts modules/foundation/core/build.gradle.kts
 COPY modules/foundation/spring/build.gradle.kts modules/foundation/spring/build.gradle.kts
-COPY modules/language/build.gradle.kts modules/language/build.gradle.kts
+COPY modules/internal/language/build.gradle.kts modules/internal/language/build.gradle.kts
 COPY modules/query/build.gradle.kts modules/query/build.gradle.kts
-COPY modules/jpa-query/build.gradle.kts modules/jpa-query/build.gradle.kts
+COPY modules/internal/jpa-query/build.gradle.kts modules/internal/jpa-query/build.gradle.kts
 COPY modules/authorization/build.gradle.kts modules/authorization/build.gradle.kts
 COPY modules/database/build.gradle.kts modules/database/build.gradle.kts
 COPY modules/audit/build.gradle.kts modules/audit/build.gradle.kts
-COPY modules/eav/build.gradle.kts modules/eav/build.gradle.kts
+COPY modules/internal/eav/build.gradle.kts modules/internal/eav/build.gradle.kts
 COPY modules/identity/build.gradle.kts modules/identity/build.gradle.kts
 COPY modules/ticket/build.gradle.kts modules/ticket/build.gradle.kts
 COPY benchmarks/authorization/build.gradle.kts benchmarks/authorization/build.gradle.kts
@@ -33,13 +34,13 @@ RUN --mount=type=cache,id=taskmigo-gradle,target=/root/.gradle,sharing=locked \
 
 COPY modules/foundation/core/src modules/foundation/core/src
 COPY modules/foundation/spring/src modules/foundation/spring/src
-COPY modules/language/src modules/language/src
+COPY modules/internal/language/src modules/internal/language/src
 COPY modules/query/src modules/query/src
-COPY modules/jpa-query/src modules/jpa-query/src
+COPY modules/internal/jpa-query/src modules/internal/jpa-query/src
 COPY modules/authorization/src modules/authorization/src
 COPY modules/database/src modules/database/src
 COPY modules/audit/src modules/audit/src
-COPY modules/eav/src modules/eav/src
+COPY modules/internal/eav/src modules/internal/eav/src
 COPY modules/identity/src modules/identity/src
 COPY modules/ticket/src modules/ticket/src
 COPY benchmarks/authorization/src benchmarks/authorization/src

@@ -12,6 +12,7 @@ import org.gradle.kotlin.dsl.repositories
 
 plugins {
     base
+    id("io.taskmigo.internal-module-boundaries")
     // Keep shared plugin services on the root classloader for sibling projects.
     alias(libs.plugins.spring.boot) apply false
     alias(libs.plugins.errorprone) apply false

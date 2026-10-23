@@ -3,6 +3,7 @@ package io.taskmigo.authorization.statement;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import io.taskmigo.authorization.request.application.model.StatementExecutionArtifact;
 import io.taskmigo.language.CompiledSource;
 import java.time.Duration;
 import java.util.UUID;

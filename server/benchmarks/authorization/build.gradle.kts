@@ -6,7 +6,7 @@ plugins {
 description = "JMH benchmarks for the Taskmigo Language compiler"
 
 dependencies {
-    jmhImplementation(project(":modules:language"))
+    jmhImplementation(project(":modules:internal:language"))
     testImplementation(platform(libs.spring.boot.bom))
 }
 

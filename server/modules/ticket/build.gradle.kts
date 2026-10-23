@@ -11,8 +11,8 @@ dependencies {
     annotationProcessor(libs.hibernate.processor)
 
     implementation(platform(libs.spring.boot.bom))
-    implementation(project(":modules:jpa-query"))
-    implementation(project(":modules:eav"))
+    implementation(project(":modules:internal:jpa-query"))
+    implementation(project(":modules:internal:eav"))
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.boot.core.starter)
 
