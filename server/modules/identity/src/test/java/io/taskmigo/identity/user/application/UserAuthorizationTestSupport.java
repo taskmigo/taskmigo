@@ -27,7 +27,6 @@ final class UserAuthorizationTestSupport {
     static ObjectAuthorization objectAuthorization(ObjectAuthorizationPredicate<UserInfo> predicate) {
         return new ObjectAuthorization() {
             @Override
-            @SuppressWarnings("unchecked")
             public <Q> ObjectAuthorizationPredicate<Q> authorize(
                 AuthorizationContext context,
                 QuerySchemaView schema,

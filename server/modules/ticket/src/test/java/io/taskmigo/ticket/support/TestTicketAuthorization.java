@@ -5,8 +5,10 @@ import io.taskmigo.authorization.object.application.api.ObjectAuthorization;
 import io.taskmigo.authorization.request.AuthorizationContext;
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QuerySchemaView;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.boot.test.context.TestConfiguration;
 
+@NullMarked
 @TestConfiguration(proxyBeanMethods = false)
 public class TestTicketAuthorization implements ObjectAuthorization {
 
@@ -15,7 +17,6 @@ public class TestTicketAuthorization implements ObjectAuthorization {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public <Q> ObjectAuthorizationPredicate<Q> authorize(
         AuthorizationContext context,
         QuerySchemaView schema,
