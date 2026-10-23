@@ -71,7 +71,10 @@ class UserController {
         AuthorizationContext authorization
     ) {
         OffsetPage<UserInfo> users = this.users.list(
-            pagination.getPage(), pagination.getPageSize(), query.toRequest(), authorization
+            pagination.getPage(),
+            pagination.getPageSize(),
+            query.toRequest(),
+            authorization
         );
         return this.responses.ok(
             users.items().stream().map(Response::from).toList(),
@@ -123,10 +126,18 @@ class UserController {
     @ResponseStatus(HttpStatus.CREATED)
     ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(@Valid @RequestBody Request request) {
         UUID id = this.registrations.register(
-            request.username(), request.emails(), request.firstName(), request.lastName(), request.roleIds(), request.groupIds()
+            request.username(),
+            request.emails(),
+            request.firstName(),
+            request.lastName(),
+            request.roleIds(),
+            request.groupIds()
         );
         return this.responses.created(
-            URI.create("/api/v0/users/" + id), Map.of("id", id), "resource.user.created", "User created"
+            URI.create("/api/v0/users/" + id),
+            Map.of("id", id),
+            "resource.user.created",
+            "User created"
         );
     }
 
@@ -149,8 +160,14 @@ class UserController {
     ) {
         static Response from(UserInfo user) {
             return new Response(
-                user.id(), user.username(), user.firstName(), user.lastName(), user.emails(), user.displayName(),
-                user.status().name(), user.retainedAt()
+                user.id(),
+                user.username(),
+                user.firstName(),
+                user.lastName(),
+                user.emails(),
+                user.displayName(),
+                user.status().name(),
+                user.retainedAt()
             );
         }
     }

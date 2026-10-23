@@ -178,9 +178,14 @@ public class DefaultUserService implements UserService {
     }
 
     private QuerySchemaView schema(String operation) {
-        List<QuerySchemaView> matches = this.querySchemas.stream().filter(schema -> schema.operation().equals(operation)).toList();
+        List<QuerySchemaView> matches = this.querySchemas
+            .stream()
+            .filter(schema -> schema.operation().equals(operation))
+            .toList();
         if (matches.size() != 1) {
-            throw new IllegalStateException("Expected exactly one Query Schema for operation '" + operation + "' but found " + matches.size());
+            throw new IllegalStateException(
+                "Expected exactly one Query Schema for operation '" + operation + "' but found " + matches.size()
+            );
         }
         return matches.getFirst();
     }
@@ -265,7 +270,10 @@ public class DefaultUserService implements UserService {
     private static UserException translate(UserRuleViolation violation) {
         UserException.Type type = switch (violation.reason()) {
             case SYSTEM_USER_DELETION_FORBIDDEN, RETAINED_USER_READ_ONLY -> UserException.Type.CONFLICT;
-            case REQUIRED_FIELD, RESERVED_SYSTEM_USERNAME, SYSTEM_INITIAL_PASSWORD_REQUIRED -> UserException.Type.INVALID_INPUT;
+            case
+                REQUIRED_FIELD,
+                RESERVED_SYSTEM_USERNAME,
+                SYSTEM_INITIAL_PASSWORD_REQUIRED -> UserException.Type.INVALID_INPUT;
         };
         return new UserException(type, violation.detail(), violation);
     }

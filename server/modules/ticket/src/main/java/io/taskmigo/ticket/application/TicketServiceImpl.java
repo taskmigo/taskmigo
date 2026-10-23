@@ -113,7 +113,8 @@ public class TicketServiceImpl implements TicketService {
     ) {
         Objects.requireNonNull(request);
         Objects.requireNonNull(authorizationContext);
-        QueryFieldContext context = ticketTypeId == null ? this.queryFields.global() : this.queryFields.forType(ticketTypeId);
+        QueryFieldContext context =
+            ticketTypeId == null ? this.queryFields.global() : this.queryFields.forType(ticketTypeId);
         QuerySchemaView schema = this.schema(LIST_OPERATION);
         ListQuerySpec<TicketInfo> query = this.queryCompiler.compile(schema, context, request);
         ObjectAuthorizationPredicate<TicketInfo> authorization = this.objectAuthorization.authorize(
@@ -185,9 +186,14 @@ public class TicketServiceImpl implements TicketService {
     }
 
     private QuerySchemaView schema(String operation) {
-        List<QuerySchemaView> matches = this.querySchemas.stream().filter(schema -> schema.operation().equals(operation)).toList();
+        List<QuerySchemaView> matches = this.querySchemas
+            .stream()
+            .filter(schema -> schema.operation().equals(operation))
+            .toList();
         if (matches.size() != 1) {
-            throw new IllegalStateException("Expected exactly one Query Schema for operation '" + operation + "' but found " + matches.size());
+            throw new IllegalStateException(
+                "Expected exactly one Query Schema for operation '" + operation + "' but found " + matches.size()
+            );
         }
         return matches.getFirst();
     }
@@ -206,8 +212,15 @@ public class TicketServiceImpl implements TicketService {
 
     private static TicketInfo toInfo(Ticket ticket, EavInstanceView instance) {
         return new TicketInfo(
-            ticket.id(), ticket.ticketTypeId(), instance.schemaVersionId(), ticket.title(), ticket.status(),
-            ticket.createdBy(), ticket.createdAt(), ticket.updatedAt(), instance.values()
+            ticket.id(),
+            ticket.ticketTypeId(),
+            instance.schemaVersionId(),
+            ticket.title(),
+            ticket.status(),
+            ticket.createdBy(),
+            ticket.createdAt(),
+            ticket.updatedAt(),
+            instance.values()
         );
     }
 

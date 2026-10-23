@@ -65,10 +65,17 @@ class TicketController {
         JwtAuthenticationToken authentication
     ) {
         UUID id = this.tickets.create(
-            request.ticketTypeId(), request.title(), request.status(), createFields(request.customFields()), actorId(authentication)
+            request.ticketTypeId(),
+            request.title(),
+            request.status(),
+            createFields(request.customFields()),
+            actorId(authentication)
         );
         return this.responses.created(
-            URI.create("/api/v0/tickets/" + id), Map.of("id", id), "resource.ticket.created", "Ticket created"
+            URI.create("/api/v0/tickets/" + id),
+            Map.of("id", id),
+            "resource.ticket.created",
+            "Ticket created"
         );
     }
 
@@ -83,7 +90,11 @@ class TicketController {
         AuthorizationContext authorization
     ) {
         OffsetPage<TicketInfo> page = this.tickets.list(
-            pagination.getPage(), pagination.getPageSize(), ticketTypeId, query.toRequest(), authorization
+            pagination.getPage(),
+            pagination.getPageSize(),
+            ticketTypeId,
+            query.toRequest(),
+            authorization
         );
         return this.responses.ok(
             page.items().stream().map(Response::from).toList(),
@@ -103,7 +114,9 @@ class TicketController {
         AuthorizationContext authorization
     ) {
         return this.responses.ok(
-            Response.from(this.tickets.read(ticketId, authorization)), "resource.ticket.read", "Ticket read"
+            Response.from(this.tickets.read(ticketId, authorization)),
+            "resource.ticket.read",
+            "Ticket read"
         );
     }
 
@@ -120,7 +133,9 @@ class TicketController {
     ) {
         Map<String, @Nullable Object> customFields = request.customFields() == null ? Map.of() : request.customFields();
         TicketInfo updated = this.tickets.update(
-            ticketId, new TicketPatch(request.title(), request.status(), customFields), authorization
+            ticketId,
+            new TicketPatch(request.title(), request.status(), customFields),
+            authorization
         );
         return this.responses.ok(Response.from(updated), "resource.ticket.updated", "Ticket updated");
     }
@@ -158,8 +173,15 @@ class TicketController {
     ) {
         static Response from(TicketInfo ticket) {
             return new Response(
-                ticket.id(), ticket.ticketTypeId(), ticket.templateVersionId(), ticket.title(), ticket.status(),
-                ticket.createdBy(), ticket.createdAt(), ticket.updatedAt(), ticket.customFields()
+                ticket.id(),
+                ticket.ticketTypeId(),
+                ticket.templateVersionId(),
+                ticket.title(),
+                ticket.status(),
+                ticket.createdBy(),
+                ticket.createdAt(),
+                ticket.updatedAt(),
+                ticket.customFields()
             );
         }
     }

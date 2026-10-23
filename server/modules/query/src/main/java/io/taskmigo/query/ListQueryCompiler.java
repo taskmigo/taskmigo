@@ -19,11 +19,7 @@ public final class ListQueryCompiler {
         this.filters = Objects.requireNonNull(filters);
     }
 
-    public <Q> ListQuerySpec<Q> compile(
-        QuerySchemaView schema,
-        QueryFieldContext context,
-        ListQueryRequest request
-    ) {
+    public <Q> ListQuerySpec<Q> compile(QuerySchemaView schema, QueryFieldContext context, ListQueryRequest request) {
         Objects.requireNonNull(schema);
         Objects.requireNonNull(context);
         Objects.requireNonNull(request);
@@ -32,11 +28,7 @@ public final class ListQueryCompiler {
         return new ListQuerySpec<>(predicate, context, sorting);
     }
 
-    private static List<QuerySort> sorting(
-        QuerySchemaView schema,
-        QueryFieldContext context,
-        List<String> requested
-    ) {
+    private static List<QuerySort> sorting(QuerySchemaView schema, QueryFieldContext context, List<String> requested) {
         if (requested.isEmpty()) {
             return List.of();
         }

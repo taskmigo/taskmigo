@@ -187,7 +187,11 @@ class DefaultUserAuthorizationMutationTest {
 
         // Act + Assert
         assertThatThrownBy(() ->
-            service.delete(userId, UserAuthorizationTestSupport.CONTEXT, new UserMutationActor(UUID.randomUUID(), "operator"))
+            service.delete(
+                userId,
+                UserAuthorizationTestSupport.CONTEXT,
+                new UserMutationActor(UUID.randomUUID(), "operator")
+            )
         ).isInstanceOfSatisfying(UserException.class, exception ->
             assertThat(exception.type()).isEqualTo(DomainFailureType.NOT_FOUND)
         );
@@ -220,7 +224,11 @@ class DefaultUserAuthorizationMutationTest {
         );
 
         // Act
-        service.delete(userId, UserAuthorizationTestSupport.CONTEXT, new UserMutationActor(UUID.randomUUID(), "operator"));
+        service.delete(
+            userId,
+            UserAuthorizationTestSupport.CONTEXT,
+            new UserMutationActor(UUID.randomUUID(), "operator")
+        );
 
         // Assert
         verify(commands, never()).findByIdForUpdate(userId);

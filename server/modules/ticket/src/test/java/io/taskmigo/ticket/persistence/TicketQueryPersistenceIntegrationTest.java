@@ -95,7 +95,13 @@ class TicketQueryPersistenceIntegrationTest {
             )
         );
 
-        OffsetPage<TicketInfo> page = this.tickets.list(1, 2, typeId, query, TestTicketAuthorization.context(authorization));
+        OffsetPage<TicketInfo> page = this.tickets.list(
+            1,
+            2,
+            typeId,
+            query,
+            TestTicketAuthorization.context(authorization)
+        );
 
         assertThat(page.totalItems()).isEqualTo(2);
         assertThat(page.totalPages()).isEqualTo(1);
@@ -189,7 +195,6 @@ class TicketQueryPersistenceIntegrationTest {
         this.ticketTypes.publishTemplate(typeId, draft.id());
         return typeId;
     }
-
 
     private UUID insertUser(String username) {
         UUID id = UUID.randomUUID();

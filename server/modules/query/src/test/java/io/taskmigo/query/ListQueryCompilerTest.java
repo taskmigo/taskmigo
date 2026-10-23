@@ -60,14 +60,18 @@ class ListQueryCompilerTest {
         ListQueryCompiler compiler = new ListQueryCompiler();
         QueryFieldContext context = QueryFieldContext.empty();
 
-        assertThatThrownBy(() -> compiler.compile(this.schema, context, request("missing")))
-            .isInstanceOf(SortByException.class);
-        assertThatThrownBy(() -> compiler.compile(this.schema, context, request("secret")))
-            .isInstanceOf(SortByException.class);
-        assertThatThrownBy(() -> compiler.compile(this.schema, context, new ListQueryRequest(null, List.of("name", "-name"))))
-            .isInstanceOf(SortByException.class);
-        assertThatThrownBy(() -> compiler.compile(this.schema, context, request("+name")))
-            .isInstanceOf(SortByException.class);
+        assertThatThrownBy(() -> compiler.compile(this.schema, context, request("missing"))).isInstanceOf(
+            SortByException.class
+        );
+        assertThatThrownBy(() -> compiler.compile(this.schema, context, request("secret"))).isInstanceOf(
+            SortByException.class
+        );
+        assertThatThrownBy(() ->
+            compiler.compile(this.schema, context, new ListQueryRequest(null, List.of("name", "-name")))
+        ).isInstanceOf(SortByException.class);
+        assertThatThrownBy(() -> compiler.compile(this.schema, context, request("+name"))).isInstanceOf(
+            SortByException.class
+        );
     }
 
     private static ListQueryRequest request(String sort) {
