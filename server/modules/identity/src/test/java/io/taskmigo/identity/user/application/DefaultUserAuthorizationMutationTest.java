@@ -23,6 +23,7 @@ import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.internal.UserCommandService;
 import io.taskmigo.identity.user.application.internal.UserDeletionLifecycleService;
 import io.taskmigo.identity.user.domain.User;
+import io.taskmigo.query.ListQueryCompiler;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -56,7 +57,8 @@ class DefaultUserAuthorizationMutationTest {
             commands,
             mock(SubjectGrantQueryService.class),
             assignments,
-            mock(UserDeletionLifecycleService.class)
+            mock(UserDeletionLifecycleService.class),
+            authorization
         );
 
         // Act + Assert
@@ -64,7 +66,7 @@ class DefaultUserAuthorizationMutationTest {
             service.setStatements(
                 userId,
                 List.of(UUID.randomUUID()),
-                authorization,
+                UserAuthorizationTestSupport.CONTEXT,
                 new UserMutationActor(UUID.randomUUID(), "operator")
             )
         ).isInstanceOfSatisfying(UserException.class, exception ->
@@ -93,7 +95,8 @@ class DefaultUserAuthorizationMutationTest {
             commands,
             mock(SubjectGrantQueryService.class),
             assignments,
-            mock(UserDeletionLifecycleService.class)
+            mock(UserDeletionLifecycleService.class),
+            authorization
         );
 
         // Act + Assert
@@ -101,7 +104,7 @@ class DefaultUserAuthorizationMutationTest {
             service.setStatements(
                 userId,
                 List.of(UUID.randomUUID()),
-                authorization,
+                UserAuthorizationTestSupport.CONTEXT,
                 new UserMutationActor(UUID.randomUUID(), "operator")
             )
         ).isInstanceOfSatisfying(UserException.class, exception ->
@@ -137,7 +140,8 @@ class DefaultUserAuthorizationMutationTest {
             commands,
             queries,
             assignments,
-            mock(UserDeletionLifecycleService.class)
+            mock(UserDeletionLifecycleService.class),
+            authorization
         );
 
         // Act + Assert
@@ -145,7 +149,7 @@ class DefaultUserAuthorizationMutationTest {
             service.setStatements(
                 userId,
                 List.of(statementId),
-                authorization,
+                UserAuthorizationTestSupport.CONTEXT,
                 new UserMutationActor(UUID.randomUUID(), "operator")
             )
         ).isInstanceOfSatisfying(UserException.class, exception -> {
@@ -177,12 +181,13 @@ class DefaultUserAuthorizationMutationTest {
             commands,
             mock(SubjectGrantQueryService.class),
             mock(SubjectGrantAssignmentService.class),
-            deletion
+            deletion,
+            authorization
         );
 
         // Act + Assert
         assertThatThrownBy(() ->
-            service.delete(userId, authorization, new UserMutationActor(UUID.randomUUID(), "operator"))
+            service.delete(userId, UserAuthorizationTestSupport.CONTEXT, new UserMutationActor(UUID.randomUUID(), "operator"))
         ).isInstanceOfSatisfying(UserException.class, exception ->
             assertThat(exception.type()).isEqualTo(DomainFailureType.NOT_FOUND)
         );
@@ -210,11 +215,12 @@ class DefaultUserAuthorizationMutationTest {
             commands,
             mock(SubjectGrantQueryService.class),
             mock(SubjectGrantAssignmentService.class),
-            deletion
+            deletion,
+            authorization
         );
 
         // Act
-        service.delete(userId, authorization, new UserMutationActor(UUID.randomUUID(), "operator"));
+        service.delete(userId, UserAuthorizationTestSupport.CONTEXT, new UserMutationActor(UUID.randomUUID(), "operator"));
 
         // Assert
         verify(commands, never()).findByIdForUpdate(userId);
@@ -226,7 +232,8 @@ class DefaultUserAuthorizationMutationTest {
         UserCommandService commands,
         SubjectGrantQueryService queries,
         SubjectGrantAssignmentService assignments,
-        UserDeletionLifecycleService deletion
+        UserDeletionLifecycleService deletion,
+        ObjectAuthorizationPredicate<UserInfo> authorization
     ) {
         return new DefaultUserService(
             users,
@@ -235,6 +242,9 @@ class DefaultUserAuthorizationMutationTest {
             assignments,
             deletion,
             mock(UserAuditAppender.class),
+            UserAuthorizationTestSupport.schemas(),
+            UserAuthorizationTestSupport.objectAuthorization(authorization),
+            new ListQueryCompiler(),
             Clock.fixed(NOW, ZoneOffset.UTC)
         );
     }

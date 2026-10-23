@@ -11,6 +11,8 @@
         "query :: model",
         "authorization :: object",
         "authorization :: object-model",
+        "authorization :: object-use-cases",
+        "authorization :: request",
         "authorization :: subject-resolution",
         "authorization :: subject",
         "authorization :: subject-use-cases",
