@@ -1,0 +1,250 @@
+name: Issue 288 repair
+
+on:
+  push:
+    branches:
+      - refactor/288-query-object-auth-feature-modules
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: refactor/288-query-object-auth-feature-modules
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v6.1.0
+        with:
+          distribution: temurin
+          java-version: '26'
+          cache: gradle
+          cache-dependency-path: |
+            server/**/*.gradle*
+            server/gradle/libs.versions.toml
+
+      - name: Migrate feature-owned query authorization tests
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          def read(path):
+              return Path(path).read_text()
+
+          def write(path, text):
+              Path(path).write_text(text)
+
+          def replace(path, old, new, expected=None):
+              text = read(path)
+              count = text.count(old)
+              if expected is not None and count != expected:
+                  raise SystemExit(f"{path}: expected {expected} occurrences, found {count}: {old!r}")
+              if count == 0:
+                  raise SystemExit(f"{path}: missing expected text: {old!r}")
+              write(path, text.replace(old, new))
+
+          identity_package = "server/modules/identity/src/main/java/io/taskmigo/identity/package-info.java"
+          replace(
+              identity_package,
+              '        "authorization :: object-model",\n',
+              '        "authorization :: object-model",\n        "authorization :: object-use-cases",\n        "authorization :: request",\n',
+              1,
+          )
+
+          ticket_package = "server/modules/ticket/src/main/java/io/taskmigo/ticket/package-info.java"
+          replace(
+              ticket_package,
+              '        "authorization :: object-model",\n',
+              '        "authorization :: object-model",\n        "authorization :: object-use-cases",\n        "authorization :: request",\n',
+              1,
+          )
+
+          user_support = Path("server/modules/identity/src/test/java/io/taskmigo/identity/user/application/UserAuthorizationTestSupport.java")
+          user_support.write_text('''package io.taskmigo.identity.user.application;\n\nimport io.taskmigo.authorization.object.ObjectAuthorizationPredicate;\nimport io.taskmigo.authorization.object.application.api.ObjectAuthorization;\nimport io.taskmigo.authorization.request.AuthorizationContext;\nimport io.taskmigo.identity.user.UserInfo;\nimport io.taskmigo.query.QueryFieldContext;\nimport io.taskmigo.query.QueryFieldDescriptor;\nimport io.taskmigo.query.QuerySchemaView;\nimport java.util.Collection;\nimport java.util.List;\n\nfinal class UserAuthorizationTestSupport {\n\n    static final AuthorizationContext CONTEXT = new AuthorizationContext() {};\n\n    private UserAuthorizationTestSupport() {}\n\n    static List<QuerySchemaView> schemas() {\n        return List.of(\n            schema("identity.users.list"),\n            schema("identity.users.delete"),\n            schema("identity.users.update-statements")\n        );\n    }\n\n    static ObjectAuthorization objectAuthorization(ObjectAuthorizationPredicate<UserInfo> predicate) {\n        return new ObjectAuthorization() {\n            @Override\n            @SuppressWarnings("unchecked")\n            public <Q> ObjectAuthorizationPredicate<Q> authorize(\n                AuthorizationContext context,\n                QuerySchemaView schema,\n                QueryFieldContext queryContext\n            ) {\n                return (ObjectAuthorizationPredicate<Q>) predicate;\n            }\n\n            @Override\n            public void validatePolicy(String policy, String method, String path) {}\n        };\n    }\n\n    static ObjectAuthorizationPredicate<UserInfo> allowAll() {\n        return new ObjectAuthorizationPredicate<>() {\n            @Override\n            public boolean isAlwaysTrue() {\n                return true;\n            }\n\n            @Override\n            public boolean isAlwaysFalse() {\n                return false;\n            }\n        };\n    }\n\n    private static QuerySchemaView schema(String operation) {\n        return new QuerySchemaView() {\n            @Override\n            public String operation() {\n                return operation;\n            }\n\n            @Override\n            public Collection<QueryFieldDescriptor> fields(QueryFieldContext context) {\n                return List.of();\n            }\n        };\n    }\n}\n''')
+
+          user_service_test = "server/modules/identity/src/test/java/io/taskmigo/identity/user/application/DefaultUserServiceTest.java"
+          replace(
+              user_service_test,
+              'import io.taskmigo.identity.user.domain.User;\n',
+              'import io.taskmigo.identity.user.domain.User;\nimport io.taskmigo.query.ListQueryCompiler;\n',
+              1,
+          )
+          replace(
+              user_service_test,
+              '            Mockito.mock(UserDeletionLifecycleService.class),\n            audits,\n            Clock.fixed(NOW, ZoneOffset.UTC)\n',
+              '            Mockito.mock(UserDeletionLifecycleService.class),\n            audits,\n            UserAuthorizationTestSupport.schemas(),\n            UserAuthorizationTestSupport.objectAuthorization(UserAuthorizationTestSupport.allowAll()),\n            new ListQueryCompiler(),\n            Clock.fixed(NOW, ZoneOffset.UTC)\n',
+              1,
+          )
+
+          user_auth_test = "server/modules/identity/src/test/java/io/taskmigo/identity/user/application/DefaultUserAuthorizationMutationTest.java"
+          replace(
+              user_auth_test,
+              'import io.taskmigo.identity.user.domain.User;\n',
+              'import io.taskmigo.identity.user.domain.User;\nimport io.taskmigo.query.ListQueryCompiler;\n',
+              1,
+          )
+          text = read(user_auth_test)
+          matches = list(re.finditer(r'DefaultUserService service = service\((.*?)\n        \);', text, re.S))
+          if len(matches) != 5:
+              raise SystemExit(f"{user_auth_test}: expected 5 service setup calls, found {len(matches)}")
+          text = re.sub(
+              r'DefaultUserService service = service\((.*?)\n        \);',
+              lambda m: 'DefaultUserService service = service(' + m.group(1) + ',\n            authorization\n        );',
+              text,
+              count=5,
+              flags=re.S,
+          )
+          text = text.replace(
+              '                authorization,\n                new UserMutationActor',
+              '                UserAuthorizationTestSupport.CONTEXT,\n                new UserMutationActor',
+          )
+          text = text.replace(
+              'service.delete(userId, authorization, new UserMutationActor',
+              'service.delete(userId, UserAuthorizationTestSupport.CONTEXT, new UserMutationActor',
+          )
+          old_sig = '''        SubjectGrantQueryService queries,\n        SubjectGrantAssignmentService assignments,\n        UserDeletionLifecycleService deletion\n    ) {'''
+          new_sig = '''        SubjectGrantQueryService queries,\n        SubjectGrantAssignmentService assignments,\n        UserDeletionLifecycleService deletion,\n        ObjectAuthorizationPredicate<UserInfo> authorization\n    ) {'''
+          if old_sig not in text:
+              raise SystemExit(f"{user_auth_test}: helper signature not found")
+          text = text.replace(old_sig, new_sig, 1)
+          old_ctor = '''            deletion,\n            mock(UserAuditAppender.class),\n            Clock.fixed(NOW, ZoneOffset.UTC)\n'''
+          new_ctor = '''            deletion,\n            mock(UserAuditAppender.class),\n            UserAuthorizationTestSupport.schemas(),\n            UserAuthorizationTestSupport.objectAuthorization(authorization),\n            new ListQueryCompiler(),\n            Clock.fixed(NOW, ZoneOffset.UTC)\n'''
+          if old_ctor not in text:
+              raise SystemExit(f"{user_auth_test}: service constructor block not found")
+          text = text.replace(old_ctor, new_ctor, 1)
+          write(user_auth_test, text)
+
+          ticket_support_dir = Path("server/modules/ticket/src/test/java/io/taskmigo/ticket/support")
+          ticket_support_dir.mkdir(parents=True, exist_ok=True)
+          (ticket_support_dir / "TestTicketAuthorization.java").write_text('''package io.taskmigo.ticket.support;\n\nimport io.taskmigo.authorization.object.ObjectAuthorizationPredicate;\nimport io.taskmigo.authorization.object.application.api.ObjectAuthorization;\nimport io.taskmigo.authorization.request.AuthorizationContext;\nimport io.taskmigo.query.QueryFieldContext;\nimport io.taskmigo.query.QuerySchemaView;\nimport org.springframework.boot.test.context.TestConfiguration;\n\n@TestConfiguration(proxyBeanMethods = false)\npublic class TestTicketAuthorization implements ObjectAuthorization {\n\n    public static AuthorizationContext context(ObjectAuthorizationPredicate<?> predicate) {\n        return new PredicateContext(predicate);\n    }\n\n    @Override\n    @SuppressWarnings("unchecked")\n    public <Q> ObjectAuthorizationPredicate<Q> authorize(\n        AuthorizationContext context,\n        QuerySchemaView schema,\n        QueryFieldContext queryContext\n    ) {\n        if (!(context instanceof PredicateContext predicateContext)) {\n            throw new IllegalArgumentException("Unsupported test authorization context");\n        }\n        return (ObjectAuthorizationPredicate<Q>) predicateContext.predicate();\n    }\n\n    @Override\n    public void validatePolicy(String policy, String method, String path) {}\n\n    private record PredicateContext(ObjectAuthorizationPredicate<?> predicate) implements AuthorizationContext {}\n}\n''')
+          (ticket_support_dir / "TicketQueryTestSupport.java").write_text('''package io.taskmigo.ticket.support;\n\nimport io.taskmigo.query.QueryFieldContext;\nimport io.taskmigo.query.QueryFieldDescriptor;\nimport io.taskmigo.query.QuerySchemaView;\nimport io.taskmigo.ticket.application.api.TicketQueryFieldContexts;\nimport java.util.Arrays;\nimport java.util.Collection;\nimport java.util.List;\nimport java.util.UUID;\n\npublic final class TicketQueryTestSupport {\n\n    private TicketQueryTestSupport() {}\n\n    public static TicketQueryFieldContexts emptyContexts() {\n        return new TicketQueryFieldContexts() {\n            @Override\n            public QueryFieldContext global() {\n                return QueryFieldContext.empty();\n            }\n\n            @Override\n            public QueryFieldContext forType(UUID ticketTypeId) {\n                return QueryFieldContext.empty();\n            }\n\n            @Override\n            public QueryFieldContext forTicket(UUID ticketId) {\n                return QueryFieldContext.empty();\n            }\n        };\n    }\n\n    public static List<QuerySchemaView> schemas(String... operations) {\n        return Arrays.stream(operations).map(TicketQueryTestSupport::schema).toList();\n    }\n\n    private static QuerySchemaView schema(String operation) {\n        return new QuerySchemaView() {\n            @Override\n            public String operation() {\n                return operation;\n            }\n\n            @Override\n            public Collection<QueryFieldDescriptor> fields(QueryFieldContext context) {\n                return List.of();\n            }\n        };\n    }\n}\n''')
+
+          ticket_service_test = "server/modules/ticket/src/test/java/io/taskmigo/ticket/application/TicketServiceTest.java"
+          replace(
+              ticket_service_test,
+              'import io.taskmigo.query.ListQuerySpec;\n',
+              'import io.taskmigo.query.ListQueryCompiler;\nimport io.taskmigo.query.ListQuerySpec;\n',
+              1,
+          )
+          replace(
+              ticket_service_test,
+              'import io.taskmigo.ticket.domain.Ticket;\n',
+              'import io.taskmigo.ticket.domain.Ticket;\nimport io.taskmigo.ticket.support.TestTicketAuthorization;\nimport io.taskmigo.ticket.support.TicketQueryTestSupport;\n',
+              1,
+          )
+          replace(
+              ticket_service_test,
+              '        this.tickets,\n        this.tickets,\n        Clock.fixed(NOW, ZoneOffset.UTC)\n',
+              '        this.tickets,\n        this.tickets,\n        TicketQueryTestSupport.emptyContexts(),\n        TicketQueryTestSupport.schemas("tickets.list", "tickets.read", "tickets.update"),\n        new TestTicketAuthorization(),\n        new ListQueryCompiler(),\n        Clock.fixed(NOW, ZoneOffset.UTC)\n',
+              1,
+          )
+          replace(
+              ticket_service_test,
+              '            ALLOW_ALL,\n            QueryFieldContext.empty()\n',
+              '            TestTicketAuthorization.context(ALLOW_ALL)\n',
+              2,
+          )
+
+          persistence_test = "server/modules/ticket/src/test/java/io/taskmigo/ticket/persistence/TicketQueryPersistenceIntegrationTest.java"
+          replace(persistence_test, 'import io.taskmigo.query.ListQuerySpec;\n', 'import io.taskmigo.query.ListQueryRequest;\n', 1)
+          for unused in [
+              'import io.taskmigo.query.QueryPath;\n',
+              'import io.taskmigo.query.QuerySort;\n',
+              'import io.taskmigo.query.QueryPredicate;\n',
+              'import org.jspecify.annotations.Nullable;\n',
+          ]:
+              replace(persistence_test, unused, '', 1)
+          replace(
+              persistence_test,
+              'import io.taskmigo.ticket.application.api.TicketService;\n',
+              'import io.taskmigo.ticket.application.api.TicketService;\nimport io.taskmigo.ticket.support.TestTicketAuthorization;\n',
+              1,
+          )
+          replace(
+              persistence_test,
+              'import org.springframework.context.annotation.FilterType;\n',
+              'import org.springframework.context.annotation.FilterType;\nimport org.springframework.context.annotation.Import;\n',
+              1,
+          )
+          replace(persistence_test, '@SpringBootTest(', '@Import(TestTicketAuthorization.class)\n@SpringBootTest(', 1)
+          text = read(persistence_test)
+          text, n1 = re.subn(
+              r'        ListQuerySpec<TicketInfo> query = new ListQuerySpec<>\(\n            compile\(context, "object\.score >= 2"\),\n            context,\n            List\.of\(new QuerySort\(QueryPath\.of\("score"\), QuerySort\.Direction\.ASC\)\)\n        \);',
+              '        ListQueryRequest query = new ListQueryRequest("object.score >= 2", List.of("score"));',
+              text,
+          )
+          text, n2 = re.subn(
+              r'        ListQuerySpec<TicketInfo> query = new ListQuerySpec<>\(\n            compile\(context, null\),\n            context,\n            List\.of\(new QuerySort\(QueryPath\.of\("dueDate"\), QuerySort\.Direction\.ASC\)\)\n        \);',
+              '        ListQueryRequest query = new ListQueryRequest(null, List.of("dueDate"));',
+              text,
+          )
+          if n1 != 1 or n2 != 1:
+              raise SystemExit(f"{persistence_test}: query migration mismatch {n1=} {n2=}")
+          text = text.replace(
+              'this.tickets.list(1, 2, typeId, query, authorization)',
+              'this.tickets.list(1, 2, typeId, query, TestTicketAuthorization.context(authorization))',
+              1,
+          )
+          text = text.replace(
+              'this.tickets.list(1, 10, typeId, query, allow)',
+              'this.tickets.list(1, 10, typeId, query, TestTicketAuthorization.context(allow))',
+              1,
+          )
+          text, helper_count = re.subn(
+              r'\n    private QueryPredicate<TicketInfo> compile\(QueryFieldContext context, @Nullable String source\) \{\n        return \(QueryPredicate<TicketInfo>\) new FilterByCompiler\(\)\.compile\(this\.listSchema, context, source\);\n    \}\n',
+              '\n',
+              text,
+          )
+          if helper_count != 1:
+              raise SystemExit(f"{persistence_test}: compile helper migration mismatch {helper_count}")
+          write(persistence_test, text)
+
+          for path in [
+              "server/modules/ticket/src/test/java/io/taskmigo/ticket/persistence/TicketConcurrencyHistoryIntegrationTest.java",
+              "server/modules/ticket/src/test/java/io/taskmigo/ticket/persistence/TicketHistoricalSchemaIntegrationTest.java",
+          ]:
+              text = read(path)
+              if 'import io.taskmigo.ticket.support.TestTicketAuthorization;\n' not in text:
+                  anchor = 'import io.taskmigo.ticket.application.api.TicketService;\n'
+                  if anchor not in text:
+                      raise SystemExit(f"{path}: TicketService import anchor missing")
+                  text = text.replace(anchor, anchor + 'import io.taskmigo.ticket.support.TestTicketAuthorization;\n', 1)
+              if 'import org.springframework.context.annotation.Import;\n' not in text:
+                  anchor = 'import org.springframework.context.annotation.FilterType;\n'
+                  if anchor not in text:
+                      raise SystemExit(f"{path}: FilterType import anchor missing")
+                  text = text.replace(anchor, anchor + 'import org.springframework.context.annotation.Import;\n', 1)
+              if '@Import(TestTicketAuthorization.class)\n' not in text:
+                  text = text.replace('@SpringBootTest(', '@Import(TestTicketAuthorization.class)\n@SpringBootTest(', 1)
+              text, count = re.subn(
+                  r'this\.tickets\.read\(([^,]+), ALLOW_ALL, QueryFieldContext\.empty\(\)\)',
+                  r'this.tickets.read(\1, TestTicketAuthorization.context(ALLOW_ALL))',
+                  text,
+              )
+              if count == 0:
+                  raise SystemExit(f"{path}: no legacy read calls migrated")
+              write(path, text)
+
+          web_context_test = Path("server/apps/web/src/test/java/io/taskmigo/web/api/v0/ticket/TicketQueryFieldContextSourceTest.java")
+          if not web_context_test.exists():
+              raise SystemExit(f"missing {web_context_test}")
+          web_context_test.unlink()
+          PY
+
+          cd server
+          ./gradlew --no-daemon --console=plain spotlessApply
+
+      - name: Commit repair
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "test(server): migrate feature-owned query authorization coverage"
+          git push origin HEAD:refactor/288-query-object-auth-feature-modules
