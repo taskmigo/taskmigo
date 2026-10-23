@@ -27,6 +27,7 @@ jobs:
         run: |
           npm ci
           npm run format:fix
+          git restore .github/workflows/issue-288-format-repair.yml
 
       - name: Commit formatting
         run: |
