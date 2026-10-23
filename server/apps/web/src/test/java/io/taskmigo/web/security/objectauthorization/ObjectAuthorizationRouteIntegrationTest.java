@@ -14,7 +14,6 @@ import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import io.taskmigo.authorization.statement.TargetInfo;
 import io.taskmigo.identity.user.application.api.UserService;
-import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.query.QuerySchemaView;
 import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
 import java.util.List;
@@ -59,7 +58,7 @@ class ObjectAuthorizationRouteIntegrationTest extends ApiIntegrationTestSupport 
             new TargetInfo(new ApiInfo("PATCH", target)),
             "object.status == \"RETAINED\""
         );
-        StatementArtifactFactory factory = new StatementArtifactFactory(new LanguageCompiler(), this.resolver);
+        StatementArtifactFactory factory = new StatementArtifactFactory(this.resolver);
 
         assertThatCode(() ->
             factory.build(
@@ -75,7 +74,7 @@ class ObjectAuthorizationRouteIntegrationTest extends ApiIntegrationTestSupport 
     void shouldCompileEveryEffectiveSystemStatementForUserStatementMutation() {
         UUID systemUserId = this.users.findForAuthentication("system").orElseThrow().id();
         String requestPath = "/api/v0/users/" + UUID.randomUUID() + "/statements";
-        StatementArtifactFactory factory = new StatementArtifactFactory(new LanguageCompiler(), this.resolver);
+        StatementArtifactFactory factory = new StatementArtifactFactory(this.resolver);
         List<EffectiveStatement> effective = this.statements.resolve(systemUserId);
 
         assertThat(effective).isNotEmpty();

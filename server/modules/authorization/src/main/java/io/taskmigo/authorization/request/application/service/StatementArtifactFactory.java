@@ -4,9 +4,9 @@ import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfile;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
 import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
+import io.taskmigo.authorization.request.application.model.StatementExecutionArtifact;
 import io.taskmigo.authorization.request.application.resolution.EffectiveStatement;
 import io.taskmigo.authorization.statement.Scope;
-import io.taskmigo.authorization.statement.StatementExecutionArtifact;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import io.taskmigo.language.CompilationProfile;
@@ -24,6 +24,11 @@ public final class StatementArtifactFactory {
 
     private final LanguageCompiler compiler;
     private final ObjectAuthorizationTargetResolver targetResolver;
+
+    /// Creates a factory using the default Language compiler limits.
+    public StatementArtifactFactory(ObjectAuthorizationTargetResolver targetResolver) {
+        this(new LanguageCompiler(), targetResolver);
+    }
 
     public StatementArtifactFactory(LanguageCompiler compiler, ObjectAuthorizationTargetResolver targetResolver) {
         this.compiler = compiler;
