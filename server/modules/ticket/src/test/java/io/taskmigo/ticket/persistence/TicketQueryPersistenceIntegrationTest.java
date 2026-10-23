@@ -6,9 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationPredicateModels;
-import io.taskmigo.eav.schema.application.EavFieldSpec;
-import io.taskmigo.eav.schema.application.EavSchemaVersionInfo;
-import io.taskmigo.eav.schema.domain.EavDataType;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.FilterByCompiler;
 import io.taskmigo.query.FilterByException;
@@ -20,6 +17,9 @@ import io.taskmigo.query.QuerySort;
 import io.taskmigo.ticket.application.TicketQueryFieldCatalog;
 import io.taskmigo.ticket.application.api.TicketInfo;
 import io.taskmigo.ticket.application.api.TicketService;
+import io.taskmigo.ticket.type.application.api.TicketFieldSpec;
+import io.taskmigo.ticket.type.application.api.TicketFieldType;
+import io.taskmigo.ticket.type.application.api.TicketTemplateInfo;
 import io.taskmigo.ticket.type.application.api.TicketTypeService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -79,7 +79,7 @@ class TicketQueryPersistenceIntegrationTest {
         UUID actor = insertUser("query-auth-actor");
         UUID typeId = createType(
             "query-auth",
-            List.of(new EavFieldSpec(UUID.randomUUID(), "score", "Score", EavDataType.NUMBER, true, Map.of()))
+            List.of(new TicketFieldSpec(UUID.randomUUID(), "score", "Score", TicketFieldType.NUMBER, true, Map.of()))
         );
         for (int score = 1; score <= 5; score++) {
             this.tickets.create(typeId, "Ticket " + score, "OPEN", Map.of("score", score), actor);
@@ -115,7 +115,9 @@ class TicketQueryPersistenceIntegrationTest {
         UUID actor = insertUser("query-sort-actor");
         UUID typeId = createType(
             "query-sort",
-            List.of(new EavFieldSpec(UUID.randomUUID(), "dueDate", "Due date", EavDataType.DATE, false, Map.of()))
+            List.of(
+                new TicketFieldSpec(UUID.randomUUID(), "dueDate", "Due date", TicketFieldType.DATE, false, Map.of())
+            )
         );
         UUID late = this.tickets.create(
             typeId,
@@ -167,11 +169,15 @@ class TicketQueryPersistenceIntegrationTest {
         UUID actor = insertUser("query-ambiguity-actor");
         UUID firstType = createType(
             "query-ambiguity-a",
-            List.of(new EavFieldSpec(UUID.randomUUID(), "customerTier", "Tier", EavDataType.NUMBER, false, Map.of()))
+            List.of(
+                new TicketFieldSpec(UUID.randomUUID(), "customerTier", "Tier", TicketFieldType.NUMBER, false, Map.of())
+            )
         );
         createType(
             "query-ambiguity-b",
-            List.of(new EavFieldSpec(UUID.randomUUID(), "customerTier", "Tier", EavDataType.NUMBER, false, Map.of()))
+            List.of(
+                new TicketFieldSpec(UUID.randomUUID(), "customerTier", "Tier", TicketFieldType.NUMBER, false, Map.of())
+            )
         );
         this.tickets.create(firstType, "Scoped", "OPEN", Map.of("customerTier", 3), actor);
         QueryFieldContext global = this.fields.global();
@@ -185,9 +191,9 @@ class TicketQueryPersistenceIntegrationTest {
         ).isFalse();
     }
 
-    private UUID createType(String key, List<EavFieldSpec> fields) {
+    private UUID createType(String key, List<TicketFieldSpec> fields) {
         UUID typeId = this.ticketTypes.create(key, key);
-        EavSchemaVersionInfo draft = this.ticketTypes.createTemplate(typeId);
+        TicketTemplateInfo draft = this.ticketTypes.createTemplate(typeId);
         this.ticketTypes.replaceTemplate(typeId, draft.id(), fields);
         this.ticketTypes.publishTemplate(typeId, draft.id());
         return typeId;

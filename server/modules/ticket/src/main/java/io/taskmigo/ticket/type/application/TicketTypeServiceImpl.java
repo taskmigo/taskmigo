@@ -3,6 +3,13 @@ package io.taskmigo.ticket.type.application;
 import io.taskmigo.eav.schema.application.EavFieldSpec;
 import io.taskmigo.eav.schema.application.EavSchemaService;
 import io.taskmigo.eav.schema.application.EavSchemaVersionInfo;
+import io.taskmigo.eav.schema.domain.EavDataType;
+import io.taskmigo.eav.schema.domain.EavSchemaStatus;
+import io.taskmigo.ticket.type.application.api.TicketFieldInfo;
+import io.taskmigo.ticket.type.application.api.TicketFieldSpec;
+import io.taskmigo.ticket.type.application.api.TicketFieldType;
+import io.taskmigo.ticket.type.application.api.TicketTemplateInfo;
+import io.taskmigo.ticket.type.application.api.TicketTemplateStatus;
 import io.taskmigo.ticket.type.application.api.TicketTypeInfo;
 import io.taskmigo.ticket.type.application.api.TicketTypeService;
 import io.taskmigo.ticket.type.domain.TicketType;
@@ -11,11 +18,14 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.springframework.transaction.annotation.Transactional;
 
 /// Coordinates Ticket Type metadata with a dedicated generic EAV schema definition.
@@ -84,59 +94,62 @@ public class TicketTypeServiceImpl implements TicketTypeService {
     }
 
     @Override
-    public EavSchemaVersionInfo createTemplate(UUID ticketTypeId) {
+    public TicketTemplateInfo createTemplate(UUID ticketTypeId) {
         TicketType type = this.requireType(ticketTypeId);
-        return this.schemas.createDraft(type.schemaDefinitionId());
+        return toTemplateInfo(this.schemas.createDraft(type.schemaDefinitionId()));
     }
 
     @Override
-    public EavSchemaVersionInfo replaceTemplate(UUID ticketTypeId, UUID versionId, List<EavFieldSpec> fields) {
-        List<EavFieldSpec> replacement = List.copyOf(Objects.requireNonNull(fields));
+    public TicketTemplateInfo replaceTemplate(UUID ticketTypeId, UUID versionId, List<TicketFieldSpec> fields) {
         TicketType type = this.requireType(ticketTypeId);
+        UUID templateVersionId = Objects.requireNonNull(versionId);
+        EavSchemaVersionInfo current = this.schemas.version(type.schemaDefinitionId(), templateVersionId);
+        List<TicketFieldSpec> replacement = List.copyOf(Objects.requireNonNull(fields));
         rejectCommonFieldCollisions(replacement);
-        return this.schemas.replaceDraftFields(
-            type.schemaDefinitionId(),
-            Objects.requireNonNull(versionId),
-            replacement
-        );
+        List<EavFieldSpec> resolved = resolveFields(replacement, current.fields());
+        return toTemplateInfo(this.schemas.replaceDraftFields(type.schemaDefinitionId(), templateVersionId, resolved));
     }
 
     @Override
-    public EavSchemaVersionInfo publishTemplate(UUID ticketTypeId, UUID versionId) {
+    public TicketTemplateInfo publishTemplate(UUID ticketTypeId, UUID versionId) {
         TicketType type = this.requireType(ticketTypeId);
         EavSchemaVersionInfo published = this.schemas.publish(
             type.schemaDefinitionId(),
             Objects.requireNonNull(versionId)
         );
-        rejectCommonFieldCollisions(published.fields());
-        return published;
+        rejectEavCommonFieldCollisions(published.fields());
+        return toTemplateInfo(published);
     }
 
     @Override
-    public EavSchemaVersionInfo retireTemplate(UUID ticketTypeId, UUID versionId) {
+    public TicketTemplateInfo retireTemplate(UUID ticketTypeId, UUID versionId) {
         TicketType type = this.requireType(ticketTypeId);
-        return this.schemas.retire(type.schemaDefinitionId(), Objects.requireNonNull(versionId));
-    }
-
-    @Transactional(readOnly = true)
-    @Override
-    public List<EavSchemaVersionInfo> listTemplates(UUID ticketTypeId) {
-        TicketType type = this.requireType(ticketTypeId);
-        return this.schemas.listVersions(type.schemaDefinitionId());
+        return toTemplateInfo(this.schemas.retire(type.schemaDefinitionId(), Objects.requireNonNull(versionId)));
     }
 
     @Transactional(readOnly = true)
     @Override
-    public EavSchemaVersionInfo getTemplate(UUID ticketTypeId, UUID versionId) {
+    public List<TicketTemplateInfo> listTemplates(UUID ticketTypeId) {
         TicketType type = this.requireType(ticketTypeId);
-        return this.schemas.version(type.schemaDefinitionId(), Objects.requireNonNull(versionId));
+        return this.schemas
+            .listVersions(type.schemaDefinitionId())
+            .stream()
+            .map(TicketTypeServiceImpl::toTemplateInfo)
+            .toList();
     }
 
     @Transactional(readOnly = true)
     @Override
-    public Optional<EavSchemaVersionInfo> currentTemplate(UUID ticketTypeId) {
+    public TicketTemplateInfo getTemplate(UUID ticketTypeId, UUID versionId) {
         TicketType type = this.requireType(ticketTypeId);
-        return this.schemas.current(type.schemaDefinitionId());
+        return toTemplateInfo(this.schemas.version(type.schemaDefinitionId(), Objects.requireNonNull(versionId)));
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public Optional<TicketTemplateInfo> currentTemplate(UUID ticketTypeId) {
+        TicketType type = this.requireType(ticketTypeId);
+        return this.schemas.current(type.schemaDefinitionId()).map(TicketTypeServiceImpl::toTemplateInfo);
     }
 
     private TicketType requireType(UUID id) {
@@ -148,13 +161,42 @@ public class TicketTypeServiceImpl implements TicketTypeService {
         return this.clock.instant().truncatedTo(ChronoUnit.MILLIS);
     }
 
-    private static void rejectCommonFieldCollisions(List<EavFieldSpec> fields) {
+    private static List<EavFieldSpec> resolveFields(List<TicketFieldSpec> fields, List<EavFieldSpec> existingFields) {
+        Map<String, EavFieldSpec> existing = new LinkedHashMap<>();
+        existingFields.forEach(field -> existing.put(field.key(), field));
+        return fields
+            .stream()
+            .map(field -> toEavField(field, existing.get(field.key())))
+            .toList();
+    }
+
+    private static EavFieldSpec toEavField(TicketFieldSpec field, @Nullable EavFieldSpec previous) {
+        EavDataType dataType = toEavDataType(field.dataType());
+        UUID identity = field.fieldId();
+        if (identity == null && previous != null && previous.dataType() == dataType) {
+            identity = previous.fieldId();
+        }
+        if (identity == null) {
+            identity = UUID.randomUUID();
+        }
+        return new EavFieldSpec(identity, field.key(), field.label(), dataType, field.required(), field.constraints());
+    }
+
+    private static void rejectCommonFieldCollisions(List<TicketFieldSpec> fields) {
+        for (TicketFieldSpec field : fields) {
+            rejectCommonFieldKey(field.key());
+        }
+    }
+
+    private static void rejectEavCommonFieldCollisions(List<EavFieldSpec> fields) {
         for (EavFieldSpec field : fields) {
-            if (COMMON_FIELD_KEYS.contains(field.key())) {
-                throw new IllegalArgumentException(
-                    "Custom field key collides with Ticket common field '" + field.key() + "'"
-                );
-            }
+            rejectCommonFieldKey(field.key());
+        }
+    }
+
+    private static void rejectCommonFieldKey(String key) {
+        if (COMMON_FIELD_KEYS.contains(key)) {
+            throw new IllegalArgumentException("Custom field key collides with Ticket common field '" + key + "'");
         }
     }
 
@@ -164,10 +206,63 @@ public class TicketTypeServiceImpl implements TicketTypeService {
             type.key(),
             type.name(),
             type.status(),
-            type.schemaDefinitionId(),
             type.createdAt(),
             type.updatedAt()
         );
+    }
+
+    private static TicketTemplateInfo toTemplateInfo(EavSchemaVersionInfo template) {
+        return new TicketTemplateInfo(
+            template.id(),
+            template.version(),
+            toTemplateStatus(template.status()),
+            template.fields().stream().map(TicketTypeServiceImpl::toFieldInfo).toList(),
+            template.publishedAt(),
+            template.retiredAt()
+        );
+    }
+
+    private static TicketFieldInfo toFieldInfo(EavFieldSpec field) {
+        return new TicketFieldInfo(
+            field.fieldId(),
+            field.key(),
+            field.label(),
+            toFieldType(field.dataType()),
+            field.required(),
+            field.constraints()
+        );
+    }
+
+    private static TicketFieldType toFieldType(EavDataType dataType) {
+        return switch (dataType) {
+            case STRING -> TicketFieldType.STRING;
+            case NUMBER -> TicketFieldType.NUMBER;
+            case BOOLEAN -> TicketFieldType.BOOLEAN;
+            case DATE -> TicketFieldType.DATE;
+            case DATETIME -> TicketFieldType.DATETIME;
+            case UUID -> TicketFieldType.UUID;
+            case ENUM -> TicketFieldType.ENUM;
+        };
+    }
+
+    private static EavDataType toEavDataType(TicketFieldType dataType) {
+        return switch (dataType) {
+            case STRING -> EavDataType.STRING;
+            case NUMBER -> EavDataType.NUMBER;
+            case BOOLEAN -> EavDataType.BOOLEAN;
+            case DATE -> EavDataType.DATE;
+            case DATETIME -> EavDataType.DATETIME;
+            case UUID -> EavDataType.UUID;
+            case ENUM -> EavDataType.ENUM;
+        };
+    }
+
+    private static TicketTemplateStatus toTemplateStatus(EavSchemaStatus status) {
+        return switch (status) {
+            case DRAFT -> TicketTemplateStatus.DRAFT;
+            case PUBLISHED -> TicketTemplateStatus.PUBLISHED;
+            case RETIRED -> TicketTemplateStatus.RETIRED;
+        };
     }
 
     private static String requireNonBlank(String value, String label) {

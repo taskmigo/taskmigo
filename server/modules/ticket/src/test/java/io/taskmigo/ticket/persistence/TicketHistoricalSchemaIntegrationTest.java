@@ -4,12 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.eav.schema.application.EavFieldSpec;
-import io.taskmigo.eav.schema.application.EavSchemaVersionInfo;
-import io.taskmigo.eav.schema.domain.EavDataType;
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.ticket.application.api.TicketInfo;
 import io.taskmigo.ticket.application.api.TicketService;
+import io.taskmigo.ticket.type.application.api.TicketFieldSpec;
+import io.taskmigo.ticket.type.application.api.TicketFieldType;
+import io.taskmigo.ticket.type.application.api.TicketTemplateInfo;
 import io.taskmigo.ticket.type.application.api.TicketTypeService;
 import io.taskmigo.ticket.type.domain.TicketTypeStatus;
 import jakarta.persistence.EntityManager;
@@ -80,20 +80,22 @@ class TicketHistoricalSchemaIntegrationTest {
     void shouldKeepHistoricalTemplateIdentity() {
         UUID actor = insertUser("historical-ticket-actor");
         UUID typeId = this.ticketTypes.create("historical", "Historical");
-        EavSchemaVersionInfo v1Draft = this.ticketTypes.createTemplate(typeId);
+        TicketTemplateInfo v1Draft = this.ticketTypes.createTemplate(typeId);
         this.ticketTypes.replaceTemplate(
             typeId,
             v1Draft.id(),
-            List.of(new EavFieldSpec(UUID.randomUUID(), "severity", "Severity", EavDataType.STRING, false, Map.of()))
+            List.of(
+                new TicketFieldSpec(UUID.randomUUID(), "severity", "Severity", TicketFieldType.STRING, false, Map.of())
+            )
         );
-        EavSchemaVersionInfo v1 = this.ticketTypes.publishTemplate(typeId, v1Draft.id());
+        TicketTemplateInfo v1 = this.ticketTypes.publishTemplate(typeId, v1Draft.id());
         UUID ticketId = this.tickets.create(typeId, "Legacy", "OPEN", Map.of("severity", "HIGH"), actor);
 
-        EavSchemaVersionInfo v2Draft = this.ticketTypes.createTemplate(typeId);
+        TicketTemplateInfo v2Draft = this.ticketTypes.createTemplate(typeId);
         this.ticketTypes.replaceTemplate(
             typeId,
             v2Draft.id(),
-            List.of(new EavFieldSpec(UUID.randomUUID(), "impact", "Impact", EavDataType.STRING, false, Map.of()))
+            List.of(new TicketFieldSpec(UUID.randomUUID(), "impact", "Impact", TicketFieldType.STRING, false, Map.of()))
         );
         this.ticketTypes.publishTemplate(typeId, v2Draft.id());
 
@@ -108,7 +110,7 @@ class TicketHistoricalSchemaIntegrationTest {
     void shouldRejectCreationForRetiredTicketType() {
         UUID actor = insertUser("retired-ticket-actor");
         UUID typeId = this.ticketTypes.create("retired", "Retired");
-        EavSchemaVersionInfo draft = this.ticketTypes.createTemplate(typeId);
+        TicketTemplateInfo draft = this.ticketTypes.createTemplate(typeId);
         this.ticketTypes.publishTemplate(typeId, draft.id());
         this.ticketTypes.update(typeId, "Retired", TicketTypeStatus.RETIRED);
 
@@ -122,7 +124,7 @@ class TicketHistoricalSchemaIntegrationTest {
     void shouldDetectOptimisticLockConflict() {
         UUID actor = insertUser("optimistic-ticket-actor");
         UUID typeId = this.ticketTypes.create("optimistic", "Optimistic");
-        EavSchemaVersionInfo draft = this.ticketTypes.createTemplate(typeId);
+        TicketTemplateInfo draft = this.ticketTypes.createTemplate(typeId);
         this.ticketTypes.publishTemplate(typeId, draft.id());
         UUID ticketId = this.tickets.create(typeId, "Original", "OPEN", Map.of(), actor);
 

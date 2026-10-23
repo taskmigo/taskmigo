@@ -5,13 +5,12 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-/// Exposes stable Ticket Type metadata without leaking persistence details.
+/// Exposes stable Ticket Type metadata without leaking template storage details.
 public record TicketTypeInfo(
     UUID id,
     String key,
     String name,
     TicketTypeStatus status,
-    UUID schemaDefinitionId,
     Instant createdAt,
     Instant updatedAt
 ) {
@@ -20,7 +19,6 @@ public record TicketTypeInfo(
         Objects.requireNonNull(key);
         Objects.requireNonNull(name);
         Objects.requireNonNull(status);
-        Objects.requireNonNull(schemaDefinitionId);
         Objects.requireNonNull(createdAt);
         Objects.requireNonNull(updatedAt);
     }
