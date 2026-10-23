@@ -3,10 +3,10 @@ package io.taskmigo.web.api.v0.ticket;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.taskmigo.eav.schema.application.EavFieldSpec;
-import io.taskmigo.eav.schema.application.EavSchemaVersionInfo;
-import io.taskmigo.eav.schema.domain.EavDataType;
 import io.taskmigo.ticket.application.api.TicketService;
+import io.taskmigo.ticket.type.application.api.TicketFieldSpec;
+import io.taskmigo.ticket.type.application.api.TicketFieldType;
+import io.taskmigo.ticket.type.application.api.TicketTemplateInfo;
 import io.taskmigo.ticket.type.application.api.TicketTypeService;
 import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
 import java.util.List;
@@ -48,7 +48,7 @@ class TicketApiIntegrationTest extends ApiIntegrationTestSupport {
         UUID actor = systemUserId();
         UUID typeId = typeWithFields(
             "api-query-" + UUID.randomUUID(),
-            List.of(new EavFieldSpec(UUID.randomUUID(), "score", "Score", EavDataType.NUMBER, true, Map.of()))
+            List.of(new TicketFieldSpec(UUID.randomUUID(), "score", "Score", TicketFieldType.NUMBER, true, Map.of()))
         );
         this.tickets.create(typeId, "Low score", "OPEN", Map.of("score", 1), actor);
         this.tickets.create(typeId, "High score", "OPEN", Map.of("score", 3), actor);
@@ -70,7 +70,7 @@ class TicketApiIntegrationTest extends ApiIntegrationTestSupport {
         UUID actor = systemUserId();
         UUID typeId = typeWithFields(
             "api-patch-" + UUID.randomUUID(),
-            List.of(new EavFieldSpec(UUID.randomUUID(), "note", "Note", EavDataType.STRING, false, Map.of()))
+            List.of(new TicketFieldSpec(UUID.randomUUID(), "note", "Note", TicketFieldType.STRING, false, Map.of()))
         );
         UUID ticketId = this.tickets.create(typeId, "Patch me", "OPEN", Map.of("note", "remove me"), actor);
 
@@ -96,7 +96,9 @@ class TicketApiIntegrationTest extends ApiIntegrationTestSupport {
     void shouldCreateTicketThroughHttpApi() {
         UUID typeId = typeWithFields(
             "api-create-" + UUID.randomUUID(),
-            List.of(new EavFieldSpec(UUID.randomUUID(), "severity", "Severity", EavDataType.STRING, true, Map.of()))
+            List.of(
+                new TicketFieldSpec(UUID.randomUUID(), "severity", "Severity", TicketFieldType.STRING, true, Map.of())
+            )
         );
         String body = """
         {
@@ -114,9 +116,9 @@ class TicketApiIntegrationTest extends ApiIntegrationTestSupport {
         assertThat(listed).contains("Created over HTTP").contains("\"severity\":\"HIGH\"");
     }
 
-    private UUID typeWithFields(String key, List<EavFieldSpec> fields) {
+    private UUID typeWithFields(String key, List<TicketFieldSpec> fields) {
         UUID typeId = this.ticketTypes.create(key, key);
-        EavSchemaVersionInfo draft = this.ticketTypes.createTemplate(typeId);
+        TicketTemplateInfo draft = this.ticketTypes.createTemplate(typeId);
         this.ticketTypes.replaceTemplate(typeId, draft.id(), fields);
         this.ticketTypes.publishTemplate(typeId, draft.id());
         return typeId;

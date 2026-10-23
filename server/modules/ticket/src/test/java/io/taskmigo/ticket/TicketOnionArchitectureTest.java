@@ -33,6 +33,20 @@ class TicketOnionArchitectureTest {
         OnionArchitectureRules.checkTacticalTests(TICKET);
     }
 
+    @Test
+    @DisplayName("keeps EAV implementation types out of the Ticket public API")
+    void shouldKeepEavImplementationTypesOutOfTicketPublicApi() {
+        JavaClasses classes = productionClasses();
+
+        noClasses()
+            .that()
+            .resideInAnyPackage("io.taskmigo.ticket.application.api..", "io.taskmigo.ticket.type.application.api..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAnyPackage("io.taskmigo.eav..")
+            .check(classes);
+    }
+
     /**
      * Verifies that the removed Ticket transaction-runner architecture cannot return unnoticed.
      *
@@ -42,12 +56,8 @@ class TicketOnionArchitectureTest {
     @Test
     @DisplayName("rejects the legacy Ticket transaction runner")
     void shouldRejectLegacyTransactionRunnerWhenTicketPackagesAreInspected() {
-        // Arrange
-        JavaClasses classes = new ClassFileImporter()
-            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
-            .importPackages("io.taskmigo.ticket");
+        JavaClasses classes = productionClasses();
 
-        // Act + Assert
         noClasses()
             .should()
             .haveFullyQualifiedName("io.taskmigo.ticket.application.TicketTransactionRunner")
@@ -56,5 +66,11 @@ class TicketOnionArchitectureTest {
             .should()
             .haveFullyQualifiedName("io.taskmigo.ticket.configuration.SpringTicketTransactionRunner")
             .check(classes);
+    }
+
+    private static JavaClasses productionClasses() {
+        return new ClassFileImporter()
+            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+            .importPackages("io.taskmigo.ticket");
     }
 }

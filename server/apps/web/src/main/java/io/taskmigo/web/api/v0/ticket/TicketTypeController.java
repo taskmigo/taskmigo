@@ -3,10 +3,11 @@ package io.taskmigo.web.api.v0.ticket;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.taskmigo.eav.schema.application.EavFieldSpec;
-import io.taskmigo.eav.schema.application.EavSchemaVersionInfo;
-import io.taskmigo.eav.schema.domain.EavDataType;
-import io.taskmigo.eav.schema.domain.EavSchemaStatus;
+import io.taskmigo.ticket.type.application.api.TicketFieldInfo;
+import io.taskmigo.ticket.type.application.api.TicketFieldSpec;
+import io.taskmigo.ticket.type.application.api.TicketFieldType;
+import io.taskmigo.ticket.type.application.api.TicketTemplateInfo;
+import io.taskmigo.ticket.type.application.api.TicketTemplateStatus;
 import io.taskmigo.ticket.type.application.api.TicketTypeInfo;
 import io.taskmigo.ticket.type.application.api.TicketTypeService;
 import io.taskmigo.ticket.type.domain.TicketTypeStatus;
@@ -20,7 +21,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.net.URI;
 import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -114,7 +114,7 @@ class TicketTypeController {
     ResponseEntity<ApiResponse<TemplateResponse, ApiResponse.BasicMeta>> createTemplate(
         @PathVariable UUID ticketTypeId
     ) {
-        EavSchemaVersionInfo template = this.types.createTemplate(ticketTypeId);
+        TicketTemplateInfo template = this.types.createTemplate(ticketTypeId);
         return this.responses.created(
             URI.create("/api/v0/ticket-types/" + ticketTypeId + "/templates/" + template.id()),
             TemplateResponse.from(template),
@@ -162,12 +162,9 @@ class TicketTypeController {
         @PathVariable UUID templateVersionId,
         @Valid @RequestBody UpdateTemplateRequest request
     ) {
-        EavSchemaVersionInfo current = this.types.getTemplate(ticketTypeId, templateVersionId);
-        Map<String, EavFieldSpec> existing = new LinkedHashMap<>();
-        current.fields().forEach(field -> existing.put(field.key(), field));
-        List<EavFieldSpec> fields = Objects.requireNonNull(request.fields())
+        List<TicketFieldSpec> fields = Objects.requireNonNull(request.fields())
             .stream()
-            .map(field -> field.toSpec(existing))
+            .map(FieldRequest::toSpec)
             .toList();
         return this.responses.ok(
             TemplateResponse.from(this.types.replaceTemplate(ticketTypeId, templateVersionId, fields)),
@@ -229,12 +226,12 @@ class TicketTypeController {
     record TemplateResponse(
         UUID id,
         long version,
-        EavSchemaStatus status,
+        TicketTemplateStatus status,
         List<FieldResponse> fields,
         @Nullable Instant publishedAt,
         @Nullable Instant retiredAt
     ) {
-        static TemplateResponse from(EavSchemaVersionInfo template) {
+        static TemplateResponse from(TicketTemplateInfo template) {
             return new TemplateResponse(
                 template.id(),
                 template.version(),
@@ -251,11 +248,11 @@ class TicketTypeController {
         UUID fieldId,
         String key,
         String label,
-        EavDataType dataType,
+        TicketFieldType dataType,
         boolean required,
         Map<String, Object> constraints
     ) {
-        static FieldResponse from(EavFieldSpec field) {
+        static FieldResponse from(TicketFieldInfo field) {
             return new FieldResponse(
                 field.fieldId(),
                 field.key(),
@@ -281,27 +278,16 @@ class TicketTypeController {
         @Nullable UUID fieldId,
         @NotBlank @Nullable String key,
         @NotBlank @Nullable String label,
-        @NotNull @Nullable EavDataType dataType,
+        @NotNull @Nullable TicketFieldType dataType,
         boolean required,
         @Nullable Map<String, Object> constraints
     ) {
-        EavFieldSpec toSpec(Map<String, EavFieldSpec> existing) {
-            String fieldKey = Objects.requireNonNull(this.key);
-            String fieldLabel = Objects.requireNonNull(this.label);
-            EavDataType fieldType = Objects.requireNonNull(this.dataType);
-            UUID identity = this.fieldId;
-            EavFieldSpec previous = existing.get(fieldKey);
-            if (identity == null && previous != null && previous.dataType() == fieldType) {
-                identity = previous.fieldId();
-            }
-            if (identity == null) {
-                identity = UUID.randomUUID();
-            }
-            return new EavFieldSpec(
-                identity,
-                fieldKey,
-                fieldLabel,
-                fieldType,
+        TicketFieldSpec toSpec() {
+            return new TicketFieldSpec(
+                this.fieldId,
+                Objects.requireNonNull(this.key),
+                Objects.requireNonNull(this.label),
+                Objects.requireNonNull(this.dataType),
                 this.required,
                 this.constraints == null ? Map.of() : this.constraints
             );

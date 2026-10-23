@@ -3,15 +3,16 @@ package io.taskmigo.ticket.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.eav.schema.application.EavFieldSpec;
-import io.taskmigo.eav.schema.application.EavSchemaVersionInfo;
-import io.taskmigo.eav.schema.domain.EavDataType;
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.ticket.application.api.TicketInfo;
 import io.taskmigo.ticket.application.api.TicketService;
+import io.taskmigo.ticket.type.application.api.TicketFieldSpec;
+import io.taskmigo.ticket.type.application.api.TicketFieldType;
+import io.taskmigo.ticket.type.application.api.TicketTemplateInfo;
 import io.taskmigo.ticket.type.application.api.TicketTypeService;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -81,20 +82,22 @@ class TicketConcurrencyHistoryIntegrationTest {
     void shouldPersistExactlyTheSchemaVersionUsedByConcurrentCreate() throws Exception {
         UUID actor = insertUser("publish-create-race");
         UUID typeId = this.ticketTypes.create("publish-create-race", "Publish create race");
-        EavSchemaVersionInfo v1Draft = this.ticketTypes.createTemplate(typeId);
+        TicketTemplateInfo v1Draft = this.ticketTypes.createTemplate(typeId);
         this.ticketTypes.replaceTemplate(
             typeId,
             v1Draft.id(),
-            List.of(new EavFieldSpec(UUID.randomUUID(), "legacy", "Legacy", EavDataType.STRING, true, Map.of()))
+            List.of(new TicketFieldSpec(UUID.randomUUID(), "legacy", "Legacy", TicketFieldType.STRING, true, Map.of()))
         );
-        EavSchemaVersionInfo v1 = this.ticketTypes.publishTemplate(typeId, v1Draft.id());
-        EavSchemaVersionInfo v2Draft = this.ticketTypes.createTemplate(typeId);
+        TicketTemplateInfo v1 = this.ticketTypes.publishTemplate(typeId, v1Draft.id());
+        TicketTemplateInfo v2Draft = this.ticketTypes.createTemplate(typeId);
         this.ticketTypes.replaceTemplate(
             typeId,
             v2Draft.id(),
-            List.of(new EavFieldSpec(UUID.randomUUID(), "next", "Next", EavDataType.STRING, true, Map.of()))
+            List.of(new TicketFieldSpec(UUID.randomUUID(), "next", "Next", TicketFieldType.STRING, true, Map.of()))
         );
-        UUID schemaDefinitionId = this.ticketTypes.get(typeId).schemaDefinitionId();
+        UUID schemaDefinitionId = Objects.requireNonNull(
+            this.jdbc.queryForObject("SELECT schema_definition_id FROM ticket_types WHERE id = ?", UUID.class, typeId)
+        );
         CountDownLatch locked = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
 
@@ -111,7 +114,7 @@ class TicketConcurrencyHistoryIntegrationTest {
                 });
             });
             assertThat(locked.await(5, TimeUnit.SECONDS)).isTrue();
-            Future<EavSchemaVersionInfo> publish = executor.submit(() ->
+            Future<TicketTemplateInfo> publish = executor.submit(() ->
                 this.ticketTypes.publishTemplate(typeId, v2Draft.id())
             );
 
@@ -123,7 +126,7 @@ class TicketConcurrencyHistoryIntegrationTest {
                 actor
             );
             release.countDown();
-            EavSchemaVersionInfo v2 = publish.get(10, TimeUnit.SECONDS);
+            TicketTemplateInfo v2 = publish.get(10, TimeUnit.SECONDS);
             locker.get(10, TimeUnit.SECONDS);
 
             TicketInfo ticket = this.tickets.read(ticketId, ALLOW_ALL, QueryFieldContext.empty());
@@ -138,15 +141,15 @@ class TicketConcurrencyHistoryIntegrationTest {
     @DisplayName("concurrent publication of the same draft serializes to exactly one successful publish")
     void shouldSerializeDoublePublish() throws Exception {
         UUID typeId = this.ticketTypes.create("double-publish", "Double publish");
-        EavSchemaVersionInfo draft = this.ticketTypes.createTemplate(typeId);
+        TicketTemplateInfo draft = this.ticketTypes.createTemplate(typeId);
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch go = new CountDownLatch(1);
 
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            Future<EavSchemaVersionInfo> first = executor.submit(() ->
+            Future<TicketTemplateInfo> first = executor.submit(() ->
                 publishWhenReleased(typeId, draft.id(), ready, go)
             );
-            Future<EavSchemaVersionInfo> second = executor.submit(() ->
+            Future<TicketTemplateInfo> second = executor.submit(() ->
                 publishWhenReleased(typeId, draft.id(), ready, go)
             );
             assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
@@ -154,7 +157,7 @@ class TicketConcurrencyHistoryIntegrationTest {
 
             int success = 0;
             int stateConflict = 0;
-            for (Future<EavSchemaVersionInfo> future : List.of(first, second)) {
+            for (Future<TicketTemplateInfo> future : List.of(first, second)) {
                 try {
                     future.get(10, TimeUnit.SECONDS);
                     success++;
@@ -180,16 +183,16 @@ class TicketConcurrencyHistoryIntegrationTest {
         UUID typeId = this.ticketTypes.create("historical-corpus", "Historical corpus");
         UUID severityV1Id = UUID.randomUUID();
         UUID noteId = UUID.randomUUID();
-        EavSchemaVersionInfo v1Draft = this.ticketTypes.createTemplate(typeId);
+        TicketTemplateInfo v1Draft = this.ticketTypes.createTemplate(typeId);
         this.ticketTypes.replaceTemplate(
             typeId,
             v1Draft.id(),
             List.of(
-                new EavFieldSpec(severityV1Id, "severity", "Severity", EavDataType.STRING, true, Map.of()),
-                new EavFieldSpec(noteId, "note", "Note", EavDataType.STRING, false, Map.of())
+                new TicketFieldSpec(severityV1Id, "severity", "Severity", TicketFieldType.STRING, true, Map.of()),
+                new TicketFieldSpec(noteId, "note", "Note", TicketFieldType.STRING, false, Map.of())
             )
         );
-        EavSchemaVersionInfo v1 = this.ticketTypes.publishTemplate(typeId, v1Draft.id());
+        TicketTemplateInfo v1 = this.ticketTypes.publishTemplate(typeId, v1Draft.id());
         UUID historicalId = this.tickets.create(
             typeId,
             "Historical",
@@ -198,31 +201,33 @@ class TicketConcurrencyHistoryIntegrationTest {
             actor
         );
 
-        EavSchemaVersionInfo v2Draft = this.ticketTypes.createTemplate(typeId);
+        TicketTemplateInfo v2Draft = this.ticketTypes.createTemplate(typeId);
         this.ticketTypes.replaceTemplate(
             typeId,
             v2Draft.id(),
-            List.of(new EavFieldSpec(severityV1Id, "severity", "Impact level", EavDataType.STRING, true, Map.of()))
+            List.of(
+                new TicketFieldSpec(severityV1Id, "severity", "Impact level", TicketFieldType.STRING, true, Map.of())
+            )
         );
-        EavSchemaVersionInfo v2 = this.ticketTypes.publishTemplate(typeId, v2Draft.id());
+        TicketTemplateInfo v2 = this.ticketTypes.publishTemplate(typeId, v2Draft.id());
 
-        EavSchemaVersionInfo v3Draft = this.ticketTypes.createTemplate(typeId);
+        TicketTemplateInfo v3Draft = this.ticketTypes.createTemplate(typeId);
         UUID severityEnumId = UUID.randomUUID();
         this.ticketTypes.replaceTemplate(
             typeId,
             v3Draft.id(),
             List.of(
-                new EavFieldSpec(
+                new TicketFieldSpec(
                     severityEnumId,
                     "severity",
                     "Impact level",
-                    EavDataType.ENUM,
+                    TicketFieldType.ENUM,
                     true,
                     Map.of("options", List.of("HIGH", "LOW"))
                 )
             )
         );
-        EavSchemaVersionInfo v3 = this.ticketTypes.publishTemplate(typeId, v3Draft.id());
+        TicketTemplateInfo v3 = this.ticketTypes.publishTemplate(typeId, v3Draft.id());
         UUID currentId = this.tickets.create(typeId, "Current", "OPEN", Map.of("severity", "HIGH"), actor);
         this.ticketTypes.retireTemplate(typeId, v1.id());
         this.ticketTypes.retireTemplate(typeId, v2.id());
@@ -236,7 +241,7 @@ class TicketConcurrencyHistoryIntegrationTest {
         assertThat(current.customFields()).containsEntry("severity", "HIGH").doesNotContainKey("note");
     }
 
-    private EavSchemaVersionInfo publishWhenReleased(
+    private TicketTemplateInfo publishWhenReleased(
         UUID typeId,
         UUID versionId,
         CountDownLatch ready,

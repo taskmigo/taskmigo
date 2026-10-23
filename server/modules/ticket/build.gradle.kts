@@ -12,11 +12,11 @@ dependencies {
 
     implementation(platform(libs.spring.boot.bom))
     implementation(project(":modules:jpa-query"))
+    implementation(project(":modules:eav"))
     implementation(libs.spring.boot.starter.data.jpa)
     implementation(libs.spring.boot.core.starter)
 
     api(project(":modules:foundation:core"))
-    api(project(":modules:eav"))
     api(project(":modules:query"))
     api(project(":modules:authorization"))
 
