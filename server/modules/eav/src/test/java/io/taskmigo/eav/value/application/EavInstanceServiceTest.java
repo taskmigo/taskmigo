@@ -8,7 +8,6 @@ import io.taskmigo.eav.schema.application.EavSchemaRepository;
 import io.taskmigo.eav.schema.application.EavSchemaService;
 import io.taskmigo.eav.schema.application.EavSchemaServiceImpl;
 import io.taskmigo.eav.schema.application.EavSchemaVersionInfo;
-import io.taskmigo.eav.schema.application.EavTransactionRunner;
 import io.taskmigo.eav.schema.domain.EavDataType;
 import io.taskmigo.eav.schema.domain.EavSchemaStatus;
 import io.taskmigo.eav.schema.domain.EavValue;
@@ -24,7 +23,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,24 +31,28 @@ class EavInstanceServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-10-15T00:00:00Z");
 
-    private final DirectTransactionRunner transactions = new DirectTransactionRunner();
     private final InMemorySchemaRepository schemas = new InMemorySchemaRepository();
     private final EavSchemaService schemaService = new EavSchemaServiceImpl(
         this.schemas,
-        this.transactions,
         Clock.fixed(NOW, ZoneOffset.UTC)
     );
     private final InMemoryInstanceRepository instances = new InMemoryInstanceRepository();
     private final EavInstanceService service = new EavInstanceServiceImpl(
         this.schemaService,
         this.instances,
-        new EavValueValidator(),
-        this.transactions
+        new EavValueValidator()
     );
 
+    /**
+     * Verifies that instance creation pins a published schema version and normalizes typed values.
+     *
+     * Given: a published schema with required and optional fields plus an optional null input.
+     * Expect: the instance stores typed values for supplied data, omits the optional null, and keeps the version id.
+     */
     @Test
     @DisplayName("creates a pinned instance with normalized typed values and omits optional nulls")
     void shouldCreatePinnedInstanceWithNormalizedValues() {
+        // Arrange
         UUID definitionId = this.schemaService.createDefinition("bug", "Bug");
         UUID severityId = UUID.randomUUID();
         UUID scoreId = UUID.randomUUID();
@@ -64,12 +66,14 @@ class EavInstanceServiceTest {
             )
         );
 
+        // Act
         EavInstanceView created = this.service.create(
             definitionId,
             version.id(),
             mapOf("severity", "HIGH", "score", 7, "note", null)
         );
 
+        // Assert
         assertThat(created.schemaDefinitionId()).isEqualTo(definitionId);
         assertThat(created.schemaVersionId()).isEqualTo(version.id());
         assertThat(created.values()).containsEntry("severity", "HIGH").containsEntry("score", new BigDecimal("7"));
@@ -83,9 +87,16 @@ class EavInstanceServiceTest {
             });
     }
 
+    /**
+     * Verifies that invalid creation requests remain rejected after transaction plumbing is removed.
+     *
+     * Given: a draft schema, an unknown key, a missing required value, and a value violating minLength.
+     * Expect: each request fails with the existing IllegalStateException or IllegalArgumentException behavior.
+     */
     @Test
     @DisplayName("create rejects draft schemas, unknown keys, missing required values, and violated constraints")
     void shouldRejectInvalidCreateRequests() {
+        // Arrange
         UUID definitionId = this.schemaService.createDefinition("incident", "Incident");
         UUID titleId = UUID.randomUUID();
         EavSchemaVersionInfo draft = this.schemaService.createDraft(definitionId);
@@ -95,6 +106,7 @@ class EavInstanceServiceTest {
             List.of(field(titleId, "summary", EavDataType.STRING, true, Map.of("minLength", 3)))
         );
 
+        // Act + Assert
         EavSchemaVersionInfo finalDraft = draft;
         assertThatThrownBy(() ->
             this.service.create(definitionId, finalDraft.id(), Map.of("summary", "good"))
@@ -112,9 +124,16 @@ class EavInstanceServiceTest {
         ).isInstanceOf(IllegalArgumentException.class);
     }
 
+    /**
+     * Verifies patch semantics for omitted, optional-null, and required-null values.
+     *
+     * Given: a pinned instance with required summary plus optional note and score fields.
+     * Expect: omitted values survive, optional null removes a value, score updates, and required null is rejected.
+     */
     @Test
     @DisplayName("patch keeps omitted values, deletes optional nulls, and rejects required null deletion")
     void shouldApplyPatchSemantics() {
+        // Arrange
         UUID definitionId = this.schemaService.createDefinition("task", "Task");
         EavSchemaVersionInfo version = publish(
             definitionId,
@@ -130,8 +149,10 @@ class EavInstanceServiceTest {
             Map.of("summary", "Keep", "note", "remove", "score", 1)
         );
 
+        // Act
         EavInstanceView patched = this.service.patch(created.id(), mapOf("note", null, "score", 2));
 
+        // Assert
         assertThat(patched.values())
             .containsEntry("summary", "Keep")
             .containsEntry("score", new BigDecimal("2"))
@@ -141,9 +162,16 @@ class EavInstanceServiceTest {
         );
     }
 
+    /**
+     * Verifies historical schema pinning remains stable after newer publication and retirement.
+     *
+     * Given: an instance created from v1, followed by incompatible v2 publication and v1 retirement.
+     * Expect: patch and get continue interpreting the instance with its pinned v1 schema.
+     */
     @Test
     @DisplayName("patch and read keep using the pinned historical schema after a newer publish and retirement")
     void shouldUsePinnedSchemaAfterRetirement() {
+        // Arrange
         UUID definitionId = this.schemaService.createDefinition("request", "Request");
         UUID legacyFieldId = UUID.randomUUID();
         EavSchemaVersionInfo v1 = publish(
@@ -163,9 +191,11 @@ class EavInstanceServiceTest {
         this.schemaService.publish(definitionId, v2.id());
         this.schemaService.retire(definitionId, v1.id());
 
+        // Act
         EavInstanceView patched = this.service.patch(created.id(), Map.of("severity", "still-legacy"));
         EavInstanceView read = this.service.get(created.id());
 
+        // Assert
         assertThat(patched.schemaVersionId()).isEqualTo(v1.id());
         assertThat(patched.values()).containsEntry("severity", "still-legacy");
         assertThat(read).isEqualTo(patched);
@@ -194,24 +224,6 @@ class EavInstanceServiceTest {
             values.put(key, entries[index + 1]);
         }
         return values;
-    }
-
-    private static final class DirectTransactionRunner implements EavTransactionRunner {
-
-        @Override
-        public <T> T read(Supplier<T> work) {
-            return work.get();
-        }
-
-        @Override
-        public <T> T write(Supplier<T> work) {
-            return work.get();
-        }
-
-        @Override
-        public void write(Runnable work) {
-            work.run();
-        }
     }
 
     private static final class InMemoryInstanceRepository implements EavInstanceRepository {

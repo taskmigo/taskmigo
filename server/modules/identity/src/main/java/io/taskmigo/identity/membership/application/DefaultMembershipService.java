@@ -1,6 +1,5 @@
 package io.taskmigo.identity.membership.application;
 
-import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.group.application.api.GroupService;
 import io.taskmigo.identity.membership.application.api.MembershipService;
 import io.taskmigo.identity.user.UserException;
@@ -9,57 +8,49 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 /// Coordinates Membership commands through Group/User application APIs and an application-owned repository.
-public final class DefaultMembershipService implements MembershipService {
+@Transactional
+public class DefaultMembershipService implements MembershipService {
 
     private final MembershipRepository memberships;
     private final GroupService groups;
     private final UserCommandService users;
-    private final TransactionRunner transactions;
 
-    public DefaultMembershipService(
-        MembershipRepository memberships,
-        GroupService groups,
-        UserCommandService users,
-        TransactionRunner transactions
-    ) {
+    public DefaultMembershipService(MembershipRepository memberships, GroupService groups, UserCommandService users) {
         this.memberships = memberships;
         this.groups = groups;
         this.users = users;
-        this.transactions = transactions;
     }
 
     @Override
     public void addMember(UUID groupId, UUID userId) {
-        this.transactions.write(() -> {
-            this.groups.requireGroups(Set.of(groupId));
-            this.requireLocked(userId);
-            this.memberships.add(groupId, userId);
-        });
+        this.groups.requireGroups(Set.of(groupId));
+        this.requireLocked(userId);
+        this.memberships.add(groupId, userId);
     }
 
     @Override
     public void setGroupsForUser(UUID userId, Collection<UUID> groupIds) {
-        this.transactions.write(() -> {
-            Set<UUID> requested = Set.copyOf(groupIds);
-            this.groups.requireGroups(requested);
-            this.requireLocked(userId);
-            Set<UUID> current = Set.copyOf(this.memberships.groupsForUser(userId));
-            requested
-                .stream()
-                .filter(groupId -> !current.contains(groupId))
-                .forEach(groupId -> this.memberships.add(groupId, userId));
-            current
-                .stream()
-                .filter(groupId -> !requested.contains(groupId))
-                .forEach(groupId -> this.memberships.remove(groupId, userId));
-        });
+        Set<UUID> requested = Set.copyOf(groupIds);
+        this.groups.requireGroups(requested);
+        this.requireLocked(userId);
+        Set<UUID> current = Set.copyOf(this.memberships.groupsForUser(userId));
+        requested
+            .stream()
+            .filter(groupId -> !current.contains(groupId))
+            .forEach(groupId -> this.memberships.add(groupId, userId));
+        current
+            .stream()
+            .filter(groupId -> !requested.contains(groupId))
+            .forEach(groupId -> this.memberships.remove(groupId, userId));
     }
 
+    @Transactional(readOnly = true)
     @Override
     public List<UUID> groupsForUser(UUID userId) {
-        return this.transactions.read(() -> this.memberships.groupsForUser(userId));
+        return this.memberships.groupsForUser(userId);
     }
 
     private void requireLocked(UUID userId) {

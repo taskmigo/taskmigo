@@ -1,6 +1,6 @@
 # Server Architecture
 
-Status: Accepted for the architecture migration tracked by #252.
+Status: Accepted for the architecture migration tracked by #252 and the Spring-native application transaction model tracked by #170.
 
 ## Decision
 
@@ -90,7 +90,7 @@ Business bounded contexts use package-by-feature first. Inside a feature, create
     configuration/
 ```
 
-Additional responsibility packages such as `integration` or a context-owned transaction implementation are allowed when ownership is explicit.
+Additional responsibility packages such as `integration` are allowed when ownership is explicit. Specialized transaction mechanics may remain in the responsibility that genuinely owns them, such as Migration installation or a persistence consistency boundary; ordinary application transactions do not require a custom transaction-runner layer.
 
 Do not create empty layers for symmetry. Supporting capabilities such as Language and Query remain simple libraries when they do not have a real domain/application/infrastructure split.
 
@@ -108,17 +108,27 @@ Domain code must not depend on:
 
 ### Application
 
-Application packages own use-case orchestration, application services, and application-owned abstractions such as repositories or transaction runners when dependency inversion is required.
+Application packages own use-case orchestration, application services, and application-owned abstractions such as repositories when dependency inversion is required.
 
-Ordinary application code must remain framework neutral and must not depend on:
+Published application contracts remain framework-neutral. Concrete application implementations are Spring-native for transaction declaration and may depend on Spring's declarative transaction annotation package only:
+
+```text
+org.springframework.transaction.annotation..
+```
+
+Application implementations must not depend on:
 
 - concrete persistence implementations;
 - Spring Data repositories;
 - JPA entities or APIs;
+- programmatic Spring transaction mechanics such as `TransactionTemplate` or `PlatformTransactionManager` for ordinary use cases;
 - framework configuration/composition;
+- Spring MVC, Spring Security, or unrelated Spring APIs;
 - executable application code.
 
-A `package-info.java` may use Spring Modulith metadata to publish a deliberate named interface. That metadata does not make the application implementation framework dependent.
+Ordinary application transaction boundaries are expressed directly with `@Transactional`. Default propagation remains `REQUIRED`; query use cases use `readOnly = true` when they previously owned a read-only boundary. Specialized propagation/isolation remains explicit where the behavior genuinely differs, such as Audit `MANDATORY` participation or persistence-level `REQUIRES_NEW`/`REPEATABLE_READ` resolution.
+
+A `package-info.java` may use Spring Modulith metadata to publish a deliberate named interface. That metadata does not make the published application contract framework dependent.
 
 ### Persistence and infrastructure
 
@@ -143,6 +153,8 @@ framework / persistence / configuration
 ```
 
 Removing Hexagonal terminology does not remove dependency inversion. An application service must not depend directly on a concrete JPA repository merely because an `application.port.out` package was removed.
+
+Spring transaction annotations on concrete application implementations describe the runtime boundary of the use case; they do not make persistence or framework implementation details inward dependencies.
 
 ## Cross-context communication
 
@@ -169,9 +181,22 @@ All other project dependencies remain `implementation` or `runtimeOnly`. Executa
 
 ## Foundation and supporting capabilities
 
-Foundation remains a dependency floor and must stay domain neutral. Do not move business repositories, transaction abstractions, or cross-context contracts into Foundation to solve an ownership problem.
+Foundation remains a dependency floor and must stay domain neutral. Do not move business repositories, generic transaction abstractions, or cross-context contracts into Foundation to solve an ownership problem.
 
 Language, Query, Audit, JPA Query, and Database keep structures proportional to their actual responsibilities. A DDD/Onion package hierarchy is not required where it would be artificial.
+
+## Transaction model
+
+Ordinary reusable-module application transactions are declarative and owned by the concrete use-case implementation:
+
+- ordinary writes use `REQUIRED`;
+- ordinary reads use `REQUIRED + readOnly=true`;
+- nested ordinary cross-context calls join the caller transaction;
+- Audit synchronous append/privacy operations use `MANDATORY` so they cannot create independent audit transactions.
+
+Custom callback transaction runners are not part of the ordinary application model.
+
+Programmatic transaction control remains valid for genuinely specialized mechanics. Migration installation intentionally uses a `TransactionTemplate` with `SERIALIZABLE` isolation and bounded retry, and persistence-level consistency boundaries may declare specialized isolation/propagation directly. These exceptions must not be generalized into a new shared transaction abstraction.
 
 ## Architecture enforcement
 
@@ -180,7 +205,7 @@ Language, Query, Audit, JPA Query, and Database keep structures proportional to 
 The reusable baseline enforces:
 
 - framework-neutral, inward-facing domain code;
-- framework-neutral application code that cannot depend on persistence/configuration implementations;
+- application code that may use `org.springframework.transaction.annotation..` but rejects all other Spring framework dependencies and outward persistence/configuration implementations;
 - JPA and Spring Data containment in explicit persistence packages;
 - reusable modules remaining independent from `web`, `worker`, and `migration`;
 - tactical domain/application tests remaining independent from outward persistence and Spring test infrastructure.
@@ -195,4 +220,4 @@ The #252 migration no longer carries a compatibility architecture alongside the 
 
 Internal package compatibility is intentionally not preserved for obsolete architecture paths because Taskmigo is still v0. Provider-owned named interfaces and Gradle project names now describe their final capability ownership.
 
-This architecture migration must not change business behavior, public HTTP/API contracts, authorization semantics, transaction semantics, database behavior, or persistence/query performance.
+Architecture migrations must not change business behavior, public HTTP/API contracts, authorization semantics, transaction semantics, database behavior, or persistence/query performance.

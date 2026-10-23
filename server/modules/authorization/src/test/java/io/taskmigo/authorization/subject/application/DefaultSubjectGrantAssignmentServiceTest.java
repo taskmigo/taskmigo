@@ -8,11 +8,9 @@ import io.taskmigo.authorization.role.application.api.RoleService;
 import io.taskmigo.authorization.statement.application.api.StatementService;
 import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.authorization.subject.domain.SubjectGrants;
-import io.taskmigo.authorization.transaction.TransactionRunner;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,7 +35,7 @@ class DefaultSubjectGrantAssignmentServiceTest {
         StatementService statements = mock(StatementService.class);
         SubjectGrantRepository grants = mock(SubjectGrantRepository.class);
         when(grants.load(subject)).thenReturn(new SubjectGrants(subject, Set.of(), Set.of(statementId)));
-        var service = new DefaultSubjectGrantAssignmentService(roles, statements, grants, directTransactions());
+        var service = new DefaultSubjectGrantAssignmentService(roles, statements, grants);
 
         // Act
         service.setRoles(subject, List.of(roleId, roleId));
@@ -64,7 +62,7 @@ class DefaultSubjectGrantAssignmentServiceTest {
         StatementService statements = mock(StatementService.class);
         SubjectGrantRepository grants = mock(SubjectGrantRepository.class);
         when(grants.load(subject)).thenReturn(new SubjectGrants(subject, Set.of(roleId), Set.of()));
-        var service = new DefaultSubjectGrantAssignmentService(roles, statements, grants, directTransactions());
+        var service = new DefaultSubjectGrantAssignmentService(roles, statements, grants);
 
         // Act
         service.setStatements(subject, List.of(statementId, statementId));
@@ -72,24 +70,5 @@ class DefaultSubjectGrantAssignmentServiceTest {
         // Assert
         verify(statements).requireStatements(Set.of(statementId));
         verify(grants).saveStatements(new SubjectGrants(subject, Set.of(roleId), Set.of(statementId)));
-    }
-
-    private static TransactionRunner directTransactions() {
-        return new TransactionRunner() {
-            @Override
-            public <T> T read(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public <T> T write(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public void write(Runnable work) {
-                work.run();
-            }
-        };
     }
 }

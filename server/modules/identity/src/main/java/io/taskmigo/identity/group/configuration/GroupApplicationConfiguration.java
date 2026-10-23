@@ -1,7 +1,6 @@
 package io.taskmigo.identity.group.configuration;
 
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
-import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.group.application.DefaultGroupCommandService;
 import io.taskmigo.identity.group.application.DefaultGroupService;
 import io.taskmigo.identity.group.application.GroupCommandRepository;
@@ -25,9 +24,8 @@ class GroupApplicationConfiguration {
         GroupCommandService commands,
         GroupQueryRepository groups,
         GroupHierarchyRepository hierarchies,
-        SubjectGrantAssignmentService grantAssignments,
-        TransactionRunner transactions
+        SubjectGrantAssignmentService grantAssignments
     ) {
-        return new DefaultGroupService(commands, groups, hierarchies, grantAssignments, transactions);
+        return new DefaultGroupService(commands, groups, hierarchies, grantAssignments);
     }
 }

@@ -22,18 +22,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
+import org.springframework.transaction.annotation.Transactional;
 
 /// Coordinates Ticket common fields with generic EAV instances pinned to immutable historical schemas.
-public final class TicketServiceImpl implements TicketService {
+@Transactional
+public class TicketServiceImpl implements TicketService {
 
     private final TicketTypeRepository ticketTypes;
     private final EavSchemaService schemas;
     private final EavInstanceService instances;
     private final TicketRepository tickets;
     private final TicketQueryRepository queries;
-    private final TicketTransactionRunner transactions;
     private final Clock clock;
 
     public TicketServiceImpl(
@@ -42,7 +42,6 @@ public final class TicketServiceImpl implements TicketService {
         EavInstanceService instances,
         TicketRepository tickets,
         TicketQueryRepository queries,
-        TicketTransactionRunner transactions,
         Clock clock
     ) {
         this.ticketTypes = Objects.requireNonNull(ticketTypes);
@@ -50,19 +49,7 @@ public final class TicketServiceImpl implements TicketService {
         this.instances = Objects.requireNonNull(instances);
         this.tickets = Objects.requireNonNull(tickets);
         this.queries = Objects.requireNonNull(queries);
-        this.transactions = Objects.requireNonNull(transactions);
         this.clock = Objects.requireNonNull(clock);
-    }
-
-    TicketServiceImpl(
-        TicketTypeRepository ticketTypes,
-        EavSchemaService schemas,
-        EavInstanceService instances,
-        TicketRepository tickets,
-        TicketQueryRepository queries,
-        Clock clock
-    ) {
-        this(ticketTypes, schemas, instances, tickets, queries, directTransactions(), clock);
     }
 
     @Override
@@ -70,31 +57,30 @@ public final class TicketServiceImpl implements TicketService {
         Objects.requireNonNull(ticketTypeId);
         Objects.requireNonNull(customFields);
         Objects.requireNonNull(actorId);
-        return this.transactions.write(() -> {
-            requireNonBlank(title, "Ticket title");
-            requireNonBlank(status, "Ticket status");
+        requireNonBlank(title, "Ticket title");
+        requireNonBlank(status, "Ticket status");
 
-            TicketType type = this.requireType(ticketTypeId);
-            type.requireCreationEligible();
-            EavSchemaVersionInfo current = this.schemas
-                .current(type.schemaDefinitionId())
-                .orElseThrow(() -> new IllegalStateException("Ticket Type has no current published template"));
-            if (current.status() != EavSchemaStatus.PUBLISHED) {
-                throw new IllegalStateException("Ticket Type current template must be published");
-            }
+        TicketType type = this.requireType(ticketTypeId);
+        type.requireCreationEligible();
+        EavSchemaVersionInfo current = this.schemas
+            .current(type.schemaDefinitionId())
+            .orElseThrow(() -> new IllegalStateException("Ticket Type has no current published template"));
+        if (current.status() != EavSchemaStatus.PUBLISHED) {
+            throw new IllegalStateException("Ticket Type current template must be published");
+        }
 
-            EavInstanceView instance = this.instances.create(type.schemaDefinitionId(), current.id(), customFields);
-            requireOwnedInstance(type, instance);
-            if (!instance.schemaVersionId().equals(current.id())) {
-                throw new IllegalStateException("EAV instance was not pinned to the validated template version");
-            }
+        EavInstanceView instance = this.instances.create(type.schemaDefinitionId(), current.id(), customFields);
+        requireOwnedInstance(type, instance);
+        if (!instance.schemaVersionId().equals(current.id())) {
+            throw new IllegalStateException("EAV instance was not pinned to the validated template version");
+        }
 
-            UUID id = UUID.randomUUID();
-            this.tickets.save(Ticket.create(id, type.id(), instance.id(), title, status, actorId, this.now()));
-            return id;
-        });
+        UUID id = UUID.randomUUID();
+        this.tickets.save(Ticket.create(id, type.id(), instance.id(), title, status, actorId, this.now()));
+        return id;
     }
 
+    @Transactional(readOnly = true)
     @Override
     public OffsetPage<TicketInfo> list(
         int page,
@@ -105,35 +91,32 @@ public final class TicketServiceImpl implements TicketService {
     ) {
         Objects.requireNonNull(query);
         Objects.requireNonNull(authorization);
-        return this.transactions.read(() -> {
-            OffsetPage<Ticket> result = this.queries.list(page, perPage, ticketTypeId, query, authorization);
-            List<TicketInfo> items = result
-                .items()
-                .stream()
-                .map(ticket -> {
-                    TicketType type = this.requireType(ticket.ticketTypeId());
-                    EavInstanceView instance = this.instances.get(ticket.schemaInstanceId());
-                    requireOwnedInstance(type, instance);
-                    return toInfo(ticket, instance);
-                })
-                .toList();
-            return new OffsetPage<>(items, result.totalItems(), result.totalPages());
-        });
+        OffsetPage<Ticket> result = this.queries.list(page, perPage, ticketTypeId, query, authorization);
+        List<TicketInfo> items = result
+            .items()
+            .stream()
+            .map(ticket -> {
+                TicketType type = this.requireType(ticket.ticketTypeId());
+                EavInstanceView instance = this.instances.get(ticket.schemaInstanceId());
+                requireOwnedInstance(type, instance);
+                return toInfo(ticket, instance);
+            })
+            .toList();
+        return new OffsetPage<>(items, result.totalItems(), result.totalPages());
     }
 
+    @Transactional(readOnly = true)
     @Override
     public TicketInfo read(
         UUID ticketId,
         ObjectAuthorizationPredicate<TicketInfo> authorization,
         QueryFieldContext context
     ) {
-        return this.transactions.read(() -> {
-            Ticket ticket = this.requireAuthorized(ticketId, authorization, context);
-            TicketType type = this.requireType(ticket.ticketTypeId());
-            EavInstanceView instance = this.instances.get(ticket.schemaInstanceId());
-            requireOwnedInstance(type, instance);
-            return toInfo(ticket, instance);
-        });
+        Ticket ticket = this.requireAuthorized(ticketId, authorization, context);
+        TicketType type = this.requireType(ticket.ticketTypeId());
+        EavInstanceView instance = this.instances.get(ticket.schemaInstanceId());
+        requireOwnedInstance(type, instance);
+        return toInfo(ticket, instance);
     }
 
     @Override
@@ -144,27 +127,25 @@ public final class TicketServiceImpl implements TicketService {
         QueryFieldContext context
     ) {
         Objects.requireNonNull(patch);
-        return this.transactions.write(() -> {
-            Ticket ticket = this.requireAuthorized(ticketId, authorization, context);
-            TicketType type = this.requireType(ticket.ticketTypeId());
+        Ticket ticket = this.requireAuthorized(ticketId, authorization, context);
+        TicketType type = this.requireType(ticket.ticketTypeId());
 
-            if (!patch.hasChanges()) {
-                EavInstanceView current = this.instances.get(ticket.schemaInstanceId());
-                requireOwnedInstance(type, current);
-                return toInfo(ticket, current);
-            }
+        if (!patch.hasChanges()) {
+            EavInstanceView current = this.instances.get(ticket.schemaInstanceId());
+            requireOwnedInstance(type, current);
+            return toInfo(ticket, current);
+        }
 
-            String title = patch.title() == null ? ticket.title() : patch.title();
-            String status = patch.status() == null ? ticket.status() : patch.status();
-            Ticket updated = ticket.updateCommonFields(title, status, this.now());
+        String title = patch.title() == null ? ticket.title() : patch.title();
+        String status = patch.status() == null ? ticket.status() : patch.status();
+        Ticket updated = ticket.updateCommonFields(title, status, this.now());
 
-            EavInstanceView instance = patch.customFields().isEmpty()
-                ? this.instances.get(ticket.schemaInstanceId())
-                : this.instances.patch(ticket.schemaInstanceId(), patch.customFields());
-            requireOwnedInstance(type, instance);
-            this.tickets.save(updated);
-            return toInfo(updated, instance);
-        });
+        EavInstanceView instance = patch.customFields().isEmpty()
+            ? this.instances.get(ticket.schemaInstanceId())
+            : this.instances.patch(ticket.schemaInstanceId(), patch.customFields());
+        requireOwnedInstance(type, instance);
+        this.tickets.save(updated);
+        return toInfo(updated, instance);
     }
 
     private Ticket requireAuthorized(
@@ -208,25 +189,6 @@ public final class TicketServiceImpl implements TicketService {
 
     private Instant now() {
         return this.clock.instant().truncatedTo(ChronoUnit.MILLIS);
-    }
-
-    private static TicketTransactionRunner directTransactions() {
-        return new TicketTransactionRunner() {
-            @Override
-            public <T> T read(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public <T> T write(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public void write(Runnable work) {
-                work.run();
-            }
-        };
     }
 
     private static void requireNonBlank(String value, String label) {

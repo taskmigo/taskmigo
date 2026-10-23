@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.internal.UserCommandService;
 import io.taskmigo.identity.user.domain.User;
@@ -14,7 +13,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -23,10 +21,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 class DefaultUserSessionLifecycleServiceTest {
 
     private final UserCommandService users = mock(UserCommandService.class);
-    private final DefaultUserSessionLifecycleService service = new DefaultUserSessionLifecycleService(
-        this.users,
-        transactions()
-    );
+    private final DefaultUserSessionLifecycleService service = new DefaultUserSessionLifecycleService(this.users);
 
     /// Verifies that active accounts can persist session state after locking their row.
     /// Given: a persisted ACTIVE User and a write callback.
@@ -114,24 +109,5 @@ class DefaultUserSessionLifecycleServiceTest {
             null,
             null
         );
-    }
-
-    private static TransactionRunner transactions() {
-        return new TransactionRunner() {
-            @Override
-            public <T> T read(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public <T> T write(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public void write(Runnable work) {
-                work.run();
-            }
-        };
     }
 }

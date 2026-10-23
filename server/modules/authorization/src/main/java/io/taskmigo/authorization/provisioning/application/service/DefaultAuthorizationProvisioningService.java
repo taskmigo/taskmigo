@@ -16,33 +16,31 @@ import io.taskmigo.authorization.statement.application.internal.StatementCommand
 import io.taskmigo.authorization.statement.application.internal.StatementMutationResult;
 import io.taskmigo.authorization.statement.domain.Statement;
 import io.taskmigo.authorization.statement.domain.StatementRuleViolation;
-import io.taskmigo.authorization.transaction.TransactionRunner;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
+import org.springframework.transaction.annotation.Transactional;
 
 /// Reconciles managed Access Control state through canonical Role and Statement application ports.
-public final class DefaultAuthorizationProvisioningService implements AuthorizationProvisioningService {
+@Transactional
+public class DefaultAuthorizationProvisioningService implements AuthorizationProvisioningService {
 
     private final RoleCommandService roleCommands;
     private final RoleHierarchyRepository roleHierarchies;
     private final StatementService statementService;
     private final StatementCommandService statementCommands;
-    private final TransactionRunner transactions;
 
     public DefaultAuthorizationProvisioningService(
         RoleCommandService roleCommands,
         RoleHierarchyRepository roleHierarchies,
         StatementService statementService,
-        StatementCommandService statementCommands,
-        TransactionRunner transactions
+        StatementCommandService statementCommands
     ) {
         this.roleCommands = roleCommands;
         this.roleHierarchies = roleHierarchies;
         this.statementService = statementService;
         this.statementCommands = statementCommands;
-        this.transactions = transactions;
     }
 
     @Override
@@ -55,9 +53,7 @@ public final class DefaultAuthorizationProvisioningService implements Authorizat
         @Nullable String path,
         @Nullable String policy
     ) {
-        return this.transactions.write(() ->
-            this.reconcileStatementInTransaction(code, description, effect, scope, method, path, policy)
-        );
+        return this.reconcileStatementInTransaction(code, description, effect, scope, method, path, policy);
     }
 
     @Override
@@ -67,29 +63,29 @@ public final class DefaultAuthorizationProvisioningService implements Authorizat
         @Nullable String description,
         Collection<UUID> statementIds
     ) {
-        return this.transactions.write(() ->
-            this.reconcileRoleInTransaction(code, displayName, description, statementIds)
-        );
+        return this.reconcileRoleInTransaction(code, displayName, description, statementIds);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public UUID requireStatement(String code) {
-        return this.transactions.read(() -> this.requireStatementInTransaction(code));
+        return this.requireStatementInTransaction(code);
     }
 
+    @Transactional(readOnly = true)
     @Override
     public UUID requireRole(String code) {
-        return this.transactions.read(() -> this.requireRoleInTransaction(code));
+        return this.requireRoleInTransaction(code);
     }
 
     @Override
     public boolean deleteStatement(String code) {
-        return this.transactions.write(() -> this.deleteStatementInTransaction(code));
+        return this.deleteStatementInTransaction(code);
     }
 
     @Override
     public boolean deleteRole(String code) {
-        return this.transactions.write(() -> this.deleteRoleInTransaction(code));
+        return this.deleteRoleInTransaction(code);
     }
 
     private AuthorizationProvisioningResult<UUID> reconcileStatementInTransaction(

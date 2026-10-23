@@ -2,7 +2,6 @@ package io.taskmigo.identity.user.configuration;
 
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
-import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.configuration.application.api.ConfigurationService;
 import io.taskmigo.identity.group.application.api.GroupService;
 import io.taskmigo.identity.membership.application.api.MembershipService;
@@ -19,6 +18,7 @@ import io.taskmigo.identity.user.application.UserAuditScrubber;
 import io.taskmigo.identity.user.application.UserCommandRepository;
 import io.taskmigo.identity.user.application.UserQueryRepository;
 import io.taskmigo.identity.user.application.UserRegistrationApplicationService;
+import io.taskmigo.identity.user.application.UserRetentionBatchService;
 import io.taskmigo.identity.user.application.UserSessionStore;
 import io.taskmigo.identity.user.application.api.UserRegistrationService;
 import io.taskmigo.identity.user.application.api.UserRetentionService;
@@ -71,8 +71,8 @@ class UserApplicationConfiguration {
     }
 
     @Bean
-    UserSessionLifecycleService userSessionLifecycleService(UserCommandService users, TransactionRunner transactions) {
-        return new DefaultUserSessionLifecycleService(users, transactions);
+    UserSessionLifecycleService userSessionLifecycleService(UserCommandService users) {
+        return new DefaultUserSessionLifecycleService(users);
     }
 
     @Bean
@@ -82,8 +82,7 @@ class UserApplicationConfiguration {
         SubjectGrantQueryService grantQueries,
         SubjectGrantAssignmentService grantAssignments,
         UserDeletionLifecycleService deletion,
-        UserAuditAppender audits,
-        TransactionRunner transactions
+        UserAuditAppender audits
     ) {
         return new DefaultUserService(
             users,
@@ -92,19 +91,21 @@ class UserApplicationConfiguration {
             grantAssignments,
             deletion,
             audits,
-            transactions,
             Clock.systemUTC()
         );
     }
 
     @Bean
+    UserRetentionBatchService userRetentionBatchService(UserCommandService users, UserTombstoneService tombstones) {
+        return new UserRetentionBatchService(users, tombstones);
+    }
+
+    @Bean
     UserRetentionService defaultUserRetentionService(
-        UserCommandService users,
         ConfigurationService configuration,
-        UserTombstoneService tombstones,
-        TransactionRunner transactions
+        UserRetentionBatchService batches
     ) {
-        return new DefaultUserRetentionService(users, configuration, tombstones, transactions);
+        return new DefaultUserRetentionService(configuration, batches);
     }
 
     @Bean
@@ -112,9 +113,8 @@ class UserApplicationConfiguration {
         UserCommandService users,
         SubjectGrantAssignmentService grantAssignments,
         GroupService groups,
-        MembershipService memberships,
-        TransactionRunner transactions
+        MembershipService memberships
     ) {
-        return new UserRegistrationApplicationService(users, grantAssignments, groups, memberships, transactions);
+        return new UserRegistrationApplicationService(users, grantAssignments, groups, memberships);
     }
 }

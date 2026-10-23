@@ -12,7 +12,6 @@ import io.taskmigo.audit.event.AuditEvent;
 import io.taskmigo.audit.model.AuditChange;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
-import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.membership.application.api.MembershipService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningException;
@@ -33,7 +32,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -339,7 +337,6 @@ class DefaultIdentityProvisioningServiceTest {
             groups,
             deletion,
             audits,
-            directTransactions(),
             Clock.fixed(NOW, ZoneOffset.UTC)
         );
     }
@@ -363,24 +360,5 @@ class DefaultIdentityProvisioningServiceTest {
             UserStatus.ACTIVE,
             username.equals("system") ? "{bcrypt}hash" : null
         );
-    }
-
-    private static TransactionRunner directTransactions() {
-        return new TransactionRunner() {
-            @Override
-            public <T> T read(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public <T> T write(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public void write(Runnable work) {
-                work.run();
-            }
-        };
     }
 }

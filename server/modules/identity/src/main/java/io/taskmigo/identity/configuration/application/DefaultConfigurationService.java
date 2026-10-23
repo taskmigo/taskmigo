@@ -1,36 +1,34 @@
 package io.taskmigo.identity.configuration.application;
 
-import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.configuration.ConfigurationSnapshot;
 import io.taskmigo.identity.configuration.ConfigurationSnapshot.RetentionConfiguration;
 import io.taskmigo.identity.configuration.RetentionDuration;
 import io.taskmigo.identity.configuration.application.api.ConfigurationService;
+import org.springframework.transaction.annotation.Transactional;
 
 /// Implements database-backed user-manageable Taskmigo configuration.
-public final class DefaultConfigurationService implements ConfigurationService {
+@Transactional
+public class DefaultConfigurationService implements ConfigurationService {
 
     static final String USER_RETENTION_KEY = "retention.user";
     private static final RetentionDuration DEFAULT_USER_RETENTION = RetentionDuration.parse("P30D");
 
     private final ConfigurationStore configurations;
-    private final TransactionRunner transactions;
 
-    public DefaultConfigurationService(ConfigurationStore configurations, TransactionRunner transactions) {
+    public DefaultConfigurationService(ConfigurationStore configurations) {
         this.configurations = configurations;
-        this.transactions = transactions;
     }
 
+    @Transactional(readOnly = true)
     @Override
     public ConfigurationSnapshot get() {
-        return this.transactions.read(this::snapshot);
+        return this.snapshot();
     }
 
     @Override
     public ConfigurationSnapshot updateUserRetention(RetentionDuration retention) {
-        return this.transactions.write(() -> {
-            this.configurations.save(USER_RETENTION_KEY, retention.toString());
-            return this.snapshot();
-        });
+        this.configurations.save(USER_RETENTION_KEY, retention.toString());
+        return this.snapshot();
     }
 
     private ConfigurationSnapshot snapshot() {

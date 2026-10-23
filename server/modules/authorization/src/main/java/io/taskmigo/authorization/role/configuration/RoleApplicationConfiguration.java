@@ -10,7 +10,6 @@ import io.taskmigo.authorization.role.application.api.RoleAuthorizationService;
 import io.taskmigo.authorization.role.application.api.RoleService;
 import io.taskmigo.authorization.role.application.internal.RoleCommandService;
 import io.taskmigo.authorization.statement.application.api.StatementService;
-import io.taskmigo.authorization.transaction.TransactionRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -26,18 +25,13 @@ class RoleApplicationConfiguration {
     RoleService defaultRoleService(
         RoleCommandService commands,
         RoleQueryRepository roles,
-        RoleHierarchyRepository hierarchies,
-        TransactionRunner transactions
+        RoleHierarchyRepository hierarchies
     ) {
-        return new DefaultRoleService(commands, roles, hierarchies, transactions);
+        return new DefaultRoleService(commands, roles, hierarchies);
     }
 
     @Bean
-    RoleAuthorizationService defaultRoleAuthorizationService(
-        RoleCommandService roles,
-        StatementService statements,
-        TransactionRunner transactions
-    ) {
-        return new DefaultRoleAuthorizationService(roles, statements, transactions);
+    RoleAuthorizationService defaultRoleAuthorizationService(RoleCommandService roles, StatementService statements) {
+        return new DefaultRoleAuthorizationService(roles, statements);
     }
 }

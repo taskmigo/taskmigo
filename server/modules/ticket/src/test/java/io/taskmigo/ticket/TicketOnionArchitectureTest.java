@@ -1,5 +1,10 @@
 package io.taskmigo.ticket;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
+
+import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.importer.ClassFileImporter;
+import com.tngtech.archunit.core.importer.ImportOption;
 import io.taskmigo.architecture.OnionArchitectureRules;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -26,5 +31,30 @@ class TicketOnionArchitectureTest {
     @DisplayName("keeps Ticket tactical tests isolated from outward implementations")
     void shouldKeepTicketTacticalTestsIsolated() {
         OnionArchitectureRules.checkTacticalTests(TICKET);
+    }
+
+    /**
+     * Verifies that the removed Ticket transaction-runner architecture cannot return unnoticed.
+     *
+     * Given: all Ticket production classes after declarative transaction migration.
+     * Expect: neither the legacy application runner nor its Spring adapter remains.
+     */
+    @Test
+    @DisplayName("rejects the legacy Ticket transaction runner")
+    void shouldRejectLegacyTransactionRunnerWhenTicketPackagesAreInspected() {
+        // Arrange
+        JavaClasses classes = new ClassFileImporter()
+            .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+            .importPackages("io.taskmigo.ticket");
+
+        // Act + Assert
+        noClasses()
+            .should()
+            .haveFullyQualifiedName("io.taskmigo.ticket.application.TicketTransactionRunner")
+            .check(classes);
+        noClasses()
+            .should()
+            .haveFullyQualifiedName("io.taskmigo.ticket.configuration.SpringTicketTransactionRunner")
+            .check(classes);
     }
 }

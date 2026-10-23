@@ -6,7 +6,6 @@ import io.taskmigo.authorization.statement.application.StatementCommandRepositor
 import io.taskmigo.authorization.statement.application.StatementQueryRepository;
 import io.taskmigo.authorization.statement.application.api.StatementService;
 import io.taskmigo.authorization.statement.application.internal.StatementCommandService;
-import io.taskmigo.authorization.transaction.TransactionRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -19,11 +18,7 @@ class StatementApplicationConfiguration {
     }
 
     @Bean
-    StatementService defaultStatementService(
-        StatementCommandService commands,
-        StatementQueryRepository statements,
-        TransactionRunner transactions
-    ) {
-        return new DefaultStatementService(commands, statements, transactions);
+    StatementService defaultStatementService(StatementCommandService commands, StatementQueryRepository statements) {
+        return new DefaultStatementService(commands, statements);
     }
 }

@@ -1,15 +1,9 @@
 package io.taskmigo.identity.user.application;
 
-import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.configuration.RetentionDuration;
 import io.taskmigo.identity.configuration.application.api.ConfigurationService;
-import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserMutationActor;
-import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.api.UserRetentionService;
-import io.taskmigo.identity.user.application.internal.UserCommandService;
-import io.taskmigo.identity.user.application.internal.UserTombstoneService;
-import io.taskmigo.identity.user.domain.User;
 import java.time.Instant;
 import java.util.List;
 import org.slf4j.Logger;
@@ -20,36 +14,24 @@ public final class DefaultUserRetentionService implements UserRetentionService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultUserRetentionService.class);
 
-    private final UserCommandService users;
     private final ConfigurationService configuration;
-    private final UserTombstoneService tombstones;
-    private final TransactionRunner transactions;
+    private final UserRetentionBatchService batches;
 
-    public DefaultUserRetentionService(
-        UserCommandService users,
-        ConfigurationService configuration,
-        UserTombstoneService tombstones,
-        TransactionRunner transactions
-    ) {
-        this.users = users;
+    public DefaultUserRetentionService(ConfigurationService configuration, UserRetentionBatchService batches) {
         this.configuration = configuration;
-        this.tombstones = tombstones;
-        this.transactions = transactions;
+        this.batches = batches;
     }
 
     @Override
     public int purgeExpiredUsers(Instant now) {
         RetentionDuration retention = this.configuration.get().retention().user();
         Instant cutoff = now.minus(retention.duration());
-        UserMutationActor actor = this.transactions.read(this::systemActor);
+        UserMutationActor actor = this.batches.systemActor();
         int tombstoned = 0;
         RetainedUserCandidate cursor = null;
 
         while (true) {
-            RetainedUserCandidate after = cursor;
-            List<RetainedUserCandidate> candidates = this.transactions.read(() ->
-                this.users.retainedCandidates(cutoff, after)
-            );
+            List<RetainedUserCandidate> candidates = this.batches.retainedCandidates(cutoff, cursor);
             if (candidates.isEmpty()) {
                 return tombstoned;
             }
@@ -57,7 +39,7 @@ public final class DefaultUserRetentionService implements UserRetentionService {
             for (RetainedUserCandidate candidate : candidates) {
                 cursor = candidate;
                 try {
-                    if (this.transactions.write(() -> this.tombstoneIfStillEligible(candidate, cutoff, actor, now))) {
+                    if (this.batches.tombstoneIfStillEligible(candidate, cutoff, actor, now)) {
                         tombstoned++;
                     }
                 } catch (RuntimeException exception) {
@@ -69,31 +51,5 @@ public final class DefaultUserRetentionService implements UserRetentionService {
                 return tombstoned;
             }
         }
-    }
-
-    private UserMutationActor systemActor() {
-        User system = this.users
-            .findByUsername(SystemUser.USERNAME)
-            .orElseThrow(() -> new IllegalStateException("System User must exist before retention purge runs"));
-        return new UserMutationActor(system.id(), system.username().value());
-    }
-
-    private boolean tombstoneIfStillEligible(
-        RetainedUserCandidate candidate,
-        Instant cutoff,
-        UserMutationActor actor,
-        Instant tombstonedAt
-    ) {
-        User user = this.users.claimRetainedForUpdate(candidate.id()).orElse(null);
-        if (
-            user == null ||
-            user.status() != UserStatus.RETAINED ||
-            user.retainedAt() == null ||
-            user.retainedAt().isAfter(cutoff)
-        ) {
-            return false;
-        }
-        this.tombstones.tombstone(user, actor, tombstonedAt);
-        return true;
     }
 }

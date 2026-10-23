@@ -5,7 +5,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.group.application.api.GroupService;
 import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.internal.UserCommandService;
@@ -14,7 +13,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Supplier;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,7 +38,7 @@ class DefaultMembershipServiceTest {
         GroupService groups = mock(GroupService.class);
         UserCommandService users = mock(UserCommandService.class);
         when(users.findByIdForUpdate(userId)).thenReturn(Optional.of(activeUser(userId)));
-        var service = new DefaultMembershipService(memberships, groups, users, directTransactions());
+        var service = new DefaultMembershipService(memberships, groups, users);
 
         // Act
         service.setGroupsForUser(userId, Set.of(requested));
@@ -69,7 +67,7 @@ class DefaultMembershipServiceTest {
         GroupService groups = mock(GroupService.class);
         UserCommandService users = mock(UserCommandService.class);
         when(users.findByIdForUpdate(userId)).thenReturn(Optional.of(activeUser(userId)));
-        var service = new DefaultMembershipService(memberships, groups, users, directTransactions());
+        var service = new DefaultMembershipService(memberships, groups, users);
 
         // Act
         service.setGroupsForUser(userId, List.of(groupId, groupId));
@@ -97,7 +95,7 @@ class DefaultMembershipServiceTest {
         GroupService groups = mock(GroupService.class);
         UserCommandService users = mock(UserCommandService.class);
         when(users.findByIdForUpdate(userId)).thenReturn(Optional.of(activeUser(userId)));
-        var service = new DefaultMembershipService(memberships, groups, users, directTransactions());
+        var service = new DefaultMembershipService(memberships, groups, users);
 
         // Act
         service.addMember(groupId, userId);
@@ -110,24 +108,5 @@ class DefaultMembershipServiceTest {
 
     private static User activeUser(UUID id) {
         return User.restore(id, "membership-user", Set.of(), "Membership", "User", UserStatus.ACTIVE, null);
-    }
-
-    private static TransactionRunner directTransactions() {
-        return new TransactionRunner() {
-            @Override
-            public <T> T read(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public <T> T write(Supplier<T> work) {
-                return work.get();
-            }
-
-            @Override
-            public void write(Runnable work) {
-                work.run();
-            }
-        };
     }
 }

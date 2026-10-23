@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,13 +25,19 @@ class EavSchemaServiceTest {
     private final InMemoryRepository repository = new InMemoryRepository();
     private final EavSchemaService service = new EavSchemaServiceImpl(
         this.repository,
-        new DirectTransactionRunner(),
         Clock.fixed(NOW, ZoneOffset.UTC)
     );
 
+    /**
+     * Verifies that drafting from a published schema preserves logical field identity.
+     *
+     * Given: a published v1 schema containing one STRING field with a stable field id.
+     * Expect: v2 is a DRAFT with the same field id, key, and data type.
+     */
     @Test
     @DisplayName("clones the current published schema into a new draft while preserving logical field identity")
     void shouldClonePublishedSchemaIntoDraft() {
+        // Arrange
         UUID definitionId = this.service.createDefinition("bug", "Bug");
         UUID severityId = UUID.randomUUID();
         EavSchemaVersionInfo v1 = this.service.createDraft(definitionId);
@@ -43,8 +48,10 @@ class EavSchemaServiceTest {
         );
         this.service.publish(definitionId, v1.id());
 
+        // Act
         EavSchemaVersionInfo v2 = this.service.createDraft(definitionId);
 
+        // Assert
         assertThat(v2.version()).isEqualTo(2);
         assertThat(v2.status()).isEqualTo(EavSchemaStatus.DRAFT);
         assertThat(v2.fields())
@@ -56,9 +63,16 @@ class EavSchemaServiceTest {
             });
     }
 
+    /**
+     * Verifies that published field identity cannot be reused for a different semantic field.
+     *
+     * Given: a published STRING field named severity and a new draft reusing its field id.
+     * Expect: changing either the key or data type is rejected with IllegalArgumentException.
+     */
     @Test
     @DisplayName("rejects changing key or type while reusing a logical field identity from published history")
     void shouldRejectSemanticMutationOfPublishedLogicalField() {
+        // Arrange
         UUID definitionId = this.service.createDefinition("bug", "Bug");
         UUID fieldId = UUID.randomUUID();
         EavSchemaVersionInfo v1 = this.service.createDraft(definitionId);
@@ -70,6 +84,7 @@ class EavSchemaServiceTest {
         this.service.publish(definitionId, v1.id());
         EavSchemaVersionInfo v2 = this.service.createDraft(definitionId);
 
+        // Act + Assert
         assertThatThrownBy(() ->
             this.service.replaceDraftFields(
                 definitionId,
@@ -86,9 +101,16 @@ class EavSchemaServiceTest {
         ).isInstanceOf(IllegalArgumentException.class);
     }
 
+    /**
+     * Verifies that semantic replacement is allowed when a new logical field identity is introduced.
+     *
+     * Given: a published STRING field and a new draft using a new field id for an ENUM replacement.
+     * Expect: the draft accepts the replacement and exposes the new field id.
+     */
     @Test
     @DisplayName("allows semantic replacement when a new logical field identity is used")
     void shouldAllowSemanticReplacementWithNewLogicalIdentity() {
+        // Arrange
         UUID definitionId = this.service.createDefinition("bug", "Bug");
         UUID oldId = UUID.randomUUID();
         EavSchemaVersionInfo v1 = this.service.createDraft(definitionId);
@@ -101,47 +123,62 @@ class EavSchemaServiceTest {
         EavSchemaVersionInfo v2 = this.service.createDraft(definitionId);
         UUID newId = UUID.randomUUID();
 
+        // Act
         EavSchemaVersionInfo changed = this.service.replaceDraftFields(
             definitionId,
             v2.id(),
             List.of(field(newId, "severity", "Severity", EavDataType.ENUM))
         );
 
+        // Assert
         assertThat(changed.fields()).singleElement().extracting(EavFieldSpec::fieldId).isEqualTo(newId);
     }
 
+    /**
+     * Verifies current-version switching and retirement behavior remains atomic at the service boundary.
+     *
+     * Given: two consecutively published schema versions.
+     * Expect: v2 becomes current, retiring v1 leaves v2 current, and retiring v2 clears current.
+     */
     @Test
     @DisplayName("publishing atomically switches the current version and retiring current clears it")
     void shouldSwitchAndClearCurrentVersion() {
+        // Arrange
         UUID definitionId = this.service.createDefinition("incident", "Incident");
         EavSchemaVersionInfo v1 = this.service.createDraft(definitionId);
         EavSchemaVersionInfo published1 = this.service.publish(definitionId, v1.id());
         EavSchemaVersionInfo v2 = this.service.createDraft(definitionId);
         EavSchemaVersionInfo published2 = this.service.publish(definitionId, v2.id());
 
+        // Act + Assert
         assertThat(published1.publishedAt()).contains(NOW);
         assertThat(this.service.current(definitionId)).contains(published2);
-
         this.service.retire(definitionId, published1.id());
         assertThat(this.service.current(definitionId)).contains(published2);
-
         EavSchemaVersionInfo retired2 = this.service.retire(definitionId, published2.id());
         assertThat(retired2.status()).isEqualTo(EavSchemaStatus.RETIRED);
         assertThat(retired2.retiredAt()).contains(NOW);
         assertThat(this.service.current(definitionId)).isEmpty();
     }
 
+    /**
+     * Verifies that only DRAFT schema versions can be edited.
+     *
+     * Given: the same schema version after publication and then retirement.
+     * Expect: field replacement is rejected in both immutable states.
+     */
     @Test
     @DisplayName("published and retired schema versions cannot be edited")
     void shouldRejectEditingImmutableVersions() {
+        // Arrange
         UUID definitionId = this.service.createDefinition("feature", "Feature");
         EavSchemaVersionInfo draft = this.service.createDraft(definitionId);
         EavSchemaVersionInfo published = this.service.publish(definitionId, draft.id());
 
+        // Act + Assert
         assertThatThrownBy(() -> this.service.replaceDraftFields(definitionId, published.id(), List.of())).isInstanceOf(
             IllegalStateException.class
         );
-
         EavSchemaVersionInfo retired = this.service.retire(definitionId, published.id());
         assertThatThrownBy(() -> this.service.replaceDraftFields(definitionId, retired.id(), List.of())).isInstanceOf(
             IllegalStateException.class
@@ -152,24 +189,6 @@ class EavSchemaServiceTest {
         Map<String, Object> constraints =
             type == EavDataType.ENUM ? Map.of("options", List.of("HIGH", "LOW")) : Map.of();
         return new EavFieldSpec(id, key, label, type, false, constraints);
-    }
-
-    private static final class DirectTransactionRunner implements EavTransactionRunner {
-
-        @Override
-        public <T> T read(Supplier<T> work) {
-            return work.get();
-        }
-
-        @Override
-        public <T> T write(Supplier<T> work) {
-            return work.get();
-        }
-
-        @Override
-        public void write(Runnable work) {
-            work.run();
-        }
     }
 
     private static final class InMemoryRepository implements EavSchemaRepository {
@@ -225,7 +244,7 @@ class EavSchemaServiceTest {
             return this.versions
                 .values()
                 .stream()
-                .filter(version -> version.definitionId().equals(definitionId))
+                .filter(v -> v.definitionId().equals(definitionId))
                 .sorted(Comparator.comparingLong(EavSchemaVersionInfo::version))
                 .toList();
         }
@@ -233,10 +252,9 @@ class EavSchemaServiceTest {
         @Override
         public Optional<EavSchemaVersionInfo> current(UUID definitionId) {
             Definition definition = this.definitions.get(definitionId);
-            if (definition == null || definition.currentVersionId() == null) {
-                return Optional.empty();
-            }
-            return this.findVersion(definitionId, definition.currentVersionId());
+            return definition == null || definition.currentVersionId() == null
+                ? Optional.empty()
+                : this.findVersion(definitionId, definition.currentVersionId());
         }
 
         @Override

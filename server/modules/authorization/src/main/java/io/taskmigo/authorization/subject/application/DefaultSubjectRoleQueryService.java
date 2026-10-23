@@ -5,41 +5,39 @@ import io.taskmigo.authorization.role.application.api.RoleService;
 import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.authorization.subject.application.api.SubjectRoleQueryService;
 import io.taskmigo.authorization.subject.application.resolution.EffectiveSubjectResolver;
-import io.taskmigo.authorization.transaction.TransactionRunner;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 /// Resolves effective Role projections while keeping Role semantics inside Access Control.
-public final class DefaultSubjectRoleQueryService implements SubjectRoleQueryService {
+@Transactional(readOnly = true)
+public class DefaultSubjectRoleQueryService implements SubjectRoleQueryService {
 
     private final EffectiveSubjectResolver subjects;
     private final SubjectGrantRepository grants;
     private final RoleService roles;
-    private final TransactionRunner transactions;
 
     public DefaultSubjectRoleQueryService(
         EffectiveSubjectResolver subjects,
         SubjectGrantRepository grants,
-        RoleService roles,
-        TransactionRunner transactions
+        RoleService roles
     ) {
         this.subjects = subjects;
         this.grants = grants;
         this.roles = roles;
-        this.transactions = transactions;
     }
 
     @Override
     public List<RoleInfo> effectiveRoles(SubjectRef subject) {
-        return this.transactions.read(() -> this.effectiveRolesDirect(this.subjects.expand(subject)));
+        return this.effectiveRolesDirect(this.subjects.expand(subject));
     }
 
     @Override
     public List<RoleInfo> effectiveRolesForPrincipal(UUID principalId) {
-        return this.transactions.read(() -> this.effectiveRolesDirect(this.subjects.resolve(principalId)));
+        return this.effectiveRolesDirect(this.subjects.resolve(principalId));
     }
 
     private List<RoleInfo> effectiveRolesDirect(Collection<SubjectRef> subjects) {

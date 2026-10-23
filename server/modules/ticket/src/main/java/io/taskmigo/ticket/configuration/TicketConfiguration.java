@@ -7,7 +7,6 @@ import io.taskmigo.ticket.application.TicketQueryFieldCatalog;
 import io.taskmigo.ticket.application.TicketQueryRepository;
 import io.taskmigo.ticket.application.TicketRepository;
 import io.taskmigo.ticket.application.TicketServiceImpl;
-import io.taskmigo.ticket.application.TicketTransactionRunner;
 import io.taskmigo.ticket.application.api.TicketService;
 import io.taskmigo.ticket.type.application.TicketTypeRepository;
 import io.taskmigo.ticket.type.application.TicketTypeServiceImpl;
@@ -30,12 +29,8 @@ class TicketConfiguration {
     }
 
     @Bean
-    TicketTypeService ticketTypeService(
-        TicketTypeRepository repository,
-        EavSchemaService schemas,
-        TicketTransactionRunner transactions
-    ) {
-        return new TicketTypeServiceImpl(repository, schemas, transactions, Clock.systemUTC());
+    TicketTypeService ticketTypeService(TicketTypeRepository repository, EavSchemaService schemas) {
+        return new TicketTypeServiceImpl(repository, schemas, Clock.systemUTC());
     }
 
     @Bean
@@ -44,17 +39,8 @@ class TicketConfiguration {
         EavSchemaService schemas,
         EavInstanceService instances,
         TicketRepository tickets,
-        TicketQueryRepository queries,
-        TicketTransactionRunner transactions
+        TicketQueryRepository queries
     ) {
-        return new TicketServiceImpl(
-            ticketTypes,
-            schemas,
-            instances,
-            tickets,
-            queries,
-            transactions,
-            Clock.systemUTC()
-        );
+        return new TicketServiceImpl(ticketTypes, schemas, instances, tickets, queries, Clock.systemUTC());
     }
 }

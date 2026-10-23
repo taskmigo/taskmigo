@@ -2,7 +2,6 @@ package io.taskmigo.identity.provisioning.application;
 
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
-import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.group.GroupException;
 import io.taskmigo.identity.group.application.GroupHierarchyRepository;
@@ -17,28 +16,27 @@ import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
+import org.springframework.transaction.annotation.Transactional;
 
 /// Reconciles managed Group profile and grants through canonical Identity and Access Control contracts.
-public final class DefaultGroupProvisioningService implements GroupProvisioningService {
+@Transactional
+public class DefaultGroupProvisioningService implements GroupProvisioningService {
 
     private final GroupCommandService groups;
     private final GroupHierarchyRepository hierarchies;
     private final SubjectGrantAssignmentService grantAssignments;
     private final SubjectGrantQueryService grantQueries;
-    private final TransactionRunner transactions;
 
     public DefaultGroupProvisioningService(
         GroupCommandService groups,
         GroupHierarchyRepository hierarchies,
         SubjectGrantAssignmentService grantAssignments,
-        SubjectGrantQueryService grantQueries,
-        TransactionRunner transactions
+        SubjectGrantQueryService grantQueries
     ) {
         this.groups = groups;
         this.hierarchies = hierarchies;
         this.grantAssignments = grantAssignments;
         this.grantQueries = grantQueries;
-        this.transactions = transactions;
     }
 
     @Override
@@ -48,12 +46,12 @@ public final class DefaultGroupProvisioningService implements GroupProvisioningS
         @Nullable String description,
         Collection<UUID> roleIds
     ) {
-        return this.transactions.write(() -> this.reconcileGroupInTransaction(code, displayName, description, roleIds));
+        return this.reconcileGroupInTransaction(code, displayName, description, roleIds);
     }
 
     @Override
     public boolean deleteGroup(String code) {
-        return this.transactions.write(() -> this.deleteGroupInTransaction(code));
+        return this.deleteGroupInTransaction(code);
     }
 
     private IdentityProvisioningResult<UUID> reconcileGroupInTransaction(

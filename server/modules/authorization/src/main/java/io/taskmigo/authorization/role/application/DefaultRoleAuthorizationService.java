@@ -3,34 +3,27 @@ package io.taskmigo.authorization.role.application;
 import io.taskmigo.authorization.role.application.api.RoleAuthorizationService;
 import io.taskmigo.authorization.role.application.internal.RoleCommandService;
 import io.taskmigo.authorization.statement.application.api.StatementService;
-import io.taskmigo.authorization.transaction.TransactionRunner;
 import java.util.Collection;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
 
 /// Orchestrates Role-to-Statement assignment through the canonical Role command path.
-public final class DefaultRoleAuthorizationService implements RoleAuthorizationService {
+@Transactional
+public class DefaultRoleAuthorizationService implements RoleAuthorizationService {
 
     private final RoleCommandService roles;
     private final StatementService statements;
-    private final TransactionRunner transactions;
 
-    public DefaultRoleAuthorizationService(
-        RoleCommandService roles,
-        StatementService statements,
-        TransactionRunner transactions
-    ) {
+    public DefaultRoleAuthorizationService(RoleCommandService roles, StatementService statements) {
         this.roles = roles;
         this.statements = statements;
-        this.transactions = transactions;
     }
 
     @Override
     public void setStatements(UUID roleId, Collection<UUID> statementIds) {
-        this.transactions.write(() -> {
-            Set<UUID> requestedIds = Set.copyOf(statementIds);
-            this.statements.requireStatements(requestedIds);
-            this.roles.replaceStatements(roleId, requestedIds);
-        });
+        Set<UUID> requestedIds = Set.copyOf(statementIds);
+        this.statements.requireStatements(requestedIds);
+        this.roles.replaceStatements(roleId, requestedIds);
     }
 }

@@ -2,7 +2,6 @@ package io.taskmigo.identity.provisioning.configuration;
 
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
-import io.taskmigo.identity.application.TransactionRunner;
 import io.taskmigo.identity.group.application.GroupHierarchyRepository;
 import io.taskmigo.identity.group.application.internal.GroupCommandService;
 import io.taskmigo.identity.membership.application.api.MembershipService;
@@ -25,10 +24,9 @@ class ProvisioningApplicationConfiguration {
         GroupCommandService groups,
         GroupHierarchyRepository hierarchies,
         SubjectGrantAssignmentService grantAssignments,
-        SubjectGrantQueryService grantQueries,
-        TransactionRunner transactions
+        SubjectGrantQueryService grantQueries
     ) {
-        return new DefaultGroupProvisioningService(groups, hierarchies, grantAssignments, grantQueries, transactions);
+        return new DefaultGroupProvisioningService(groups, hierarchies, grantAssignments, grantQueries);
     }
 
     @Bean
@@ -38,8 +36,7 @@ class ProvisioningApplicationConfiguration {
         SubjectGrantQueryService grantQueries,
         MembershipService memberships,
         UserDeletionLifecycleService deletion,
-        UserAuditAppender audits,
-        TransactionRunner transactions
+        UserAuditAppender audits
     ) {
         return new DefaultIdentityProvisioningService(
             users,
@@ -48,7 +45,6 @@ class ProvisioningApplicationConfiguration {
             memberships,
             deletion,
             audits,
-            transactions,
             Clock.systemUTC()
         );
     }
