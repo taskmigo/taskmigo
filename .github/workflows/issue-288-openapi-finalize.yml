@@ -1,0 +1,44 @@
+name: Issue 288 OpenAPI finalize
+
+on:
+  push:
+    branches:
+      - refactor/288-query-object-auth-feature-modules
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: refactor/288-query-object-auth-feature-modules
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v6.1.0
+        with:
+          distribution: temurin
+          java-version: '26'
+          cache: gradle
+          cache-dependency-path: |
+            server/**/*.gradle*
+            server/gradle/libs.versions.toml
+
+      - name: Generate canonical OpenAPI snapshot
+        working-directory: server
+        run: ./gradlew --no-daemon --console=plain :apps:openapi-generator:generateOpenApi
+
+      - name: Commit snapshot and remove finalizer
+        run: |
+          rm .github/workflows/issue-288-openapi-finalize.yml
+          git add server/apps/web/src/main/resources/static/api/docs/openapi.yaml .github/workflows/issue-288-openapi-finalize.yml
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git commit -m "docs(api): refresh OpenAPI snapshot for issue 288"
+          git push origin HEAD:refactor/288-query-object-auth-feature-modules
