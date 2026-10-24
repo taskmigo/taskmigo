@@ -21,9 +21,5 @@ public interface TicketService {
 
     TicketInfo read(UUID ticketId, ObjectAuthorizationPredicate<TicketInfo> authorization);
 
-    TicketInfo update(
-        UUID ticketId,
-        TicketPatch patch,
-        ObjectAuthorizationPredicate<TicketInfo> authorization
-    );
+    TicketInfo update(UUID ticketId, TicketPatch patch, ObjectAuthorizationPredicate<TicketInfo> authorization);
 }

@@ -133,11 +133,7 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public TicketInfo update(
-        UUID ticketId,
-        TicketPatch patch,
-        ObjectAuthorizationPredicate<TicketInfo> authorization
-    ) {
+    public TicketInfo update(UUID ticketId, TicketPatch patch, ObjectAuthorizationPredicate<TicketInfo> authorization) {
         Objects.requireNonNull(patch);
         Ticket ticket = this.requireAuthorized(ticketId, authorization);
         TicketType type = this.requireType(ticket.ticketTypeId());

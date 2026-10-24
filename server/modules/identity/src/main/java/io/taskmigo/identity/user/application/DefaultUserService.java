@@ -145,11 +145,7 @@ public class DefaultUserService implements UserService {
     }
 
     @Override
-    public void delete(
-        UUID userId,
-        ObjectAuthorizationPredicate<UserInfo> authorization,
-        UserMutationActor actor
-    ) {
+    public void delete(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization, UserMutationActor actor) {
         User target = this.requireAuthorizedDeleteTarget(userId, authorization);
         try {
             this.deletion.delete(target, actor, this.clock.instant());
