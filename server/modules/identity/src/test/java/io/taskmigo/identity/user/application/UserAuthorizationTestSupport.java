@@ -9,7 +9,9 @@ import io.taskmigo.query.QueryFieldDescriptor;
 import io.taskmigo.query.QuerySchemaView;
 import java.util.Collection;
 import java.util.List;
+import org.jspecify.annotations.NullMarked;
 
+@NullMarked
 final class UserAuthorizationTestSupport {
 
     static final AuthorizationContext CONTEXT = new AuthorizationContext() {};
