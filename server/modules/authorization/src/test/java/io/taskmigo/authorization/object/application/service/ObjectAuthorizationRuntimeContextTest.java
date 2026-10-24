@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationPredicateModels;
 import io.taskmigo.authorization.request.application.model.AuthorizationOperation;
@@ -21,7 +22,6 @@ import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryFieldDescriptor;
 import io.taskmigo.query.QueryOperator;
 import io.taskmigo.query.QueryPath;
-import io.taskmigo.query.QuerySchemaView;
 import io.taskmigo.query.TypeDescriptor;
 import java.util.Collection;
 import java.util.List;
@@ -34,14 +34,13 @@ import org.junit.jupiter.api.Test;
 class ObjectAuthorizationRuntimeContextTest {
 
     @Test
-    @DisplayName("authorization predicate identity uses the exact runtime Query field context")
-    void shouldUseRuntimeQueryContextForAuthorizationIdentity() {
-        QuerySchemaView schema = contextAwareSchema();
+    @DisplayName("authorization predicate identity uses the exact runtime field context")
+    void shouldUseRuntimeFieldContextForAuthorizationIdentity() {
+        ObjectAuthorizationSchema<TestObject> schema = contextAwareSchema();
         ObjectAuthorizationTargetResolver targets = ObjectAuthorizationTargetResolver.all(List.of(schema));
         StatementArtifactFactory artifacts = new StatementArtifactFactory(new LanguageCompiler(), targets);
         ObjectAuthorizationService service = new ObjectAuthorizationService(new LanguageCompiler(), targets);
-        StatementInfo statement = statement("object.severity == \"HIGH\"");
-        AuthorizationOperation operation = operation(statement, artifacts);
+        AuthorizationOperation operation = operation(statement("object.severity == \"HIGH\""), artifacts);
         QueryFieldContext context = new QueryFieldContext(Map.of("scope", "incident"));
 
         ObjectAuthorizationPredicate<TestObject> predicate = service.authorize(operation, schema, context);
@@ -53,7 +52,7 @@ class ObjectAuthorizationRuntimeContextTest {
     @Test
     @DisplayName("runtime validation fails closed when the requested context does not expose the object field")
     void shouldFailClosedWhenRuntimeContextHidesField() {
-        QuerySchemaView schema = contextAwareSchema();
+        ObjectAuthorizationSchema<TestObject> schema = contextAwareSchema();
         ObjectAuthorizationTargetResolver targets = ObjectAuthorizationTargetResolver.all(List.of(schema));
         StatementArtifactFactory artifacts = new StatementArtifactFactory(new LanguageCompiler(), targets);
         ObjectAuthorizationService service = new ObjectAuthorizationService(new LanguageCompiler(), targets);
@@ -62,10 +61,10 @@ class ObjectAuthorizationRuntimeContextTest {
 
         assertThatThrownBy(() -> service.authorize(operation, schema, hidden))
             .isInstanceOf(AuthorizationException.class)
-            .hasMessageContaining("object path is not queryable");
+            .hasMessageContaining("not authorized by this contract");
     }
 
-    private static QuerySchemaView contextAwareSchema() {
+    private static ObjectAuthorizationSchema<TestObject> contextAwareSchema() {
         QueryFieldDescriptor global = new QueryFieldDescriptor(
             QueryPath.of("severity"),
             TypeDescriptor.of(String.class),
@@ -78,12 +77,7 @@ class ObjectAuthorizationRuntimeContextTest {
             false,
             Set.of(QueryOperator.EQ)
         );
-        return new QuerySchemaView() {
-            @Override
-            public String operation() {
-                return "tickets.list";
-            }
-
+        return new ObjectAuthorizationSchema<>() {
             @Override
             public Collection<QueryFieldDescriptor> fields(QueryFieldContext context) {
                 Object scope = context.values().get("scope");

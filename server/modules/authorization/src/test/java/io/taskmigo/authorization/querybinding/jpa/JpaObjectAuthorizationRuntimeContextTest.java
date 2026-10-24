@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationPredicateModels;
 import io.taskmigo.jpaquery.JpaQueryValueExpression;
@@ -27,9 +28,9 @@ import org.junit.jupiter.api.Test;
 class JpaObjectAuthorizationRuntimeContextTest {
 
     @Test
-    @DisplayName("JPA Object Authorization binder requires the exact runtime Query schema identity")
+    @DisplayName("JPA Object Authorization binder requires the exact runtime Authorization schema identity")
     void shouldRequireMatchingRuntimeSchemaIdentity() {
-        QuerySchema<TestEntity> schema = schema();
+        TestSchema schema = schema();
         QueryFieldContext scoped = new QueryFieldContext(Map.of("scope", "incident"));
         ObjectAuthorizationPredicate<TestObject> predicate = ObjectAuthorizationPredicateModels.from(
             schema,
@@ -45,7 +46,7 @@ class JpaObjectAuthorizationRuntimeContextTest {
             .hasMessageContaining("schema identity");
     }
 
-    private static QuerySchema<TestEntity> schema() {
+    private static TestSchema schema() {
         JpaQueryValueExpression<TestEntity, String> expression = new JpaQueryValueExpression<>() {
             @Override
             public Expression<String> resolve(Root<TestEntity> root, CriteriaQuery<?> query, CriteriaBuilder builder) {
@@ -64,22 +65,31 @@ class JpaObjectAuthorizationRuntimeContextTest {
             String.class,
             expression
         ).operators(QueryOperator.EQ);
-        return new QuerySchema<>(TestEntity.class) {
-            @Override
-            protected String operationId() {
-                return "tickets.list";
-            }
+        return new TestSchema(severity);
+    }
 
-            @Override
-            protected Collection<QueryField<TestEntity, ?>> staticFields() {
-                return List.of();
-            }
+    private static final class TestSchema extends QuerySchema<TestEntity> implements ObjectAuthorizationSchema<TestObject> {
+        private final QueryField<TestEntity, String> severity;
 
-            @Override
-            protected Collection<QueryField<TestEntity, ?>> runtimeFields(QueryFieldContext context) {
-                return "incident".equals(context.values().get("scope")) ? List.of(severity) : List.of();
-            }
-        };
+        private TestSchema(QueryField<TestEntity, String> severity) {
+            super(TestEntity.class);
+            this.severity = severity;
+        }
+
+        @Override
+        protected String operationId() {
+            return "test.authorization";
+        }
+
+        @Override
+        protected Collection<QueryField<TestEntity, ?>> staticFields() {
+            return List.of();
+        }
+
+        @Override
+        protected Collection<QueryField<TestEntity, ?>> runtimeFields(QueryFieldContext context) {
+            return "incident".equals(context.values().get("scope")) ? List.of(this.severity) : List.of();
+        }
     }
 
     private static final class TestEntity {}

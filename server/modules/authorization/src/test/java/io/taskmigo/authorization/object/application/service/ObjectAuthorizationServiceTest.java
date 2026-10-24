@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.request.application.model.AuthorizationOperation;
 import io.taskmigo.authorization.request.application.model.AuthorizationSnapshot;
@@ -21,7 +22,6 @@ import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryFieldDescriptor;
 import io.taskmigo.query.QueryOperator;
 import io.taskmigo.query.QueryPath;
-import io.taskmigo.query.QuerySchemaView;
 import io.taskmigo.query.TypeDescriptor;
 import java.util.Collection;
 import java.util.List;
@@ -33,18 +33,10 @@ import org.junit.jupiter.api.Test;
 
 class ObjectAuthorizationServiceTest {
 
-    private final QuerySchemaView schema = schema("name");
-    private final ObjectAuthorizationTargetResolver targets = ObjectAuthorizationTargetResolver.all(
-        List.of(this.schema)
-    );
-    private final StatementArtifactFactory artifacts = new StatementArtifactFactory(
-        new LanguageCompiler(),
-        this.targets
-    );
-    private final ObjectAuthorizationService service = new ObjectAuthorizationService(
-        new LanguageCompiler(),
-        this.targets
-    );
+    private final ObjectAuthorizationSchema<TestObject> schema = schema("name");
+    private final ObjectAuthorizationTargetResolver targets = ObjectAuthorizationTargetResolver.all(List.of(this.schema));
+    private final StatementArtifactFactory artifacts = new StatementArtifactFactory(new LanguageCompiler(), this.targets);
+    private final ObjectAuthorizationService service = new ObjectAuthorizationService(new LanguageCompiler(), this.targets);
 
     @Test
     @DisplayName("defaults to deny without a matching object statement")
@@ -70,9 +62,12 @@ class ObjectAuthorizationServiceTest {
     }
 
     @Test
-    @DisplayName("validates contains against the shared query schema")
-    void shouldValidateContainsAgainstSharedQuerySchema() {
-        QuerySchemaView containsSchema = schema("name", Set.of(QueryOperator.EQ, QueryOperator.CONTAINS));
+    @DisplayName("validates contains against the authorization contract")
+    void shouldValidateContainsAgainstAuthorizationContract() {
+        ObjectAuthorizationSchema<TestObject> containsSchema = schema(
+            "name",
+            Set.of(QueryOperator.EQ, QueryOperator.CONTAINS)
+        );
         ObjectAuthorizationService containsService = new ObjectAuthorizationService(
             new LanguageCompiler(),
             ObjectAuthorizationTargetResolver.all(List.of(containsSchema))
@@ -122,7 +117,7 @@ class ObjectAuthorizationServiceTest {
         );
     }
 
-    private static QuerySchemaView schema(String path) {
+    private static ObjectAuthorizationSchema<TestObject> schema(String path) {
         return schema(
             path,
             Set.of(
@@ -136,19 +131,14 @@ class ObjectAuthorizationServiceTest {
         );
     }
 
-    private static QuerySchemaView schema(String path, Set<QueryOperator> operators) {
+    private static ObjectAuthorizationSchema<TestObject> schema(String path, Set<QueryOperator> operators) {
         QueryFieldDescriptor field = new QueryFieldDescriptor(
             QueryPath.parse(path),
             TypeDescriptor.of(String.class),
             false,
             operators
         );
-        return new QuerySchemaView() {
-            @Override
-            public String operation() {
-                return TestObject.class.getName();
-            }
-
+        return new ObjectAuthorizationSchema<>() {
             @Override
             public Collection<QueryFieldDescriptor> fields(QueryFieldContext context) {
                 return List.of(field);
