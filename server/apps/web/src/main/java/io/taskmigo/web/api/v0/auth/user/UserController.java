@@ -1,7 +1,6 @@
 package io.taskmigo.web.api.v0.auth.user;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.taskmigo.authorization.request.AuthorizationContext;
@@ -69,7 +68,7 @@ class UserController {
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
         @ParameterObject @Valid ListQueryOptions query,
-        @Parameter(hidden = true) AuthorizationContext authorization
+        AuthorizationContext authorization
     ) {
         OffsetPage<UserInfo> users = this.users.list(
             pagination.getPage(),
@@ -92,7 +91,7 @@ class UserController {
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> delete(
         @PathVariable UUID userId,
-        @Parameter(hidden = true) AuthorizationContext authorization,
+        AuthorizationContext authorization,
         JwtAuthenticationToken authentication
     ) {
         this.users.delete(userId, authorization, actor(authentication));
@@ -108,7 +107,7 @@ class UserController {
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setStatements(
         @PathVariable UUID userId,
         @Valid @RequestBody StatementAssignmentRequest request,
-        @Parameter(hidden = true) AuthorizationContext authorization,
+        AuthorizationContext authorization,
         JwtAuthenticationToken authentication
     ) {
         this.users.setStatements(
