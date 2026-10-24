@@ -19,7 +19,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
-/// Reads Statement projections and binds client and authorization predicates through the list operation schema.
+/// Reads Statement projections and binds independent client-query and authorization contracts.
 @Repository
 public class JpaStatementQueryRepository implements StatementQueryRepository {
 
@@ -28,11 +28,15 @@ public class JpaStatementQueryRepository implements StatementQueryRepository {
     private final QueryPredicateBinder<StatementInfo, StatementEntity> queryBinder;
     private final ObjectAuthorizationPredicateBinder<StatementInfo, StatementEntity> objectBinder;
 
-    JpaStatementQueryRepository(StatementRepository statements, ListStatementsQuerySchema schema) {
+    JpaStatementQueryRepository(
+        StatementRepository statements,
+        ListStatementsQuerySchema querySchema,
+        ListStatementsAuthorizationSchema authorizationSchema
+    ) {
         this.statements = statements;
-        this.listSchema = schema;
-        this.queryBinder = new JpaQueryPredicateBinder<>(StatementInfo.class, schema);
-        this.objectBinder = new JpaObjectAuthorizationPredicateBinder<>(StatementInfo.class, schema);
+        this.listSchema = querySchema;
+        this.queryBinder = new JpaQueryPredicateBinder<>(StatementInfo.class, querySchema);
+        this.objectBinder = new JpaObjectAuthorizationPredicateBinder<>(StatementInfo.class, authorizationSchema);
     }
 
     @Override

@@ -23,12 +23,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
-/// Reads User projections and resolves mutation targets through operation-scoped JPA query schemas.
+/// Reads User projections and resolves mutation targets through separate Query and Authorization contracts.
 @Repository
 public class JpaUserQueryRepository implements UserQueryRepository {
 
     private final JpaUserRepository users;
-    private final ListUsersQuerySchema listSchema;
+    private final ListUsersQuerySchema listQuerySchema;
     private final QueryPredicateBinder<UserInfo, UserEntity> listFilterBinder;
     private final ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> listAuthorizationBinder;
     private final ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> deleteAuthorizationBinder;
@@ -36,18 +36,22 @@ public class JpaUserQueryRepository implements UserQueryRepository {
 
     JpaUserQueryRepository(
         JpaUserRepository users,
-        ListUsersQuerySchema listSchema,
-        DeleteUserQuerySchema deleteSchema,
-        UpdateUserStatementsQuerySchema statementUpdateSchema
+        ListUsersQuerySchema listQuerySchema,
+        ListUsersAuthorizationSchema listAuthorizationSchema,
+        DeleteUserAuthorizationSchema deleteAuthorizationSchema,
+        UpdateUserStatementsAuthorizationSchema statementUpdateAuthorizationSchema
     ) {
         this.users = users;
-        this.listSchema = listSchema;
-        this.listFilterBinder = new JpaQueryPredicateBinder<>(UserInfo.class, listSchema);
-        this.listAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(UserInfo.class, listSchema);
-        this.deleteAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(UserInfo.class, deleteSchema);
+        this.listQuerySchema = listQuerySchema;
+        this.listFilterBinder = new JpaQueryPredicateBinder<>(UserInfo.class, listQuerySchema);
+        this.listAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(UserInfo.class, listAuthorizationSchema);
+        this.deleteAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(
+            UserInfo.class,
+            deleteAuthorizationSchema
+        );
         this.statementUpdateAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(
             UserInfo.class,
-            statementUpdateSchema
+            statementUpdateAuthorizationSchema
         );
     }
 
@@ -95,7 +99,7 @@ public class JpaUserQueryRepository implements UserQueryRepository {
             builder.notEqual(root.get(UserEntity_.status), UserStatus.TOMBSTONE);
         Specification<UserEntity> authorizationSpec = this.listAuthorizationBinder.bind(authorization);
         Specification<UserEntity> clientFilter = this.listFilterBinder.bind(query.predicate());
-        Specification<UserEntity> ordering = JpaQuerySortSpecifications.bind(query, this.listSchema);
+        Specification<UserEntity> ordering = JpaQuerySortSpecifications.bind(query, this.listQuerySchema);
         Specification<UserEntity> authorized = JpaQuerySpecifications.authorized(authorizationSpec, clientFilter);
         var result = this.users.findAll(visible.and(authorized).and(ordering), pageable);
         return new OffsetPage<>(

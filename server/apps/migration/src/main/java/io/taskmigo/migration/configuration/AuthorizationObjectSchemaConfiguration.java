@@ -1,8 +1,12 @@
 package io.taskmigo.migration.configuration;
 
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
+import io.taskmigo.authorization.role.application.api.RoleAuthorization;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
-import io.taskmigo.query.QuerySchemaView;
+import io.taskmigo.authorization.statement.application.api.StatementAuthorization;
+import io.taskmigo.identity.group.application.api.GroupAuthorization;
+import io.taskmigo.identity.user.application.api.UserAuthorization;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,11 +18,22 @@ class AuthorizationObjectSchemaConfiguration {
 
     @Bean
     @Primary
-    ObjectAuthorizationTargetResolver objectAuthorizationTargetResolver(List<QuerySchemaView> schemas) {
-        List<Route> routes = schemas
-            .stream()
-            .flatMap(schema -> routes(schema).stream())
-            .toList();
+    ObjectAuthorizationTargetResolver objectAuthorizationTargetResolver(
+        UserAuthorization.List userList,
+        UserAuthorization.Delete userDelete,
+        UserAuthorization.UpdateStatements userUpdateStatements,
+        GroupAuthorization.List groupList,
+        RoleAuthorization.List roleList,
+        StatementAuthorization.List statementList
+    ) {
+        List<Route> routes = List.of(
+            new Route("GET", "/api/v0/users", userList),
+            new Route("DELETE", "/api/v0/users/{userId}", userDelete),
+            new Route("PATCH", "/api/v0/users/{userId}/statements", userUpdateStatements),
+            new Route("GET", "/api/v0/groups", groupList),
+            new Route("GET", "/api/v0/roles", roleList),
+            new Route("GET", "/api/v0/statements", statementList)
+        );
         return (method, pathMatcher) ->
             routes
                 .stream()
@@ -28,21 +43,7 @@ class AuthorizationObjectSchemaConfiguration {
                 .toList();
     }
 
-    private static List<Route> routes(QuerySchemaView schema) {
-        return switch (schema.operation()) {
-            case "identity.users.list" -> List.of(new Route("GET", "/api/v0/users", schema));
-            case "identity.users.delete" -> List.of(new Route("DELETE", "/api/v0/users/{userId}", schema));
-            case "identity.users.update-statements" -> List.of(
-                new Route("PATCH", "/api/v0/users/{userId}/statements", schema)
-            );
-            case "identity.groups.list" -> List.of(new Route("GET", "/api/v0/groups", schema));
-            case "access-control.roles.list" -> List.of(new Route("GET", "/api/v0/roles", schema));
-            case "access-control.statements.list" -> List.of(new Route("GET", "/api/v0/statements", schema));
-            default -> List.of();
-        };
-    }
-
-    private record Route(String method, String path, QuerySchemaView schema) {
+    private record Route(String method, String path, ObjectAuthorizationSchema<?> schema) {
         private boolean matches(String statementMethod, StatementTargetPathMatcher pathMatcher) {
             return (
                 ("*".equals(statementMethod) || this.method.equals(statementMethod)) && pathMatcher.matches(this.path)

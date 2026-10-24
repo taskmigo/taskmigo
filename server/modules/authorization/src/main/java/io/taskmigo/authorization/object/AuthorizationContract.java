@@ -1,4 +1,4 @@
-package io.taskmigo.query;
+package io.taskmigo.authorization.object;
 
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -6,11 +6,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/// Selects the persistence-neutral Query Schema operation used by one inbound handler.
+/// Declares the typed Object Authorization contract protecting one HTTP handler.
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
-public @interface QueryOperation {
-    /// Returns the stable operation identifier published by the handler's Query Schema.
-    String value();
+public @interface AuthorizationContract {
+    Class<? extends ObjectAuthorizationSchema<?>> value();
 }

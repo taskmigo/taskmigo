@@ -1,24 +1,27 @@
 package io.taskmigo.authorization.object.application.api;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.request.AuthorizationContext;
 import io.taskmigo.query.QueryFieldContext;
-import io.taskmigo.query.QuerySchemaView;
 
 /// Produces typed logical Object Authorization predicates from one Request Authorization context.
 public interface ObjectAuthorization {
-    /// Partially evaluates Object Statements against a static operation query schema.
-    default <Q> ObjectAuthorizationPredicate<Q> authorize(AuthorizationContext context, QuerySchemaView schema) {
+    /// Partially evaluates Object Statements against a static authorization schema.
+    default <Q> ObjectAuthorizationPredicate<Q> authorize(
+        AuthorizationContext context,
+        ObjectAuthorizationSchema<Q> schema
+    ) {
         return this.authorize(context, schema, QueryFieldContext.empty());
     }
 
-    /// Partially evaluates Object Statements against the exact runtime query-field snapshot for the operation.
+    /// Partially evaluates Object Statements against the exact runtime field snapshot for the contract.
     <Q> ObjectAuthorizationPredicate<Q> authorize(
         AuthorizationContext context,
-        QuerySchemaView schema,
+        ObjectAuthorizationSchema<Q> schema,
         QueryFieldContext queryContext
     );
 
-    /// Validates an Object Statement independently against every route schema governed by its target.
+    /// Validates an Object Statement independently against every authorization schema governed by its target.
     void validatePolicy(String policy, String method, String path);
 }

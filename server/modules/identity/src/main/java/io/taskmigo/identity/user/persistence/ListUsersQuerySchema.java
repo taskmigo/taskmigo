@@ -8,6 +8,7 @@ import static io.taskmigo.query.QueryOperator.LT;
 import static io.taskmigo.query.QueryOperator.LTE;
 import static io.taskmigo.query.QueryOperator.NE;
 
+import io.taskmigo.identity.user.application.api.UserQuery;
 import io.taskmigo.jpaquery.QueryField;
 import io.taskmigo.jpaquery.QuerySchema;
 import io.taskmigo.query.QueryFieldContext;
@@ -15,9 +16,9 @@ import java.util.Collection;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
-/// Defines the JPA query surface for the list-users operation.
+/// Defines the JPA query surface for listing Users.
 @Component
-final class ListUsersQuerySchema extends QuerySchema<UserEntity> {
+final class ListUsersQuerySchema extends QuerySchema<UserEntity> implements UserQuery.List {
 
     ListUsersQuerySchema() {
         super(UserEntity.class);
@@ -25,7 +26,7 @@ final class ListUsersQuerySchema extends QuerySchema<UserEntity> {
 
     @Override
     protected String operationId() {
-        return "identity.users.list";
+        return "user.query.list";
     }
 
     @Override

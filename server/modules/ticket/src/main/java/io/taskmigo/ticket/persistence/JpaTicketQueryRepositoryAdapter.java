@@ -25,26 +25,29 @@ import org.springframework.stereotype.Repository;
 class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository {
 
     private final JpaTicketRepository repository;
-    private final ListTicketsQuerySchema listSchema;
-    private final ReadTicketQuerySchema readSchema;
-    private final UpdateTicketQuerySchema updateSchema;
+    private final ListTicketsQuerySchema listQuerySchema;
+    private final ListTicketsAuthorizationSchema listAuthorizationSchema;
+    private final ReadTicketAuthorizationSchema readAuthorizationSchema;
+    private final UpdateTicketAuthorizationSchema updateAuthorizationSchema;
     private final JpaObjectAuthorizationPredicateBinder<TicketInfo, TicketEntity> listAuthorizationBinder;
     private final JpaObjectAuthorizationPredicateBinder<TicketInfo, TicketEntity> readAuthorizationBinder;
     private final JpaObjectAuthorizationPredicateBinder<TicketInfo, TicketEntity> updateAuthorizationBinder;
 
     JpaTicketQueryRepositoryAdapter(
         JpaTicketRepository repository,
-        ListTicketsQuerySchema listSchema,
-        ReadTicketQuerySchema readSchema,
-        UpdateTicketQuerySchema updateSchema
+        ListTicketsQuerySchema listQuerySchema,
+        ListTicketsAuthorizationSchema listAuthorizationSchema,
+        ReadTicketAuthorizationSchema readAuthorizationSchema,
+        UpdateTicketAuthorizationSchema updateAuthorizationSchema
     ) {
         this.repository = Objects.requireNonNull(repository);
-        this.listSchema = Objects.requireNonNull(listSchema);
-        this.readSchema = Objects.requireNonNull(readSchema);
-        this.updateSchema = Objects.requireNonNull(updateSchema);
-        this.listAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(TicketInfo.class, listSchema);
-        this.readAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(TicketInfo.class, readSchema);
-        this.updateAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(TicketInfo.class, updateSchema);
+        this.listQuerySchema = Objects.requireNonNull(listQuerySchema);
+        this.listAuthorizationSchema = Objects.requireNonNull(listAuthorizationSchema);
+        this.readAuthorizationSchema = Objects.requireNonNull(readAuthorizationSchema);
+        this.updateAuthorizationSchema = Objects.requireNonNull(updateAuthorizationSchema);
+        this.listAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(TicketInfo.class, listAuthorizationSchema);
+        this.readAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(TicketInfo.class, readAuthorizationSchema);
+        this.updateAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(TicketInfo.class, updateAuthorizationSchema);
     }
 
     @Override
@@ -57,8 +60,7 @@ class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository {
         Objects.requireNonNull(authorization);
         Objects.requireNonNull(context);
         if (authorization instanceof ObjectAuthorizationPredicateModel model) {
-            Specification<TicketEntity> target = (root, query, builder) ->
-                builder.equal(root.get(TicketEntity_.id), id);
+            Specification<TicketEntity> target = (root, query, builder) -> builder.equal(root.get(TicketEntity_.id), id);
             Specification<TicketEntity> authorizationSpec = this.singleAuthorization(model, authorization, context);
             return this.repository.findOne(target.and(authorizationSpec)).map(TicketEntity::toDomain);
         }
@@ -116,10 +118,10 @@ class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository {
         ObjectAuthorizationPredicate<TicketInfo> authorization,
         QueryFieldContext context
     ) {
-        if (model.schemaIdentity().equals(this.readSchema.identity(context))) {
+        if (model.schemaIdentity().equals(this.readAuthorizationSchema.authorizationIdentity(context))) {
             return this.readAuthorizationBinder.bind(authorization, context);
         }
-        if (model.schemaIdentity().equals(this.updateSchema.identity(context))) {
+        if (model.schemaIdentity().equals(this.updateAuthorizationSchema.authorizationIdentity(context))) {
             return this.updateAuthorizationBinder.bind(authorization, context);
         }
         throw new IllegalArgumentException(
@@ -131,11 +133,11 @@ class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository {
         if (!(query.predicate() instanceof QueryPredicateModel model)) {
             throw new IllegalArgumentException("Unsupported Ticket Query Predicate implementation");
         }
-        String expectedIdentity = this.listSchema.identity(query.context());
+        String expectedIdentity = this.listQuerySchema.identity(query.context());
         if (!model.schemaIdentity().equals(expectedIdentity)) {
             throw new IllegalArgumentException("Ticket Query Predicate schema identity does not match the list schema");
         }
-        return JpaQueryExpressionBinder.bind(model.expression(), this.listSchema, query.context());
+        return JpaQueryExpressionBinder.bind(model.expression(), this.listQuerySchema, query.context());
     }
 
     private Specification<TicketEntity> sorting(ListQuerySpec<TicketInfo> query) {
@@ -144,7 +146,7 @@ class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository {
                 Objects.requireNonNull(criteria),
                 root,
                 builder,
-                this.listSchema,
+                this.listQuerySchema,
                 query.context(),
                 query.sorting()
             );

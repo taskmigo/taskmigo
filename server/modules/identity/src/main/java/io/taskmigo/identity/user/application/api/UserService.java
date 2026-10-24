@@ -5,8 +5,7 @@ import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.user.AuthenticationInfo;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.UserMutationActor;
-import io.taskmigo.query.ListQuerySpec;
-import io.taskmigo.query.QueryPredicate;
+import io.taskmigo.query.ListQueryRequest;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
@@ -20,19 +19,9 @@ public interface UserService {
     OffsetPage<UserInfo> list(
         int page,
         int perPage,
-        ListQuerySpec<UserInfo> query,
+        ListQueryRequest query,
         ObjectAuthorizationPredicate<UserInfo> authorization
     );
-
-    default OffsetPage<UserInfo> list(
-        int page,
-        int perPage,
-        QueryPredicate<UserInfo> filter,
-        ObjectAuthorizationPredicate<UserInfo> authorization
-    ) {
-        return this.list(page, perPage, new ListQuerySpec<>(filter), authorization);
-    }
-
     Set<UUID> roleIds(UUID userId);
     void setStatements(UUID userId, Collection<UUID> statementIds, UserMutationActor actor);
     void setStatements(

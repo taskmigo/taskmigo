@@ -15,73 +15,62 @@ import org.springframework.web.context.request.ServletWebRequest;
 
 class QueryFieldContextResolverTest {
 
-    /**
-     * Verifies that one runtime Query context is reused throughout a request.
-     *
-     * Given: one matching context source and repeated resolution of the same operation in one request.
-     * Expect: both callers receive the same context while the source is invoked only once.
-     */
     @Test
-    @DisplayName("caches one runtime Query field context per request operation")
-    void shouldCacheRuntimeContextWhenOperationIsResolvedRepeatedly() {
-        // Arrange
+    @DisplayName("caches one runtime field context per request contract")
+    void shouldCacheRuntimeContextWhenContractIsResolvedRepeatedly() {
         QueryFieldContext context = new QueryFieldContext(Map.of("type", "incident"));
         AtomicInteger calls = new AtomicInteger();
         QueryFieldContextResolver resolver = new QueryFieldContextResolver(
-            List.of(source("test.objects.list", context, calls))
+            List.of(source(TestContract.class, context, calls))
         );
         NativeWebRequest request = new ServletWebRequest(new MockHttpServletRequest());
 
-        // Act
-        QueryFieldContext first = resolver.resolve("test.objects.list", request);
-        QueryFieldContext second = resolver.resolve("test.objects.list", request);
+        QueryFieldContext first = resolver.resolve(TestContract.class, request);
+        QueryFieldContext second = resolver.resolve(TestContract.class, request);
 
-        // Assert
         assertThat(first).isSameAs(context);
         assertThat(second).isSameAs(context);
         assertThat(calls).hasValue(1);
     }
 
-    /**
-     * Verifies deterministic runtime Query context selection.
-     *
-     * Given: zero sources or multiple sources for one operation.
-     * Expect: zero sources yields the empty context while ambiguous sources are rejected.
-     */
     @Test
-    @DisplayName("defaults empty and rejects multiple runtime Query context sources")
+    @DisplayName("defaults empty and rejects multiple runtime context sources")
     void shouldResolveZeroOrRejectMultipleRuntimeContextSources() {
-        // Arrange
         NativeWebRequest emptyRequest = new ServletWebRequest(new MockHttpServletRequest());
         QueryFieldContextResolver empty = new QueryFieldContextResolver(List.of());
         QueryFieldContext context = new QueryFieldContext(Map.of("scope", "one"));
         QueryFieldContextResolver duplicate = new QueryFieldContextResolver(
             List.of(
-                source("test.objects.list", context, new AtomicInteger()),
-                source("test.objects.list", context, new AtomicInteger())
+                source(TestContract.class, context, new AtomicInteger()),
+                source(TestContract.class, context, new AtomicInteger())
             )
         );
         NativeWebRequest duplicateRequest = new ServletWebRequest(new MockHttpServletRequest());
 
-        // Act / Assert
-        assertThat(empty.resolve("test.objects.list", emptyRequest)).isEqualTo(QueryFieldContext.empty());
-        assertThatThrownBy(() -> duplicate.resolve("test.objects.list", duplicateRequest))
+        assertThat(empty.resolve(TestContract.class, emptyRequest)).isEqualTo(QueryFieldContext.empty());
+        assertThatThrownBy(() -> duplicate.resolve(TestContract.class, duplicateRequest))
             .isInstanceOf(IllegalStateException.class)
             .hasMessageContaining("multiple");
     }
 
-    private static QueryFieldContextSource source(String operation, QueryFieldContext context, AtomicInteger calls) {
+    private static QueryFieldContextSource source(
+        Class<?> contract,
+        QueryFieldContext context,
+        AtomicInteger calls
+    ) {
         return new QueryFieldContextSource() {
             @Override
-            public boolean supports(String candidate) {
-                return operation.equals(candidate);
+            public boolean supports(Class<?> candidate) {
+                return contract == candidate;
             }
 
             @Override
-            public QueryFieldContext resolve(String candidate, NativeWebRequest request) {
+            public QueryFieldContext resolve(Class<?> candidate, NativeWebRequest request) {
                 calls.incrementAndGet();
                 return context;
             }
         };
     }
+
+    private interface TestContract {}
 }

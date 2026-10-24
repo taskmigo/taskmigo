@@ -5,6 +5,7 @@ import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfil
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicates;
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.api.ObjectAuthorization;
 import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.object.domain.ObjectAuthorizationPredicateComposer;
@@ -21,7 +22,6 @@ import io.taskmigo.language.LanguageCompiler;
 import io.taskmigo.language.LanguageType;
 import io.taskmigo.language.PartialProgram;
 import io.taskmigo.query.QueryFieldContext;
-import io.taskmigo.query.QuerySchemaView;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +44,7 @@ public final class ObjectAuthorizationService implements ObjectAuthorization {
     @Override
     public <Q> ObjectAuthorizationPredicate<Q> authorize(
         AuthorizationContext context,
-        QuerySchemaView schema,
+        ObjectAuthorizationSchema<Q> schema,
         QueryFieldContext queryContext
     ) {
         Objects.requireNonNull(queryContext);
@@ -78,11 +78,11 @@ public final class ObjectAuthorizationService implements ObjectAuthorization {
     @Override
     public void validatePolicy(String policy, String method, String path) {
         StatementTargetPathMatcher pathMatcher = StatementTargetPathMatcher.compile(path);
-        List<QuerySchemaView> applicable = this.targetResolver.applicable(method, pathMatcher);
+        List<ObjectAuthorizationSchema<?>> applicable = this.targetResolver.applicable(method, pathMatcher);
         if (applicable.isEmpty()) {
-            throw new AuthorizationException("Object Statement target matches no registered object schema route");
+            throw new AuthorizationException("Object Statement target matches no registered authorization schema route");
         }
-        for (QuerySchemaView schema : applicable) {
+        for (ObjectAuthorizationSchema<?> schema : applicable) {
             CompiledSource compiled = this.compiler.compile(
                 policy,
                 AuthorizationEmbeddedLanguageSchemas.object(schema),
