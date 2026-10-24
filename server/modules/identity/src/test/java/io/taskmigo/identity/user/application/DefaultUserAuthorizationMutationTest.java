@@ -57,8 +57,7 @@ class DefaultUserAuthorizationMutationTest {
             commands,
             mock(SubjectGrantQueryService.class),
             assignments,
-            mock(UserDeletionLifecycleService.class),
-            authorization
+            mock(UserDeletionLifecycleService.class)
         );
 
         // Act + Assert
@@ -66,7 +65,7 @@ class DefaultUserAuthorizationMutationTest {
             service.setStatements(
                 userId,
                 List.of(UUID.randomUUID()),
-                UserAuthorizationTestSupport.CONTEXT,
+                authorization,
                 new UserMutationActor(UUID.randomUUID(), "operator")
             )
         ).isInstanceOfSatisfying(UserException.class, exception ->
@@ -95,8 +94,7 @@ class DefaultUserAuthorizationMutationTest {
             commands,
             mock(SubjectGrantQueryService.class),
             assignments,
-            mock(UserDeletionLifecycleService.class),
-            authorization
+            mock(UserDeletionLifecycleService.class)
         );
 
         // Act + Assert
@@ -104,7 +102,7 @@ class DefaultUserAuthorizationMutationTest {
             service.setStatements(
                 userId,
                 List.of(UUID.randomUUID()),
-                UserAuthorizationTestSupport.CONTEXT,
+                authorization,
                 new UserMutationActor(UUID.randomUUID(), "operator")
             )
         ).isInstanceOfSatisfying(UserException.class, exception ->
@@ -140,8 +138,7 @@ class DefaultUserAuthorizationMutationTest {
             commands,
             queries,
             assignments,
-            mock(UserDeletionLifecycleService.class),
-            authorization
+            mock(UserDeletionLifecycleService.class)
         );
 
         // Act + Assert
@@ -149,7 +146,7 @@ class DefaultUserAuthorizationMutationTest {
             service.setStatements(
                 userId,
                 List.of(statementId),
-                UserAuthorizationTestSupport.CONTEXT,
+                authorization,
                 new UserMutationActor(UUID.randomUUID(), "operator")
             )
         ).isInstanceOfSatisfying(UserException.class, exception -> {
@@ -181,17 +178,12 @@ class DefaultUserAuthorizationMutationTest {
             commands,
             mock(SubjectGrantQueryService.class),
             mock(SubjectGrantAssignmentService.class),
-            deletion,
-            authorization
+            deletion
         );
 
         // Act + Assert
         assertThatThrownBy(() ->
-            service.delete(
-                userId,
-                UserAuthorizationTestSupport.CONTEXT,
-                new UserMutationActor(UUID.randomUUID(), "operator")
-            )
+            service.delete(userId, authorization, new UserMutationActor(UUID.randomUUID(), "operator"))
         ).isInstanceOfSatisfying(UserException.class, exception ->
             assertThat(exception.type()).isEqualTo(DomainFailureType.NOT_FOUND)
         );
@@ -219,16 +211,11 @@ class DefaultUserAuthorizationMutationTest {
             commands,
             mock(SubjectGrantQueryService.class),
             mock(SubjectGrantAssignmentService.class),
-            deletion,
-            authorization
+            deletion
         );
 
         // Act
-        service.delete(
-            userId,
-            UserAuthorizationTestSupport.CONTEXT,
-            new UserMutationActor(UUID.randomUUID(), "operator")
-        );
+        service.delete(userId, authorization, new UserMutationActor(UUID.randomUUID(), "operator"));
 
         // Assert
         verify(commands, never()).findByIdForUpdate(userId);
@@ -240,8 +227,7 @@ class DefaultUserAuthorizationMutationTest {
         UserCommandService commands,
         SubjectGrantQueryService queries,
         SubjectGrantAssignmentService assignments,
-        UserDeletionLifecycleService deletion,
-        ObjectAuthorizationPredicate<UserInfo> authorization
+        UserDeletionLifecycleService deletion
     ) {
         return new DefaultUserService(
             users,
@@ -251,7 +237,6 @@ class DefaultUserAuthorizationMutationTest {
             deletion,
             mock(UserAuditAppender.class),
             UserAuthorizationTestSupport.schemas(),
-            UserAuthorizationTestSupport.objectAuthorization(authorization),
             new ListQueryCompiler(),
             Clock.fixed(NOW, ZoneOffset.UTC)
         );

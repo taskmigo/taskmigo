@@ -66,7 +66,6 @@ class TicketServiceTest {
         this.tickets,
         TicketQueryTestSupport.emptyContexts(),
         TicketQueryTestSupport.schemas("tickets.list", "tickets.read", "tickets.update"),
-        new TestTicketAuthorization(),
         new ListQueryCompiler(),
         Clock.fixed(NOW, ZoneOffset.UTC)
     );

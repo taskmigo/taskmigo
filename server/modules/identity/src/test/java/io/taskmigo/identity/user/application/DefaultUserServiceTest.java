@@ -209,7 +209,6 @@ class DefaultUserServiceTest {
             Mockito.mock(UserDeletionLifecycleService.class),
             audits,
             UserAuthorizationTestSupport.schemas(),
-            UserAuthorizationTestSupport.objectAuthorization(UserAuthorizationTestSupport.allowAll()),
             new ListQueryCompiler(),
             Clock.fixed(NOW, ZoneOffset.UTC)
         );
