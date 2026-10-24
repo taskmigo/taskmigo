@@ -8,8 +8,10 @@ import io.taskmigo.jpaquery.JpaQueryExpressionBinder;
 import io.taskmigo.jpaquery.JpaQuerySortBinder;
 import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryFieldContext;
+import io.taskmigo.query.QuerySchemaView;
 import io.taskmigo.query.model.QueryPredicateModel;
 import io.taskmigo.ticket.application.TicketQueryRepository;
+import io.taskmigo.ticket.application.TicketQuerySchemas;
 import io.taskmigo.ticket.application.api.TicketInfo;
 import io.taskmigo.ticket.domain.Ticket;
 import java.util.Objects;
@@ -22,7 +24,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
 @Repository
-class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository {
+class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository, TicketQuerySchemas {
 
     private final JpaTicketRepository repository;
     private final ListTicketsQuerySchema listSchema;
@@ -45,6 +47,21 @@ class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository {
         this.listAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(TicketInfo.class, listSchema);
         this.readAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(TicketInfo.class, readSchema);
         this.updateAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(TicketInfo.class, updateSchema);
+    }
+
+    @Override
+    public QuerySchemaView list() {
+        return this.listSchema;
+    }
+
+    @Override
+    public QuerySchemaView read() {
+        return this.readSchema;
+    }
+
+    @Override
+    public QuerySchemaView update() {
+        return this.updateSchema;
     }
 
     @Override

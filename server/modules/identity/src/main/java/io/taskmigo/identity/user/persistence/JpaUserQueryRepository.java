@@ -10,11 +10,13 @@ import io.taskmigo.identity.user.AuthenticationInfo;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.UserQueryRepository;
+import io.taskmigo.identity.user.application.UserQuerySchemas;
 import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.UserProfile;
 import io.taskmigo.jpaquery.JpaQuerySortSpecifications;
 import io.taskmigo.jpaquery.JpaQuerySpecifications;
 import io.taskmigo.query.ListQuerySpec;
+import io.taskmigo.query.QuerySchemaView;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,10 +27,12 @@ import org.springframework.stereotype.Repository;
 
 /// Reads User projections and resolves mutation targets through operation-scoped JPA query schemas.
 @Repository
-public class JpaUserQueryRepository implements UserQueryRepository {
+public class JpaUserQueryRepository implements UserQueryRepository, UserQuerySchemas {
 
     private final JpaUserRepository users;
     private final ListUsersQuerySchema listSchema;
+    private final DeleteUserQuerySchema deleteSchema;
+    private final UpdateUserStatementsQuerySchema statementUpdateSchema;
     private final QueryPredicateBinder<UserInfo, UserEntity> listFilterBinder;
     private final ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> listAuthorizationBinder;
     private final ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> deleteAuthorizationBinder;
@@ -42,6 +46,8 @@ public class JpaUserQueryRepository implements UserQueryRepository {
     ) {
         this.users = users;
         this.listSchema = listSchema;
+        this.deleteSchema = deleteSchema;
+        this.statementUpdateSchema = statementUpdateSchema;
         this.listFilterBinder = new JpaQueryPredicateBinder<>(UserInfo.class, listSchema);
         this.listAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(UserInfo.class, listSchema);
         this.deleteAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(UserInfo.class, deleteSchema);
@@ -49,6 +55,21 @@ public class JpaUserQueryRepository implements UserQueryRepository {
             UserInfo.class,
             statementUpdateSchema
         );
+    }
+
+    @Override
+    public QuerySchemaView list() {
+        return this.listSchema;
+    }
+
+    @Override
+    public QuerySchemaView delete() {
+        return this.deleteSchema;
+    }
+
+    @Override
+    public QuerySchemaView updateStatements() {
+        return this.statementUpdateSchema;
     }
 
     @Override

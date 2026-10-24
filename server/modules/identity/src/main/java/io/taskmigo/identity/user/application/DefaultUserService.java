@@ -42,9 +42,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class DefaultUserService implements UserService {
 
     private static final String ENTITY_TYPE = "user";
-    private static final String LIST_OPERATION = "identity.users.list";
-    private static final String DELETE_OPERATION = "identity.users.delete";
-    private static final String UPDATE_STATEMENTS_OPERATION = "identity.users.update-statements";
 
     private final UserQueryRepository users;
     private final UserCommandService commands;
@@ -52,7 +49,7 @@ public class DefaultUserService implements UserService {
     private final SubjectGrantAssignmentService grantAssignments;
     private final UserDeletionLifecycleService deletion;
     private final UserAuditAppender audits;
-    private final List<QuerySchemaView> querySchemas;
+    private final UserQuerySchemas querySchemas;
     private final ObjectAuthorization objectAuthorization;
     private final ListQueryCompiler queryCompiler;
     private final Clock clock;
@@ -64,7 +61,7 @@ public class DefaultUserService implements UserService {
         SubjectGrantAssignmentService grantAssignments,
         UserDeletionLifecycleService deletion,
         UserAuditAppender audits,
-        List<QuerySchemaView> querySchemas,
+        UserQuerySchemas querySchemas,
         ObjectAuthorization objectAuthorization,
         ListQueryCompiler queryCompiler,
         Clock clock
@@ -75,7 +72,7 @@ public class DefaultUserService implements UserService {
         this.grantAssignments = grantAssignments;
         this.deletion = deletion;
         this.audits = audits;
-        this.querySchemas = List.copyOf(querySchemas);
+        this.querySchemas = querySchemas;
         this.objectAuthorization = objectAuthorization;
         this.queryCompiler = queryCompiler;
         this.clock = clock;
@@ -108,7 +105,7 @@ public class DefaultUserService implements UserService {
         AuthorizationContext authorizationContext
     ) {
         QueryFieldContext context = QueryFieldContext.empty();
-        QuerySchemaView schema = this.schema(LIST_OPERATION);
+        QuerySchemaView schema = this.querySchemas.list();
         ListQuerySpec<UserInfo> query = this.queryCompiler.compile(schema, context, request);
         ObjectAuthorizationPredicate<UserInfo> authorization = this.objectAuthorization.authorize(
             authorizationContext,
@@ -139,7 +136,7 @@ public class DefaultUserService implements UserService {
         UserMutationActor actor
     ) {
         ObjectAuthorizationPredicate<UserInfo> authorization = this.authorize(
-            UPDATE_STATEMENTS_OPERATION,
+            this.querySchemas.updateStatements(),
             authorizationContext
         );
         User target = this.requireAuthorizedStatementTarget(userId, authorization);
@@ -163,7 +160,10 @@ public class DefaultUserService implements UserService {
 
     @Override
     public void delete(UUID userId, AuthorizationContext authorizationContext, UserMutationActor actor) {
-        ObjectAuthorizationPredicate<UserInfo> authorization = this.authorize(DELETE_OPERATION, authorizationContext);
+        ObjectAuthorizationPredicate<UserInfo> authorization = this.authorize(
+            this.querySchemas.delete(),
+            authorizationContext
+        );
         User target = this.requireAuthorizedDeleteTarget(userId, authorization);
         try {
             this.deletion.delete(target, actor, this.clock.instant());
@@ -172,22 +172,8 @@ public class DefaultUserService implements UserService {
         }
     }
 
-    private ObjectAuthorizationPredicate<UserInfo> authorize(String operation, AuthorizationContext context) {
-        QuerySchemaView schema = this.schema(operation);
+    private ObjectAuthorizationPredicate<UserInfo> authorize(QuerySchemaView schema, AuthorizationContext context) {
         return this.objectAuthorization.authorize(context, schema, QueryFieldContext.empty());
-    }
-
-    private QuerySchemaView schema(String operation) {
-        List<QuerySchemaView> matches = this.querySchemas
-            .stream()
-            .filter(schema -> schema.operation().equals(operation))
-            .toList();
-        if (matches.size() != 1) {
-            throw new IllegalStateException(
-                "Expected exactly one Query Schema for operation '" + operation + "' but found " + matches.size()
-            );
-        }
-        return matches.getFirst();
     }
 
     private User requireAuthorizedDeleteTarget(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization) {

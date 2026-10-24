@@ -18,12 +18,26 @@ final class UserAuthorizationTestSupport {
 
     private UserAuthorizationTestSupport() {}
 
-    static List<QuerySchemaView> schemas() {
-        return List.of(
-            schema("identity.users.list"),
-            schema("identity.users.delete"),
-            schema("identity.users.update-statements")
-        );
+    static UserQuerySchemas schemas() {
+        QuerySchemaView list = schema("identity.users.list");
+        QuerySchemaView delete = schema("identity.users.delete");
+        QuerySchemaView updateStatements = schema("identity.users.update-statements");
+        return new UserQuerySchemas() {
+            @Override
+            public QuerySchemaView list() {
+                return list;
+            }
+
+            @Override
+            public QuerySchemaView delete() {
+                return delete;
+            }
+
+            @Override
+            public QuerySchemaView updateStatements() {
+                return updateStatements;
+            }
+        };
     }
 
     static ObjectAuthorization objectAuthorization(ObjectAuthorizationPredicate<UserInfo> predicate) {

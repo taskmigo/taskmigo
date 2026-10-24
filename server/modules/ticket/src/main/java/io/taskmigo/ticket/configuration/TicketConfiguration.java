@@ -5,9 +5,9 @@ import io.taskmigo.eav.query.EavQueryFieldCatalog;
 import io.taskmigo.eav.schema.application.EavSchemaService;
 import io.taskmigo.eav.value.application.EavInstanceService;
 import io.taskmigo.query.ListQueryCompiler;
-import io.taskmigo.query.QuerySchemaView;
 import io.taskmigo.ticket.application.TicketQueryFieldCatalog;
 import io.taskmigo.ticket.application.TicketQueryRepository;
+import io.taskmigo.ticket.application.TicketQuerySchemas;
 import io.taskmigo.ticket.application.TicketRepository;
 import io.taskmigo.ticket.application.TicketServiceImpl;
 import io.taskmigo.ticket.application.api.TicketQueryFieldContexts;
@@ -16,7 +16,6 @@ import io.taskmigo.ticket.type.application.TicketTypeRepository;
 import io.taskmigo.ticket.type.application.TicketTypeServiceImpl;
 import io.taskmigo.ticket.type.application.api.TicketTypeService;
 import java.time.Clock;
-import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -46,7 +45,7 @@ class TicketConfiguration {
         TicketRepository tickets,
         TicketQueryRepository queries,
         TicketQueryFieldContexts queryFields,
-        List<QuerySchemaView> querySchemas,
+        TicketQuerySchemas querySchemas,
         ObjectAuthorization objectAuthorization
     ) {
         return new TicketServiceImpl(
