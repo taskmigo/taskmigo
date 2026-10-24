@@ -58,11 +58,6 @@ public class JpaUserQueryRepository implements UserQueryRepository, UserQuerySch
     }
 
     @Override
-    public QuerySchemaView list() {
-        return this.listSchema;
-    }
-
-    @Override
     public QuerySchemaView delete() {
         return this.deleteSchema;
     }
@@ -101,6 +96,11 @@ public class JpaUserQueryRepository implements UserQueryRepository, UserQuerySch
             .findById(id)
             .filter(user -> user.status() != UserStatus.TOMBSTONE)
             .isPresent();
+    }
+
+    @Override
+    public QuerySchemaView list() {
+        return this.listSchema;
     }
 
     @Override
