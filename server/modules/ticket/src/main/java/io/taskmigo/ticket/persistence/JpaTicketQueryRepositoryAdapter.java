@@ -50,11 +50,6 @@ class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository, TicketQu
     }
 
     @Override
-    public QuerySchemaView list() {
-        return this.listSchema;
-    }
-
-    @Override
     public QuerySchemaView read() {
         return this.readSchema;
     }
@@ -86,6 +81,11 @@ class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository, TicketQu
             return this.repository.findById(id).map(TicketEntity::toDomain);
         }
         throw new IllegalArgumentException("Unsupported Ticket Object Authorization Predicate implementation");
+    }
+
+    @Override
+    public QuerySchemaView list() {
+        return this.listSchema;
     }
 
     @Override
