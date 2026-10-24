@@ -31,8 +31,6 @@ public class JpaUserQueryRepository implements UserQueryRepository, UserQuerySch
 
     private final JpaUserRepository users;
     private final ListUsersQuerySchema listSchema;
-    private final DeleteUserQuerySchema deleteSchema;
-    private final UpdateUserStatementsQuerySchema statementUpdateSchema;
     private final QueryPredicateBinder<UserInfo, UserEntity> listFilterBinder;
     private final ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> listAuthorizationBinder;
     private final ObjectAuthorizationPredicateBinder<UserInfo, UserEntity> deleteAuthorizationBinder;
@@ -46,8 +44,6 @@ public class JpaUserQueryRepository implements UserQueryRepository, UserQuerySch
     ) {
         this.users = users;
         this.listSchema = listSchema;
-        this.deleteSchema = deleteSchema;
-        this.statementUpdateSchema = statementUpdateSchema;
         this.listFilterBinder = new JpaQueryPredicateBinder<>(UserInfo.class, listSchema);
         this.listAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(UserInfo.class, listSchema);
         this.deleteAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(UserInfo.class, deleteSchema);
