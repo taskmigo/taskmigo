@@ -166,11 +166,7 @@ public class TicketServiceImpl implements TicketService {
         return toInfo(updated, instance);
     }
 
-    private Ticket requireAuthorized(
-        UUID ticketId,
-        QuerySchemaView schema,
-        AuthorizationContext authorizationContext
-    ) {
+    private Ticket requireAuthorized(UUID ticketId, QuerySchemaView schema, AuthorizationContext authorizationContext) {
         Objects.requireNonNull(ticketId);
         Objects.requireNonNull(schema);
         Objects.requireNonNull(authorizationContext);
