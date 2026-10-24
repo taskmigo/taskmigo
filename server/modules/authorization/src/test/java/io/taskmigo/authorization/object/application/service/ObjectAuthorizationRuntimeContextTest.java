@@ -45,8 +45,12 @@ class ObjectAuthorizationRuntimeContextTest {
 
         ObjectAuthorizationPredicate<TestObject> predicate = service.authorize(operation, schema, context);
 
-        assertThat(ObjectAuthorizationPredicateModels.schemaIdentity(predicate)).isEqualTo(schema.identity(context));
-        assertThat(ObjectAuthorizationPredicateModels.schemaIdentity(predicate)).isNotEqualTo(schema.identity());
+        assertThat(ObjectAuthorizationPredicateModels.schemaIdentity(predicate)).isEqualTo(
+            schema.authorizationIdentity(context)
+        );
+        assertThat(ObjectAuthorizationPredicateModels.schemaIdentity(predicate)).isNotEqualTo(
+            schema.authorizationIdentity()
+        );
     }
 
     @Test

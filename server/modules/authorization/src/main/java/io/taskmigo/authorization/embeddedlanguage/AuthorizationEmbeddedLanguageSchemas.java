@@ -44,7 +44,7 @@ public final class AuthorizationEmbeddedLanguageSchemas {
             "taskmigo.authorization.object." +
                 LanguageContract.VERSION +
                 ":" +
-                schemas.stream().map(ObjectAuthorizationSchema::identity).sorted().toList(),
+                schemas.stream().map(ObjectAuthorizationSchema::authorizationIdentity).sorted().toList(),
             Map.of(
                 "principal",
                 root(Map.of("id", string(), "username", string())),
@@ -63,7 +63,7 @@ public final class AuthorizationEmbeddedLanguageSchemas {
             fields.put(first, field.path().segments().size() == 1 ? field(field) : nested(schema, first));
         }
         return new EnvironmentSchema(
-            "taskmigo.authorization.object." + LanguageContract.VERSION + ":" + schema.identity(),
+            "taskmigo.authorization.object." + LanguageContract.VERSION + ":" + schema.authorizationIdentity(),
             Map.of(
                 "principal",
                 root(Map.of("id", string(), "username", string())),

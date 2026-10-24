@@ -24,7 +24,7 @@ public final class ObjectAuthorizationPredicateModels {
     ) {
         Objects.requireNonNull(schema);
         Objects.requireNonNull(queryContext);
-        return wrap(schema.identity(queryContext), expression);
+        return wrap(schema.authorizationIdentity(queryContext), expression);
     }
 
     public static <Q> ObjectAuthorizationPredicate<Q> constant(ObjectAuthorizationSchema<Q> schema, boolean value) {

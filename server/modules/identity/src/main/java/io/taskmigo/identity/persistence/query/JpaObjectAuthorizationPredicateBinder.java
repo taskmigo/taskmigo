@@ -38,7 +38,7 @@ public final class JpaObjectAuthorizationPredicateBinder<Q, E> implements Object
         if (!(predicate instanceof ObjectAuthorizationPredicateModel model)) {
             throw new IllegalArgumentException("unsupported Object Authorization Predicate implementation");
         }
-        if (!model.schemaIdentity().equals(this.authorizationSchema.identity())) {
+        if (!model.schemaIdentity().equals(this.authorizationSchema.authorizationIdentity())) {
             throw new IllegalArgumentException(
                 "Object Authorization Predicate schema identity does not match the JPA authorization schema"
             );

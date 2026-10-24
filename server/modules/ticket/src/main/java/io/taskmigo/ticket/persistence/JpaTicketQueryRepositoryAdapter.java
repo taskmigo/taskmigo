@@ -118,10 +118,10 @@ class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository {
         ObjectAuthorizationPredicate<TicketInfo> authorization,
         QueryFieldContext context
     ) {
-        if (model.schemaIdentity().equals(this.readAuthorizationSchema.identity(context))) {
+        if (model.schemaIdentity().equals(this.readAuthorizationSchema.authorizationIdentity(context))) {
             return this.readAuthorizationBinder.bind(authorization, context);
         }
-        if (model.schemaIdentity().equals(this.updateAuthorizationSchema.identity(context))) {
+        if (model.schemaIdentity().equals(this.updateAuthorizationSchema.authorizationIdentity(context))) {
             return this.updateAuthorizationBinder.bind(authorization, context);
         }
         throw new IllegalArgumentException(
