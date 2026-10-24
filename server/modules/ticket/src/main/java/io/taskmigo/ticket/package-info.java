@@ -7,8 +7,6 @@
         "jpaquery",
         "authorization :: object",
         "authorization :: object-model",
-        "authorization :: object-use-cases",
-        "authorization :: request",
         "authorization :: jpa-query-binding",
         "eav :: query",
         "eav :: query-jpa",

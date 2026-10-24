@@ -36,24 +36,7 @@ public final class TicketQueryTestSupport {
 
     public static TicketQuerySchemas schemas(String listOperation, String readOperation, String updateOperation) {
         QuerySchemaView list = schema(listOperation);
-        QuerySchemaView read = schema(readOperation);
-        QuerySchemaView update = schema(updateOperation);
-        return new TicketQuerySchemas() {
-            @Override
-            public QuerySchemaView list() {
-                return list;
-            }
-
-            @Override
-            public QuerySchemaView read() {
-                return read;
-            }
-
-            @Override
-            public QuerySchemaView update() {
-                return update;
-            }
-        };
+        return () -> list;
     }
 
     private static QuerySchemaView schema(String operation) {

@@ -2,9 +2,7 @@ package io.taskmigo.ticket.application;
 
 import io.taskmigo.query.QuerySchemaView;
 
-/// Provides the operation-scoped Ticket query schemas required by Ticket use cases.
+/// Provides the Ticket list query schema required by query compilation.
 public interface TicketQuerySchemas {
     QuerySchemaView list();
-    QuerySchemaView read();
-    QuerySchemaView update();
 }

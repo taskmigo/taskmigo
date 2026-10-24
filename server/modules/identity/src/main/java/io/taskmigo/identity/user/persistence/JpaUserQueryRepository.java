@@ -58,16 +58,6 @@ public class JpaUserQueryRepository implements UserQueryRepository, UserQuerySch
     }
 
     @Override
-    public QuerySchemaView delete() {
-        return this.deleteSchema;
-    }
-
-    @Override
-    public QuerySchemaView updateStatements() {
-        return this.statementUpdateSchema;
-    }
-
-    @Override
     public Optional<UserInfo> find(UUID id) {
         return this.users
             .findById(id)

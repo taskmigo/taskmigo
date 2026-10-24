@@ -1,6 +1,5 @@
 package io.taskmigo.identity.user.configuration;
 
-import io.taskmigo.authorization.object.application.api.ObjectAuthorization;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
 import io.taskmigo.identity.configuration.application.api.ConfigurationService;
@@ -86,8 +85,7 @@ class UserApplicationConfiguration {
         SubjectGrantAssignmentService grantAssignments,
         UserDeletionLifecycleService deletion,
         UserAuditAppender audits,
-        UserQuerySchemas querySchemas,
-        ObjectAuthorization objectAuthorization
+        UserQuerySchemas querySchemas
     ) {
         return new DefaultUserService(
             users,
@@ -97,7 +95,6 @@ class UserApplicationConfiguration {
             deletion,
             audits,
             querySchemas,
-            objectAuthorization,
             new ListQueryCompiler(),
             Clock.systemUTC()
         );

@@ -1,6 +1,6 @@
 package io.taskmigo.identity.user.application.api;
 
-import io.taskmigo.authorization.request.AuthorizationContext;
+import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.user.AuthenticationInfo;
 import io.taskmigo.identity.user.UserInfo;
@@ -16,15 +16,20 @@ public interface UserService {
     UserInfo require(UUID id);
     Optional<UserInfo> find(UUID id);
     Optional<AuthenticationInfo> findForAuthentication(String username);
-    OffsetPage<UserInfo> list(int page, int perPage, ListQueryRequest query, AuthorizationContext authorization);
+    OffsetPage<UserInfo> list(
+        int page,
+        int perPage,
+        ListQueryRequest query,
+        ObjectAuthorizationPredicate<UserInfo> authorization
+    );
     Set<UUID> roleIds(UUID userId);
     void setStatements(UUID userId, Collection<UUID> statementIds, UserMutationActor actor);
     void setStatements(
         UUID userId,
         Collection<UUID> statementIds,
-        AuthorizationContext authorization,
+        ObjectAuthorizationPredicate<UserInfo> authorization,
         UserMutationActor actor
     );
     void setRoles(UUID userId, Collection<UUID> roleIds, UserMutationActor actor);
-    void delete(UUID userId, AuthorizationContext authorization, UserMutationActor actor);
+    void delete(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization, UserMutationActor actor);
 }

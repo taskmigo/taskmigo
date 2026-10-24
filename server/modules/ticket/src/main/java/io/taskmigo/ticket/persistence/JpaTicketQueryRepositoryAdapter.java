@@ -50,16 +50,6 @@ class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository, TicketQu
     }
 
     @Override
-    public QuerySchemaView read() {
-        return this.readSchema;
-    }
-
-    @Override
-    public QuerySchemaView update() {
-        return this.updateSchema;
-    }
-
-    @Override
     public Optional<Ticket> findAuthorized(
         UUID id,
         ObjectAuthorizationPredicate<TicketInfo> authorization,

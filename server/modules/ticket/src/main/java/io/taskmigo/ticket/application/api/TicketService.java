@@ -1,6 +1,6 @@
 package io.taskmigo.ticket.application.api;
 
-import io.taskmigo.authorization.request.AuthorizationContext;
+import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.ListQueryRequest;
 import java.util.Map;
@@ -16,10 +16,14 @@ public interface TicketService {
         int perPage,
         @Nullable UUID ticketTypeId,
         ListQueryRequest query,
-        AuthorizationContext authorization
+        ObjectAuthorizationPredicate<TicketInfo> authorization
     );
 
-    TicketInfo read(UUID ticketId, AuthorizationContext authorization);
+    TicketInfo read(UUID ticketId, ObjectAuthorizationPredicate<TicketInfo> authorization);
 
-    TicketInfo update(UUID ticketId, TicketPatch patch, AuthorizationContext authorization);
+    TicketInfo update(
+        UUID ticketId,
+        TicketPatch patch,
+        ObjectAuthorizationPredicate<TicketInfo> authorization
+    );
 }

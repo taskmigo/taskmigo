@@ -1,8 +1,6 @@
 package io.taskmigo.ticket.application;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.object.application.api.ObjectAuthorization;
-import io.taskmigo.authorization.request.AuthorizationContext;
 import io.taskmigo.eav.schema.application.EavSchemaService;
 import io.taskmigo.eav.schema.application.EavSchemaVersionInfo;
 import io.taskmigo.eav.schema.domain.EavSchemaStatus;
@@ -42,7 +40,6 @@ public class TicketServiceImpl implements TicketService {
     private final TicketQueryRepository queries;
     private final TicketQueryFieldContexts queryFields;
     private final TicketQuerySchemas querySchemas;
-    private final ObjectAuthorization objectAuthorization;
     private final ListQueryCompiler queryCompiler;
     private final Clock clock;
 
@@ -54,7 +51,6 @@ public class TicketServiceImpl implements TicketService {
         TicketQueryRepository queries,
         TicketQueryFieldContexts queryFields,
         TicketQuerySchemas querySchemas,
-        ObjectAuthorization objectAuthorization,
         ListQueryCompiler queryCompiler,
         Clock clock
     ) {
@@ -65,7 +61,6 @@ public class TicketServiceImpl implements TicketService {
         this.queries = Objects.requireNonNull(queries);
         this.queryFields = Objects.requireNonNull(queryFields);
         this.querySchemas = Objects.requireNonNull(querySchemas);
-        this.objectAuthorization = Objects.requireNonNull(objectAuthorization);
         this.queryCompiler = Objects.requireNonNull(queryCompiler);
         this.clock = Objects.requireNonNull(clock);
     }
@@ -105,19 +100,14 @@ public class TicketServiceImpl implements TicketService {
         int perPage,
         @Nullable UUID ticketTypeId,
         ListQueryRequest request,
-        AuthorizationContext authorizationContext
+        ObjectAuthorizationPredicate<TicketInfo> authorization
     ) {
         Objects.requireNonNull(request);
-        Objects.requireNonNull(authorizationContext);
+        Objects.requireNonNull(authorization);
         QueryFieldContext context =
             ticketTypeId == null ? this.queryFields.global() : this.queryFields.forType(ticketTypeId);
         QuerySchemaView schema = this.querySchemas.list();
         ListQuerySpec<TicketInfo> query = this.queryCompiler.compile(schema, context, request);
-        ObjectAuthorizationPredicate<TicketInfo> authorization = this.objectAuthorization.authorize(
-            authorizationContext,
-            schema,
-            context
-        );
         OffsetPage<Ticket> result = this.queries.list(page, perPage, ticketTypeId, query, authorization);
         List<TicketInfo> items = result
             .items()
@@ -134,8 +124,8 @@ public class TicketServiceImpl implements TicketService {
 
     @Transactional(readOnly = true)
     @Override
-    public TicketInfo read(UUID ticketId, AuthorizationContext authorizationContext) {
-        Ticket ticket = this.requireAuthorized(ticketId, this.querySchemas.read(), authorizationContext);
+    public TicketInfo read(UUID ticketId, ObjectAuthorizationPredicate<TicketInfo> authorization) {
+        Ticket ticket = this.requireAuthorized(ticketId, authorization);
         TicketType type = this.requireType(ticket.ticketTypeId());
         EavInstanceView instance = this.instances.get(ticket.schemaInstanceId());
         requireOwnedInstance(type, instance);
@@ -143,9 +133,13 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public TicketInfo update(UUID ticketId, TicketPatch patch, AuthorizationContext authorizationContext) {
+    public TicketInfo update(
+        UUID ticketId,
+        TicketPatch patch,
+        ObjectAuthorizationPredicate<TicketInfo> authorization
+    ) {
         Objects.requireNonNull(patch);
-        Ticket ticket = this.requireAuthorized(ticketId, this.querySchemas.update(), authorizationContext);
+        Ticket ticket = this.requireAuthorized(ticketId, authorization);
         TicketType type = this.requireType(ticket.ticketTypeId());
 
         if (!patch.hasChanges()) {
@@ -166,16 +160,10 @@ public class TicketServiceImpl implements TicketService {
         return toInfo(updated, instance);
     }
 
-    private Ticket requireAuthorized(UUID ticketId, QuerySchemaView schema, AuthorizationContext authorizationContext) {
+    private Ticket requireAuthorized(UUID ticketId, ObjectAuthorizationPredicate<TicketInfo> authorization) {
         Objects.requireNonNull(ticketId);
-        Objects.requireNonNull(schema);
-        Objects.requireNonNull(authorizationContext);
+        Objects.requireNonNull(authorization);
         QueryFieldContext context = this.queryFields.forTicket(ticketId);
-        ObjectAuthorizationPredicate<TicketInfo> authorization = this.objectAuthorization.authorize(
-            authorizationContext,
-            schema,
-            context
-        );
         return this.queries
             .findAuthorized(ticketId, authorization, context)
             .orElseThrow(() -> new IllegalArgumentException("Unknown or unauthorized Ticket"));

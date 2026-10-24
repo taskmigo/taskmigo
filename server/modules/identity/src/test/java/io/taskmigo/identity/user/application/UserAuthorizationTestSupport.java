@@ -1,9 +1,5 @@
 package io.taskmigo.identity.user.application;
 
-import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.object.application.api.ObjectAuthorization;
-import io.taskmigo.authorization.request.AuthorizationContext;
-import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryFieldDescriptor;
 import io.taskmigo.query.QuerySchemaView;
@@ -14,60 +10,11 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 final class UserAuthorizationTestSupport {
 
-    static final AuthorizationContext CONTEXT = new AuthorizationContext() {};
-
     private UserAuthorizationTestSupport() {}
 
     static UserQuerySchemas schemas() {
         QuerySchemaView list = schema("identity.users.list");
-        QuerySchemaView delete = schema("identity.users.delete");
-        QuerySchemaView updateStatements = schema("identity.users.update-statements");
-        return new UserQuerySchemas() {
-            @Override
-            public QuerySchemaView list() {
-                return list;
-            }
-
-            @Override
-            public QuerySchemaView delete() {
-                return delete;
-            }
-
-            @Override
-            public QuerySchemaView updateStatements() {
-                return updateStatements;
-            }
-        };
-    }
-
-    static ObjectAuthorization objectAuthorization(ObjectAuthorizationPredicate<UserInfo> predicate) {
-        return new ObjectAuthorization() {
-            @Override
-            public <Q> ObjectAuthorizationPredicate<Q> authorize(
-                AuthorizationContext context,
-                QuerySchemaView schema,
-                QueryFieldContext queryContext
-            ) {
-                return (ObjectAuthorizationPredicate<Q>) predicate;
-            }
-
-            @Override
-            public void validatePolicy(String policy, String method, String path) {}
-        };
-    }
-
-    static ObjectAuthorizationPredicate<UserInfo> allowAll() {
-        return new ObjectAuthorizationPredicate<>() {
-            @Override
-            public boolean isAlwaysTrue() {
-                return true;
-            }
-
-            @Override
-            public boolean isAlwaysFalse() {
-                return false;
-            }
-        };
+        return () -> list;
     }
 
     private static QuerySchemaView schema(String operation) {

@@ -1,6 +1,5 @@
 package io.taskmigo.ticket.configuration;
 
-import io.taskmigo.authorization.object.application.api.ObjectAuthorization;
 import io.taskmigo.eav.query.EavQueryFieldCatalog;
 import io.taskmigo.eav.schema.application.EavSchemaService;
 import io.taskmigo.eav.value.application.EavInstanceService;
@@ -45,8 +44,7 @@ class TicketConfiguration {
         TicketRepository tickets,
         TicketQueryRepository queries,
         TicketQueryFieldContexts queryFields,
-        TicketQuerySchemas querySchemas,
-        ObjectAuthorization objectAuthorization
+        TicketQuerySchemas querySchemas
     ) {
         return new TicketServiceImpl(
             ticketTypes,
@@ -56,7 +54,6 @@ class TicketConfiguration {
             queries,
             queryFields,
             querySchemas,
-            objectAuthorization,
             new ListQueryCompiler(),
             Clock.systemUTC()
         );

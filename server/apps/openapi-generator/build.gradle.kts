@@ -9,11 +9,11 @@ description = "Taskmigo build-time OpenAPI generator"
 dependencies {
     implementation(platform(libs.spring.boot.bom))
     implementation(project(":apps:web"))
-    implementation(project(":modules:authorization"))
     implementation(project(":modules:query"))
     implementation(libs.springdoc.openapi.starter.webmvc.api)
     implementation(libs.spring.boot.starter.webmvc)
 
+    testImplementation(project(":modules:authorization"))
     testImplementation(project(":modules:identity"))
     testImplementation(libs.scalar.webmvc)
     testImplementation(libs.spring.boot.starter.test)

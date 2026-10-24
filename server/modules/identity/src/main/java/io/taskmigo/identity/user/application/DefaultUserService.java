@@ -4,8 +4,6 @@ import io.taskmigo.audit.event.AuditEvent;
 import io.taskmigo.audit.model.AuditActor;
 import io.taskmigo.audit.model.AuditChange;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.authorization.object.application.api.ObjectAuthorization;
-import io.taskmigo.authorization.request.AuthorizationContext;
 import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
@@ -50,7 +48,6 @@ public class DefaultUserService implements UserService {
     private final UserDeletionLifecycleService deletion;
     private final UserAuditAppender audits;
     private final UserQuerySchemas querySchemas;
-    private final ObjectAuthorization objectAuthorization;
     private final ListQueryCompiler queryCompiler;
     private final Clock clock;
 
@@ -62,7 +59,6 @@ public class DefaultUserService implements UserService {
         UserDeletionLifecycleService deletion,
         UserAuditAppender audits,
         UserQuerySchemas querySchemas,
-        ObjectAuthorization objectAuthorization,
         ListQueryCompiler queryCompiler,
         Clock clock
     ) {
@@ -73,7 +69,6 @@ public class DefaultUserService implements UserService {
         this.deletion = deletion;
         this.audits = audits;
         this.querySchemas = querySchemas;
-        this.objectAuthorization = objectAuthorization;
         this.queryCompiler = queryCompiler;
         this.clock = clock;
     }
@@ -102,16 +97,11 @@ public class DefaultUserService implements UserService {
         int page,
         int perPage,
         ListQueryRequest request,
-        AuthorizationContext authorizationContext
+        ObjectAuthorizationPredicate<UserInfo> authorization
     ) {
         QueryFieldContext context = QueryFieldContext.empty();
         QuerySchemaView schema = this.querySchemas.list();
         ListQuerySpec<UserInfo> query = this.queryCompiler.compile(schema, context, request);
-        ObjectAuthorizationPredicate<UserInfo> authorization = this.objectAuthorization.authorize(
-            authorizationContext,
-            schema,
-            context
-        );
         return this.users.list(page, perPage, query, authorization);
     }
 
@@ -132,13 +122,9 @@ public class DefaultUserService implements UserService {
     public void setStatements(
         UUID userId,
         Collection<UUID> statementIds,
-        AuthorizationContext authorizationContext,
+        ObjectAuthorizationPredicate<UserInfo> authorization,
         UserMutationActor actor
     ) {
-        ObjectAuthorizationPredicate<UserInfo> authorization = this.authorize(
-            this.querySchemas.updateStatements(),
-            authorizationContext
-        );
         User target = this.requireAuthorizedStatementTarget(userId, authorization);
         this.requireMutable(target);
         this.replaceStatements(userId, statementIds, actor);
@@ -159,21 +145,17 @@ public class DefaultUserService implements UserService {
     }
 
     @Override
-    public void delete(UUID userId, AuthorizationContext authorizationContext, UserMutationActor actor) {
-        ObjectAuthorizationPredicate<UserInfo> authorization = this.authorize(
-            this.querySchemas.delete(),
-            authorizationContext
-        );
+    public void delete(
+        UUID userId,
+        ObjectAuthorizationPredicate<UserInfo> authorization,
+        UserMutationActor actor
+    ) {
         User target = this.requireAuthorizedDeleteTarget(userId, authorization);
         try {
             this.deletion.delete(target, actor, this.clock.instant());
         } catch (UserRuleViolation violation) {
             throw translate(violation);
         }
-    }
-
-    private ObjectAuthorizationPredicate<UserInfo> authorize(QuerySchemaView schema, AuthorizationContext context) {
-        return this.objectAuthorization.authorize(context, schema, QueryFieldContext.empty());
     }
 
     private User requireAuthorizedDeleteTarget(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization) {
