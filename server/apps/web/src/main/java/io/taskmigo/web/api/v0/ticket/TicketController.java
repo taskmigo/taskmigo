@@ -1,6 +1,7 @@
 package io.taskmigo.web.api.v0.ticket;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.taskmigo.authorization.request.AuthorizationContext;
@@ -87,7 +88,7 @@ class TicketController {
         @ParameterObject @Valid OffsetPageRequest pagination,
         @RequestParam(required = false) @Nullable UUID ticketTypeId,
         @ParameterObject @Valid ListQueryOptions query,
-        AuthorizationContext authorization
+        @Parameter(hidden = true) AuthorizationContext authorization
     ) {
         OffsetPage<TicketInfo> page = this.tickets.list(
             pagination.getPage(),
@@ -111,7 +112,7 @@ class TicketController {
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<Response, ApiResponse.BasicMeta>> read(
         @PathVariable UUID ticketId,
-        AuthorizationContext authorization
+        @Parameter(hidden = true) AuthorizationContext authorization
     ) {
         return this.responses.ok(
             Response.from(this.tickets.read(ticketId, authorization)),
@@ -129,7 +130,7 @@ class TicketController {
     ResponseEntity<ApiResponse<Response, ApiResponse.BasicMeta>> update(
         @PathVariable UUID ticketId,
         @Valid @RequestBody UpdateRequest request,
-        AuthorizationContext authorization
+        @Parameter(hidden = true) AuthorizationContext authorization
     ) {
         Map<String, @Nullable Object> customFields = request.customFields() == null ? Map.of() : request.customFields();
         TicketInfo updated = this.tickets.update(

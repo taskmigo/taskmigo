@@ -92,11 +92,6 @@ paths:
         - retainedAt
         - status
         - username
-      - name: authorization
-        in: query
-        required: true
-        schema:
-          $ref: "#/components/schemas/AuthorizationContext"
       responses:
         "200":
           description: OK
@@ -289,11 +284,6 @@ paths:
         - status
         - title
         - updatedAt
-      - name: authorization
-        in: query
-        required: true
-        schema:
-          $ref: "#/components/schemas/AuthorizationContext"
       responses:
         "200":
           description: OK
@@ -1229,11 +1219,6 @@ paths:
         schema:
           type: string
           format: uuid
-      - name: authorization
-        in: query
-        required: true
-        schema:
-          $ref: "#/components/schemas/AuthorizationContext"
       requestBody:
         content:
           application/json:
@@ -1300,11 +1285,6 @@ paths:
         schema:
           type: string
           format: uuid
-      - name: authorization
-        in: query
-        required: true
-        schema:
-          $ref: "#/components/schemas/AuthorizationContext"
       responses:
         "200":
           description: OK
@@ -1362,11 +1342,6 @@ paths:
         schema:
           type: string
           format: uuid
-      - name: authorization
-        in: query
-        required: true
-        schema:
-          $ref: "#/components/schemas/AuthorizationContext"
       requestBody:
         content:
           application/json:
@@ -1896,11 +1871,6 @@ paths:
         schema:
           type: string
           format: uuid
-      - name: authorization
-        in: query
-        required: true
-        schema:
-          $ref: "#/components/schemas/AuthorizationContext"
       responses:
         "200":
           description: OK
@@ -2370,7 +2340,6 @@ components:
             type: string
             format: uuid
           uniqueItems: true
-    AuthorizationContext: {}
     UpdateTicketRequest:
       type: object
       properties:
