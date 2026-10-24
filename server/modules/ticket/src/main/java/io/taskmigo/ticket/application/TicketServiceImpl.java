@@ -11,9 +11,9 @@ import io.taskmigo.query.ListQueryCompiler;
 import io.taskmigo.query.ListQueryRequest;
 import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryFieldContext;
-import io.taskmigo.query.QuerySchemaView;
 import io.taskmigo.ticket.application.api.TicketInfo;
 import io.taskmigo.ticket.application.api.TicketPatch;
+import io.taskmigo.ticket.application.api.TicketQuery;
 import io.taskmigo.ticket.application.api.TicketQueryFieldContexts;
 import io.taskmigo.ticket.application.api.TicketService;
 import io.taskmigo.ticket.domain.Ticket;
@@ -39,7 +39,7 @@ public class TicketServiceImpl implements TicketService {
     private final TicketRepository tickets;
     private final TicketQueryRepository queries;
     private final TicketQueryFieldContexts queryFields;
-    private final TicketQuerySchemas querySchemas;
+    private final TicketQuery.List querySchema;
     private final ListQueryCompiler queryCompiler;
     private final Clock clock;
 
@@ -50,7 +50,7 @@ public class TicketServiceImpl implements TicketService {
         TicketRepository tickets,
         TicketQueryRepository queries,
         TicketQueryFieldContexts queryFields,
-        TicketQuerySchemas querySchemas,
+        TicketQuery.List querySchema,
         ListQueryCompiler queryCompiler,
         Clock clock
     ) {
@@ -60,7 +60,7 @@ public class TicketServiceImpl implements TicketService {
         this.tickets = Objects.requireNonNull(tickets);
         this.queries = Objects.requireNonNull(queries);
         this.queryFields = Objects.requireNonNull(queryFields);
-        this.querySchemas = Objects.requireNonNull(querySchemas);
+        this.querySchema = Objects.requireNonNull(querySchema);
         this.queryCompiler = Objects.requireNonNull(queryCompiler);
         this.clock = Objects.requireNonNull(clock);
     }
@@ -106,8 +106,7 @@ public class TicketServiceImpl implements TicketService {
         Objects.requireNonNull(authorization);
         QueryFieldContext context =
             ticketTypeId == null ? this.queryFields.global() : this.queryFields.forType(ticketTypeId);
-        QuerySchemaView schema = this.querySchemas.list();
-        ListQuerySpec<TicketInfo> query = this.queryCompiler.compile(schema, context, request);
+        ListQuerySpec<TicketInfo> query = this.queryCompiler.compile(this.querySchema, context, request);
         OffsetPage<Ticket> result = this.queries.list(page, perPage, ticketTypeId, query, authorization);
         List<TicketInfo> items = result
             .items()

@@ -3,16 +3,18 @@ package io.taskmigo.web.api.v0.auth.authorization;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.taskmigo.authorization.object.AuthorizationContract;
+import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.statement.ApiInfo;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
+import io.taskmigo.authorization.statement.application.api.StatementAuthorization;
+import io.taskmigo.authorization.statement.application.api.StatementQuery;
 import io.taskmigo.authorization.statement.application.api.StatementService;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.ListQuerySpec;
-import io.taskmigo.query.QueryOperation;
-import io.taskmigo.web.api.support.objectauthorization.ObjectAuthorizationResolver;
-import io.taskmigo.web.api.support.objectauthorization.ResolvedObjectAuthorization;
+import io.taskmigo.query.QueryContract;
 import io.taskmigo.web.api.support.query.ListQueryOptions;
 import io.taskmigo.web.api.support.query.ListQueryResolver;
 import io.taskmigo.web.api.v0.support.pagination.OffsetPageRequest;
@@ -52,18 +54,15 @@ class StatementController {
 
     private final StatementService statements;
     private final ListQueryResolver queryResolver;
-    private final ObjectAuthorizationResolver objectAuthorization;
     private final ApiResponseFactory responses;
 
     StatementController(
         StatementService statements,
         ListQueryResolver queryResolver,
-        ObjectAuthorizationResolver objectAuthorization,
         ApiResponseFactory responses
     ) {
         this.statements = statements;
         this.queryResolver = queryResolver;
-        this.objectAuthorization = objectAuthorization;
         this.responses = responses;
     }
 
@@ -100,20 +99,21 @@ class StatementController {
     }
 
     @GetMapping("/statements")
-    @QueryOperation("access-control.statements.list")
+    @QueryContract(StatementQuery.List.class)
+    @AuthorizationContract(StatementAuthorization.List.class)
     @Operation(summary = "List authorization statements")
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
-        @ParameterObject @Valid ListQueryOptions query
+        @ParameterObject @Valid ListQueryOptions query,
+        ObjectAuthorizationPredicate<StatementInfo> authorization
     ) {
         ListQuerySpec<StatementInfo> filter = this.queryResolver.resolve(query);
-        ResolvedObjectAuthorization<StatementInfo> authorization = this.objectAuthorization.resolve();
         OffsetPage<StatementInfo> page = this.statements.list(
             pagination.getPage(),
             pagination.getPageSize(),
             filter,
-            authorization.predicate()
+            authorization
         );
         return this.responses.ok(
             page.items().stream().map(Response::from).toList(),

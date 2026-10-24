@@ -4,6 +4,7 @@ import static io.taskmigo.query.QueryOperator.CONTAINS;
 import static io.taskmigo.query.QueryOperator.EQ;
 import static io.taskmigo.query.QueryOperator.NE;
 
+import io.taskmigo.authorization.role.application.api.RoleQuery;
 import io.taskmigo.jpaquery.QueryField;
 import io.taskmigo.jpaquery.QuerySchema;
 import io.taskmigo.query.QueryFieldContext;
@@ -11,9 +12,9 @@ import java.util.Collection;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
-/// Defines the JPA query surface for the list-roles operation.
+/// Defines the JPA Query Contract for listing Roles.
 @Component
-final class ListRolesQuerySchema extends QuerySchema<RoleEntity> {
+final class ListRolesQuerySchema extends QuerySchema<RoleEntity> implements RoleQuery.List {
 
     ListRolesQuerySchema() {
         super(RoleEntity.class);
@@ -21,7 +22,7 @@ final class ListRolesQuerySchema extends QuerySchema<RoleEntity> {
 
     @Override
     protected String operationId() {
-        return "access-control.roles.list";
+        return "role.query.list";
     }
 
     @Override

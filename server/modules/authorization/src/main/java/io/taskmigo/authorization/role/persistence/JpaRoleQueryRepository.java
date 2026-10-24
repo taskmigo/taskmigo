@@ -21,7 +21,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
-/// Reads Role projections and binds client and authorization predicates through the list operation schema.
+/// Reads Role projections and binds independent client-query and authorization contracts.
 @Repository
 public class JpaRoleQueryRepository implements RoleQueryRepository {
 
@@ -30,11 +30,15 @@ public class JpaRoleQueryRepository implements RoleQueryRepository {
     private final QueryPredicateBinder<RoleInfo, RoleEntity> queryBinder;
     private final ObjectAuthorizationPredicateBinder<RoleInfo, RoleEntity> objectBinder;
 
-    JpaRoleQueryRepository(RoleRepository roles, ListRolesQuerySchema schema) {
+    JpaRoleQueryRepository(
+        RoleRepository roles,
+        ListRolesQuerySchema querySchema,
+        ListRolesAuthorizationSchema authorizationSchema
+    ) {
         this.roles = roles;
-        this.listSchema = schema;
-        this.queryBinder = new JpaQueryPredicateBinder<>(RoleInfo.class, schema);
-        this.objectBinder = new JpaObjectAuthorizationPredicateBinder<>(RoleInfo.class, schema);
+        this.listSchema = querySchema;
+        this.queryBinder = new JpaQueryPredicateBinder<>(RoleInfo.class, querySchema);
+        this.objectBinder = new JpaObjectAuthorizationPredicateBinder<>(RoleInfo.class, authorizationSchema);
     }
 
     @Override

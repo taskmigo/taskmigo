@@ -21,7 +21,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Repository;
 
-/// Reads Group projections and binds client and authorization predicates through the list operation schema.
+/// Reads Group projections and binds independent client-query and authorization contracts.
 @Repository
 public class JpaGroupQueryRepository implements GroupQueryRepository {
 
@@ -30,11 +30,15 @@ public class JpaGroupQueryRepository implements GroupQueryRepository {
     private final QueryPredicateBinder<GroupInfo, GroupEntity> queryBinder;
     private final ObjectAuthorizationPredicateBinder<GroupInfo, GroupEntity> objectBinder;
 
-    JpaGroupQueryRepository(JpaGroupRepository groups, ListGroupsQuerySchema schema) {
+    JpaGroupQueryRepository(
+        JpaGroupRepository groups,
+        ListGroupsQuerySchema querySchema,
+        ListGroupsAuthorizationSchema authorizationSchema
+    ) {
         this.groups = groups;
-        this.listSchema = schema;
-        this.queryBinder = new JpaQueryPredicateBinder<>(GroupInfo.class, schema);
-        this.objectBinder = new JpaObjectAuthorizationPredicateBinder<>(GroupInfo.class, schema);
+        this.listSchema = querySchema;
+        this.queryBinder = new JpaQueryPredicateBinder<>(GroupInfo.class, querySchema);
+        this.objectBinder = new JpaObjectAuthorizationPredicateBinder<>(GroupInfo.class, authorizationSchema);
     }
 
     @Override

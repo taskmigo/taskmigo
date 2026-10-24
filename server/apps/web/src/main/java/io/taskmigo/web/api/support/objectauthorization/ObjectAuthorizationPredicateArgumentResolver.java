@@ -1,11 +1,11 @@
 package io.taskmigo.web.api.support.objectauthorization;
 
+import io.taskmigo.authorization.object.AuthorizationContract;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.api.ObjectAuthorization;
 import io.taskmigo.authorization.request.AuthorizationContext;
 import io.taskmigo.query.QueryFieldContext;
-import io.taskmigo.query.QueryOperation;
-import io.taskmigo.query.QuerySchemaView;
 import io.taskmigo.web.api.support.query.QueryFieldContextResolver;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -17,17 +17,17 @@ import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
-/// Resolves typed Object Authorization predicates against the handler's operation Query Schema.
+/// Resolves server-owned Object Authorization predicates from the handler's explicit Authorization Contract.
 @Component
 public final class ObjectAuthorizationPredicateArgumentResolver implements HandlerMethodArgumentResolver {
 
     private final ObjectAuthorization authorization;
-    private final List<QuerySchemaView> schemas;
+    private final List<ObjectAuthorizationSchema<?>> schemas;
     private final QueryFieldContextResolver contexts;
 
     public ObjectAuthorizationPredicateArgumentResolver(
         ObjectAuthorization authorization,
-        List<QuerySchemaView> schemas,
+        List<ObjectAuthorizationSchema<?>> schemas,
         QueryFieldContextResolver contexts
     ) {
         this.authorization = authorization;
@@ -47,32 +47,44 @@ public final class ObjectAuthorizationPredicateArgumentResolver implements Handl
         NativeWebRequest webRequest,
         @Nullable WebDataBinderFactory binderFactory
     ) {
-        QuerySchemaView schema = this.schema(parameter);
-        QueryFieldContext queryContext = this.contexts.resolve(schema.operation(), webRequest);
+        AuthorizationContract contract = parameter.getMethodAnnotation(AuthorizationContract.class);
+        if (contract == null) {
+            throw new IllegalStateException(
+                "ObjectAuthorizationPredicate handler must declare @AuthorizationContract"
+            );
+        }
+        ObjectAuthorizationSchema<?> schema = this.schema(contract.value());
+        QueryFieldContext queryContext = this.contexts.resolve(contract.value(), webRequest);
         Object value = webRequest.getAttribute(AuthorizationContext.ATTRIBUTE, RequestAttributes.SCOPE_REQUEST);
         if (!(value instanceof AuthorizationContext context)) {
             throw new IllegalStateException("authorization context is missing for object access");
         }
-        return this.authorization.authorize(context, schema, queryContext);
+        return authorize(this.authorization, context, schema, queryContext);
     }
 
-    private QuerySchemaView schema(MethodParameter parameter) {
-        QueryOperation operation = parameter.getMethodAnnotation(QueryOperation.class);
-        if (operation == null) {
-            throw new IllegalStateException("ObjectAuthorizationPredicate handler must declare @QueryOperation");
-        }
-        List<QuerySchemaView> matches = this.schemas
+    private ObjectAuthorizationSchema<?> schema(Class<? extends ObjectAuthorizationSchema<?>> contract) {
+        List<ObjectAuthorizationSchema<?>> matches = this.schemas
             .stream()
-            .filter(candidate -> candidate.operation().equals(operation.value()))
+            .filter(contract::isInstance)
             .toList();
         if (matches.size() != 1) {
             throw new IllegalStateException(
-                "Expected exactly one Object Authorization Query Schema for operation " +
-                    operation.value() +
+                "Expected exactly one Object Authorization schema for contract " +
+                    contract.getName() +
                     ", found " +
                     matches.size()
             );
         }
         return matches.getFirst();
+    }
+
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private static ObjectAuthorizationPredicate<?> authorize(
+        ObjectAuthorization authorization,
+        AuthorizationContext context,
+        ObjectAuthorizationSchema<?> schema,
+        QueryFieldContext queryContext
+    ) {
+        return authorization.authorize(context, (ObjectAuthorizationSchema) schema, queryContext);
     }
 }

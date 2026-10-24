@@ -17,10 +17,10 @@ import io.taskmigo.identity.user.application.UserAuditAppender;
 import io.taskmigo.identity.user.application.UserAuditScrubber;
 import io.taskmigo.identity.user.application.UserCommandRepository;
 import io.taskmigo.identity.user.application.UserQueryRepository;
-import io.taskmigo.identity.user.application.UserQuerySchemas;
 import io.taskmigo.identity.user.application.UserRegistrationApplicationService;
 import io.taskmigo.identity.user.application.UserRetentionBatchService;
 import io.taskmigo.identity.user.application.UserSessionStore;
+import io.taskmigo.identity.user.application.api.UserQuery;
 import io.taskmigo.identity.user.application.api.UserRegistrationService;
 import io.taskmigo.identity.user.application.api.UserRetentionService;
 import io.taskmigo.identity.user.application.api.UserService;
@@ -85,7 +85,7 @@ class UserApplicationConfiguration {
         SubjectGrantAssignmentService grantAssignments,
         UserDeletionLifecycleService deletion,
         UserAuditAppender audits,
-        UserQuerySchemas querySchemas
+        UserQuery.List querySchema
     ) {
         return new DefaultUserService(
             users,
@@ -94,7 +94,7 @@ class UserApplicationConfiguration {
             grantAssignments,
             deletion,
             audits,
-            querySchemas,
+            querySchema,
             new ListQueryCompiler(),
             Clock.systemUTC()
         );

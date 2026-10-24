@@ -16,6 +16,7 @@ import io.taskmigo.identity.user.UserException;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.UserStatus;
+import io.taskmigo.identity.user.application.api.UserQuery;
 import io.taskmigo.identity.user.application.api.UserService;
 import io.taskmigo.identity.user.application.internal.UserCommandService;
 import io.taskmigo.identity.user.application.internal.UserDeletionLifecycleService;
@@ -25,7 +26,6 @@ import io.taskmigo.query.ListQueryCompiler;
 import io.taskmigo.query.ListQueryRequest;
 import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryFieldContext;
-import io.taskmigo.query.QuerySchemaView;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Collection;
@@ -47,7 +47,7 @@ public class DefaultUserService implements UserService {
     private final SubjectGrantAssignmentService grantAssignments;
     private final UserDeletionLifecycleService deletion;
     private final UserAuditAppender audits;
-    private final UserQuerySchemas querySchemas;
+    private final UserQuery.List querySchema;
     private final ListQueryCompiler queryCompiler;
     private final Clock clock;
 
@@ -58,7 +58,7 @@ public class DefaultUserService implements UserService {
         SubjectGrantAssignmentService grantAssignments,
         UserDeletionLifecycleService deletion,
         UserAuditAppender audits,
-        UserQuerySchemas querySchemas,
+        UserQuery.List querySchema,
         ListQueryCompiler queryCompiler,
         Clock clock
     ) {
@@ -68,7 +68,7 @@ public class DefaultUserService implements UserService {
         this.grantAssignments = grantAssignments;
         this.deletion = deletion;
         this.audits = audits;
-        this.querySchemas = querySchemas;
+        this.querySchema = querySchema;
         this.queryCompiler = queryCompiler;
         this.clock = clock;
     }
@@ -100,8 +100,7 @@ public class DefaultUserService implements UserService {
         ObjectAuthorizationPredicate<UserInfo> authorization
     ) {
         QueryFieldContext context = QueryFieldContext.empty();
-        QuerySchemaView schema = this.querySchemas.list();
-        ListQuerySpec<UserInfo> query = this.queryCompiler.compile(schema, context, request);
+        ListQuerySpec<UserInfo> query = this.queryCompiler.compile(this.querySchema, context, request);
         return this.users.list(page, perPage, query, authorization);
     }
 

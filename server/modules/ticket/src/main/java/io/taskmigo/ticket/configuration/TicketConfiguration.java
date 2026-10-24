@@ -6,9 +6,9 @@ import io.taskmigo.eav.value.application.EavInstanceService;
 import io.taskmigo.query.ListQueryCompiler;
 import io.taskmigo.ticket.application.TicketQueryFieldCatalog;
 import io.taskmigo.ticket.application.TicketQueryRepository;
-import io.taskmigo.ticket.application.TicketQuerySchemas;
 import io.taskmigo.ticket.application.TicketRepository;
 import io.taskmigo.ticket.application.TicketServiceImpl;
+import io.taskmigo.ticket.application.api.TicketQuery;
 import io.taskmigo.ticket.application.api.TicketQueryFieldContexts;
 import io.taskmigo.ticket.application.api.TicketService;
 import io.taskmigo.ticket.type.application.TicketTypeRepository;
@@ -44,7 +44,7 @@ class TicketConfiguration {
         TicketRepository tickets,
         TicketQueryRepository queries,
         TicketQueryFieldContexts queryFields,
-        TicketQuerySchemas querySchemas
+        TicketQuery.List querySchema
     ) {
         return new TicketServiceImpl(
             ticketTypes,
@@ -53,7 +53,7 @@ class TicketConfiguration {
             tickets,
             queries,
             queryFields,
-            querySchemas,
+            querySchema,
             new ListQueryCompiler(),
             Clock.systemUTC()
         );
