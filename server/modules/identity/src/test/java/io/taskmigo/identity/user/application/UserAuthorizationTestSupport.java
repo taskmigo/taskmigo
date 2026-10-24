@@ -1,8 +1,8 @@
 package io.taskmigo.identity.user.application;
 
+import io.taskmigo.identity.user.application.api.UserQuery;
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryFieldDescriptor;
-import io.taskmigo.query.QuerySchemaView;
 import java.util.Collection;
 import java.util.List;
 import org.jspecify.annotations.NullMarked;
@@ -12,16 +12,11 @@ final class UserAuthorizationTestSupport {
 
     private UserAuthorizationTestSupport() {}
 
-    static UserQuerySchemas schemas() {
-        QuerySchemaView list = schema("identity.users.list");
-        return () -> list;
-    }
-
-    private static QuerySchemaView schema(String operation) {
-        return new QuerySchemaView() {
+    static UserQuery.List schemas() {
+        return new UserQuery.List() {
             @Override
             public String operation() {
-                return operation;
+                return "user.query.list";
             }
 
             @Override

@@ -2,8 +2,7 @@ package io.taskmigo.ticket.support;
 
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryFieldDescriptor;
-import io.taskmigo.query.QuerySchemaView;
-import io.taskmigo.ticket.application.TicketQuerySchemas;
+import io.taskmigo.ticket.application.api.TicketQuery;
 import io.taskmigo.ticket.application.api.TicketQueryFieldContexts;
 import java.util.Collection;
 import java.util.List;
@@ -34,16 +33,11 @@ public final class TicketQueryTestSupport {
         };
     }
 
-    public static TicketQuerySchemas schemas(String listOperation, String readOperation, String updateOperation) {
-        QuerySchemaView list = schema(listOperation);
-        return () -> list;
-    }
-
-    private static QuerySchemaView schema(String operation) {
-        return new QuerySchemaView() {
+    public static TicketQuery.List schemas(String listOperation, String readOperation, String updateOperation) {
+        return new TicketQuery.List() {
             @Override
             public String operation() {
-                return operation;
+                return listOperation;
             }
 
             @Override
