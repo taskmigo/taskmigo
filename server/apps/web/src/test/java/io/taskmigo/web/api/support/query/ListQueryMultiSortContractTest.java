@@ -36,18 +36,10 @@ class ListQueryMultiSortContractTest {
     @Mock
     private QueryPredicate<TestObject> predicate;
 
-    /**
-     * Verifies that repeated sortBy query values compile into ordered database-side sorting.
-     *
-     * Given: a request with sortBy values "name" and "-createdAt", both allow-listed as sortable.
-     * Expect: the compiled query preserves priority and maps the prefix to ASC then DESC directions.
-     */
     @Test
     @DisplayName("compiles repeated sortBy values in priority order")
     void shouldCompileMultipleSortFieldsWhenRequestContainsRepeatedSortByValues() {
-        // Arrange
         QueryFieldContext context = QueryFieldContext.empty();
-        when(this.schema.operation()).thenReturn("test.objects.list");
         when(this.schema.field(QueryPath.of("name"), context)).thenReturn(
             Optional.of(sortableField("name", String.class))
         );
@@ -57,12 +49,10 @@ class ListQueryMultiSortContractTest {
         doReturn(this.predicate).when(this.filters).compileTyped(this.schema, context, null);
         ListQueryOptions request = new ListQueryOptions();
         request.setSortBy(List.of("name", "-createdAt"));
-        ListQueryOptionsCompiler compiler = new ListQueryOptionsCompiler(List.of(this.schema), this.filters);
+        ListQueryOptionsCompiler compiler = new ListQueryOptionsCompiler(this.filters);
 
-        // Act
-        ListQuerySpec<TestObject> result = compiler.compile("test.objects.list", request, context);
+        ListQuerySpec<TestObject> result = compiler.compile(this.schema, request, context);
 
-        // Assert
         assertThat(result.sorting()).containsExactly(
             new QuerySort(QueryPath.of("name"), QuerySort.Direction.ASC),
             new QuerySort(QueryPath.of("createdAt"), QuerySort.Direction.DESC)
