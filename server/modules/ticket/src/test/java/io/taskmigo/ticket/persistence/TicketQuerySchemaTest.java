@@ -90,8 +90,9 @@ class TicketQuerySchemaTest {
         assertThat(schema.operation()).isEqualTo("tickets.list");
         assertThat(readAuthorization.field(QueryPath.parse("severity"), scoped)).isPresent();
         assertThat(updateAuthorization.field(QueryPath.parse("severity"), scoped)).isPresent();
-        assertThat(readAuthorization.authorizationIdentity(scoped))
-            .isNotEqualTo(updateAuthorization.authorizationIdentity(scoped));
+        assertThat(readAuthorization.authorizationIdentity(scoped)).isNotEqualTo(
+            updateAuthorization.authorizationIdentity(scoped)
+        );
     }
 
     @Test
