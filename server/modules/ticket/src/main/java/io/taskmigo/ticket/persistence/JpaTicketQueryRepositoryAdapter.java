@@ -26,7 +26,6 @@ class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository {
 
     private final JpaTicketRepository repository;
     private final ListTicketsQuerySchema listQuerySchema;
-    private final ListTicketsAuthorizationSchema listAuthorizationSchema;
     private final ReadTicketAuthorizationSchema readAuthorizationSchema;
     private final UpdateTicketAuthorizationSchema updateAuthorizationSchema;
     private final JpaObjectAuthorizationPredicateBinder<TicketInfo, TicketEntity> listAuthorizationBinder;
@@ -42,12 +41,11 @@ class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository {
     ) {
         this.repository = Objects.requireNonNull(repository);
         this.listQuerySchema = Objects.requireNonNull(listQuerySchema);
-        this.listAuthorizationSchema = Objects.requireNonNull(listAuthorizationSchema);
         this.readAuthorizationSchema = Objects.requireNonNull(readAuthorizationSchema);
         this.updateAuthorizationSchema = Objects.requireNonNull(updateAuthorizationSchema);
         this.listAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(
             TicketInfo.class,
-            listAuthorizationSchema
+            Objects.requireNonNull(listAuthorizationSchema)
         );
         this.readAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(
             TicketInfo.class,
