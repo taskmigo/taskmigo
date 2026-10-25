@@ -37,9 +37,14 @@ class ObjectAuthorizationWorkerApiTest {
         ObjectAuthorization objectAuthorization = mock(ObjectAuthorization.class);
         TestAuthorizationSchema schema = new TestAuthorizationSchema();
         ObjectAuthorizationPredicate<TestObject> predicate = mock(ObjectAuthorizationPredicate.class);
-        when(requestAuthorization.authorize(principal, request)).thenReturn(new RequestAuthorizationResult(true, context));
+        when(requestAuthorization.authorize(principal, request)).thenReturn(
+            new RequestAuthorizationResult(true, context)
+        );
         when(objectAuthorization.authorize(context, schema, QueryFieldContext.empty())).thenReturn(predicate);
-        DefaultAuthorizationGateway gateway = new DefaultAuthorizationGateway(requestAuthorization, objectAuthorization);
+        DefaultAuthorizationGateway gateway = new DefaultAuthorizationGateway(
+            requestAuthorization,
+            objectAuthorization
+        );
 
         ObjectAuthorizationPredicate<TestObject> resolved = gateway.authorize(principal, request, schema);
 
@@ -59,7 +64,10 @@ class ObjectAuthorizationWorkerApiTest {
         when(requestAuthorization.authorize(principal, request)).thenReturn(
             new RequestAuthorizationResult(false, mock(AuthorizationContext.class))
         );
-        DefaultAuthorizationGateway gateway = new DefaultAuthorizationGateway(requestAuthorization, objectAuthorization);
+        DefaultAuthorizationGateway gateway = new DefaultAuthorizationGateway(
+            requestAuthorization,
+            objectAuthorization
+        );
 
         assertThatThrownBy(() -> gateway.authorize(principal, request, schema))
             .isInstanceOf(AuthorizationException.class)
@@ -68,6 +76,7 @@ class ObjectAuthorizationWorkerApiTest {
     }
 
     private static final class TestAuthorizationSchema implements ObjectAuthorizationSchema<TestObject> {
+
         @Override
         public Collection<QueryFieldDescriptor> fields(QueryFieldContext context) {
             return List.of();

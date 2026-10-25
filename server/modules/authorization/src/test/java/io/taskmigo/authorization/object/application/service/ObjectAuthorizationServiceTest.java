@@ -34,9 +34,17 @@ import org.junit.jupiter.api.Test;
 class ObjectAuthorizationServiceTest {
 
     private final ObjectAuthorizationSchema<TestObject> schema = schema("name");
-    private final ObjectAuthorizationTargetResolver targets = ObjectAuthorizationTargetResolver.all(List.of(this.schema));
-    private final StatementArtifactFactory artifacts = new StatementArtifactFactory(new LanguageCompiler(), this.targets);
-    private final ObjectAuthorizationService service = new ObjectAuthorizationService(new LanguageCompiler(), this.targets);
+    private final ObjectAuthorizationTargetResolver targets = ObjectAuthorizationTargetResolver.all(
+        List.of(this.schema)
+    );
+    private final StatementArtifactFactory artifacts = new StatementArtifactFactory(
+        new LanguageCompiler(),
+        this.targets
+    );
+    private final ObjectAuthorizationService service = new ObjectAuthorizationService(
+        new LanguageCompiler(),
+        this.targets
+    );
 
     @Test
     @DisplayName("defaults to deny without a matching object statement")

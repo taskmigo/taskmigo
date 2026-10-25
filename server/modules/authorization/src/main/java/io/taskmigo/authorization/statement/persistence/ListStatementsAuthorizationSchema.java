@@ -14,7 +14,10 @@ import org.springframework.stereotype.Component;
 
 /// Defines the Object Authorization field surface for listing Statements.
 @Component
-final class ListStatementsAuthorizationSchema extends QuerySchema<StatementEntity> implements StatementAuthorization.List {
+final class ListStatementsAuthorizationSchema
+    extends QuerySchema<StatementEntity>
+    implements StatementAuthorization.List
+{
 
     ListStatementsAuthorizationSchema() {
         super(StatementEntity.class);

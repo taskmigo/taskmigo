@@ -44,7 +44,10 @@ public class JpaUserQueryRepository implements UserQueryRepository {
         this.users = users;
         this.listQuerySchema = listQuerySchema;
         this.listFilterBinder = new JpaQueryPredicateBinder<>(UserInfo.class, listQuerySchema);
-        this.listAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(UserInfo.class, listAuthorizationSchema);
+        this.listAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(
+            UserInfo.class,
+            listAuthorizationSchema
+        );
         this.deleteAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(
             UserInfo.class,
             deleteAuthorizationSchema

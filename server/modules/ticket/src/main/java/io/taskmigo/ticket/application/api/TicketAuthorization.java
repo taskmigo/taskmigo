@@ -4,6 +4,7 @@ import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 
 /// Typed Object Authorization contracts published by the Ticket feature.
 public final class TicketAuthorization {
+
     private TicketAuthorization() {}
 
     public interface List extends ObjectAuthorizationSchema<TicketInfo> {}

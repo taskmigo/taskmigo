@@ -5,6 +5,7 @@ import io.taskmigo.identity.user.UserInfo;
 
 /// Typed Object Authorization contracts published by the User feature.
 public final class UserAuthorization {
+
     private UserAuthorization() {}
 
     public interface List extends ObjectAuthorizationSchema<UserInfo> {}

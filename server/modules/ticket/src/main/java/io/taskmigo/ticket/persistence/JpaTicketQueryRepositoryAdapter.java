@@ -45,9 +45,18 @@ class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository {
         this.listAuthorizationSchema = Objects.requireNonNull(listAuthorizationSchema);
         this.readAuthorizationSchema = Objects.requireNonNull(readAuthorizationSchema);
         this.updateAuthorizationSchema = Objects.requireNonNull(updateAuthorizationSchema);
-        this.listAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(TicketInfo.class, listAuthorizationSchema);
-        this.readAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(TicketInfo.class, readAuthorizationSchema);
-        this.updateAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(TicketInfo.class, updateAuthorizationSchema);
+        this.listAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(
+            TicketInfo.class,
+            listAuthorizationSchema
+        );
+        this.readAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(
+            TicketInfo.class,
+            readAuthorizationSchema
+        );
+        this.updateAuthorizationBinder = new JpaObjectAuthorizationPredicateBinder<>(
+            TicketInfo.class,
+            updateAuthorizationSchema
+        );
     }
 
     @Override
@@ -60,7 +69,8 @@ class JpaTicketQueryRepositoryAdapter implements TicketQueryRepository {
         Objects.requireNonNull(authorization);
         Objects.requireNonNull(context);
         if (authorization instanceof ObjectAuthorizationPredicateModel model) {
-            Specification<TicketEntity> target = (root, query, builder) -> builder.equal(root.get(TicketEntity_.id), id);
+            Specification<TicketEntity> target = (root, query, builder) ->
+                builder.equal(root.get(TicketEntity_.id), id);
             Specification<TicketEntity> authorizationSpec = this.singleAuthorization(model, authorization, context);
             return this.repository.findOne(target.and(authorizationSpec)).map(TicketEntity::toDomain);
         }

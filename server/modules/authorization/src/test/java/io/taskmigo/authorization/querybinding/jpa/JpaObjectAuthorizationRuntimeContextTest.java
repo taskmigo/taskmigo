@@ -68,7 +68,11 @@ class JpaObjectAuthorizationRuntimeContextTest {
         return new TestSchema(severity);
     }
 
-    private static final class TestSchema extends QuerySchema<TestEntity> implements ObjectAuthorizationSchema<TestObject> {
+    private static final class TestSchema
+        extends QuerySchema<TestEntity>
+        implements ObjectAuthorizationSchema<TestObject>
+    {
+
         private final QueryField<TestEntity, String> severity;
 
         private TestSchema(QueryField<TestEntity, String> severity) {

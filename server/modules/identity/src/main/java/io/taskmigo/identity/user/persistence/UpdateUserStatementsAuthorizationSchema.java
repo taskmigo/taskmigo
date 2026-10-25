@@ -14,7 +14,8 @@ import org.springframework.stereotype.Component;
 
 /// Defines the Object Authorization field surface for replacing one User's direct Statement assignments.
 @Component
-final class UpdateUserStatementsAuthorizationSchema extends QuerySchema<UserEntity>
+final class UpdateUserStatementsAuthorizationSchema
+    extends QuerySchema<UserEntity>
     implements UserAuthorization.UpdateStatements
 {
 
