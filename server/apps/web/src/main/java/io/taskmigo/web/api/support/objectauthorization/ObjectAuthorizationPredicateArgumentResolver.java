@@ -73,13 +73,12 @@ public final class ObjectAuthorizationPredicateArgumentResolver implements Handl
         return matches.getFirst();
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    private static ObjectAuthorizationPredicate<?> authorize(
+    private static <Q> ObjectAuthorizationPredicate<Q> authorize(
         ObjectAuthorization authorization,
         AuthorizationContext context,
-        ObjectAuthorizationSchema<?> schema,
+        ObjectAuthorizationSchema<Q> schema,
         QueryFieldContext queryContext
     ) {
-        return authorization.authorize(context, (ObjectAuthorizationSchema) schema, queryContext);
+        return authorization.authorize(context, schema, queryContext);
     }
 }
