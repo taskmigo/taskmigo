@@ -4,6 +4,7 @@ import io.taskmigo.authorization.object.AuthorizationContract;
 import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.factory.ObjectProvider;
@@ -47,12 +48,13 @@ public final class SpringMvcObjectAuthorizationTargetResolver
 
     @Override
     public List<ObjectAuthorizationSchema<?>> applicable(String method, StatementTargetPathMatcher pathMatcher) {
-        return this.routes
-            .stream()
-            .filter(route -> route.matches(method, pathMatcher))
-            .map(route -> (ObjectAuthorizationSchema<?>) route.schema())
-            .distinct()
-            .toList();
+        ArrayList<ObjectAuthorizationSchema<?>> applicable = new ArrayList<>();
+        for (Route route : this.routes) {
+            if (route.matches(method, pathMatcher) && !applicable.contains(route.schema())) {
+                applicable.add(route.schema());
+            }
+        }
+        return List.copyOf(applicable);
     }
 
     private List<Route> routes(RequestMappingInfo mapping, HandlerMethod handler) {

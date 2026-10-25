@@ -7,6 +7,7 @@ import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import io.taskmigo.authorization.statement.application.api.StatementAuthorization;
 import io.taskmigo.identity.group.application.api.GroupAuthorization;
 import io.taskmigo.identity.user.application.api.UserAuthorization;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,13 +36,13 @@ class AuthorizationObjectSchemaConfiguration {
             new Route("GET", "/api/v0/statements", statementList)
         );
         return (method, pathMatcher) -> {
-            List<ObjectAuthorizationSchema<?>> applicable = routes
-                .stream()
-                .filter(route -> route.matches(method, pathMatcher))
-                .map(route -> (ObjectAuthorizationSchema<?>) route.schema())
-                .distinct()
-                .toList();
-            return applicable;
+            ArrayList<ObjectAuthorizationSchema<?>> applicable = new ArrayList<>();
+            for (Route route : routes) {
+                if (route.matches(method, pathMatcher) && !applicable.contains(route.schema())) {
+                    applicable.add(route.schema());
+                }
+            }
+            return List.copyOf(applicable);
         };
     }
 

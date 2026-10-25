@@ -21,6 +21,7 @@ import io.taskmigo.query.QueryPath;
 import io.taskmigo.query.TypeDescriptor;
 import io.taskmigo.ticket.application.TicketQueryFieldCatalog;
 import io.taskmigo.ticket.application.TicketRepository;
+import io.taskmigo.ticket.application.api.TicketQuery;
 import io.taskmigo.ticket.type.application.TicketTypeRepository;
 import io.taskmigo.ticket.type.domain.TicketType;
 import java.time.Instant;
@@ -87,7 +88,7 @@ class TicketQuerySchemaTest {
             .contains("severity")
             .doesNotContain("fields.severity");
         assertThat(schema.identity(global)).isNotEqualTo(schema.identity(scoped));
-        assertThat(schema.operation()).isEqualTo("tickets.list");
+        assertThat(schema).isInstanceOf(TicketQuery.List.class);
         assertThat(readAuthorization.field(QueryPath.parse("severity"), scoped)).isPresent();
         assertThat(updateAuthorization.field(QueryPath.parse("severity"), scoped)).isPresent();
         assertThat(readAuthorization.authorizationIdentity(scoped)).isNotEqualTo(
