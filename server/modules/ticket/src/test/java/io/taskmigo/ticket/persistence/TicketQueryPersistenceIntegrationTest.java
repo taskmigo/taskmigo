@@ -56,6 +56,7 @@ class TicketQueryPersistenceIntegrationTest {
     private final TicketService tickets;
     private final TicketQueryFieldCatalog fields;
     private final ListTicketsQuerySchema listSchema;
+    private final ListTicketsAuthorizationSchema listAuthorizationSchema;
     private final JdbcTemplate jdbc;
 
     TicketQueryPersistenceIntegrationTest(
@@ -63,12 +64,14 @@ class TicketQueryPersistenceIntegrationTest {
         TicketService tickets,
         TicketQueryFieldCatalog fields,
         ListTicketsQuerySchema listSchema,
+        ListTicketsAuthorizationSchema listAuthorizationSchema,
         JdbcTemplate jdbc
     ) {
         this.ticketTypes = ticketTypes;
         this.tickets = tickets;
         this.fields = fields;
         this.listSchema = listSchema;
+        this.listAuthorizationSchema = listAuthorizationSchema;
         this.jdbc = jdbc;
     }
 
@@ -86,7 +89,7 @@ class TicketQueryPersistenceIntegrationTest {
         QueryFieldContext context = this.fields.forType(typeId);
         ListQueryRequest query = new ListQueryRequest("object.score >= 2", List.of("score"));
         ObjectAuthorizationPredicate<TicketInfo> authorization = ObjectAuthorizationPredicateModels.from(
-            this.listSchema,
+            this.listAuthorizationSchema,
             context,
             new ObjectAuthorizationExpression.Binary(
                 ObjectAuthorizationExpression.BinaryOperator.GREATER_OR_EQUAL,
@@ -145,7 +148,7 @@ class TicketQueryPersistenceIntegrationTest {
         QueryFieldContext context = this.fields.forType(typeId);
         ListQueryRequest query = new ListQueryRequest(null, List.of("dueDate"));
         ObjectAuthorizationPredicate<TicketInfo> allow = ObjectAuthorizationPredicateModels.constant(
-            this.listSchema,
+            this.listAuthorizationSchema,
             context,
             true
         );

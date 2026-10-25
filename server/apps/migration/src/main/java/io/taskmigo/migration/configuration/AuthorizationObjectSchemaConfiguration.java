@@ -34,13 +34,15 @@ class AuthorizationObjectSchemaConfiguration {
             new Route("GET", "/api/v0/roles", roleList),
             new Route("GET", "/api/v0/statements", statementList)
         );
-        return (method, pathMatcher) ->
-            routes
+        return (method, pathMatcher) -> {
+            List<ObjectAuthorizationSchema<?>> applicable = routes
                 .stream()
                 .filter(route -> route.matches(method, pathMatcher))
-                .map(Route::schema)
+                .map(route -> (ObjectAuthorizationSchema<?>) route.schema())
                 .distinct()
                 .toList();
+            return applicable;
+        };
     }
 
     private record Route(String method, String path, ObjectAuthorizationSchema<?> schema) {

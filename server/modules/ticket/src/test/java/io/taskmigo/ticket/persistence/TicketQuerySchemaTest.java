@@ -38,7 +38,7 @@ class TicketQuerySchemaTest {
     private static final Instant NOW = Instant.parse("2026-10-16T00:00:00Z");
 
     @Test
-    @DisplayName("Ticket QuerySchemas expose flat custom fields and global fallback fails closed for ambiguous keys")
+    @DisplayName("Ticket Query and Authorization schemas share runtime fields without sharing contract identity")
     void shouldExposeFlatScopedFieldsAndGlobalFallback() {
         TicketTypeRepository ticketTypes = mock(TicketTypeRepository.class);
         TicketRepository tickets = mock(TicketRepository.class);
@@ -71,6 +71,8 @@ class TicketQuerySchemaTest {
         );
         EavJpaQueryFieldProvider queryFields = queryFields();
         ListTicketsQuerySchema schema = new ListTicketsQuerySchema(catalog, queryFields);
+        ReadTicketAuthorizationSchema readAuthorization = new ReadTicketAuthorizationSchema(catalog, queryFields);
+        UpdateTicketAuthorizationSchema updateAuthorization = new UpdateTicketAuthorizationSchema(catalog, queryFields);
 
         QueryFieldContext global = QueryFieldContext.empty();
         QueryFieldContext scoped = catalog.forType(firstTypeId);
@@ -86,8 +88,10 @@ class TicketQuerySchemaTest {
             .doesNotContain("fields.severity");
         assertThat(schema.identity(global)).isNotEqualTo(schema.identity(scoped));
         assertThat(schema.operation()).isEqualTo("tickets.list");
-        assertThat(new ReadTicketQuerySchema(catalog, queryFields).operation()).isEqualTo("tickets.read");
-        assertThat(new UpdateTicketQuerySchema(catalog, queryFields).operation()).isEqualTo("tickets.update");
+        assertThat(readAuthorization.field(QueryPath.parse("severity"), scoped)).isPresent();
+        assertThat(updateAuthorization.field(QueryPath.parse("severity"), scoped)).isPresent();
+        assertThat(readAuthorization.authorizationIdentity(scoped))
+            .isNotEqualTo(updateAuthorization.authorizationIdentity(scoped));
     }
 
     @Test
