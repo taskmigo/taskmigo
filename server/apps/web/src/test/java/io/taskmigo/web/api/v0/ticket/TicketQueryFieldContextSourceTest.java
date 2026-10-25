@@ -32,7 +32,9 @@ class TicketQueryFieldContextSourceTest {
         MockHttpServletRequest scopedRequest = new MockHttpServletRequest();
         scopedRequest.setParameter("ticketTypeId", typeId.toString());
 
-        assertThat(source.resolve(TicketAuthorization.List.class, new ServletWebRequest(scopedRequest))).isSameAs(scoped);
+        assertThat(source.resolve(TicketAuthorization.List.class, new ServletWebRequest(scopedRequest))).isSameAs(
+            scoped
+        );
         assertThat(
             source.resolve(TicketAuthorization.List.class, new ServletWebRequest(new MockHttpServletRequest()))
         ).isSameAs(global);
@@ -52,7 +54,9 @@ class TicketQueryFieldContextSourceTest {
         request.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, Map.of("ticketId", ticketId.toString()));
 
         assertThat(source.resolve(TicketAuthorization.Read.class, new ServletWebRequest(request))).isSameAs(historical);
-        assertThat(source.resolve(TicketAuthorization.Update.class, new ServletWebRequest(request))).isSameAs(historical);
+        assertThat(source.resolve(TicketAuthorization.Update.class, new ServletWebRequest(request))).isSameAs(
+            historical
+        );
         assertThat(
             source.resolve(TicketAuthorization.Read.class, new ServletWebRequest(new MockHttpServletRequest()))
         ).isSameAs(global);

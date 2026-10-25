@@ -35,6 +35,7 @@
 **Files:** authorization object API/model/service and tests.
 
 **Interfaces:**
+
 - Produces: `ObjectAuthorizationSchema<Q>` and an explicit `ObjectAuthorization.authorize(AuthorizationPrincipal, AuthorizationRequest, ObjectAuthorizationSchema<Q>, QueryFieldContext)` API.
 - Consumes: existing `RequestAuthorization` and `AuthorizationContext`.
 
@@ -49,6 +50,7 @@
 **Files:** Web object-authorization annotations/resolvers, MVC target resolver, Ticket runtime context source, controller tests.
 
 **Interfaces:**
+
 - Consumes: `ObjectAuthorizationSchema<Q>` from Task 1.
 - Produces: `@AuthorizationContract` + predicate argument injection selected by contract class.
 
@@ -63,6 +65,7 @@
 **Files:** Query annotation, OpenAPI customizer/tests, query context lookup where still needed.
 
 **Interfaces:**
+
 - Produces: `@QueryContract(Class<? extends QuerySchemaView>)`.
 - OpenAPI consumes the declared contract class and schema bean directly; no operation-string lookup.
 
@@ -77,6 +80,7 @@
 **Files:** Ticket/User/Group/Role/Statement public contract markers, concrete query/authz schemas, repositories, Ticket/User services, all affected Web controllers.
 
 **Interfaces:**
+
 - Ticket/User feature list services consume typed Query Contract schema and raw `ListQueryRequest`.
 - Controllers declare query/authz contract annotations and receive `ObjectAuthorizationPredicate<T>` parameters.
 

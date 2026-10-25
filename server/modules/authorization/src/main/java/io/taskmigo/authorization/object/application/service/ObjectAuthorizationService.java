@@ -80,7 +80,9 @@ public final class ObjectAuthorizationService implements ObjectAuthorization {
         StatementTargetPathMatcher pathMatcher = StatementTargetPathMatcher.compile(path);
         List<ObjectAuthorizationSchema<?>> applicable = this.targetResolver.applicable(method, pathMatcher);
         if (applicable.isEmpty()) {
-            throw new AuthorizationException("Object Statement target matches no registered authorization schema route");
+            throw new AuthorizationException(
+                "Object Statement target matches no registered authorization schema route"
+            );
         }
         for (ObjectAuthorizationSchema<?> schema : applicable) {
             CompiledSource compiled = this.compiler.compile(

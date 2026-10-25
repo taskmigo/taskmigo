@@ -53,11 +53,7 @@ class QueryFieldContextResolverTest {
             .hasMessageContaining("multiple");
     }
 
-    private static QueryFieldContextSource source(
-        Class<?> contract,
-        QueryFieldContext context,
-        AtomicInteger calls
-    ) {
+    private static QueryFieldContextSource source(Class<?> contract, QueryFieldContext context, AtomicInteger calls) {
         return new QueryFieldContextSource() {
             @Override
             public boolean supports(Class<?> candidate) {

@@ -46,10 +46,10 @@ The predicate argument is server-owned and never exposed as an OpenAPI request p
 
 ```java
 ObjectAuthorizationPredicate<TicketInfo> authorization = objectAuthorization.authorize(
-    userX,
-    request,
-    ticketAuthorization,
-    ticketFields.forTicket(ticketId)
+  userX,
+  request,
+  ticketAuthorization,
+  ticketFields.forTicket(ticketId)
 );
 
 tickets.update(ticketId, patch, authorization);

@@ -25,11 +25,7 @@ public final class ListQueryOptionsCompiler {
         this.filters = Objects.requireNonNull(filters);
     }
 
-    public <Q> ListQuerySpec<Q> compile(
-        QuerySchemaView schema,
-        ListQueryOptions request,
-        QueryFieldContext context
-    ) {
+    public <Q> ListQuerySpec<Q> compile(QuerySchemaView schema, ListQueryOptions request, QueryFieldContext context) {
         Objects.requireNonNull(schema);
         Objects.requireNonNull(request);
         Objects.requireNonNull(context);

@@ -24,9 +24,11 @@ final class TicketQueryFieldContextSource implements QueryFieldContextSource {
 
     @Override
     public boolean supports(Class<?> contract) {
-        return contract == TicketAuthorization.List.class ||
+        return (
+            contract == TicketAuthorization.List.class ||
             contract == TicketAuthorization.Read.class ||
-            contract == TicketAuthorization.Update.class;
+            contract == TicketAuthorization.Update.class
+        );
     }
 
     @Override

@@ -56,11 +56,7 @@ class StatementController {
     private final ListQueryResolver queryResolver;
     private final ApiResponseFactory responses;
 
-    StatementController(
-        StatementService statements,
-        ListQueryResolver queryResolver,
-        ApiResponseFactory responses
-    ) {
+    StatementController(StatementService statements, ListQueryResolver queryResolver, ApiResponseFactory responses) {
         this.statements = statements;
         this.queryResolver = queryResolver;
         this.responses = responses;

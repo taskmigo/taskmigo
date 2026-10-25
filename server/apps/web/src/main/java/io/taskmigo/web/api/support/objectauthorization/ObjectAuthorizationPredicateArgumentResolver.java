@@ -49,9 +49,7 @@ public final class ObjectAuthorizationPredicateArgumentResolver implements Handl
     ) {
         AuthorizationContract contract = parameter.getMethodAnnotation(AuthorizationContract.class);
         if (contract == null) {
-            throw new IllegalStateException(
-                "ObjectAuthorizationPredicate handler must declare @AuthorizationContract"
-            );
+            throw new IllegalStateException("ObjectAuthorizationPredicate handler must declare @AuthorizationContract");
         }
         ObjectAuthorizationSchema<?> schema = this.schema(contract.value());
         QueryFieldContext queryContext = this.contexts.resolve(contract.value(), webRequest);
@@ -63,10 +61,7 @@ public final class ObjectAuthorizationPredicateArgumentResolver implements Handl
     }
 
     private ObjectAuthorizationSchema<?> schema(Class<? extends ObjectAuthorizationSchema<?>> contract) {
-        List<ObjectAuthorizationSchema<?>> matches = this.schemas
-            .stream()
-            .filter(contract::isInstance)
-            .toList();
+        List<ObjectAuthorizationSchema<?>> matches = this.schemas.stream().filter(contract::isInstance).toList();
         if (matches.size() != 1) {
             throw new IllegalStateException(
                 "Expected exactly one Object Authorization schema for contract " +

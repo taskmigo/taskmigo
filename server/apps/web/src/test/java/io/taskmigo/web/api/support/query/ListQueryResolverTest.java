@@ -63,6 +63,7 @@ class ListQueryResolverTest {
     }
 
     private static final class TestController {
+
         @QueryContract(TestQueryContract.class)
         void list() {}
     }
