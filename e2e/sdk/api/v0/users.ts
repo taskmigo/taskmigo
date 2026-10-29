@@ -1,7 +1,7 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import * as z from "zod";
 
-import { basicMetaSchema, offsetMetaSchema, successApiResponseSchema } from "./types.js";
+import { apiErrorSchema, basicMetaSchema, messageSchema, offsetMetaSchema, successApiResponseSchema } from "./types.js";
 
 export interface CreateUserRequest {
   username: string;
@@ -34,10 +34,20 @@ export const createUserResponseSchema = successApiResponseSchema(
   basicMetaSchema,
 );
 
+export const createUserErrorResponseSchema = z.strictObject({
+  success: z.literal(false),
+  statusCode: z.number().int(),
+  message: messageSchema.nullable(),
+  error: apiErrorSchema,
+  meta: basicMetaSchema,
+  data: z.null(),
+});
+
 export const listUsersResponseSchema = successApiResponseSchema(200, z.array(userInfoSchema), offsetMetaSchema);
 
 export type UserInfo = z.infer<typeof userInfoSchema>;
 export type CreateUserResponse = z.infer<typeof createUserResponseSchema>;
+export type CreateUserErrorResponse = z.infer<typeof createUserErrorResponseSchema>;
 export type ListUsersResponse = z.infer<typeof listUsersResponseSchema>;
 
 export class UsersApi {
@@ -61,6 +71,18 @@ export class UsersApi {
       });
       expect(response.status()).toBe(201);
       return createUserResponseSchema.parse(await response.json());
+    });
+  }
+
+  async createExpectingError(body: CreateUserRequest): Promise<CreateUserErrorResponse> {
+    return test.step("POST /api/v0/users expecting an API error", async () => {
+      const response = await this.request.post(this.usersUrl, {
+        headers: { Origin: this.browserOrigin },
+        data: body,
+        failOnStatusCode: false,
+      });
+      expect(response.ok()).toBe(false);
+      return createUserErrorResponseSchema.parse(await response.json());
     });
   }
 
