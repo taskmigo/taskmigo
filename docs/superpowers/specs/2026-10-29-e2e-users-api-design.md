@@ -45,7 +45,7 @@ Target Users coverage:
 
 1. **Create/list lifecycle.** Create a unique user, discover it without assuming page-one placement, and verify identity fields, defaults, status, response envelope, and persisted visibility.
 2. **Query semantics.** In one controlled dataset, verify pagination metadata plus representative filter/sort behavior supported by the deployed Users query schema, including deterministic ordering/boundary behavior. Do not duplicate the entire query grammar.
-3. **Create conflict.** Repeat a uniqueness-sensitive create and assert the conflict contract and that no duplicate observable user is created.
+3. **Create conflict.** Repeat a uniqueness-sensitive create and assert the conflict contract and that no duplicate observable user was created.
 4. **Create validation matrix.** Parameterize representative null/blank/invalid-email/null-collection-element cases that exercise materially different Jakarta validation constraints. Assert status and standard error envelope for every row.
 5. **Statement replacement lifecycle.** Create a user, assign valid direct statements, replace/clear them, and verify observable effects through public APIs where the current product exposes them. Include nonexistent-user behavior. Do not add assertions for state that cannot be observed publicly.
 6. **Delete lifecycle.** Create, delete, then verify the externally specified retained/deleted visibility and repeat-operation behavior according to current retention configuration/specification. Include nonexistent-user behavior without assuming physical row deletion.
