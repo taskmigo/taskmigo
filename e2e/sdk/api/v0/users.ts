@@ -1,13 +1,7 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import * as z from "zod";
 
-import {
-  apiErrorSchema,
-  basicMetaSchema,
-  messageSchema,
-  offsetMetaSchema,
-  successApiResponseSchema,
-} from "./types.js";
+import { apiErrorSchema, basicMetaSchema, messageSchema, offsetMetaSchema, successApiResponseSchema } from "./types.js";
 
 export interface CreateUserRequest {
   username: string;
