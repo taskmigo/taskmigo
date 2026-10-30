@@ -21,9 +21,8 @@ test.describe("Users API", { tag: ["@api", "@users"] }, () => {
     const request = uniqueUser();
 
     const created = await taskmigo.api.v0.users.create(request);
-    const listed = await taskmigo.api.v0.users.list({ page: 1, pageSize: 100 });
+    const user = await taskmigo.api.v0.users.extensions.findById(created.data.id);
 
-    const user = listed.data.find((candidate) => candidate.id === created.data.id);
     expect(user).toMatchObject({
       id: created.data.id,
       username: request.username,
@@ -50,7 +49,7 @@ test.describe("Users API", { tag: ["@api", "@users"] }, () => {
   });
 
   test("rejects invalid user creation input", async ({ taskmigo }) => {
-    const response = await taskmigo.api.v0.users.createExpectingError({
+    const response = await taskmigo.api.v0.users.extensions.createExpectingError({
       username: "",
       emails: ["not-an-email"],
       firstName: "",
