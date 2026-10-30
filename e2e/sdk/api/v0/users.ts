@@ -1,7 +1,13 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import * as z from "zod";
 
-import { apiErrorSchema, basicMetaSchema, messageSchema, offsetMetaSchema, successApiResponseSchema } from "./types.js";
+import {
+  apiErrorSchema,
+  basicMetaSchema,
+  messageSchema,
+  offsetMetaSchema,
+  successApiResponseSchema,
+} from "./types.js";
 
 export interface CreateUserRequest {
   username: string;
@@ -74,18 +80,6 @@ export class UsersApi {
     });
   }
 
-  async createExpectingError(body: CreateUserRequest): Promise<CreateUserErrorResponse> {
-    return test.step("POST /api/v0/users expecting an API error", async () => {
-      const response = await this.request.post(this.usersUrl, {
-        headers: { Origin: this.browserOrigin },
-        data: body,
-        failOnStatusCode: false,
-      });
-      expect(response.ok()).toBe(false);
-      return createUserErrorResponseSchema.parse(await response.json());
-    });
-  }
-
   async list(query?: ListUsersRequest): Promise<ListUsersResponse> {
     const params = new URLSearchParams();
     if (query?.page !== undefined) params.set("page", String(query.page));
@@ -101,6 +95,18 @@ export class UsersApi {
       return listUsersResponseSchema.parse(await response.json());
     });
   }
+
+  async createError(body: CreateUserRequest): Promise<CreateUserErrorResponse> {
+    return test.step("POST /api/v0/users expecting an API error", async () => {
+      const response = await this.request.post(this.usersUrl, {
+        headers: { Origin: this.browserOrigin },
+        data: body,
+        failOnStatusCode: false,
+      });
+      expect(response.ok()).toBe(false);
+      return createUserErrorResponseSchema.parse(await response.json());
+    });
+  }
 }
 
 export class UsersApiExtensions {
@@ -113,6 +119,29 @@ export class UsersApiExtensions {
         responses.push(await this.users.create(body));
       }
       return responses;
+    });
+  }
+
+  async createExpectingError(body: CreateUserRequest): Promise<CreateUserErrorResponse> {
+    return this.users.createError(body);
+  }
+
+  async findById(id: string): Promise<UserInfo> {
+    return test.step(`Find user ${id} through the list API`, async () => {
+      const pageSize = 100;
+      let page = 1;
+
+      while (true) {
+        const response = await this.users.list({ page, pageSize });
+        const user = response.data.find((candidate) => candidate.id === id);
+        if (user !== undefined) return user;
+
+        const { currentPage, totalPages } = response.meta.pagination.offset;
+        if (currentPage >= totalPages) {
+          throw new Error(`User ${id} was not discoverable through GET /api/v0/users`);
+        }
+        page = currentPage + 1;
+      }
     });
   }
 }
