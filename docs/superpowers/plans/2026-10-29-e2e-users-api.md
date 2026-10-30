@@ -34,11 +34,13 @@
 ### Task 1: Correct SDK boundaries and stable fixture discovery
 
 **Files:**
+
 - Modify: `e2e/sdk/api/v0/users.ts`
 - Modify: `e2e/sdk/api/v0/index.ts` if public types change
 - Modify: `e2e/tests/api/users.spec.ts`
 
 **Interfaces:**
+
 - Consumes: existing `UsersApi.create()` and `UsersApi.list()`.
 - Produces: official operation methods plus `UsersApiExtensions` conveniences for expected errors and bounded discovery.
 
@@ -65,10 +67,12 @@ Commit SDK and directly dependent test changes together.
 ### Task 2: Create/list/query high-signal scenarios
 
 **Files:**
+
 - Modify: `e2e/tests/api/users.spec.ts`
 - Modify: `e2e/sdk/api/v0/users.ts` only for actual list query parameters supported by the production operation
 
 **Interfaces:**
+
 - Consumes: stable create/list/discovery surface from Task 1 and current `ListQueryOptions` behavior.
 - Produces: lifecycle, query, conflict, and compact validation coverage.
 
@@ -99,10 +103,12 @@ Keep query SDK additions with the scenarios that require them.
 ### Task 3: Statement replacement lifecycle
 
 **Files:**
+
 - Modify: `e2e/sdk/api/v0/users.ts`
 - Modify: `e2e/tests/api/users.spec.ts`
 
 **Interfaces:**
+
 - Consumes: authenticated Users resource and any existing public statement resource needed to create valid statement ids.
 - Produces: `setStatements` operation coverage and observable replace/clear/not-found behavior.
 
@@ -125,10 +131,12 @@ Run typecheck and Users spec; commit operation plus scenario together.
 ### Task 4: Delete/tombstone lifecycle
 
 **Files:**
+
 - Modify: `e2e/sdk/api/v0/users.ts`
 - Modify: `e2e/tests/api/users.spec.ts`
 
 **Interfaces:**
+
 - Consumes: create/discovery helpers and current User retention specification/configuration behavior.
 - Produces: `delete` operation coverage for observable state transition, repeat operation, and not-found behavior.
 
@@ -155,10 +163,12 @@ Run typecheck and Users spec; commit operation plus scenario together.
 ### Task 5: Critical authorization and protocol boundaries
 
 **Files:**
+
 - Modify: `e2e/tests/api/users.spec.ts`
 - Modify SDK only if an already-supported E2E identity/session needs a public helper
 
 **Interfaces:**
+
 - Consumes: Users list/delete/setStatements operations and E2E identities already supported by repository fixtures/environment.
 - Produces: a minimal externally observable security boundary without recreating policy-engine tests.
 
@@ -181,12 +191,14 @@ Run typecheck and Users spec; keep only cases with distinct deployment-level sig
 ### Task 6: API entry point, documentation, and final verification
 
 **Files:**
+
 - Modify: `e2e/package.json`
 - Modify: `e2e/README.md`
 - Inspect: `.github/pull_request_template.md`
 - Inspect: final branch diff and direct SDK consumers
 
 **Interfaces:**
+
 - Consumes: completed Users suite.
 - Produces: stable `npm run test:api`, reviewer-ready PR, and verified CI evidence.
 
