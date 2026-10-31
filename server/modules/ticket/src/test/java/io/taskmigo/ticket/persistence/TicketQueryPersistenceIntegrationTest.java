@@ -9,14 +9,12 @@ import io.taskmigo.authorization.object.model.ObjectAuthorizationPredicateModels
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.FilterByCompiler;
 import io.taskmigo.query.FilterByException;
-import io.taskmigo.query.ListQuerySpec;
+import io.taskmigo.query.ListQueryRequest;
 import io.taskmigo.query.QueryFieldContext;
-import io.taskmigo.query.QueryPath;
-import io.taskmigo.query.QueryPredicate;
-import io.taskmigo.query.QuerySort;
 import io.taskmigo.ticket.application.TicketQueryFieldCatalog;
 import io.taskmigo.ticket.application.api.TicketInfo;
 import io.taskmigo.ticket.application.api.TicketService;
+import io.taskmigo.ticket.support.TestTicketAuthorization;
 import io.taskmigo.ticket.type.application.api.TicketFieldSpec;
 import io.taskmigo.ticket.type.application.api.TicketFieldType;
 import io.taskmigo.ticket.type.application.api.TicketTemplateInfo;
@@ -26,7 +24,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.SpringBootConfiguration;
@@ -37,6 +34,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestConstructor;
@@ -44,6 +42,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+@Import(TestTicketAuthorization.class)
 @SpringBootTest(classes = TicketQueryPersistenceIntegrationTest.TestApplication.class)
 @Testcontainers
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
@@ -57,6 +56,7 @@ class TicketQueryPersistenceIntegrationTest {
     private final TicketService tickets;
     private final TicketQueryFieldCatalog fields;
     private final ListTicketsQuerySchema listSchema;
+    private final ListTicketsAuthorizationSchema listAuthorizationSchema;
     private final JdbcTemplate jdbc;
 
     TicketQueryPersistenceIntegrationTest(
@@ -64,12 +64,14 @@ class TicketQueryPersistenceIntegrationTest {
         TicketService tickets,
         TicketQueryFieldCatalog fields,
         ListTicketsQuerySchema listSchema,
+        ListTicketsAuthorizationSchema listAuthorizationSchema,
         JdbcTemplate jdbc
     ) {
         this.ticketTypes = ticketTypes;
         this.tickets = tickets;
         this.fields = fields;
         this.listSchema = listSchema;
+        this.listAuthorizationSchema = listAuthorizationSchema;
         this.jdbc = jdbc;
     }
 
@@ -85,13 +87,9 @@ class TicketQueryPersistenceIntegrationTest {
             this.tickets.create(typeId, "Ticket " + score, "OPEN", Map.of("score", score), actor);
         }
         QueryFieldContext context = this.fields.forType(typeId);
-        ListQuerySpec<TicketInfo> query = new ListQuerySpec<>(
-            compile(context, "object.score >= 2"),
-            context,
-            List.of(new QuerySort(QueryPath.of("score"), QuerySort.Direction.ASC))
-        );
+        ListQueryRequest query = new ListQueryRequest("object.score >= 2", List.of("score"));
         ObjectAuthorizationPredicate<TicketInfo> authorization = ObjectAuthorizationPredicateModels.from(
-            this.listSchema,
+            this.listAuthorizationSchema,
             context,
             new ObjectAuthorizationExpression.Binary(
                 ObjectAuthorizationExpression.BinaryOperator.GREATER_OR_EQUAL,
@@ -100,7 +98,13 @@ class TicketQueryPersistenceIntegrationTest {
             )
         );
 
-        OffsetPage<TicketInfo> page = this.tickets.list(1, 2, typeId, query, authorization);
+        OffsetPage<TicketInfo> page = this.tickets.list(
+            1,
+            2,
+            typeId,
+            query,
+            TestTicketAuthorization.context(authorization)
+        );
 
         assertThat(page.totalItems()).isEqualTo(2);
         assertThat(page.totalPages()).isEqualTo(1);
@@ -142,18 +146,14 @@ class TicketQueryPersistenceIntegrationTest {
             actor
         );
         QueryFieldContext context = this.fields.forType(typeId);
-        ListQuerySpec<TicketInfo> query = new ListQuerySpec<>(
-            compile(context, null),
-            context,
-            List.of(new QuerySort(QueryPath.of("dueDate"), QuerySort.Direction.ASC))
-        );
+        ListQueryRequest query = new ListQueryRequest(null, List.of("dueDate"));
         ObjectAuthorizationPredicate<TicketInfo> allow = ObjectAuthorizationPredicateModels.constant(
-            this.listSchema,
+            this.listAuthorizationSchema,
             context,
             true
         );
 
-        OffsetPage<TicketInfo> page = this.tickets.list(1, 10, typeId, query, allow);
+        OffsetPage<TicketInfo> page = this.tickets.list(1, 10, typeId, query, TestTicketAuthorization.context(allow));
 
         assertThat(page.items()).hasSize(4);
         assertThat(page.items().subList(0, 2))
@@ -197,10 +197,6 @@ class TicketQueryPersistenceIntegrationTest {
         this.ticketTypes.replaceTemplate(typeId, draft.id(), fields);
         this.ticketTypes.publishTemplate(typeId, draft.id());
         return typeId;
-    }
-
-    private QueryPredicate<TicketInfo> compile(QueryFieldContext context, @Nullable String source) {
-        return (QueryPredicate<TicketInfo>) new FilterByCompiler().compile(this.listSchema, context, source);
     }
 
     private UUID insertUser(String username) {

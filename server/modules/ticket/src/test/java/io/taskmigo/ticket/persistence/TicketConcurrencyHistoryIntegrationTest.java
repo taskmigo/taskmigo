@@ -3,9 +3,9 @@ package io.taskmigo.ticket.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.ticket.application.api.TicketInfo;
 import io.taskmigo.ticket.application.api.TicketService;
+import io.taskmigo.ticket.support.TestTicketAuthorization;
 import io.taskmigo.ticket.type.application.api.TicketFieldSpec;
 import io.taskmigo.ticket.type.application.api.TicketFieldType;
 import io.taskmigo.ticket.type.application.api.TicketTemplateInfo;
@@ -30,6 +30,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestConstructor;
@@ -39,6 +40,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+@Import(TestTicketAuthorization.class)
 @SpringBootTest(classes = TicketConcurrencyHistoryIntegrationTest.TestApplication.class)
 @Testcontainers
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
@@ -129,7 +131,7 @@ class TicketConcurrencyHistoryIntegrationTest {
             TicketTemplateInfo v2 = publish.get(10, TimeUnit.SECONDS);
             locker.get(10, TimeUnit.SECONDS);
 
-            TicketInfo ticket = this.tickets.read(ticketId, ALLOW_ALL, QueryFieldContext.empty());
+            TicketInfo ticket = this.tickets.read(ticketId, TestTicketAuthorization.context(ALLOW_ALL));
             assertThat(ticket.templateVersionId()).isEqualTo(v1.id()).isNotEqualTo(v2.id());
             assertThat(ticket.customFields()).containsExactly(Map.entry("legacy", "validated-by-v1"));
         } finally {
@@ -232,8 +234,8 @@ class TicketConcurrencyHistoryIntegrationTest {
         this.ticketTypes.retireTemplate(typeId, v1.id());
         this.ticketTypes.retireTemplate(typeId, v2.id());
 
-        TicketInfo historical = this.tickets.read(historicalId, ALLOW_ALL, QueryFieldContext.empty());
-        TicketInfo current = this.tickets.read(currentId, ALLOW_ALL, QueryFieldContext.empty());
+        TicketInfo historical = this.tickets.read(historicalId, TestTicketAuthorization.context(ALLOW_ALL));
+        TicketInfo current = this.tickets.read(currentId, TestTicketAuthorization.context(ALLOW_ALL));
 
         assertThat(historical.templateVersionId()).isEqualTo(v1.id());
         assertThat(historical.customFields()).containsEntry("severity", "legacy").containsEntry("note", "keep me");

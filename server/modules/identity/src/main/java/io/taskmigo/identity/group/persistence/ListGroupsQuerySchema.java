@@ -4,6 +4,7 @@ import static io.taskmigo.query.QueryOperator.CONTAINS;
 import static io.taskmigo.query.QueryOperator.EQ;
 import static io.taskmigo.query.QueryOperator.NE;
 
+import io.taskmigo.identity.group.application.api.GroupQuery;
 import io.taskmigo.jpaquery.QueryField;
 import io.taskmigo.jpaquery.QuerySchema;
 import io.taskmigo.query.QueryFieldContext;
@@ -11,9 +12,9 @@ import java.util.Collection;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
-/// Defines the JPA query surface for the list-groups operation.
+/// Defines the JPA Query Contract for listing Groups.
 @Component
-final class ListGroupsQuerySchema extends QuerySchema<GroupEntity> {
+final class ListGroupsQuerySchema extends QuerySchema<GroupEntity> implements GroupQuery.List {
 
     ListGroupsQuerySchema() {
         super(GroupEntity.class);
@@ -21,7 +22,7 @@ final class ListGroupsQuerySchema extends QuerySchema<GroupEntity> {
 
     @Override
     protected String operationId() {
-        return "identity.groups.list";
+        return "group.query.list";
     }
 
     @Override

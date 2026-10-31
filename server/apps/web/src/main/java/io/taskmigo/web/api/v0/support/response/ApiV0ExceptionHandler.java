@@ -1,7 +1,7 @@
 package io.taskmigo.web.api.v0.support.response;
 
 import io.taskmigo.query.FilterByException;
-import io.taskmigo.web.api.support.query.SortByException;
+import io.taskmigo.query.SortByException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;

@@ -56,14 +56,14 @@ class UserOperationQuerySchemaTest {
     }
 
     @Test
-    @DisplayName("keeps User query schemas scoped to their concrete operations")
+    @DisplayName("keeps User Query and Authorization schemas scoped to their concrete contracts")
     void shouldKeepUserSchemasDistinctWhenEntityRootIsShared() {
         var list = new ListUsersQuerySchema();
-        var delete = new DeleteUserQuerySchema();
+        var delete = new DeleteUserAuthorizationSchema();
 
         assertThat(list.rootType()).isEqualTo(UserEntity.class);
         assertThat(delete.rootType()).isEqualTo(UserEntity.class);
-        assertThat(list.identity()).isNotEqualTo(delete.identity());
+        assertThat(list.identity()).isNotEqualTo(delete.authorizationIdentity());
         assertThat(list.field(QueryPath.parse("firstName"))).isPresent();
         assertThat(delete.field(QueryPath.parse("firstName"))).isEmpty();
     }

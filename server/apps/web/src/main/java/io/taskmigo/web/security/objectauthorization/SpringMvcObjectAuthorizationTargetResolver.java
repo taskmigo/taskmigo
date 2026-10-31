@@ -1,9 +1,10 @@
 package io.taskmigo.web.security.objectauthorization;
 
+import io.taskmigo.authorization.object.AuthorizationContract;
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
-import io.taskmigo.query.QueryOperation;
-import io.taskmigo.query.QuerySchemaView;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.beans.factory.ObjectProvider;
@@ -15,7 +16,7 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
-/// Derives Object Authorization target metadata from Spring MVC handler mappings and declared query operations.
+/// Derives Object Authorization target metadata from Spring MVC routes and explicit Authorization Contracts.
 @Component
 @Primary
 public final class SpringMvcObjectAuthorizationTargetResolver
@@ -23,12 +24,12 @@ public final class SpringMvcObjectAuthorizationTargetResolver
 {
 
     private final ObjectProvider<RequestMappingHandlerMapping> handlerMappings;
-    private final List<QuerySchemaView> schemas;
+    private final List<ObjectAuthorizationSchema<?>> schemas;
     private List<Route> routes = List.of();
 
     public SpringMvcObjectAuthorizationTargetResolver(
         ObjectProvider<RequestMappingHandlerMapping> handlerMappings,
-        List<QuerySchemaView> schemas
+        List<ObjectAuthorizationSchema<?>> schemas
     ) {
         this.handlerMappings = handlerMappings;
         this.schemas = List.copyOf(schemas);
@@ -46,21 +47,22 @@ public final class SpringMvcObjectAuthorizationTargetResolver
     }
 
     @Override
-    public List<QuerySchemaView> applicable(String method, StatementTargetPathMatcher pathMatcher) {
-        return this.routes
-            .stream()
-            .filter(route -> route.matches(method, pathMatcher))
-            .map(Route::schema)
-            .distinct()
-            .toList();
+    public List<ObjectAuthorizationSchema<?>> applicable(String method, StatementTargetPathMatcher pathMatcher) {
+        ArrayList<ObjectAuthorizationSchema<?>> applicable = new ArrayList<>();
+        for (Route route : this.routes) {
+            if (route.matches(method, pathMatcher) && !applicable.contains(route.schema())) {
+                applicable.add(route.schema());
+            }
+        }
+        return List.copyOf(applicable);
     }
 
     private List<Route> routes(RequestMappingInfo mapping, HandlerMethod handler) {
-        Optional<QuerySchemaView> schema = this.schema(handler);
+        Optional<ObjectAuthorizationSchema<?>> schema = this.schema(handler);
         if (schema.isEmpty()) {
             return List.of();
         }
-        QuerySchemaView declaredSchema = schema.orElseThrow();
+        ObjectAuthorizationSchema<?> declaredSchema = schema.orElseThrow();
         String version = mapping.getVersionCondition().getVersion();
         List<String> methods = mapping.getMethodsCondition().getMethods().isEmpty()
             ? List.of("*")
@@ -73,19 +75,19 @@ public final class SpringMvcObjectAuthorizationTargetResolver
             .toList();
     }
 
-    private Optional<QuerySchemaView> schema(HandlerMethod handler) {
-        QueryOperation operation = handler.getMethodAnnotation(QueryOperation.class);
-        if (operation == null) {
+    private Optional<ObjectAuthorizationSchema<?>> schema(HandlerMethod handler) {
+        AuthorizationContract contract = handler.getMethodAnnotation(AuthorizationContract.class);
+        if (contract == null) {
             return Optional.empty();
         }
-        List<QuerySchemaView> matches = this.schemas
+        List<ObjectAuthorizationSchema<?>> matches = this.schemas
             .stream()
-            .filter(candidate -> candidate.operation().equals(operation.value()))
+            .filter(contract.value()::isInstance)
             .toList();
         if (matches.size() != 1) {
             throw new IllegalStateException(
-                "Expected exactly one Object Authorization Query Schema for operation " +
-                    operation.value() +
+                "Expected exactly one Object Authorization schema for contract " +
+                    contract.value().getName() +
                     ", found " +
                     matches.size()
             );
@@ -93,7 +95,7 @@ public final class SpringMvcObjectAuthorizationTargetResolver
         return Optional.of(matches.getFirst());
     }
 
-    private record Route(String method, String path, QuerySchemaView schema) {
+    private record Route(String method, String path, ObjectAuthorizationSchema<?> schema) {
         private boolean matches(String statementMethod, StatementTargetPathMatcher pathMatcher) {
             return (
                 ("*".equals(statementMethod) || "*".equals(this.method) || this.method.equals(statementMethod)) &&

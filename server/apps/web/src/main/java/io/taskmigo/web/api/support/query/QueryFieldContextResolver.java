@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.context.request.RequestAttributes;
 
-/// Resolves and caches one immutable runtime Query field context per request operation.
+/// Resolves and caches one immutable runtime field context per declared contract and request.
 @Component
 public final class QueryFieldContextResolver {
 
@@ -19,10 +19,10 @@ public final class QueryFieldContextResolver {
         this.sources = List.copyOf(Objects.requireNonNull(sources));
     }
 
-    public QueryFieldContext resolve(String operation, NativeWebRequest request) {
-        Objects.requireNonNull(operation);
+    public QueryFieldContext resolve(Class<?> contract, NativeWebRequest request) {
+        Objects.requireNonNull(contract);
         Objects.requireNonNull(request);
-        String attribute = ATTRIBUTE_PREFIX + operation;
+        String attribute = ATTRIBUTE_PREFIX + contract.getName();
         Object cached = request.getAttribute(attribute, RequestAttributes.SCOPE_REQUEST);
         if (cached instanceof QueryFieldContext context) {
             return context;
@@ -30,17 +30,17 @@ public final class QueryFieldContextResolver {
 
         List<QueryFieldContextSource> matches = this.sources
             .stream()
-            .filter(source -> source.supports(operation))
+            .filter(source -> source.supports(contract))
             .toList();
         if (matches.size() > 1) {
             throw new IllegalStateException(
-                "Expected at most one runtime Query context source for " + operation + ", found multiple"
+                "Expected at most one runtime field context source for " + contract.getName() + ", found multiple"
             );
         }
 
         QueryFieldContext context = matches.isEmpty()
             ? QueryFieldContext.empty()
-            : Objects.requireNonNull(matches.getFirst().resolve(operation, request));
+            : Objects.requireNonNull(matches.getFirst().resolve(contract, request));
         request.setAttribute(attribute, context, RequestAttributes.SCOPE_REQUEST);
         return context;
     }

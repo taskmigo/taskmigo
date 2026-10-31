@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
-import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.ticket.application.api.TicketInfo;
 import io.taskmigo.ticket.application.api.TicketService;
+import io.taskmigo.ticket.support.TestTicketAuthorization;
 import io.taskmigo.ticket.type.application.api.TicketFieldSpec;
 import io.taskmigo.ticket.type.application.api.TicketFieldType;
 import io.taskmigo.ticket.type.application.api.TicketTemplateInfo;
@@ -30,6 +30,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.TestConstructor;
@@ -37,6 +38,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+@Import(TestTicketAuthorization.class)
 @SpringBootTest(classes = TicketHistoricalSchemaIntegrationTest.TestApplication.class)
 @Testcontainers
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
@@ -99,7 +101,7 @@ class TicketHistoricalSchemaIntegrationTest {
         );
         this.ticketTypes.publishTemplate(typeId, v2Draft.id());
 
-        TicketInfo historical = this.tickets.read(ticketId, ALLOW_ALL, QueryFieldContext.empty());
+        TicketInfo historical = this.tickets.read(ticketId, TestTicketAuthorization.context(ALLOW_ALL));
 
         assertThat(historical.templateVersionId()).isEqualTo(v1.id());
         assertThat(historical.customFields()).containsEntry("severity", "HIGH").doesNotContainKey("impact");

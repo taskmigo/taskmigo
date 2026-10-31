@@ -3,12 +3,11 @@ package io.taskmigo.web.api.support.query;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import io.taskmigo.query.FilterByCompiler;
 import io.taskmigo.query.ListQuerySpec;
+import io.taskmigo.query.QueryContract;
 import io.taskmigo.query.QueryFieldContext;
-import io.taskmigo.query.QueryOperation;
 import io.taskmigo.query.QueryPredicate;
 import io.taskmigo.query.QuerySchemaView;
 import java.lang.reflect.Method;
@@ -29,21 +28,14 @@ class ListQueryResolverTest {
     private FilterByCompiler filters;
 
     @Mock
-    private QuerySchemaView schema;
+    private TestQueryContract schema;
 
     @Mock
     private QueryPredicate<TestObject> predicate;
 
-    /**
-     * Verifies that controllers only pass the public HTTP query model while operation and context are resolved internally.
-     *
-     * Given: a current handler operation and an HTTP filterBy value.
-     * Expect: the resolver compiles the query against the handler's schema and server-owned Query field context.
-     */
     @Test
-    @DisplayName("compiles HTTP query request from the current handler operation")
-    void shouldCompileQueryWhenCurrentHandlerDeclaresOperation() throws NoSuchMethodException {
-        // Arrange
+    @DisplayName("compiles HTTP query request from the handler's typed Query Contract")
+    void shouldCompileQueryWhenCurrentHandlerDeclaresContract() throws NoSuchMethodException {
         Method method = TestController.class.getDeclaredMethod("list");
         MockHttpServletRequest servletRequest = new MockHttpServletRequest();
         servletRequest.setAttribute(
@@ -51,22 +43,19 @@ class ListQueryResolverTest {
             new HandlerMethod(new TestController(), method)
         );
         QueryFieldContext context = QueryFieldContext.empty();
-        when(this.schema.operation()).thenReturn("test.objects.list");
         doReturn(this.predicate).when(this.filters).compileTyped(this.schema, context, "object.name == \"alice\"");
-        ListQueryOptionsCompiler compiler = new ListQueryOptionsCompiler(List.of(this.schema), this.filters);
-        QueryRequestContextResolver contexts = new QueryRequestContextResolver(
+        ListQueryOptionsCompiler compiler = new ListQueryOptionsCompiler(this.filters);
+        ListQueryResolver resolver = new ListQueryResolver(
+            compiler,
             List.of(this.schema),
             new QueryFieldContextResolver(List.of()),
             servletRequest
         );
-        ListQueryResolver resolver = new ListQueryResolver(compiler, contexts);
         ListQueryOptions request = new ListQueryOptions();
         request.setFilterBy("object.name == \"alice\"");
 
-        // Act
         ListQuerySpec<TestObject> result = resolver.resolve(request);
 
-        // Assert
         assertThat(result.predicate()).isSameAs(this.predicate);
         assertThat(result.context()).isSameAs(context);
         assertThat(result.sorting()).isEmpty();
@@ -75,9 +64,11 @@ class ListQueryResolverTest {
 
     private static final class TestController {
 
-        @QueryOperation("test.objects.list")
+        @QueryContract(TestQueryContract.class)
         void list() {}
     }
+
+    private interface TestQueryContract extends QuerySchemaView {}
 
     private static final class TestObject {}
 }

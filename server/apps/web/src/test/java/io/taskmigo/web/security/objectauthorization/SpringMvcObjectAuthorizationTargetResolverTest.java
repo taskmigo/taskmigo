@@ -3,9 +3,9 @@ package io.taskmigo.web.security.objectauthorization;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+import io.taskmigo.authorization.object.AuthorizationContract;
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
-import io.taskmigo.query.QueryOperation;
-import io.taskmigo.query.QuerySchemaView;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
@@ -39,19 +39,14 @@ class SpringMvcObjectAuthorizationTargetResolverTest {
     private VersionRequestCondition version;
 
     @Mock
-    private QuerySchemaView schema;
+    private TestAuthorizationContract schema;
 
     @Mock
-    private QuerySchemaView otherSchema;
+    private OtherAuthorizationContract otherSchema;
 
-    /**
-     * Given: an MVC route with an explicit query operation and multiple schemas.
-     * Expect: target discovery maps the route to the schema with the declared operation ID without controller internals.
-     */
     @Test
-    @DisplayName("derives an object schema route from the declared query operation")
-    void shouldResolveSchemaWhenOperationHandlerMappingMatchesStatementTarget() throws NoSuchMethodException {
-        // Arrange
+    @DisplayName("derives an Object Authorization route from the handler's typed Authorization Contract")
+    void shouldResolveSchemaWhenContractHandlerMappingMatchesStatementTarget() throws NoSuchMethodException {
         Method method = TestController.class.getDeclaredMethod("list");
         HandlerMethod handler = new HandlerMethod(new TestController(), method);
         when(this.handlerMappings.getObject()).thenReturn(this.handlerMapping);
@@ -60,27 +55,29 @@ class SpringMvcObjectAuthorizationTargetResolverTest {
         when(this.version.getVersion()).thenReturn("0");
         when(this.mapping.getPatternValues()).thenReturn(Set.of("/api/v{version}/objects"));
         when(this.mapping.getMethodsCondition()).thenReturn(new RequestMethodsRequestCondition(RequestMethod.GET));
-        when(this.schema.operation()).thenReturn("test.objects.list");
-        when(this.otherSchema.operation()).thenReturn("test.objects.delete");
         SpringMvcObjectAuthorizationTargetResolver resolver = new SpringMvcObjectAuthorizationTargetResolver(
             this.handlerMappings,
             List.of(this.otherSchema, this.schema)
         );
 
-        // Act
         resolver.afterSingletonsInstantiated();
-        List<QuerySchemaView> applicable = resolver.applicable(
+        List<ObjectAuthorizationSchema<?>> applicable = resolver.applicable(
             "GET",
             StatementTargetPathMatcher.compile("/api/v0/objects")
         );
 
-        // Assert
         assertThat(applicable).containsExactly(this.schema);
     }
 
     private static final class TestController {
 
-        @QueryOperation("test.objects.list")
+        @AuthorizationContract(TestAuthorizationContract.class)
         void list() {}
     }
+
+    private interface TestAuthorizationContract extends ObjectAuthorizationSchema<TestObject> {}
+
+    private interface OtherAuthorizationContract extends ObjectAuthorizationSchema<TestObject> {}
+
+    private static final class TestObject {}
 }

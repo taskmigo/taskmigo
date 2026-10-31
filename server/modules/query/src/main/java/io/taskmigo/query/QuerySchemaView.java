@@ -1,38 +1,14 @@
 package io.taskmigo.query;
 
-import java.util.Collection;
 import java.util.Comparator;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
-/// Exposes the persistence-neutral metadata of one operation-scoped query schema.
-public interface QuerySchemaView {
-    /// Returns the stable operation identifier that owns this schema.
+/// Exposes the persistence-neutral metadata of one query contract schema.
+public interface QuerySchemaView extends FieldSchemaView {
+    /// Returns the stable technical identity that owns this query schema.
     String operation();
 
-    /// Resolves the effective static and runtime field allowlist for one operation context.
-    @SuppressWarnings("NullableProblems")
-    Collection<QueryFieldDescriptor> fields(QueryFieldContext context);
-
-    /// Resolves the effective field allowlist for a static-only context.
-    default Collection<QueryFieldDescriptor> fields() {
-        return this.fields(QueryFieldContext.empty());
-    }
-
-    /// Resolves one effective field by its logical path.
-    default Optional<QueryFieldDescriptor> field(QueryPath path, QueryFieldContext context) {
-        return this.fields(context)
-            .stream()
-            .filter(field -> field.path().equals(path))
-            .findFirst();
-    }
-
-    /// Resolves one effective field for a static-only context.
-    default Optional<QueryFieldDescriptor> field(QueryPath path) {
-        return this.field(path, QueryFieldContext.empty());
-    }
-
-    /// Returns a deterministic identity for the effective operation schema, including opaque runtime source identity.
+    /// Returns a deterministic identity for the effective query schema, including opaque runtime source identity.
     default String identity(QueryFieldContext context) {
         String fields = this.fields(context)
             .stream()

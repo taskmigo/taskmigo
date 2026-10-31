@@ -1,25 +1,25 @@
 package io.taskmigo.authorization.object.application.service;
 
 import io.taskmigo.authorization.core.AuthorizationException;
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryFieldDescriptor;
 import io.taskmigo.query.QueryOperator;
 import io.taskmigo.query.QueryPath;
-import io.taskmigo.query.QuerySchemaView;
 
-/// Validates Object Authorization object paths and operators against the operation query schema.
+/// Validates Object Authorization object paths and operators against the selected authorization schema.
 final class ObjectAuthorizationExpressionValidator {
 
     private ObjectAuthorizationExpressionValidator() {}
 
-    static void validate(ObjectAuthorizationExpression expression, QuerySchemaView schema) {
+    static void validate(ObjectAuthorizationExpression expression, ObjectAuthorizationSchema<?> schema) {
         validate(expression, schema, QueryFieldContext.empty());
     }
 
     static void validate(
         ObjectAuthorizationExpression expression,
-        QuerySchemaView schema,
+        ObjectAuthorizationSchema<?> schema,
         QueryFieldContext queryContext
     ) {
         switch (expression) {
@@ -37,7 +37,7 @@ final class ObjectAuthorizationExpressionValidator {
 
     private static void validateBinary(
         ObjectAuthorizationExpression.Binary binary,
-        QuerySchemaView schema,
+        ObjectAuthorizationSchema<?> schema,
         QueryFieldContext queryContext
     ) {
         switch (binary.operator()) {
@@ -60,7 +60,7 @@ final class ObjectAuthorizationExpressionValidator {
 
     private static void validateOperand(
         ObjectAuthorizationExpression expression,
-        QuerySchemaView schema,
+        ObjectAuthorizationSchema<?> schema,
         QueryFieldContext queryContext
     ) {
         switch (expression) {
@@ -77,20 +77,20 @@ final class ObjectAuthorizationExpressionValidator {
 
     private static void validateReference(
         ObjectAuthorizationExpression.Reference reference,
-        QuerySchemaView schema,
+        ObjectAuthorizationSchema<?> schema,
         QueryFieldContext queryContext
     ) {
         if (reference.root().equals("object")) {
             schema
                 .field(new QueryPath(reference.path()), queryContext)
-                .orElseThrow(() -> invalid("object path is not queryable"));
+                .orElseThrow(() -> invalid("object path is not authorized by this contract"));
         }
     }
 
     private static void requireOperator(
         ObjectAuthorizationExpression expression,
         QueryOperator operator,
-        QuerySchemaView schema,
+        ObjectAuthorizationSchema<?> schema,
         QueryFieldContext queryContext
     ) {
         if (
@@ -98,7 +98,7 @@ final class ObjectAuthorizationExpressionValidator {
         ) {
             QueryFieldDescriptor field = schema
                 .field(new QueryPath(reference.path()), queryContext)
-                .orElseThrow(() -> invalid("object path is not queryable"));
+                .orElseThrow(() -> invalid("object path is not authorized by this contract"));
             if (!field.supports(operator)) {
                 throw invalid("operator is not supported for object path " + field.path().text());
             }
