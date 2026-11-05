@@ -1,5 +1,11 @@
 export { TaskmigoV0Api } from "./api.js";
-export { createUserResponseSchema, listUsersResponseSchema, userInfoSchema, UsersApi } from "./users.js";
+export {
+  createUserErrorResponseSchema,
+  createUserResponseSchema,
+  listUsersResponseSchema,
+  userInfoSchema,
+  UsersApi,
+} from "./users.js";
 export {
   apiErrorSchema,
   basicMetaSchema,
@@ -10,4 +16,11 @@ export {
   successApiResponseSchema,
 } from "./types.js";
 export type { ApiError, BasicMeta, Execution, Message, Offset, OffsetMeta } from "./types.js";
-export type { CreateUserRequest, CreateUserResponse, ListUsersRequest, ListUsersResponse, UserInfo } from "./users.js";
+export type {
+  CreateUserErrorResponse,
+  CreateUserRequest,
+  CreateUserResponse,
+  ListUsersRequest,
+  ListUsersResponse,
+  UserInfo,
+} from "./users.js";

@@ -8,7 +8,7 @@ Tests import only the public SDK boundary:
 import { expect, test } from "#taskmigo-sdk";
 ```
 
-The suite covers browser authentication, browser API BFF behavior, and deployment-level performance regressions. Feature tags include `@auth`, `@bff`, `@performance`, and `@smoke`.
+The suite covers functional API behavior, browser authentication, browser API BFF behavior, and deployment-level performance regressions. Feature tags include `@api`, `@auth`, `@bff`, `@performance`, and `@smoke`.
 
 ## Source of truth
 
@@ -72,6 +72,7 @@ npm test
 Run a tagged subset with:
 
 ```bash
+npm run test:api
 npm run test:auth
 npm run test:bff
 npm run test:performance
