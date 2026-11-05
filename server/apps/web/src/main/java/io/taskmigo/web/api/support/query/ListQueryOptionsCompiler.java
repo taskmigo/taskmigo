@@ -15,23 +15,20 @@ import java.util.Objects;
 import java.util.Set;
 import org.springframework.stereotype.Component;
 
-/// Compiles the public HTTP query model into Taskmigo's internal typed Query representation.
+/// Compiles the public HTTP query model against one explicitly selected Query Contract.
 @Component
 public final class ListQueryOptionsCompiler {
 
-    private final List<QuerySchemaView> schemas;
     private final FilterByCompiler filters;
 
-    public ListQueryOptionsCompiler(List<QuerySchemaView> schemas, FilterByCompiler filters) {
-        this.schemas = List.copyOf(Objects.requireNonNull(schemas));
+    public ListQueryOptionsCompiler(FilterByCompiler filters) {
         this.filters = Objects.requireNonNull(filters);
     }
 
-    public <Q> ListQuerySpec<Q> compile(String operation, ListQueryOptions request, QueryFieldContext context) {
-        Objects.requireNonNull(operation);
+    public <Q> ListQuerySpec<Q> compile(QuerySchemaView schema, ListQueryOptions request, QueryFieldContext context) {
+        Objects.requireNonNull(schema);
         Objects.requireNonNull(request);
         Objects.requireNonNull(context);
-        QuerySchemaView schema = this.schema(operation);
         List<QuerySort> sorting = sorting(schema, context, request);
         QueryPredicate<Q> predicate = this.filters.compileTyped(schema, context, request.getFilterBy());
         return new ListQuerySpec<>(predicate, context, sorting);
@@ -91,18 +88,5 @@ public final class ListQueryOptionsCompiler {
             throw new SortByException("Field '" + fieldName + "' is not sortable");
         }
         return new QuerySort(path, direction);
-    }
-
-    private QuerySchemaView schema(String operation) {
-        List<QuerySchemaView> matches = this.schemas
-            .stream()
-            .filter(candidate -> candidate.operation().equals(operation))
-            .toList();
-        if (matches.size() != 1) {
-            throw new IllegalStateException(
-                "Expected exactly one Query Schema for operation " + operation + ", found " + matches.size()
-            );
-        }
-        return matches.getFirst();
     }
 }

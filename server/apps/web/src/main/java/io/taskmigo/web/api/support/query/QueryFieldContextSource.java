@@ -3,11 +3,11 @@ package io.taskmigo.web.api.support.query;
 import io.taskmigo.query.QueryFieldContext;
 import org.springframework.web.context.request.NativeWebRequest;
 
-/// Supplies server-owned runtime Query field metadata for one operation and request.
+/// Supplies server-owned runtime field metadata for one declared query or authorization contract.
 public interface QueryFieldContextSource {
     @SuppressWarnings("NullableProblems")
-    boolean supports(String operation);
+    boolean supports(Class<?> contract);
 
     @SuppressWarnings("NullableProblems")
-    QueryFieldContext resolve(String operation, NativeWebRequest request);
+    QueryFieldContext resolve(Class<?> contract, NativeWebRequest request);
 }

@@ -3,12 +3,12 @@ package io.taskmigo.authorization.object.application.service;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryFieldDescriptor;
 import io.taskmigo.query.QueryOperator;
 import io.taskmigo.query.QueryPath;
-import io.taskmigo.query.QuerySchemaView;
 import io.taskmigo.query.TypeDescriptor;
 import java.util.Collection;
 import java.util.List;
@@ -19,9 +19,9 @@ import org.junit.jupiter.api.Test;
 class Enhancement237ObjectAuthorizationContractTest {
 
     @Test
-    @DisplayName("validates object authorization against QuerySchemaView including contains")
-    void shouldValidateAgainstQuerySchemaViewIncludingContains() {
-        QuerySchemaView schema = schema(
+    @DisplayName("validates object authorization against its dedicated schema including contains")
+    void shouldValidateAgainstAuthorizationSchemaIncludingContains() {
+        ObjectAuthorizationSchema<TestObject> schema = schema(
             new QueryFieldDescriptor(
                 QueryPath.parse("name"),
                 TypeDescriptor.of(String.class),
@@ -40,9 +40,9 @@ class Enhancement237ObjectAuthorizationContractTest {
     }
 
     @Test
-    @DisplayName("rejects contains when the query field does not allow it")
+    @DisplayName("rejects contains when the authorization field does not allow it")
     void shouldRejectContainsWhenFieldDoesNotAllowIt() {
-        QuerySchemaView schema = schema(
+        ObjectAuthorizationSchema<TestObject> schema = schema(
             new QueryFieldDescriptor(
                 QueryPath.parse("name"),
                 TypeDescriptor.of(String.class),
@@ -61,27 +61,21 @@ class Enhancement237ObjectAuthorizationContractTest {
     }
 
     @Test
-    @DisplayName("removes duplicate object schema and policy cache contracts")
-    void shouldRemoveDuplicateSchemaAndPolicyCacheContracts() {
-        assertThatThrownBy(() ->
-            Class.forName("io.taskmigo.authorization.object.ObjectAuthorizationSchema")
-        ).isInstanceOf(ClassNotFoundException.class);
+    @DisplayName("keeps Statement artifacts uncached")
+    void shouldRemovePolicyCacheContract() {
         assertThatThrownBy(() ->
             Class.forName("io.taskmigo.authorization.request.application.service.StatementArtifactCache")
         ).isInstanceOf(ClassNotFoundException.class);
     }
 
-    private static QuerySchemaView schema(QueryFieldDescriptor field) {
-        return new QuerySchemaView() {
-            @Override
-            public String operation() {
-                return "test-object-authorization";
-            }
-
+    private static ObjectAuthorizationSchema<TestObject> schema(QueryFieldDescriptor field) {
+        return new ObjectAuthorizationSchema<>() {
             @Override
             public Collection<QueryFieldDescriptor> fields(QueryFieldContext context) {
                 return List.of(field);
             }
         };
     }
+
+    private static final class TestObject {}
 }

@@ -2,8 +2,8 @@ package io.taskmigo.web.api.support.query;
 
 import java.io.Serial;
 
-/// Identifies invalid client-supplied sortBy input.
-public class SortByException extends RuntimeException {
+/// Backward-compatible Web subtype of the transport-neutral query sort validation failure.
+public class SortByException extends io.taskmigo.query.SortByException {
 
     @Serial
     private static final long serialVersionUID = 1L;

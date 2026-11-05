@@ -1,8 +1,8 @@
 package io.taskmigo.authorization.embeddedlanguage;
 
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
 import io.taskmigo.language.LanguageCompiler;
-import io.taskmigo.query.QuerySchemaView;
 import java.util.List;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -22,7 +22,7 @@ public class AuthorizationEmbeddedLanguageConfiguration {
     /// Provides an all-schema target resolver when an application has no transport-specific target metadata.
     @Bean
     @ConditionalOnMissingBean(ObjectAuthorizationTargetResolver.class)
-    ObjectAuthorizationTargetResolver objectAuthorizationTargetResolver(List<QuerySchemaView> schemas) {
+    ObjectAuthorizationTargetResolver objectAuthorizationTargetResolver(List<ObjectAuthorizationSchema<?>> schemas) {
         return ObjectAuthorizationTargetResolver.all(schemas);
     }
 }
