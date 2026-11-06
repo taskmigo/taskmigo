@@ -60,6 +60,10 @@ class MigrationResourceLoaderTest {
         var resources = loader.load();
 
         // Assert
+        assertThat(resources.users()).allSatisfy(user -> assertThat(user.absent()).isFalse());
+        assertThat(resources.roles()).allSatisfy(role -> assertThat(role.absent()).isFalse());
+        assertThat(resources.groups()).allSatisfy(group -> assertThat(group.absent()).isFalse());
+        assertThat(resources.statements()).allSatisfy(statement -> assertThat(statement.absent()).isFalse());
         assertThat(resources.clients()).isEmpty();
         assertThat(resources.users()).extracting(InstallationPlan.User::username).contains("system");
     }
