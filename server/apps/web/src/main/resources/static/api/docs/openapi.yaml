@@ -221,7 +221,9 @@ paths:
         in: query
         required: false
         schema:
-          type: string
+          type:
+          - string
+          - "null"
           format: uuid
       - name: filterBy
         in: query
