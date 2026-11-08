@@ -31,7 +31,7 @@ public record InstallationPlan(
         String lastName,
         List<String> roles,
         List<String> groups,
-        Boolean absent
+        @Nullable Boolean absent
     ) {
         public User {
             absent = absent != null && absent;
@@ -47,7 +47,7 @@ public record InstallationPlan(
         String displayName,
         @Nullable String description,
         List<String> statements,
-        Boolean absent
+        @Nullable Boolean absent
     ) {
         public Role {
             absent = absent != null && absent;
@@ -63,7 +63,7 @@ public record InstallationPlan(
         String scope,
         Target target,
         String policy,
-        Boolean absent
+        @Nullable Boolean absent
     ) {
         public Statement {
             absent = absent != null && absent;
@@ -82,7 +82,7 @@ public record InstallationPlan(
         String displayName,
         @Nullable String description,
         List<String> roles,
-        Boolean absent
+        @Nullable Boolean absent
     ) {
         public Group {
             absent = absent != null && absent;
