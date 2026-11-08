@@ -31,9 +31,10 @@ public record InstallationPlan(
         String lastName,
         List<String> roles,
         List<String> groups,
-        boolean absent
+        Boolean absent
     ) {
         public User {
+            absent = defaultAbsent(absent);
             emails = values(emails);
             roles = values(roles);
             groups = values(groups);
@@ -46,9 +47,10 @@ public record InstallationPlan(
         String displayName,
         @Nullable String description,
         List<String> statements,
-        boolean absent
+        Boolean absent
     ) {
         public Role {
+            absent = defaultAbsent(absent);
             statements = values(statements);
         }
     }
@@ -61,8 +63,12 @@ public record InstallationPlan(
         String scope,
         Target target,
         String policy,
-        boolean absent
-    ) {}
+        Boolean absent
+    ) {
+        public Statement {
+            absent = defaultAbsent(absent);
+        }
+    }
 
     /// Defines one managed Statement target.
     public record Target(Api api) {}
@@ -76,9 +82,10 @@ public record InstallationPlan(
         String displayName,
         @Nullable String description,
         List<String> roles,
-        boolean absent
+        Boolean absent
     ) {
         public Group {
+            absent = defaultAbsent(absent);
             roles = values(roles);
         }
     }
@@ -112,6 +119,10 @@ public record InstallationPlan(
             postLogoutRedirectUris = Set.copyOf(postLogoutRedirectUris);
             scopes = Set.copyOf(scopes);
         }
+    }
+
+    private static boolean defaultAbsent(@Nullable Boolean absent) {
+        return Boolean.TRUE.equals(absent);
     }
 
     private static <T> List<T> values(@Nullable List<T> values) {
