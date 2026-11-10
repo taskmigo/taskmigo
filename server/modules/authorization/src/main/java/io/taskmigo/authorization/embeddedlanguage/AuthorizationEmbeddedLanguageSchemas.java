@@ -1,10 +1,10 @@
 package io.taskmigo.authorization.embeddedlanguage;
 
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.language.EnvironmentSchema;
 import io.taskmigo.language.LanguageContract;
 import io.taskmigo.language.LanguageType;
 import io.taskmigo.query.QueryFieldDescriptor;
-import io.taskmigo.query.QuerySchemaView;
 import io.taskmigo.query.TypeDescriptor;
 import java.time.temporal.TemporalAccessor;
 import java.util.Collection;
@@ -32,9 +32,9 @@ public final class AuthorizationEmbeddedLanguageSchemas {
         return REQUEST;
     }
 
-    public static EnvironmentSchema object(List<? extends QuerySchemaView> schemas) {
+    public static EnvironmentSchema object(List<? extends ObjectAuthorizationSchema<?>> schemas) {
         Map<String, EnvironmentSchema.Field> fields = new HashMap<>();
-        for (QuerySchemaView schema : schemas) {
+        for (ObjectAuthorizationSchema<?> schema : schemas) {
             for (QueryFieldDescriptor field : schema.fields()) {
                 String first = field.path().segments().getFirst();
                 fields.putIfAbsent(first, field.path().segments().size() == 1 ? field(field) : nested(schema, first));
@@ -44,7 +44,7 @@ public final class AuthorizationEmbeddedLanguageSchemas {
             "taskmigo.authorization.object." +
                 LanguageContract.VERSION +
                 ":" +
-                schemas.stream().map(QuerySchemaView::identity).sorted().toList(),
+                schemas.stream().map(ObjectAuthorizationSchema::authorizationIdentity).sorted().toList(),
             Map.of(
                 "principal",
                 root(Map.of("id", string(), "username", string())),
@@ -56,14 +56,14 @@ public final class AuthorizationEmbeddedLanguageSchemas {
         );
     }
 
-    public static EnvironmentSchema object(QuerySchemaView schema) {
+    public static EnvironmentSchema object(ObjectAuthorizationSchema<?> schema) {
         Map<String, EnvironmentSchema.Field> fields = new HashMap<>();
         for (QueryFieldDescriptor field : schema.fields()) {
             String first = field.path().segments().getFirst();
             fields.put(first, field.path().segments().size() == 1 ? field(field) : nested(schema, first));
         }
         return new EnvironmentSchema(
-            "taskmigo.authorization.object." + LanguageContract.VERSION + ":" + schema.identity(),
+            "taskmigo.authorization.object." + LanguageContract.VERSION + ":" + schema.authorizationIdentity(),
             Map.of(
                 "principal",
                 root(Map.of("id", string(), "username", string())),
@@ -72,7 +72,7 @@ public final class AuthorizationEmbeddedLanguageSchemas {
                 "object",
                 new EnvironmentSchema.Root(
                     new EnvironmentSchema.Field(
-                        new LanguageType.StructuredType(schema.operation(), fields),
+                        new LanguageType.StructuredType(schema.getClass().getName(), fields),
                         false,
                         true
                     ),
@@ -86,7 +86,7 @@ public final class AuthorizationEmbeddedLanguageSchemas {
         return new EnvironmentSchema.Field(languageType(field.type()), field.nullable(), true);
     }
 
-    private static EnvironmentSchema.Field nested(QuerySchemaView schema, String prefix) {
+    private static EnvironmentSchema.Field nested(ObjectAuthorizationSchema<?> schema, String prefix) {
         List<String> prefixSegments = List.of(prefix.split("\\."));
         Map<String, EnvironmentSchema.Field> children = new HashMap<>();
         for (QueryFieldDescriptor field : schema.fields()) {

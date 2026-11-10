@@ -4,13 +4,15 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.taskmigo.authorization.object.AuthorizationContract;
+import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.group.GroupInfo;
+import io.taskmigo.identity.group.application.api.GroupAuthorization;
+import io.taskmigo.identity.group.application.api.GroupQuery;
 import io.taskmigo.identity.group.application.api.GroupService;
 import io.taskmigo.query.ListQuerySpec;
-import io.taskmigo.query.QueryOperation;
-import io.taskmigo.web.api.support.objectauthorization.ObjectAuthorizationResolver;
-import io.taskmigo.web.api.support.objectauthorization.ResolvedObjectAuthorization;
+import io.taskmigo.query.QueryContract;
 import io.taskmigo.web.api.support.query.ListQueryOptions;
 import io.taskmigo.web.api.support.query.ListQueryResolver;
 import io.taskmigo.web.api.v0.support.pagination.OffsetPageRequest;
@@ -47,36 +49,30 @@ class GroupController {
 
     private final GroupService groups;
     private final ListQueryResolver queryResolver;
-    private final ObjectAuthorizationResolver objectAuthorization;
     private final ApiResponseFactory responses;
 
-    GroupController(
-        GroupService groups,
-        ListQueryResolver queryResolver,
-        ObjectAuthorizationResolver objectAuthorization,
-        ApiResponseFactory responses
-    ) {
+    GroupController(GroupService groups, ListQueryResolver queryResolver, ApiResponseFactory responses) {
         this.groups = groups;
         this.queryResolver = queryResolver;
-        this.objectAuthorization = objectAuthorization;
         this.responses = responses;
     }
 
     @GetMapping("/groups")
-    @QueryOperation("identity.groups.list")
+    @QueryContract(GroupQuery.List.class)
+    @AuthorizationContract(GroupAuthorization.List.class)
     @Operation(summary = "List groups")
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<Response>, ApiResponse.OffsetMeta>> list(
         @ParameterObject @Valid OffsetPageRequest pagination,
-        @ParameterObject @Valid ListQueryOptions query
+        @ParameterObject @Valid ListQueryOptions query,
+        ObjectAuthorizationPredicate<GroupInfo> authorization
     ) {
         ListQuerySpec<GroupInfo> filter = this.queryResolver.resolve(query);
-        ResolvedObjectAuthorization<GroupInfo> authorization = this.objectAuthorization.resolve();
         OffsetPage<GroupInfo> groups = this.groups.list(
             pagination.getPage(),
             pagination.getPageSize(),
             filter,
-            authorization.predicate()
+            authorization
         );
         return this.responses.ok(
             groups.items().stream().map(Response::from).toList(),

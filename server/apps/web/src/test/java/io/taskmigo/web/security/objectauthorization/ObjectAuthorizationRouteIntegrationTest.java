@@ -13,8 +13,8 @@ import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.statement.StatementTargetPathMatcher;
 import io.taskmigo.authorization.statement.TargetInfo;
+import io.taskmigo.identity.user.application.api.UserAuthorization;
 import io.taskmigo.identity.user.application.api.UserService;
-import io.taskmigo.query.QuerySchemaView;
 import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
 import java.util.List;
 import java.util.UUID;
@@ -40,14 +40,14 @@ class ObjectAuthorizationRouteIntegrationTest extends ApiIntegrationTestSupport 
     }
 
     @Test
-    @DisplayName("compiles the managed User statement mutation policy against the runtime operation route")
+    @DisplayName("compiles the managed User statement mutation policy against the runtime Authorization Contract")
     void shouldCompileUserStatementMutationPolicyAgainstRuntimeOperationRoute() {
         String target = "/api/v0/users/.*/statements";
         StatementTargetPathMatcher matcher = StatementTargetPathMatcher.compile(target);
 
         assertThat(this.resolver.applicable("PATCH", matcher))
-            .extracting(QuerySchemaView::operation)
-            .containsExactly("identity.users.update-statements");
+            .singleElement()
+            .isInstanceOf(UserAuthorization.UpdateStatements.class);
 
         StatementInfo denyRetained = new StatementInfo(
             UUID.randomUUID(),

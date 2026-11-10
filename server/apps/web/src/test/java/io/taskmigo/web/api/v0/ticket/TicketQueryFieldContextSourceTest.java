@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.query.QueryFieldContext;
+import io.taskmigo.ticket.application.api.TicketAuthorization;
 import io.taskmigo.ticket.application.api.TicketQueryFieldContexts;
 import java.util.Map;
 import java.util.UUID;
@@ -31,16 +32,16 @@ class TicketQueryFieldContextSourceTest {
         MockHttpServletRequest scopedRequest = new MockHttpServletRequest();
         scopedRequest.setParameter("ticketTypeId", typeId.toString());
 
-        assertThat(source.resolve("tickets.list", new ServletWebRequest(scopedRequest))).isSameAs(scoped);
-        assertThat(source.resolve("tickets.list", new ServletWebRequest(new MockHttpServletRequest()))).isSameAs(
-            global
+        assertThat(source.resolve(TicketAuthorization.List.class, new ServletWebRequest(scopedRequest))).isSameAs(
+            scoped
         );
+        assertThat(
+            source.resolve(TicketAuthorization.List.class, new ServletWebRequest(new MockHttpServletRequest()))
+        ).isSameAs(global);
     }
 
     @Test
-    @DisplayName(
-        "read and update context use the Ticket URI identity while missing URI metadata fails closed to global"
-    )
+    @DisplayName("read and update context use the Ticket URI identity while missing URI metadata uses global")
     void shouldResolveTicketScopeWithoutExistenceLeak() {
         TicketQueryFieldContexts fields = mock(TicketQueryFieldContexts.class);
         TicketQueryFieldContextSource source = new TicketQueryFieldContextSource(fields);
@@ -52,22 +53,24 @@ class TicketQueryFieldContextSourceTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, Map.of("ticketId", ticketId.toString()));
 
-        assertThat(source.resolve("tickets.read", new ServletWebRequest(request))).isSameAs(historical);
-        assertThat(source.resolve("tickets.update", new ServletWebRequest(request))).isSameAs(historical);
-        assertThat(source.resolve("tickets.read", new ServletWebRequest(new MockHttpServletRequest()))).isSameAs(
-            global
+        assertThat(source.resolve(TicketAuthorization.Read.class, new ServletWebRequest(request))).isSameAs(historical);
+        assertThat(source.resolve(TicketAuthorization.Update.class, new ServletWebRequest(request))).isSameAs(
+            historical
         );
+        assertThat(
+            source.resolve(TicketAuthorization.Read.class, new ServletWebRequest(new MockHttpServletRequest()))
+        ).isSameAs(global);
         verify(fields, Mockito.times(2)).forTicket(ticketId);
     }
 
     @Test
-    @DisplayName("source advertises only Ticket operations that own runtime custom fields")
-    void shouldSupportOnlyTicketQueryOperations() {
+    @DisplayName("source advertises only Ticket Authorization Contracts that own runtime custom fields")
+    void shouldSupportOnlyTicketAuthorizationContracts() {
         TicketQueryFieldContextSource source = new TicketQueryFieldContextSource(mock(TicketQueryFieldContexts.class));
 
-        assertThat(source.supports("tickets.list")).isTrue();
-        assertThat(source.supports("tickets.read")).isTrue();
-        assertThat(source.supports("tickets.update")).isTrue();
-        assertThat(source.supports("users.list")).isFalse();
+        assertThat(source.supports(TicketAuthorization.List.class)).isTrue();
+        assertThat(source.supports(TicketAuthorization.Read.class)).isTrue();
+        assertThat(source.supports(TicketAuthorization.Update.class)).isTrue();
+        assertThat(source.supports(String.class)).isFalse();
     }
 }

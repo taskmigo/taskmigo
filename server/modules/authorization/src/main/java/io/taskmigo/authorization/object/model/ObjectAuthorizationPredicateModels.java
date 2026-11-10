@@ -1,8 +1,8 @@
 package io.taskmigo.authorization.object.model;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.query.QueryFieldContext;
-import io.taskmigo.query.QuerySchemaView;
 import java.util.Objects;
 
 /// Creates and exposes the trusted logical model behind opaque Object Authorization predicates.
@@ -11,28 +11,28 @@ public final class ObjectAuthorizationPredicateModels {
     private ObjectAuthorizationPredicateModels() {}
 
     public static <Q> ObjectAuthorizationPredicate<Q> from(
-        QuerySchemaView schema,
+        ObjectAuthorizationSchema<Q> schema,
         ObjectAuthorizationExpression expression
     ) {
         return from(schema, QueryFieldContext.empty(), expression);
     }
 
     public static <Q> ObjectAuthorizationPredicate<Q> from(
-        QuerySchemaView schema,
+        ObjectAuthorizationSchema<Q> schema,
         QueryFieldContext queryContext,
         ObjectAuthorizationExpression expression
     ) {
         Objects.requireNonNull(schema);
         Objects.requireNonNull(queryContext);
-        return wrap(schema.identity(queryContext), expression);
+        return wrap(schema.authorizationIdentity(queryContext), expression);
     }
 
-    public static <Q> ObjectAuthorizationPredicate<Q> constant(QuerySchemaView schema, boolean value) {
+    public static <Q> ObjectAuthorizationPredicate<Q> constant(ObjectAuthorizationSchema<Q> schema, boolean value) {
         return constant(schema, QueryFieldContext.empty(), value);
     }
 
     public static <Q> ObjectAuthorizationPredicate<Q> constant(
-        QuerySchemaView schema,
+        ObjectAuthorizationSchema<Q> schema,
         QueryFieldContext queryContext,
         boolean value
     ) {

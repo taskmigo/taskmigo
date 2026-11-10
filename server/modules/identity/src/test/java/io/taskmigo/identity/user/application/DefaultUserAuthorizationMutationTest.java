@@ -23,6 +23,7 @@ import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.internal.UserCommandService;
 import io.taskmigo.identity.user.application.internal.UserDeletionLifecycleService;
 import io.taskmigo.identity.user.domain.User;
+import io.taskmigo.query.ListQueryCompiler;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -235,6 +236,8 @@ class DefaultUserAuthorizationMutationTest {
             assignments,
             deletion,
             mock(UserAuditAppender.class),
+            UserAuthorizationTestSupport.schemas(),
+            new ListQueryCompiler(),
             Clock.fixed(NOW, ZoneOffset.UTC)
         );
     }

@@ -3,6 +3,7 @@ package io.taskmigo.authorization.request.application.service;
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationCompilationProfile;
 import io.taskmigo.authorization.embeddedlanguage.AuthorizationEmbeddedLanguageSchemas;
+import io.taskmigo.authorization.object.ObjectAuthorizationSchema;
 import io.taskmigo.authorization.object.application.resolution.ObjectAuthorizationTargetResolver;
 import io.taskmigo.authorization.request.application.model.StatementExecutionArtifact;
 import io.taskmigo.authorization.request.application.resolution.EffectiveStatement;
@@ -14,7 +15,6 @@ import io.taskmigo.language.CompiledSource;
 import io.taskmigo.language.EmbeddedLanguageException;
 import io.taskmigo.language.EnvironmentSchema;
 import io.taskmigo.language.LanguageCompiler;
-import io.taskmigo.query.QuerySchemaView;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -64,7 +64,7 @@ public final class StatementArtifactFactory {
         if (statement.scope() == Scope.REQUEST) {
             return AuthorizationEmbeddedLanguageSchemas.request();
         }
-        List<QuerySchemaView> applicable = this.targetResolver.applicable(
+        List<ObjectAuthorizationSchema<?>> applicable = this.targetResolver.applicable(
             statement.target().api().method(),
             pathMatcher
         );

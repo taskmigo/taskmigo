@@ -12,12 +12,15 @@ import io.taskmigo.eav.schema.domain.EavSchemaStatus;
 import io.taskmigo.eav.value.application.EavInstanceService;
 import io.taskmigo.eav.value.application.EavInstanceView;
 import io.taskmigo.foundation.OffsetPage;
+import io.taskmigo.query.ListQueryCompiler;
 import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.ticket.application.api.TicketInfo;
 import io.taskmigo.ticket.application.api.TicketPatch;
 import io.taskmigo.ticket.application.api.TicketService;
 import io.taskmigo.ticket.domain.Ticket;
+import io.taskmigo.ticket.support.TestTicketAuthorization;
+import io.taskmigo.ticket.support.TicketQueryTestSupport;
 import io.taskmigo.ticket.type.application.TicketTypeRepository;
 import io.taskmigo.ticket.type.domain.TicketType;
 import io.taskmigo.ticket.type.domain.TicketTypeStatus;
@@ -61,6 +64,9 @@ class TicketServiceTest {
         this.instances,
         this.tickets,
         this.tickets,
+        TicketQueryTestSupport.emptyContexts(),
+        TicketQueryTestSupport.schemas("tickets.list", "tickets.read", "tickets.update"),
+        new ListQueryCompiler(),
         Clock.fixed(NOW, ZoneOffset.UTC)
     );
 
@@ -146,8 +152,7 @@ class TicketServiceTest {
         TicketInfo updated = this.service.update(
             ticketId,
             new TicketPatch("Legacy renamed", null, nullableMap("summary", "still v1", "note", null)),
-            ALLOW_ALL,
-            QueryFieldContext.empty()
+            TestTicketAuthorization.context(ALLOW_ALL)
         );
 
         assertThat(updated.templateVersionId()).isEqualTo(v1.id());
@@ -159,8 +164,7 @@ class TicketServiceTest {
             this.service.update(
                 ticketId,
                 new TicketPatch(null, null, nullableMap("summary", null)),
-                ALLOW_ALL,
-                QueryFieldContext.empty()
+                TestTicketAuthorization.context(ALLOW_ALL)
             )
         ).isInstanceOf(IllegalArgumentException.class);
     }

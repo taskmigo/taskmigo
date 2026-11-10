@@ -2,8 +2,8 @@ package io.taskmigo.openapi;
 
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.parameters.Parameter;
+import io.taskmigo.query.QueryContract;
 import io.taskmigo.query.QueryFieldDescriptor;
-import io.taskmigo.query.QueryOperation;
 import io.taskmigo.query.QueryOperator;
 import io.taskmigo.query.QuerySchemaView;
 import java.util.Comparator;
@@ -35,12 +35,12 @@ final class FilterByOpenApiCustomizer implements OperationCustomizer {
             return operation;
         }
 
-        QueryOperation queryOperation = handlerMethod.getMethodAnnotation(QueryOperation.class);
-        if (queryOperation == null) {
-            throw new IllegalStateException("query handler must declare @QueryOperation");
+        QueryContract contract = handlerMethod.getMethodAnnotation(QueryContract.class);
+        if (contract == null) {
+            throw new IllegalStateException("query handler must declare @QueryContract");
         }
 
-        QuerySchemaView schema = this.schema(queryOperation.value());
+        QuerySchemaView schema = this.schema(contract.value());
         filterBy.ifPresent(parameter -> parameter.addExtension(FILTER_EXTENSION, filterMetadata(schema)));
         List<String> sortableFields = sortMetadata(schema);
         if (!sortableFields.isEmpty()) {
@@ -49,14 +49,11 @@ final class FilterByOpenApiCustomizer implements OperationCustomizer {
         return operation;
     }
 
-    private QuerySchemaView schema(String operation) {
-        List<QuerySchemaView> matches = this.schemas
-            .stream()
-            .filter(candidate -> candidate.operation().equals(operation))
-            .toList();
+    private QuerySchemaView schema(Class<? extends QuerySchemaView> contract) {
+        List<QuerySchemaView> matches = this.schemas.stream().filter(contract::isInstance).toList();
         if (matches.size() != 1) {
             throw new IllegalStateException(
-                "Expected exactly one Query Schema for operation " + operation + ", found " + matches.size()
+                "Expected exactly one Query Schema for contract " + contract.getName() + ", found " + matches.size()
             );
         }
         return matches.getFirst();
