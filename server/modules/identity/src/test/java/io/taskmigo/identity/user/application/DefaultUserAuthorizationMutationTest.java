@@ -11,6 +11,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.taskmigo.audit.application.record.AuditRecorder;
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
@@ -18,7 +19,6 @@ import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryServic
 import io.taskmigo.foundation.DomainFailureType;
 import io.taskmigo.identity.user.UserException;
 import io.taskmigo.identity.user.UserInfo;
-import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.internal.UserCommandService;
 import io.taskmigo.identity.user.application.internal.UserDeletionLifecycleService;
@@ -61,12 +61,7 @@ class DefaultUserAuthorizationMutationTest {
 
         // Act + Assert
         assertThatThrownBy(() ->
-            service.setStatements(
-                userId,
-                List.of(UUID.randomUUID()),
-                authorization,
-                new UserMutationActor(UUID.randomUUID(), "operator")
-            )
+            service.setStatements(userId, List.of(UUID.randomUUID()), authorization)
         ).isInstanceOfSatisfying(UserException.class, exception ->
             assertThat(exception.type()).isEqualTo(DomainFailureType.NOT_FOUND)
         );
@@ -98,12 +93,7 @@ class DefaultUserAuthorizationMutationTest {
 
         // Act + Assert
         assertThatThrownBy(() ->
-            service.setStatements(
-                userId,
-                List.of(UUID.randomUUID()),
-                authorization,
-                new UserMutationActor(UUID.randomUUID(), "operator")
-            )
+            service.setStatements(userId, List.of(UUID.randomUUID()), authorization)
         ).isInstanceOfSatisfying(UserException.class, exception ->
             assertThat(exception.type()).isEqualTo(DomainFailureType.CONFLICT)
         );
@@ -142,12 +132,7 @@ class DefaultUserAuthorizationMutationTest {
 
         // Act + Assert
         assertThatThrownBy(() ->
-            service.setStatements(
-                userId,
-                List.of(statementId),
-                authorization,
-                new UserMutationActor(UUID.randomUUID(), "operator")
-            )
+            service.setStatements(userId, List.of(statementId), authorization)
         ).isInstanceOfSatisfying(UserException.class, exception -> {
             assertThat(exception.type()).isEqualTo(DomainFailureType.UNPROCESSABLE);
             assertThat(exception).hasMessage("One or more Statements do not exist");
@@ -181,13 +166,12 @@ class DefaultUserAuthorizationMutationTest {
         );
 
         // Act + Assert
-        assertThatThrownBy(() ->
-            service.delete(userId, authorization, new UserMutationActor(UUID.randomUUID(), "operator"))
-        ).isInstanceOfSatisfying(UserException.class, exception ->
-            assertThat(exception.type()).isEqualTo(DomainFailureType.NOT_FOUND)
+        assertThatThrownBy(() -> service.delete(userId, authorization)).isInstanceOfSatisfying(
+            UserException.class,
+            exception -> assertThat(exception.type()).isEqualTo(DomainFailureType.NOT_FOUND)
         );
         verify(commands, never()).findByIdForUpdate(any());
-        verify(deletion, never()).delete(any(), any(), any());
+        verify(deletion, never()).delete(any(), any());
     }
 
     /**
@@ -214,11 +198,11 @@ class DefaultUserAuthorizationMutationTest {
         );
 
         // Act
-        service.delete(userId, authorization, new UserMutationActor(UUID.randomUUID(), "operator"));
+        service.delete(userId, authorization);
 
         // Assert
         verify(commands, never()).findByIdForUpdate(userId);
-        verify(deletion).delete(eq(target), any(), any());
+        verify(deletion).delete(eq(target), any());
     }
 
     private static DefaultUserService service(
@@ -234,7 +218,7 @@ class DefaultUserAuthorizationMutationTest {
             queries,
             assignments,
             deletion,
-            mock(UserAuditAppender.class),
+            mock(AuditRecorder.class),
             Clock.fixed(NOW, ZoneOffset.UTC)
         );
     }

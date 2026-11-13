@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.taskmigo.audit.application.record.AuditRecorder;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningResult;
 import io.taskmigo.authorization.role.application.RoleHierarchyRepository;
@@ -247,7 +248,8 @@ class DefaultAuthorizationProvisioningServiceTest {
             roles,
             hierarchies,
             statements,
-            mock(StatementCommandService.class)
+            mock(StatementCommandService.class),
+            mock(AuditRecorder.class)
         );
 
         // Act
@@ -345,7 +347,8 @@ class DefaultAuthorizationProvisioningServiceTest {
             roles,
             mock(RoleHierarchyRepository.class),
             statementService,
-            statements
+            statements,
+            mock(AuditRecorder.class)
         );
     }
 

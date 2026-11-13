@@ -2888,6 +2888,11 @@ components:
           format: uuid
         username:
           type: string
+        type:
+          type: string
+          enum:
+          - USER
+          - SYSTEM
     AuditChange:
       type: object
       properties:
@@ -2907,7 +2912,6 @@ components:
           type: string
         entityId:
           type: string
-          format: uuid
         actor:
           $ref: "#/components/schemas/AuditActor"
         occurredAt:
@@ -2917,6 +2921,16 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AuditChange"
+        operation:
+          type: string
+          enum:
+          - CREATE
+          - UPDATE
+          - DELETE
+        executor:
+          type: string
+        causation:
+          type: string
   securitySchemes:
     taskmigoOAuth:
       type: oauth2

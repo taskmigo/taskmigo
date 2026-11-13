@@ -3,6 +3,10 @@ package io.taskmigo.web.api.v0.auth.user;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.taskmigo.audit.context.AuditCause;
+import io.taskmigo.audit.context.AuditContext;
+import io.taskmigo.audit.context.AuditContexts;
+import io.taskmigo.audit.context.AuditExecutor;
 import io.taskmigo.authorization.request.application.resolution.EffectiveStatement;
 import io.taskmigo.authorization.request.application.resolution.EffectiveStatementResolver;
 import io.taskmigo.authorization.role.RoleInfo;
@@ -10,7 +14,6 @@ import io.taskmigo.authorization.role.application.api.RoleService;
 import io.taskmigo.authorization.statement.StatementInfo;
 import io.taskmigo.authorization.subject.application.api.SubjectRoleQueryService;
 import io.taskmigo.identity.group.application.api.GroupService;
-import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.application.api.UserService;
 import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.web.api.v0.testing.TaskmigoApiClient.CreateGroupRequest;
@@ -281,10 +284,13 @@ class UserApiIntegrationTest extends ApiIntegrationTestSupport {
             .create(new CreateGroupRequest(uniqueGroupName("Parent group"), null, List.of(nestedGroup), Set.of()));
         this.groups.setRoles(nestedGroup, Set.of(childRole, groupRole));
         UUID user = this.create("mixed-statements", List.of(parentRole), List.of(parentGroup));
-        this.users.setStatements(
-            user,
-            List.of(directStatement, sharedStatement),
-            new UserMutationActor(user, "audit-test")
+        AuditContexts.run(
+            AuditContext.system(
+                "integration-fixture",
+                AuditExecutor.test("web-test"),
+                AuditCause.test("assign-statements")
+            ),
+            () -> this.users.setStatements(user, List.of(directStatement, sharedStatement))
         );
 
         // Act

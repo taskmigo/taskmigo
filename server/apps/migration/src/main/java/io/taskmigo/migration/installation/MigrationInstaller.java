@@ -1,5 +1,10 @@
 package io.taskmigo.migration.installation;
 
+import io.taskmigo.audit.application.record.AuditRecorder;
+import io.taskmigo.audit.context.AuditCause;
+import io.taskmigo.audit.context.AuditContext;
+import io.taskmigo.audit.context.AuditContexts;
+import io.taskmigo.audit.context.AuditExecutor;
 import io.taskmigo.authorization.provisioning.application.api.AuthorizationProvisioningService;
 import io.taskmigo.identity.provisioning.application.api.GroupProvisioningService;
 import io.taskmigo.identity.provisioning.application.api.IdentityProvisioningService;
@@ -28,10 +33,11 @@ public final class MigrationInstaller {
         GroupProvisioningService groups,
         ManagedClientRepository clients,
         PasswordEncoder passwords,
-        PlatformTransactionManager transactionManager
+        PlatformTransactionManager transactionManager,
+        AuditRecorder audits
     ) {
         this.resources = new ManagedResourceReconciler(authorization, identity, groups, passwords);
-        this.clients = new InternalClientReconciler(clients, passwords);
+        this.clients = new InternalClientReconciler(clients, passwords, audits);
         this.transactions = new TransactionTemplate(transactionManager);
         this.transactions.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
     }
@@ -39,7 +45,14 @@ public final class MigrationInstaller {
     public void install(InstallationPlan plan) {
         this.resources.validate(plan);
         this.clients.validate(plan.clients());
-        this.reconcile(plan);
+        AuditContexts.run(
+            AuditContext.system(
+                "taskmigo-migration",
+                AuditExecutor.migration("migration"),
+                AuditCause.installation("startup")
+            ),
+            () -> this.reconcile(plan)
+        );
     }
 
     private void reconcile(InstallationPlan plan) {

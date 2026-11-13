@@ -1,8 +1,12 @@
 package io.taskmigo.migration.installation;
 
+import io.taskmigo.audit.application.record.AuditRecorder;
+import io.taskmigo.audit.model.AuditChange;
+import io.taskmigo.audit.model.AuditOperation;
 import io.taskmigo.migration.oauth.ManagedClientRepository;
 import io.taskmigo.migration.oauth.ManagedOAuthClient;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
@@ -13,10 +17,12 @@ final class InternalClientReconciler {
 
     private final ManagedClientRepository clients;
     private final PasswordEncoder passwords;
+    private final AuditRecorder audits;
 
-    InternalClientReconciler(ManagedClientRepository clients, PasswordEncoder passwords) {
+    InternalClientReconciler(ManagedClientRepository clients, PasswordEncoder passwords, AuditRecorder audits) {
         this.clients = clients;
         this.passwords = passwords;
+        this.audits = audits;
     }
 
     void validate(Map<String, InstallationPlan.OAuthClient> configuredClients) {
@@ -44,8 +50,22 @@ final class InternalClientReconciler {
         String id = existing.isPresent() ? existing.orElseThrow().id() : configuredClient.getKey();
         ManagedOAuthClient desired = ManagedOAuthClient.from(id, encodedSecret, definition);
 
-        if (existing.isEmpty() || !this.clients.matches(desired)) {
+        boolean created = existing.isEmpty();
+        if (created || !this.clients.matches(desired)) {
             this.clients.save(desired);
+            this.audits.record(
+                "oauth-client",
+                definition.clientId(),
+                created ? AuditOperation.CREATE : AuditOperation.UPDATE,
+                () ->
+                    created
+                        ? List.of(
+                              AuditChange.visible("clientId", null, definition.clientId()),
+                              AuditChange.sensitive("clientSecret"),
+                              AuditChange.sensitive("configuration")
+                          )
+                        : List.of(AuditChange.sensitive("clientSecret"), AuditChange.sensitive("configuration"))
+            );
         }
     }
 

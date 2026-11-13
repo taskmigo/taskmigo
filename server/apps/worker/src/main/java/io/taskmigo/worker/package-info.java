@@ -2,7 +2,7 @@
 ///
 /// Reusable business behavior remains in its owning module; Worker packages schedule and compose those published use
 /// cases. Worker currently consumes only the Identity User use-case surface.
-@ApplicationModule(allowedDependencies = "identity :: user-use-cases")
+@ApplicationModule(allowedDependencies = { "identity :: user-use-cases", "audit :: context" })
 @NullMarked
 package io.taskmigo.worker;
 

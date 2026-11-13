@@ -1,32 +1,29 @@
 package io.taskmigo.identity.user.application;
 
-import io.taskmigo.audit.event.AuditEvent;
-import io.taskmigo.audit.model.AuditActor;
+import io.taskmigo.audit.application.record.AuditRecorder;
 import io.taskmigo.audit.model.AuditChange;
-import io.taskmigo.identity.user.UserMutationActor;
+import io.taskmigo.audit.model.AuditOperation;
 import io.taskmigo.identity.user.application.internal.UserCommandService;
 import io.taskmigo.identity.user.application.internal.UserTombstoneService;
 import io.taskmigo.identity.user.domain.User;
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 
 /// Permanently removes User PII/access data while preserving the stable tombstone row and audit history.
 public final class DefaultUserTombstoneService implements UserTombstoneService {
 
     private static final String ENTITY_TYPE = "user";
-    private static final String UNKNOWN_USER = "Unknown user";
 
     private final UserCommandService users;
     private final UserAccessRevocationService access;
     private final UserAuditScrubber auditScrubber;
-    private final UserAuditAppender audits;
+    private final AuditRecorder audits;
 
     public DefaultUserTombstoneService(
         UserCommandService users,
         UserAccessRevocationService access,
         UserAuditScrubber auditScrubber,
-        UserAuditAppender audits
+        AuditRecorder audits
     ) {
         this.users = users;
         this.access = access;
@@ -35,13 +32,11 @@ public final class DefaultUserTombstoneService implements UserTombstoneService {
     }
 
     @Override
-    public void tombstone(User target, UserMutationActor actor, Instant tombstonedAt) {
+    public void tombstone(User target, Instant tombstonedAt) {
         String beforeStatus = target.status().name();
         this.access.revoke(target);
         target.tombstone(tombstonedAt);
         this.users.save(target);
-
-        this.auditScrubber.scrub(target.id());
 
         List<AuditChange> changes = List.of(
             AuditChange.sensitive("username"),
@@ -57,16 +52,7 @@ public final class DefaultUserTombstoneService implements UserTombstoneService {
             AuditChange.visible("tombstonedAt", null, tombstonedAt)
         );
 
-        String actorUsername = actor.id().equals(target.id()) ? UNKNOWN_USER : actor.username();
-        this.audits.append(
-            new AuditEvent(
-                UUID.randomUUID(),
-                ENTITY_TYPE,
-                target.id(),
-                new AuditActor(actor.id(), actorUsername),
-                tombstonedAt,
-                changes
-            )
-        );
+        this.audits.record(ENTITY_TYPE, target.id(), AuditOperation.DELETE, () -> changes);
+        this.auditScrubber.scrub(target.id());
     }
 }

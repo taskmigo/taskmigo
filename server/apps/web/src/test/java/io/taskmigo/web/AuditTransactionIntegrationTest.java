@@ -8,12 +8,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import io.taskmigo.PostgresTestConfiguration;
 import io.taskmigo.audit.application.append.AuditAppendService;
 import io.taskmigo.audit.application.privacy.AuditPrivacyService;
+import io.taskmigo.audit.context.AuditCause;
+import io.taskmigo.audit.context.AuditContext;
+import io.taskmigo.audit.context.AuditContexts;
+import io.taskmigo.audit.context.AuditExecutor;
 import io.taskmigo.audit.event.AuditEvent;
 import io.taskmigo.audit.model.AuditActor;
 import io.taskmigo.audit.model.AuditChange;
 import io.taskmigo.identity.provisioning.application.api.IdentityProvisioningService;
-import io.taskmigo.identity.user.SystemUser;
-import io.taskmigo.identity.user.UserMutationActor;
+import io.taskmigo.identity.user.application.api.UserRegistrationService;
 import io.taskmigo.identity.user.application.api.UserService;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -51,6 +54,7 @@ class AuditTransactionIntegrationTest {
     private final AuditAppendService audits;
     private final AuditPrivacyService privacy;
     private final UserService users;
+    private final UserRegistrationService registrations;
     private final IdentityProvisioningService provisioning;
     private final PlatformTransactionManager transactions;
 
@@ -59,6 +63,7 @@ class AuditTransactionIntegrationTest {
         AuditAppendService audits,
         AuditPrivacyService privacy,
         UserService users,
+        UserRegistrationService registrations,
         IdentityProvisioningService provisioning,
         PlatformTransactionManager transactions
     ) {
@@ -66,8 +71,90 @@ class AuditTransactionIntegrationTest {
         this.audits = audits;
         this.privacy = privacy;
         this.users = users;
+        this.registrations = registrations;
         this.provisioning = provisioning;
         this.transactions = transactions;
+    }
+
+    /**
+     * Verifies that ordinary User registration emits the same complete audit event as managed provisioning.
+     *
+     * Given: an authenticated User actor originating a runtime registration through the application service.
+     * Expect: a single CREATE event with actor, executor, cause and the created profile fields.
+     */
+    @Test
+    @DisplayName("records runtime User CREATE with the initiating actor")
+    void shouldAuditRuntimeUserRegistration() {
+        // Arrange
+        UUID actorId = UUID.randomUUID();
+        String username = "runtime-audit-" + UUID.randomUUID();
+        AuditContext context = AuditContext.user(
+            actorId,
+            "operator",
+            AuditExecutor.test("web-test"),
+            AuditCause.test("runtime-registration")
+        );
+
+        // Act
+        UUID userId = AuditContexts.call(context, () ->
+            this.registrations.register(
+                username,
+                Set.of("audit@example.com"),
+                "Audit",
+                "Registration",
+                Set.of(),
+                Set.of()
+            )
+        );
+
+        // Assert
+        assertThat(
+            this.jdbc.queryForList(
+                """
+                select actor_id, actor_username, actor_type, operation, executor, causation, changes_json
+                from audit_logs where entity_type = 'user' and entity_id = ?
+                """,
+                userId.toString()
+            )
+        )
+            .singleElement()
+            .satisfies(row -> {
+                assertThat(row.get("actor_id")).isEqualTo(actorId);
+                assertThat(row.get("actor_username")).isEqualTo("operator");
+                assertThat(row.get("actor_type")).isEqualTo("USER");
+                assertThat(row.get("operation")).isEqualTo("CREATE");
+                assertThat(row.get("executor")).isEqualTo("web-test");
+                assertThat(row.get("causation")).isEqualTo("TEST:runtime-registration");
+                assertThat(Objects.requireNonNull(row.get("changes_json")).toString()).contains(
+                    "username",
+                    "firstName",
+                    "lastName",
+                    "emails",
+                    "roleIds",
+                    "groupIds"
+                );
+            });
+    }
+
+    /**
+     * Verifies that User CREATE cannot bypass actor attribution even outside the HTTP entry point.
+     *
+     * Given: a direct application registration with no trusted AuditContext.
+     * Expect: fail-fast attribution aborts the enclosing transaction and preserves no new User row.
+     */
+    @Test
+    @DisplayName("rolls back runtime User registration when no actor is declared")
+    void shouldRollbackRuntimeRegistrationWithoutActor() {
+        // Arrange
+        String username = "runtime-unattributed-" + UUID.randomUUID();
+
+        // Act + Assert
+        assertThatThrownBy(() -> this.registrations.register(username, Set.of(), "No", "Actor", Set.of(), Set.of()))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("requires an explicit AuditContext");
+        assertThat(
+            this.jdbc.queryForObject("select count(*) from users where username = ?", Integer.class, username)
+        ).isZero();
     }
 
     /**
@@ -82,10 +169,13 @@ class AuditTransactionIntegrationTest {
         // Arrange
         UUID userId = this.insertUser();
         UUID statementId = this.insertStatement();
-        UserMutationActor actor = new UserMutationActor(UUID.randomUUID(), "operator");
+        UUID actorId = UUID.randomUUID();
 
         // Act
-        this.users.setStatements(userId, Set.of(statementId), actor);
+        AuditContexts.run(
+            AuditContext.user(actorId, "operator", AuditExecutor.test("web-test"), AuditCause.test("statement-update")),
+            () -> this.users.setStatements(userId, Set.of(statementId))
+        );
 
         // Assert
         assertThat(this.bindingCount(userId)).isOne();
@@ -96,13 +186,13 @@ class AuditTransactionIntegrationTest {
                 from audit_logs
                 where entity_type = 'user' and entity_id = ?
                 """,
-                userId
+                userId.toString()
             )
         )
             .singleElement()
             .satisfies(row -> {
-                assertThat(row.get("actor_id")).isEqualTo(actor.id());
-                assertThat(row.get("actor_username")).isEqualTo(actor.username());
+                assertThat(row.get("actor_id")).isEqualTo(actorId);
+                assertThat(row.get("actor_username")).isEqualTo("operator");
                 Timestamp occurredAt = (Timestamp) Objects.requireNonNull(row.get("occurred_at"));
                 assertThat(occurredAt.toInstant().getNano() % 1_000_000).isZero();
                 assertThat(Objects.requireNonNull(row.get("changes_json")).toString()).contains(
@@ -168,10 +258,13 @@ class AuditTransactionIntegrationTest {
         try {
             // Act + Assert
             assertThatThrownBy(() ->
-                this.users.setStatements(
-                    userId,
-                    Set.of(statementId),
-                    new UserMutationActor(UUID.randomUUID(), "operator")
+                AuditContexts.run(
+                    AuditContext.system(
+                        "integration-fixture",
+                        AuditExecutor.test("web-test"),
+                        AuditCause.test("statement-rollback")
+                    ),
+                    () -> this.users.setStatements(userId, Set.of(statementId))
                 )
             ).isInstanceOf(RuntimeException.class);
             assertThat(this.bindingCount(userId)).isZero();
@@ -191,31 +284,57 @@ class AuditTransactionIntegrationTest {
     @DisplayName("redacts sensitive values from synchronous audit persistence")
     void shouldRedactSensitiveValueWhenManagedCredentialChanges() {
         // Arrange
-        UUID systemId = this.users
-            .findForAuthentication(SystemUser.USERNAME)
-            .map(info -> info.id())
-            .orElseGet(() -> this.insertUser(SystemUser.USERNAME));
         String username = "sensitive-" + UUID.randomUUID();
         UUID userId = this.insertUser(username);
         String secretHash = "{bcrypt}sensitive-test-hash";
 
         // Act
-        this.provisioning.reconcileUser(username, secretHash, Set.of(), "Audit", "Test", Set.of(), Set.of());
+        AuditContexts.run(
+            AuditContext.system(
+                "integration-test",
+                AuditExecutor.test("web-test"),
+                AuditCause.test("credential-change")
+            ),
+            () -> this.provisioning.reconcileUser(username, secretHash, Set.of(), "Audit", "Test", Set.of(), Set.of())
+        );
 
         // Assert
         assertThat(
             this.jdbc.queryForList(
                 "select actor_id, changes_json from audit_logs where entity_type = 'user' and entity_id = ?",
-                userId
+                userId.toString()
             )
         )
             .singleElement()
             .satisfies(row -> {
-                assertThat(row.get("actor_id")).isEqualTo(systemId);
+                assertThat(row.get("actor_id")).isEqualTo(AuditActor.system("integration-test").id());
                 assertThat(Objects.requireNonNull(row.get("changes_json")).toString())
                     .contains("passwordHash")
                     .doesNotContain(secretHash);
             });
+    }
+
+    /**
+     * Verifies that missing attribution fails the whole managed User mutation transaction.
+     *
+     * Given: an existing User and a managed profile change without any trusted context.
+     * Expect: a clear attribution error and no persisted mutation or audit event.
+     */
+    @Test
+    @DisplayName("rolls back managed updates when the execution actor is missing")
+    void shouldRollbackManagedUpdateWhenActorIsMissing() {
+        // Arrange
+        String username = "actor-missing-" + UUID.randomUUID();
+        UUID userId = this.insertUser(username);
+
+        // Act + Assert
+        assertThatThrownBy(() ->
+            this.provisioning.reconcileUser(username, null, Set.of(), "Changed", "Test", Set.of(), Set.of())
+        )
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("requires an explicit AuditContext");
+        assertThat(this.users.require(userId).firstName()).isEqualTo("Audit");
+        assertThat(this.auditCount(userId)).isZero();
     }
 
     /**
@@ -231,7 +350,7 @@ class AuditTransactionIntegrationTest {
         UUID userId = this.insertUser();
 
         // Act
-        this.users.setStatements(userId, Set.of(), new UserMutationActor(UUID.randomUUID(), "operator"));
+        this.users.setStatements(userId, Set.of());
 
         // Assert
         assertThat(this.auditCount(userId)).isZero();
@@ -259,17 +378,23 @@ class AuditTransactionIntegrationTest {
             assertThat(locked.await(5, SECONDS)).isTrue();
 
             Future<?> blockedMutation = executor.submit(() ->
-                this.users.setStatements(
-                    firstUser,
-                    Set.of(firstStatement),
-                    new UserMutationActor(UUID.randomUUID(), "operator-a")
+                AuditContexts.run(
+                    AuditContext.system(
+                        "integration-fixture",
+                        AuditExecutor.test("web-test"),
+                        AuditCause.test("blocking-statement-mutation")
+                    ),
+                    () -> this.users.setStatements(firstUser, Set.of(firstStatement))
                 )
             );
             Future<?> independentMutation = executor.submit(() ->
-                this.users.setStatements(
-                    secondUser,
-                    Set.of(secondStatement),
-                    new UserMutationActor(UUID.randomUUID(), "operator-b")
+                AuditContexts.run(
+                    AuditContext.system(
+                        "integration-fixture",
+                        AuditExecutor.test("web-test"),
+                        AuditCause.test("independent-statement-mutation")
+                    ),
+                    () -> this.users.setStatements(secondUser, Set.of(secondStatement))
                 )
             );
 
@@ -348,7 +473,7 @@ class AuditTransactionIntegrationTest {
             this.jdbc.queryForObject(
                 "select count(*) from audit_logs where entity_type = 'user' and entity_id = ?",
                 Integer.class,
-                userId
+                userId.toString()
             )
         );
     }

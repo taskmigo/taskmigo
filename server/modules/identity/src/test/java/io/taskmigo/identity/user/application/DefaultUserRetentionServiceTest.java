@@ -11,7 +11,6 @@ import io.taskmigo.identity.configuration.ConfigurationSnapshot;
 import io.taskmigo.identity.configuration.ConfigurationSnapshot.RetentionConfiguration;
 import io.taskmigo.identity.configuration.RetentionDuration;
 import io.taskmigo.identity.configuration.application.api.ConfigurationService;
-import io.taskmigo.identity.user.UserMutationActor;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -39,11 +38,9 @@ class DefaultUserRetentionServiceTest {
         );
         ConfigurationService configuration = mock(ConfigurationService.class);
         UserRetentionBatchService batches = mock(UserRetentionBatchService.class);
-        UserMutationActor actor = new UserMutationActor(UUID.randomUUID(), "system");
         when(configuration.get()).thenReturn(configuration("P30D"));
-        when(batches.systemActor()).thenReturn(actor);
         when(batches.retainedCandidates(cutoff, null)).thenReturn(List.of(candidate));
-        when(batches.tombstoneIfStillEligible(candidate, cutoff, actor, NOW)).thenReturn(true);
+        when(batches.tombstoneIfStillEligible(candidate, cutoff, NOW)).thenReturn(true);
         var service = new DefaultUserRetentionService(configuration, batches);
 
         // Act
@@ -51,7 +48,7 @@ class DefaultUserRetentionServiceTest {
 
         // Assert
         assertThat(tombstoned).isOne();
-        verify(batches).tombstoneIfStillEligible(candidate, cutoff, actor, NOW);
+        verify(batches).tombstoneIfStillEligible(candidate, cutoff, NOW);
     }
 
     /**
@@ -71,11 +68,9 @@ class DefaultUserRetentionServiceTest {
         );
         ConfigurationService configuration = mock(ConfigurationService.class);
         UserRetentionBatchService batches = mock(UserRetentionBatchService.class);
-        UserMutationActor actor = new UserMutationActor(UUID.randomUUID(), "system");
         when(configuration.get()).thenReturn(configuration("P30D"));
-        when(batches.systemActor()).thenReturn(actor);
         when(batches.retainedCandidates(cutoff, null)).thenReturn(List.of(candidate));
-        when(batches.tombstoneIfStillEligible(candidate, cutoff, actor, NOW)).thenReturn(false);
+        when(batches.tombstoneIfStillEligible(candidate, cutoff, NOW)).thenReturn(false);
         var service = new DefaultUserRetentionService(configuration, batches);
 
         // Act
@@ -106,14 +101,12 @@ class DefaultUserRetentionServiceTest {
         );
         ConfigurationService configuration = mock(ConfigurationService.class);
         UserRetentionBatchService batches = mock(UserRetentionBatchService.class);
-        UserMutationActor actor = new UserMutationActor(UUID.randomUUID(), "system");
         when(configuration.get()).thenReturn(configuration("P30D"));
-        when(batches.systemActor()).thenReturn(actor);
         when(batches.retainedCandidates(cutoff, null)).thenReturn(List.of(first, second));
         doThrow(new IllegalStateException("simulated failure"))
             .when(batches)
-            .tombstoneIfStillEligible(eq(first), eq(cutoff), eq(actor), eq(NOW));
-        when(batches.tombstoneIfStillEligible(second, cutoff, actor, NOW)).thenReturn(true);
+            .tombstoneIfStillEligible(eq(first), eq(cutoff), eq(NOW));
+        when(batches.tombstoneIfStillEligible(second, cutoff, NOW)).thenReturn(true);
         var service = new DefaultUserRetentionService(configuration, batches);
 
         // Act
@@ -121,7 +114,7 @@ class DefaultUserRetentionServiceTest {
 
         // Assert
         assertThat(tombstoned).isOne();
-        verify(batches).tombstoneIfStillEligible(second, cutoff, actor, NOW);
+        verify(batches).tombstoneIfStillEligible(second, cutoff, NOW);
     }
 
     private static ConfigurationSnapshot configuration(String retention) {

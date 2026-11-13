@@ -1,5 +1,9 @@
 package io.taskmigo.authorization.provisioning.application.service;
 
+import io.taskmigo.audit.application.record.AuditRecorder;
+import io.taskmigo.audit.model.AuditChange;
+import io.taskmigo.audit.model.AuditChanges;
+import io.taskmigo.audit.model.AuditOperation;
 import io.taskmigo.authorization.core.AuthorizationException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException;
 import io.taskmigo.authorization.provisioning.AuthorizationProvisioningResult;
@@ -17,6 +21,7 @@ import io.taskmigo.authorization.statement.application.internal.StatementMutatio
 import io.taskmigo.authorization.statement.domain.Statement;
 import io.taskmigo.authorization.statement.domain.StatementRuleViolation;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -30,17 +35,20 @@ public class DefaultAuthorizationProvisioningService implements AuthorizationPro
     private final RoleHierarchyRepository roleHierarchies;
     private final StatementService statementService;
     private final StatementCommandService statementCommands;
+    private final AuditRecorder audits;
 
     public DefaultAuthorizationProvisioningService(
         RoleCommandService roleCommands,
         RoleHierarchyRepository roleHierarchies,
         StatementService statementService,
-        StatementCommandService statementCommands
+        StatementCommandService statementCommands,
+        AuditRecorder audits
     ) {
         this.roleCommands = roleCommands;
         this.roleHierarchies = roleHierarchies;
         this.statementService = statementService;
         this.statementCommands = statementCommands;
+        this.audits = audits;
     }
 
     @Override
@@ -97,6 +105,13 @@ public class DefaultAuthorizationProvisioningService implements AuthorizationPro
         @Nullable String path,
         @Nullable String policy
     ) {
+        Statement before = this.statementCommands.findByCode(code).orElse(null);
+        String previousDescription = before == null ? null : before.description();
+        Effect previousEffect = before == null ? null : before.effect();
+        Scope previousScope = before == null ? null : before.scope();
+        String previousMethod = before == null ? null : before.target().method();
+        String previousPath = before == null ? null : before.target().path();
+        String previousPolicy = before == null ? null : before.policy().source();
         StatementMutationResult mutation;
         try {
             mutation = this.statementCommands.reconcileManaged(code, description, effect, scope, method, path, policy);
@@ -104,6 +119,28 @@ public class DefaultAuthorizationProvisioningService implements AuthorizationPro
             throw invalidInput(exception);
         }
 
+        if (mutation.created() || mutation.changed()) {
+            this.audits.record(
+                "statement",
+                mutation.id(),
+                mutation.created() ? AuditOperation.CREATE : AuditOperation.UPDATE,
+                () -> {
+                    Statement after = this.statementCommands.findByCode(code).orElseThrow();
+                    AuditChanges changes = AuditChanges.builder();
+                    if (mutation.created()) {
+                        changes.add(AuditChange.visible("code", null, after.code().value()));
+                    }
+                    return changes
+                        .changed("description", previousDescription, after.description())
+                        .changed("effect", previousEffect, after.effect())
+                        .changed("scope", previousScope, after.scope())
+                        .changed("method", previousMethod, after.target().method())
+                        .changed("path", previousPath, after.target().path())
+                        .sensitiveChanged("policy", previousPolicy, after.policy().source())
+                        .build();
+                }
+            );
+        }
         return new AuthorizationProvisioningResult<>(
             mutation.id(),
             provisioningChange(mutation.created(), mutation.changed())
@@ -119,6 +156,10 @@ public class DefaultAuthorizationProvisioningService implements AuthorizationPro
         Set<UUID> requestedIds = Set.copyOf(statementIds);
         this.statementService.requireStatements(requestedIds);
 
+        Role before = this.roleCommands.findByCode(code).orElse(null);
+        String previousName = before == null ? null : before.profile().displayName();
+        String previousDescription = before == null ? null : before.profile().description();
+        Set<UUID> previousStatements = before == null ? Set.of() : Set.copyOf(before.statementIds());
         RoleMutationResult mutation;
         try {
             mutation = this.roleCommands.reconcileManaged(code, displayName, description, requestedIds);
@@ -127,6 +168,25 @@ public class DefaultAuthorizationProvisioningService implements AuthorizationPro
         }
         if (mutation.created()) {
             this.roleHierarchies.synchronize(this.roleHierarchies.loadForMutation());
+        }
+        if (mutation.created() || mutation.changed()) {
+            this.audits.record(
+                "role",
+                mutation.id(),
+                mutation.created() ? AuditOperation.CREATE : AuditOperation.UPDATE,
+                () -> {
+                    Role after = this.roleCommands.findByCode(code).orElseThrow();
+                    AuditChanges changes = AuditChanges.builder();
+                    if (mutation.created()) {
+                        changes.add(AuditChange.visible("code", null, after.code().value()));
+                    }
+                    return changes
+                        .changed("displayName", previousName, after.profile().displayName())
+                        .changed("description", previousDescription, after.profile().description())
+                        .changed("statementIds", sorted(previousStatements), sorted(after.statementIds()))
+                        .build();
+                }
+            );
         }
         return new AuthorizationProvisioningResult<>(
             mutation.id(),
@@ -171,6 +231,9 @@ public class DefaultAuthorizationProvisioningService implements AuthorizationPro
             return false;
         }
         this.statementCommands.delete(existing);
+        this.audits.record("statement", existing.id(), AuditOperation.DELETE, () ->
+            List.of(AuditChange.visible("code", existing.code().value(), null))
+        );
         return true;
     }
 
@@ -185,7 +248,14 @@ public class DefaultAuthorizationProvisioningService implements AuthorizationPro
             return false;
         }
         this.roleCommands.delete(existing);
+        this.audits.record("role", existing.id(), AuditOperation.DELETE, () ->
+            List.of(AuditChange.visible("code", existing.code().value(), null))
+        );
         return true;
+    }
+
+    private static List<String> sorted(Collection<UUID> values) {
+        return values.stream().map(UUID::toString).sorted().toList();
     }
 
     private static AuthorizationProvisioningResult.Change provisioningChange(boolean created, boolean changed) {

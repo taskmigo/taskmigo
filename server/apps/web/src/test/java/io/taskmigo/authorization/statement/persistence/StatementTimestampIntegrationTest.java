@@ -2,13 +2,16 @@ package io.taskmigo.authorization.statement.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.taskmigo.audit.context.AuditCause;
+import io.taskmigo.audit.context.AuditContext;
+import io.taskmigo.audit.context.AuditContexts;
+import io.taskmigo.audit.context.AuditExecutor;
 import io.taskmigo.authorization.provisioning.application.api.AuthorizationProvisioningService;
 import io.taskmigo.authorization.request.application.resolution.EffectiveStatement;
 import io.taskmigo.authorization.request.application.resolution.EffectiveStatementResolver;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
 import io.taskmigo.authorization.statement.application.api.StatementService;
-import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.application.api.UserRegistrationService;
 import io.taskmigo.identity.user.application.api.UserService;
 import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
@@ -66,29 +69,52 @@ class StatementTimestampIntegrationTest extends ApiIntegrationTestSupport {
             "/timestamp",
             "return true;"
         );
-        UUID userId = this.registrations.register(
-            "timestamp-user-" + suffix,
-            Set.of("timestamp-" + suffix + "@example.com"),
-            "Timestamp",
-            "User",
-            Set.of(),
-            Set.of()
+        UUID userId = AuditContexts.call(
+            AuditContext.system(
+                "integration-fixture",
+                AuditExecutor.test("web-test"),
+                AuditCause.test("register-user")
+            ),
+            () ->
+                this.registrations.register(
+                    "timestamp-user-" + suffix,
+                    Set.of("timestamp-" + suffix + "@example.com"),
+                    "Timestamp",
+                    "User",
+                    Set.of(),
+                    Set.of()
+                )
         );
-        this.users.setStatements(userId, List.of(statementId), new UserMutationActor(userId, "audit-test"));
+        AuditContexts.run(
+            AuditContext.system(
+                "integration-fixture",
+                AuditExecutor.test("web-test"),
+                AuditCause.test("assign-statement")
+            ),
+            () -> this.users.setStatements(userId, List.of(statementId))
+        );
         StatementEntity created = this.statementRepository.findById(statementId).orElseThrow();
         Instant createdAt = created.createdAt();
         Instant initialUpdatedAt = created.updatedAt();
         EffectiveStatement initialResolved = this.resolver.resolve(userId).getFirst();
 
         // Act
-        this.provisioning.reconcileStatement(
-            statementCode,
-            "after",
-            Effect.ALLOW,
-            Scope.REQUEST,
-            "GET",
-            "/timestamp",
-            "return true;"
+        AuditContexts.run(
+            AuditContext.system(
+                "integration-fixture",
+                AuditExecutor.test("web-test"),
+                AuditCause.test("statement-update")
+            ),
+            () ->
+                this.provisioning.reconcileStatement(
+                    statementCode,
+                    "after",
+                    Effect.ALLOW,
+                    Scope.REQUEST,
+                    "GET",
+                    "/timestamp",
+                    "return true;"
+                )
         );
         StatementEntity updated = this.statementRepository.findById(statementId).orElseThrow();
         EffectiveStatement updatedResolved = this.resolver.resolve(userId).getFirst();

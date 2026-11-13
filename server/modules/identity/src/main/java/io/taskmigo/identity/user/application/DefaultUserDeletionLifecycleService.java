@@ -1,10 +1,9 @@
 package io.taskmigo.identity.user.application;
 
-import io.taskmigo.audit.event.AuditEvent;
-import io.taskmigo.audit.model.AuditActor;
+import io.taskmigo.audit.application.record.AuditRecorder;
 import io.taskmigo.audit.model.AuditChange;
+import io.taskmigo.audit.model.AuditOperation;
 import io.taskmigo.identity.configuration.application.api.ConfigurationService;
-import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.application.internal.UserCommandService;
 import io.taskmigo.identity.user.application.internal.UserDeletionLifecycleService;
 import io.taskmigo.identity.user.application.internal.UserTombstoneService;
@@ -12,7 +11,6 @@ import io.taskmigo.identity.user.domain.User;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /// Applies the configured delete-to-retention or delete-to-tombstone lifecycle.
 public final class DefaultUserDeletionLifecycleService implements UserDeletionLifecycleService {
@@ -23,14 +21,14 @@ public final class DefaultUserDeletionLifecycleService implements UserDeletionLi
     private final UserAccessRevocationService access;
     private final UserTombstoneService tombstones;
     private final UserCommandService users;
-    private final UserAuditAppender audits;
+    private final AuditRecorder audits;
 
     public DefaultUserDeletionLifecycleService(
         ConfigurationService configuration,
         UserAccessRevocationService access,
         UserTombstoneService tombstones,
         UserCommandService users,
-        UserAuditAppender audits
+        AuditRecorder audits
     ) {
         this.configuration = configuration;
         this.access = access;
@@ -40,12 +38,12 @@ public final class DefaultUserDeletionLifecycleService implements UserDeletionLi
     }
 
     @Override
-    public void delete(User target, UserMutationActor actor, Instant occurredAt) {
+    public void delete(User target, Instant occurredAt) {
         target.requireMutable();
         target.requireManagedDeletionAllowed();
 
         if (this.configuration.get().retention().user().immediate()) {
-            this.tombstones.tombstone(target, actor, occurredAt);
+            this.tombstones.tombstone(target, occurredAt);
             return;
         }
 
@@ -70,15 +68,6 @@ public final class DefaultUserDeletionLifecycleService implements UserDeletionLi
         changes.add(AuditChange.visible("status", beforeStatus, "RETAINED"));
         changes.add(AuditChange.visible("retainedAt", null, occurredAt));
 
-        this.audits.append(
-            new AuditEvent(
-                UUID.randomUUID(),
-                ENTITY_TYPE,
-                target.id(),
-                new AuditActor(actor.id(), actor.username()),
-                occurredAt,
-                List.copyOf(changes)
-            )
-        );
+        this.audits.record(ENTITY_TYPE, target.id(), AuditOperation.DELETE, () -> List.copyOf(changes));
     }
 }
