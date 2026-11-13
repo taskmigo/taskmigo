@@ -1,5 +1,6 @@
 package io.taskmigo.identity.provisioning.configuration;
 
+import io.taskmigo.audit.application.record.AuditRecorder;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
 import io.taskmigo.identity.group.application.GroupHierarchyRepository;
@@ -9,7 +10,6 @@ import io.taskmigo.identity.provisioning.application.DefaultGroupProvisioningSer
 import io.taskmigo.identity.provisioning.application.DefaultIdentityProvisioningService;
 import io.taskmigo.identity.provisioning.application.api.GroupProvisioningService;
 import io.taskmigo.identity.provisioning.application.api.IdentityProvisioningService;
-import io.taskmigo.identity.user.application.UserAuditAppender;
 import io.taskmigo.identity.user.application.internal.UserCommandService;
 import io.taskmigo.identity.user.application.internal.UserDeletionLifecycleService;
 import java.time.Clock;
@@ -24,9 +24,10 @@ class ProvisioningApplicationConfiguration {
         GroupCommandService groups,
         GroupHierarchyRepository hierarchies,
         SubjectGrantAssignmentService grantAssignments,
-        SubjectGrantQueryService grantQueries
+        SubjectGrantQueryService grantQueries,
+        AuditRecorder audits
     ) {
-        return new DefaultGroupProvisioningService(groups, hierarchies, grantAssignments, grantQueries);
+        return new DefaultGroupProvisioningService(groups, hierarchies, grantAssignments, grantQueries, audits);
     }
 
     @Bean
@@ -36,7 +37,7 @@ class ProvisioningApplicationConfiguration {
         SubjectGrantQueryService grantQueries,
         MembershipService memberships,
         UserDeletionLifecycleService deletion,
-        UserAuditAppender audits
+        AuditRecorder audits
     ) {
         return new DefaultIdentityProvisioningService(
             users,

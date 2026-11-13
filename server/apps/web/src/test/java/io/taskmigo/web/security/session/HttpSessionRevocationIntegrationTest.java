@@ -4,6 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.TaskmigoApplication;
+import io.taskmigo.audit.context.AuditCause;
+import io.taskmigo.audit.context.AuditContext;
+import io.taskmigo.audit.context.AuditContexts;
+import io.taskmigo.audit.context.AuditExecutor;
 import io.taskmigo.identity.provisioning.application.api.IdentityProvisioningService;
 import io.taskmigo.identity.user.application.api.UserRetentionService;
 import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
@@ -232,7 +236,14 @@ class HttpSessionRevocationIntegrationTest extends ApiIntegrationTestSupport {
             user.id()
         );
         // Act
-        this.retention.purgeExpiredUsers(now);
+        AuditContexts.run(
+            AuditContext.system(
+                "retention-purge",
+                AuditExecutor.worker("worker"),
+                AuditCause.scheduled("retention-purge-job")
+            ),
+            () -> this.retention.purgeExpiredUsers(now)
+        );
         // Assert
         assertThat(this.status(user.id())).isEqualTo("TOMBSTONE");
         assertThat(this.sessionCount(user.id())).isZero();
@@ -252,9 +263,25 @@ class HttpSessionRevocationIntegrationTest extends ApiIntegrationTestSupport {
         ManagedUser old = this.createUser();
         Browser browser = this.login(old.username());
         this.api().users().delete(old.id());
-        UUID replacement = this.provisioning
-            .reconcileUser(old.username(), "{noop}" + PASSWORD, Set.of(), "Replacement", "User", Set.of(), Set.of())
-            .id();
+        UUID replacement = AuditContexts.call(
+            AuditContext.system(
+                "integration-fixture",
+                AuditExecutor.test("web-test"),
+                AuditCause.test("replacement-user")
+            ),
+            () ->
+                this.provisioning
+                    .reconcileUser(
+                        old.username(),
+                        "{noop}" + PASSWORD,
+                        Set.of(),
+                        "Replacement",
+                        "User",
+                        Set.of(),
+                        Set.of()
+                    )
+                    .id()
+        );
         // Act + Assert
         this.assertLoginRequired(browser, this.port());
         Browser replacementBrowser = this.login(old.username());
@@ -329,9 +356,13 @@ class HttpSessionRevocationIntegrationTest extends ApiIntegrationTestSupport {
 
     private ManagedUser createUser() {
         String username = "session-" + UUID.randomUUID();
-        UUID id = this.provisioning
-            .reconcileUser(username, "{noop}" + PASSWORD, Set.of(), "Session", "User", Set.of(), Set.of())
-            .id();
+        UUID id = AuditContexts.call(
+            AuditContext.system("integration-fixture", AuditExecutor.test("web-test"), AuditCause.test("session-user")),
+            () ->
+                this.provisioning
+                    .reconcileUser(username, "{noop}" + PASSWORD, Set.of(), "Session", "User", Set.of(), Set.of())
+                    .id()
+        );
         return new ManagedUser(id, username);
     }
 
@@ -349,7 +380,15 @@ class HttpSessionRevocationIntegrationTest extends ApiIntegrationTestSupport {
             // Act
             var save = executor.submit(pending.save());
             assertThat(locked.await(10, TimeUnit.SECONDS)).isTrue();
-            var deletion = executor.submit(() -> this.provisioning.deleteUser(user.username()));
+            var deletion = AuditContexts.call(
+                AuditContext.system(
+                    "integration-fixture",
+                    AuditExecutor.test("web-test"),
+                    AuditCause.test("delete-race")
+                ),
+                () ->
+                    executor.submit(AuditContexts.captureCallable(() -> this.provisioning.deleteUser(user.username())))
+            );
             try {
                 this.awaitBlockedUserTransaction();
             } finally {
@@ -375,12 +414,22 @@ class HttpSessionRevocationIntegrationTest extends ApiIntegrationTestSupport {
         CountDownLatch release = new CountDownLatch(1);
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
             // Act
-            var deletion = executor.submit(() ->
-                new TransactionTemplate(this.transactions).executeWithoutResult(status -> {
-                    this.provisioning.deleteUser(user.username());
-                    deleted.countDown();
-                    await(release);
-                })
+            var deletion = AuditContexts.call(
+                AuditContext.system(
+                    "integration-fixture",
+                    AuditExecutor.test("web-test"),
+                    AuditCause.test("delete-race")
+                ),
+                () ->
+                    executor.submit(
+                        AuditContexts.captureRunnable(() ->
+                            new TransactionTemplate(this.transactions).executeWithoutResult(status -> {
+                                this.provisioning.deleteUser(user.username());
+                                deleted.countDown();
+                                await(release);
+                            })
+                        )
+                    )
             );
             assertThat(deleted.await(10, TimeUnit.SECONDS)).isTrue();
             var save = executor.submit(pending.save());

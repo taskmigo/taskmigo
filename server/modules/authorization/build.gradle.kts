@@ -16,6 +16,7 @@ dependencies {
     implementation(platform(libs.spring.boot.bom))
     implementation(libs.spring.boot.core.starter)
     api(project(":modules:foundation:core"))
+    implementation(project(":modules:audit"))
     implementation(project(":modules:internal:language"))
     api(project(":modules:query"))
     implementation(project(":modules:internal:jpa-query"))

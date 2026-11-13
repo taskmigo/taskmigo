@@ -1,5 +1,6 @@
 package io.taskmigo.authorization.provisioning.configuration;
 
+import io.taskmigo.audit.application.record.AuditRecorder;
 import io.taskmigo.authorization.provisioning.application.api.AuthorizationProvisioningService;
 import io.taskmigo.authorization.provisioning.application.service.DefaultAuthorizationProvisioningService;
 import io.taskmigo.authorization.role.application.RoleHierarchyRepository;
@@ -17,8 +18,15 @@ class AuthorizationProvisioningApplicationConfiguration {
         RoleCommandService roles,
         RoleHierarchyRepository hierarchies,
         StatementService statementService,
-        StatementCommandService statementCommands
+        StatementCommandService statementCommands,
+        AuditRecorder audits
     ) {
-        return new DefaultAuthorizationProvisioningService(roles, hierarchies, statementService, statementCommands);
+        return new DefaultAuthorizationProvisioningService(
+            roles,
+            hierarchies,
+            statementService,
+            statementCommands,
+            audits
+        );
     }
 }

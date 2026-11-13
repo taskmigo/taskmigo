@@ -203,13 +203,18 @@ CREATE TABLE oauth2_authorization_consent (
 CREATE TABLE audit_logs (
     id UUID PRIMARY KEY,
     entity_type VARCHAR(64) NOT NULL,
-    entity_id UUID NOT NULL,
+    entity_id VARCHAR(255) NOT NULL,
     actor_id UUID NOT NULL,
     actor_username VARCHAR(100) NOT NULL,
+    actor_type VARCHAR(16) NOT NULL,
+    operation VARCHAR(16) NOT NULL,
+    executor VARCHAR(100),
+    causation VARCHAR(255),
     occurred_at timestamptz(3) NOT NULL,
     changes_json TEXT NOT NULL
 );
 CREATE INDEX ix_audit_logs_entity_order ON audit_logs (entity_type, occurred_at DESC, id DESC);
+CREATE INDEX ix_audit_logs_entity_identity ON audit_logs (entity_type, entity_id);
 
 -- Spring Session JDBC PostgreSQL schema; the principal index stores the immutable User UUID.
 CREATE TABLE spring_session (

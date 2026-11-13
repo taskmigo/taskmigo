@@ -6,6 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.taskmigo.audit.application.record.AuditRecorder;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
 import io.taskmigo.identity.authorization.IdentitySubjects;
@@ -49,7 +50,13 @@ class DefaultGroupProvisioningServiceTest {
         when(hierarchies.loadForMutation()).thenReturn(hierarchy);
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
-        var service = new DefaultGroupProvisioningService(groups, hierarchies, grantAssignments, grantQueries);
+        var service = new DefaultGroupProvisioningService(
+            groups,
+            hierarchies,
+            grantAssignments,
+            grantQueries,
+            mock(AuditRecorder.class)
+        );
 
         // Act
         IdentityProvisioningResult<UUID> result = service.reconcileGroup(
@@ -87,7 +94,8 @@ class DefaultGroupProvisioningServiceTest {
             groups,
             mock(GroupHierarchyRepository.class),
             grantAssignments,
-            grantQueries
+            grantQueries,
+            mock(AuditRecorder.class)
         );
 
         // Act
@@ -120,7 +128,13 @@ class DefaultGroupProvisioningServiceTest {
         when(hierarchies.loadForMutation()).thenReturn(current);
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
-        var service = new DefaultGroupProvisioningService(groups, hierarchies, grantAssignments, grantQueries);
+        var service = new DefaultGroupProvisioningService(
+            groups,
+            hierarchies,
+            grantAssignments,
+            grantQueries,
+            mock(AuditRecorder.class)
+        );
 
         // Act
         boolean removed = service.deleteGroup("engineering");

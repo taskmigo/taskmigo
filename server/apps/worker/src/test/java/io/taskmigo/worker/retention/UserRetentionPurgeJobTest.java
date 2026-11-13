@@ -3,7 +3,10 @@ package io.taskmigo.worker.retention;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import io.taskmigo.audit.context.AuditContexts;
+import io.taskmigo.audit.model.AuditActor;
 import io.taskmigo.identity.user.application.api.UserRetentionService;
 import java.lang.reflect.Method;
 import java.time.Clock;
@@ -29,12 +32,19 @@ class UserRetentionPurgeJobTest {
         Instant now = Instant.parse("2026-10-03T00:00:00Z");
         UserRetentionService retention = mock(UserRetentionService.class);
         UserRetentionPurgeJob job = new UserRetentionPurgeJob(retention, Clock.fixed(now, ZoneOffset.UTC));
+        when(retention.purgeExpiredUsers(now)).thenAnswer(invocation -> {
+            assertThat(AuditContexts.require().actor().type()).isEqualTo(AuditActor.Type.SYSTEM);
+            assertThat(AuditContexts.require().actor().username()).isEqualTo("retention-purge");
+            assertThat(AuditContexts.require().executor().application()).isEqualTo("worker");
+            return 0;
+        });
 
         // Act
         job.purgeExpiredUsers();
 
         // Assert
         verify(retention).purgeExpiredUsers(now);
+        assertThat(AuditContexts.isBound()).isFalse();
     }
 
     /**

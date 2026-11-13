@@ -3,6 +3,8 @@
     allowedDependencies = {
         "foundation",
         "audit :: append",
+        "audit :: context",
+        "audit :: record",
         "audit :: events",
         "audit :: model",
         "audit :: privacy",

@@ -2,6 +2,10 @@ package io.taskmigo.web.api.v0.auth.user;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.taskmigo.audit.context.AuditCause;
+import io.taskmigo.audit.context.AuditContext;
+import io.taskmigo.audit.context.AuditContexts;
+import io.taskmigo.audit.context.AuditExecutor;
 import io.taskmigo.identity.provisioning.application.api.IdentityProvisioningService;
 import io.taskmigo.web.api.v0.testing.ApiIntegrationTestSupport;
 import io.taskmigo.web.api.v0.testing.TaskmigoApiClient.CreateGroupRequest;
@@ -159,7 +163,7 @@ class UserDeletionLifecycleIntegrationTest extends ApiIntegrationTestSupport {
                 limit 1
                 """,
                 String.class,
-                managed.id()
+                managed.id().toString()
             )
         );
         assertThat(tombstoneAudit)
@@ -202,17 +206,21 @@ class UserDeletionLifecycleIntegrationTest extends ApiIntegrationTestSupport {
             );
         String username = prefix + "-" + UUID.randomUUID();
         String email = username + "@example.com";
-        UUID userId = this.provisioning
-            .reconcileUser(
-                username,
-                "{bcrypt}retention-test",
-                Set.of(email),
-                "Lifecycle",
-                "User",
-                Set.of(roleId),
-                Set.of(groupId)
-            )
-            .id();
+        UUID userId = AuditContexts.call(
+            AuditContext.system("integration-fixture", AuditExecutor.test("web-test"), AuditCause.test("managed-user")),
+            () ->
+                this.provisioning
+                    .reconcileUser(
+                        username,
+                        "{bcrypt}retention-test",
+                        Set.of(email),
+                        "Lifecycle",
+                        "User",
+                        Set.of(roleId),
+                        Set.of(groupId)
+                    )
+                    .id()
+        );
         this.api().users().replaceStatements(userId, Set.of(statementId));
         return new ManagedUser(userId, username, email, roleId, groupId, statementId);
     }
@@ -242,11 +250,11 @@ class UserDeletionLifecycleIntegrationTest extends ApiIntegrationTestSupport {
         this.jdbc.update(
             """
             insert into audit_logs (
-                id, entity_type, entity_id, actor_id, actor_username, occurred_at, changes_json
-            ) values (?, 'user', ?, ?, ?, ?, ?)
+                id, entity_type, entity_id, actor_id, actor_username, actor_type, operation, occurred_at, changes_json
+            ) values (?, 'user', ?, ?, ?, 'USER', 'UPDATE', ?, ?)
             """,
             id,
-            user.id(),
+            user.id().toString(),
             user.id(),
             user.username(),
             Timestamp.from(Instant.parse("2026-01-01T00:00:00Z")),
@@ -319,7 +327,7 @@ class UserDeletionLifecycleIntegrationTest extends ApiIntegrationTestSupport {
                 limit 1
                 """,
                 String.class,
-                userId,
+                userId.toString(),
                 "%" + status + "%"
             )
         );

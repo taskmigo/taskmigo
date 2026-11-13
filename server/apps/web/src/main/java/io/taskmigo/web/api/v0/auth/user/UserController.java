@@ -3,9 +3,12 @@ package io.taskmigo.web.api.v0.auth.user;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.taskmigo.audit.context.AuditCause;
+import io.taskmigo.audit.context.AuditContext;
+import io.taskmigo.audit.context.AuditContexts;
+import io.taskmigo.audit.context.AuditExecutor;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.user.UserInfo;
-import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.application.api.UserRegistrationService;
 import io.taskmigo.identity.user.application.api.UserService;
 import io.taskmigo.query.ListQuerySpec;
@@ -21,6 +24,7 @@ import io.taskmigo.web.api.v0.support.response.ApiV0Responses.OpenApiCommonError
 import io.taskmigo.web.api.v0.support.response.ApiV0Responses.OpenApiConflict;
 import io.taskmigo.web.api.v0.support.response.ApiV0Responses.OpenApiNotFound;
 import io.taskmigo.web.api.v0.support.response.ApiV0Responses.OpenApiUnsupportedMediaType;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -105,10 +109,11 @@ class UserController {
     @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> delete(
         @PathVariable UUID userId,
-        JwtAuthenticationToken authentication
+        JwtAuthenticationToken authentication,
+        HttpServletRequest request
     ) {
         ResolvedObjectAuthorization<UserInfo> authorization = this.objectAuthorization.resolve();
-        this.users.delete(userId, authorization.predicate(), actor(authentication));
+        AuditContexts.run(context(authentication, request), () -> this.users.delete(userId, authorization.predicate()));
         return this.responses.ok("resource.user.deleted", "User deleted");
     }
 
@@ -121,14 +126,16 @@ class UserController {
     ResponseEntity<ApiResponse<Void, ApiResponse.BasicMeta>> setStatements(
         @PathVariable UUID userId,
         @Valid @RequestBody StatementAssignmentRequest request,
-        JwtAuthenticationToken authentication
+        JwtAuthenticationToken authentication,
+        HttpServletRequest httpRequest
     ) {
         ResolvedObjectAuthorization<UserInfo> authorization = this.objectAuthorization.resolve();
-        this.users.setStatements(
-            userId,
-            request.statementIds() == null ? Set.of() : request.statementIds(),
-            authorization.predicate(),
-            actor(authentication)
+        AuditContexts.run(context(authentication, httpRequest), () ->
+            this.users.setStatements(
+                userId,
+                request.statementIds() == null ? Set.of() : request.statementIds(),
+                authorization.predicate()
+            )
         );
         return this.responses.ok("resource.user.statements.updated", "User statements updated");
     }
@@ -138,14 +145,20 @@ class UserController {
     @OpenApiConflict
     @OpenApiUnsupportedMediaType
     @ResponseStatus(HttpStatus.CREATED)
-    ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(@Valid @RequestBody Request request) {
-        UUID id = this.registrations.register(
-            request.username(),
-            request.emails(),
-            request.firstName(),
-            request.lastName(),
-            request.roleIds(),
-            request.groupIds()
+    ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(
+        @Valid @RequestBody Request request,
+        JwtAuthenticationToken authentication,
+        HttpServletRequest httpRequest
+    ) {
+        UUID id = AuditContexts.call(context(authentication, httpRequest), () ->
+            this.registrations.register(
+                request.username(),
+                request.emails(),
+                request.firstName(),
+                request.lastName(),
+                request.roleIds(),
+                request.groupIds()
+            )
         );
         return this.responses.created(
             URI.create("/api/v0/users/" + id),
@@ -155,10 +168,15 @@ class UserController {
         );
     }
 
-    private static UserMutationActor actor(JwtAuthenticationToken authentication) {
+    private static AuditContext context(JwtAuthenticationToken authentication, HttpServletRequest request) {
         String userId = Objects.requireNonNull(authentication.getToken().getClaimAsString("user_id"));
         String username = authentication.getToken().getClaimAsString("principal_username");
-        return new UserMutationActor(UUID.fromString(userId), username == null ? authentication.getName() : username);
+        return AuditContext.user(
+            UUID.fromString(userId),
+            username == null ? authentication.getName() : username,
+            AuditExecutor.web("web"),
+            AuditCause.request(request.getRequestId())
+        );
     }
 
     @Schema(name = "UserInfo")

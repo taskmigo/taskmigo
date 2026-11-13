@@ -19,6 +19,7 @@ dependencies {
     implementation(platform(libs.spring.boot.bom))
     implementation(project(":modules:foundation:spring"))
     implementation(project(":modules:identity"))
+    implementation(project(":modules:audit"))
     runtimeOnly(project(":modules:database"))
     runtimeOnly(libs.jspecify)
     runtimeOnly(libs.postgresql.driver)

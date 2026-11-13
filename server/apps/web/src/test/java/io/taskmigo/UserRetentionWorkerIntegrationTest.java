@@ -2,6 +2,10 @@ package io.taskmigo;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.taskmigo.audit.context.AuditCause;
+import io.taskmigo.audit.context.AuditContext;
+import io.taskmigo.audit.context.AuditContexts;
+import io.taskmigo.audit.context.AuditExecutor;
 import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.api.UserRetentionService;
 import java.sql.Timestamp;
@@ -50,7 +54,7 @@ class UserRetentionWorkerIntegrationTest {
     @AfterEach
     void cleanCreatedUsers() {
         for (UUID userId : this.users) {
-            this.jdbc.update("delete from audit_logs where entity_type = 'user' and entity_id = ?", userId);
+            this.jdbc.update("delete from audit_logs where entity_type = 'user' and entity_id = ?", userId.toString());
             this.jdbc.update(
                 "delete from subject_role_bindings where subject_type = 'identity:user' and subject_id = ?",
                 userId
@@ -71,7 +75,7 @@ class UserRetentionWorkerIntegrationTest {
         UUID expired = this.insertRetained(NOW.minusSeconds(31L * 24 * 60 * 60));
         UUID unexpired = this.insertRetained(NOW.minusSeconds(5L * 24 * 60 * 60));
 
-        int count = this.retention.purgeExpiredUsers(NOW);
+        int count = this.purge();
 
         assertThat(count).isEqualTo(1);
         assertThat(this.status(expired)).isEqualTo(UserStatus.TOMBSTONE);
@@ -86,10 +90,10 @@ class UserRetentionWorkerIntegrationTest {
         Instant originalRetainedAt = NOW.minusSeconds(5L * 24 * 60 * 60);
         UUID userId = this.insertRetained(originalRetainedAt);
 
-        assertThat(this.retention.purgeExpiredUsers(NOW)).isZero();
+        assertThat(this.purge()).isZero();
         this.setRetention("P1D");
 
-        assertThat(this.retention.purgeExpiredUsers(NOW)).isEqualTo(1);
+        assertThat(this.purge()).isEqualTo(1);
         assertThat(this.status(userId)).isEqualTo(UserStatus.TOMBSTONE);
         assertThat(this.retainedAt(userId)).isEqualTo(originalRetainedAt);
     }
@@ -100,8 +104,12 @@ class UserRetentionWorkerIntegrationTest {
         UUID userId = this.insertRetained(NOW.minusSeconds(31L * 24 * 60 * 60));
 
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-            Future<Integer> first = executor.submit(() -> this.retention.purgeExpiredUsers(NOW));
-            Future<Integer> second = executor.submit(() -> this.retention.purgeExpiredUsers(NOW));
+            Future<Integer> first = AuditContexts.call(actorContext(), () ->
+                executor.submit(AuditContexts.captureCallable(() -> this.retention.purgeExpiredUsers(NOW)))
+            );
+            Future<Integer> second = AuditContexts.call(actorContext(), () ->
+                executor.submit(AuditContexts.captureCallable(() -> this.retention.purgeExpiredUsers(NOW)))
+            );
 
             assertThat(first.get() + second.get()).isEqualTo(1);
         }
@@ -117,7 +125,7 @@ class UserRetentionWorkerIntegrationTest {
                   and changes_json like '%TOMBSTONE%'
                 """,
                 Integer.class,
-                userId
+                userId.toString()
             )
         ).isOne();
         assertThat(
@@ -131,9 +139,9 @@ class UserRetentionWorkerIntegrationTest {
                 limit 1
                 """,
                 String.class,
-                userId
+                userId.toString()
             )
-        ).isEqualTo("system");
+        ).isEqualTo("retention-purge");
     }
 
     @Test
@@ -143,7 +151,7 @@ class UserRetentionWorkerIntegrationTest {
         UUID healthy = this.insertRetained(NOW.minusSeconds(35L * 24 * 60 * 60));
         this.installAuditFailure(failing);
 
-        int firstRun = this.retention.purgeExpiredUsers(NOW);
+        int firstRun = this.purge();
 
         assertThat(firstRun).isEqualTo(1);
         assertThat(this.status(failing)).isEqualTo(UserStatus.RETAINED);
@@ -151,10 +159,22 @@ class UserRetentionWorkerIntegrationTest {
 
         this.removeAuditFailure();
 
-        int secondRun = this.retention.purgeExpiredUsers(NOW);
+        int secondRun = this.purge();
 
         assertThat(secondRun).isEqualTo(1);
         assertThat(this.status(failing)).isEqualTo(UserStatus.TOMBSTONE);
+    }
+
+    private int purge() {
+        return AuditContexts.call(actorContext(), () -> this.retention.purgeExpiredUsers(NOW));
+    }
+
+    private static AuditContext actorContext() {
+        return AuditContext.system(
+            "retention-purge",
+            AuditExecutor.worker("worker"),
+            AuditCause.scheduled("retention-purge-job")
+        );
     }
 
     private UUID insertRetained(Instant retainedAt) {
@@ -209,7 +229,7 @@ class UserRetentionWorkerIntegrationTest {
             """
             create or replace function fail_selected_tombstone_audit() returns trigger as $$
             begin
-                if NEW.entity_id = '%s'::uuid and NEW.changes_json like '%%TOMBSTONE%%' then
+                if NEW.entity_id = '%s' and NEW.changes_json like '%%TOMBSTONE%%' then
                     raise exception 'forced tombstone audit failure';
                 end if;
                 return NEW;

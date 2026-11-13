@@ -3,24 +3,32 @@ package io.taskmigo.audit.model;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 
-/// Represents one immutable audit record.
-///
-/// @param id stable audit-log identifier
-/// @param entityType audited entity type
-/// @param entityId audited entity identifier
-/// @param actor authenticated actor captured at mutation time
-/// @param occurredAt time of the originating mutation
-/// @param changes field-level diff
+/// Represents a persisted immutable entity audit entry.
 public record AuditLog(
     UUID id,
     String entityType,
-    UUID entityId,
+    String entityId,
     AuditActor actor,
     Instant occurredAt,
-    List<AuditChange> changes
+    List<AuditChange> changes,
+    AuditOperation operation,
+    @Nullable String executor,
+    @Nullable String causation
 ) {
     public AuditLog {
         changes = List.copyOf(changes);
+    }
+
+    public AuditLog(
+        UUID id,
+        String entityType,
+        UUID entityId,
+        AuditActor actor,
+        Instant occurredAt,
+        List<AuditChange> changes
+    ) {
+        this(id, entityType, entityId.toString(), actor, occurredAt, changes, AuditOperation.UPDATE, null, null);
     }
 }
