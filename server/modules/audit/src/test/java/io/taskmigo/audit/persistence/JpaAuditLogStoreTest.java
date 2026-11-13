@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.taskmigo.audit.model.AuditActor;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -37,8 +38,8 @@ class JpaAuditLogStoreTest {
             """
         );
         JpaAuditLogRepository repository = mock(JpaAuditLogRepository.class);
-        when(repository.findAllByActorId(userId)).thenReturn(List.of(log));
-        when(repository.findAllByEntityTypeAndEntityId("user", userId)).thenReturn(List.of(log));
+        when(repository.findAllByActorIdAndActorType(userId, AuditActor.Type.USER)).thenReturn(List.of(log));
+        when(repository.findAllByEntityTypeAndEntityId("user", userId.toString())).thenReturn(List.of(log));
         JpaAuditLogStore store = new JpaAuditLogStore(repository);
 
         // Act

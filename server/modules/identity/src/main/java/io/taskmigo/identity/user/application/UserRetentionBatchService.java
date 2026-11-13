@@ -1,7 +1,5 @@
 package io.taskmigo.identity.user.application;
 
-import io.taskmigo.identity.user.SystemUser;
-import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.internal.UserCommandService;
 import io.taskmigo.identity.user.application.internal.UserTombstoneService;
@@ -23,25 +21,12 @@ public class UserRetentionBatchService {
     }
 
     @Transactional(readOnly = true)
-    public UserMutationActor systemActor() {
-        User system = this.users
-            .findByUsername(SystemUser.USERNAME)
-            .orElseThrow(() -> new IllegalStateException("System User must exist before retention purge runs"));
-        return new UserMutationActor(system.id(), system.username().value());
-    }
-
-    @Transactional(readOnly = true)
     public List<RetainedUserCandidate> retainedCandidates(Instant cutoff, @Nullable RetainedUserCandidate after) {
         return this.users.retainedCandidates(cutoff, after);
     }
 
     @Transactional
-    public boolean tombstoneIfStillEligible(
-        RetainedUserCandidate candidate,
-        Instant cutoff,
-        UserMutationActor actor,
-        Instant tombstonedAt
-    ) {
+    public boolean tombstoneIfStillEligible(RetainedUserCandidate candidate, Instant cutoff, Instant tombstonedAt) {
         User user = this.users.claimRetainedForUpdate(candidate.id()).orElse(null);
         if (
             user == null ||
@@ -51,7 +36,7 @@ public class UserRetentionBatchService {
         ) {
             return false;
         }
-        this.tombstones.tombstone(user, actor, tombstonedAt);
+        this.tombstones.tombstone(user, tombstonedAt);
         return true;
     }
 }

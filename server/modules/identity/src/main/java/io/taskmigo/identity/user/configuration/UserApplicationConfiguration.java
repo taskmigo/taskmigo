@@ -1,5 +1,6 @@
 package io.taskmigo.identity.user.configuration;
 
+import io.taskmigo.audit.application.record.AuditRecorder;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
 import io.taskmigo.identity.configuration.application.api.ConfigurationService;
@@ -13,7 +14,6 @@ import io.taskmigo.identity.user.application.DefaultUserService;
 import io.taskmigo.identity.user.application.DefaultUserSessionLifecycleService;
 import io.taskmigo.identity.user.application.DefaultUserTombstoneService;
 import io.taskmigo.identity.user.application.UserAccessRevocationService;
-import io.taskmigo.identity.user.application.UserAuditAppender;
 import io.taskmigo.identity.user.application.UserAuditScrubber;
 import io.taskmigo.identity.user.application.UserCommandRepository;
 import io.taskmigo.identity.user.application.UserQueryRepository;
@@ -50,7 +50,7 @@ class UserApplicationConfiguration {
         UserAccessRevocationService access,
         UserTombstoneService tombstones,
         UserCommandService users,
-        UserAuditAppender audits
+        AuditRecorder audits
     ) {
         return new DefaultUserDeletionLifecycleService(configuration, access, tombstones, users, audits);
     }
@@ -60,7 +60,7 @@ class UserApplicationConfiguration {
         UserCommandService users,
         UserAccessRevocationService access,
         UserAuditScrubber auditScrubber,
-        UserAuditAppender audits
+        AuditRecorder audits
     ) {
         return new DefaultUserTombstoneService(users, access, auditScrubber, audits);
     }
@@ -82,7 +82,7 @@ class UserApplicationConfiguration {
         SubjectGrantQueryService grantQueries,
         SubjectGrantAssignmentService grantAssignments,
         UserDeletionLifecycleService deletion,
-        UserAuditAppender audits
+        AuditRecorder audits
     ) {
         return new DefaultUserService(
             users,
@@ -113,8 +113,9 @@ class UserApplicationConfiguration {
         UserCommandService users,
         SubjectGrantAssignmentService grantAssignments,
         GroupService groups,
-        MembershipService memberships
+        MembershipService memberships,
+        AuditRecorder audits
     ) {
-        return new UserRegistrationApplicationService(users, grantAssignments, groups, memberships);
+        return new UserRegistrationApplicationService(users, grantAssignments, groups, memberships, audits);
     }
 }

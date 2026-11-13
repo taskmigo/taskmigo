@@ -2,6 +2,10 @@ package io.taskmigo.authorization.request;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.taskmigo.audit.context.AuditCause;
+import io.taskmigo.audit.context.AuditContext;
+import io.taskmigo.audit.context.AuditContexts;
+import io.taskmigo.audit.context.AuditExecutor;
 import io.taskmigo.authorization.request.application.resolution.EffectiveStatement;
 import io.taskmigo.authorization.request.application.resolution.EffectiveStatementResolver;
 import io.taskmigo.authorization.role.application.api.RoleAuthorizationService;
@@ -54,13 +58,21 @@ class EffectiveStatementResolverIntegrationTest extends ApiIntegrationTestSuppor
         String roleCode = "performance-role-" + UUID.randomUUID();
         UUID roleId = this.roles.createRole(roleCode, roleCode, null, Set.of());
         this.roleAssignments.setStatements(roleId, statementIds);
-        UUID userId = this.users.register(
-            "performance-user-" + UUID.randomUUID(),
-            Set.of("performance-" + UUID.randomUUID() + "@example.com"),
-            "Performance",
-            "User",
-            List.of(roleId),
-            Set.of()
+        UUID userId = AuditContexts.call(
+            AuditContext.system(
+                "integration-fixture",
+                AuditExecutor.test("web-test"),
+                AuditCause.test("performance-user-registration")
+            ),
+            () ->
+                this.users.register(
+                    "performance-user-" + UUID.randomUUID(),
+                    Set.of("performance-" + UUID.randomUUID() + "@example.com"),
+                    "Performance",
+                    "User",
+                    List.of(roleId),
+                    Set.of()
+                )
         );
 
         this.statistics.clear();

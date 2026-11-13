@@ -1,5 +1,9 @@
 package io.taskmigo.worker.retention;
 
+import io.taskmigo.audit.context.AuditCause;
+import io.taskmigo.audit.context.AuditContext;
+import io.taskmigo.audit.context.AuditContexts;
+import io.taskmigo.audit.context.AuditExecutor;
 import io.taskmigo.identity.user.application.api.UserRetentionService;
 import java.time.Clock;
 import java.util.concurrent.TimeUnit;
@@ -24,6 +28,13 @@ public final class UserRetentionPurgeJob {
 
     @Scheduled(fixedDelay = 1, timeUnit = TimeUnit.HOURS)
     void purgeExpiredUsers() {
-        this.retention.purgeExpiredUsers(this.clock.instant());
+        AuditContexts.run(
+            AuditContext.system(
+                "retention-purge",
+                AuditExecutor.worker("worker"),
+                AuditCause.scheduled("retention-purge-job")
+            ),
+            () -> this.retention.purgeExpiredUsers(this.clock.instant())
+        );
     }
 }

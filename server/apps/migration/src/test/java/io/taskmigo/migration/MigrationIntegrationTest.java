@@ -4,6 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.PostgresTestConfiguration;
+import io.taskmigo.audit.context.AuditCause;
+import io.taskmigo.audit.context.AuditContext;
+import io.taskmigo.audit.context.AuditContexts;
+import io.taskmigo.audit.context.AuditExecutor;
 import io.taskmigo.authorization.provisioning.application.api.AuthorizationProvisioningService;
 import io.taskmigo.authorization.role.RoleInfo;
 import io.taskmigo.authorization.role.application.api.RoleService;
@@ -149,6 +153,61 @@ class MigrationIntegrationTest {
     }
 
     /**
+     * Verifies that a clean migration attributes every managed resource CREATE to its declared system actor.
+     *
+     * Given: migration already installed the built-in User, Roles, Statements and Groups.
+     * Expect: the audit trail contains creation entries for all four types without requiring an actor User record.
+     */
+    @Test
+    @DisplayName("records system actor for all managed resource creations")
+    void shouldAuditAllManagedResourcesWhenMigrationCreatesThem() {
+        // Arrange
+        var rows = this.jdbc.queryForList(
+            """
+            select entity_type, actor_username, actor_type, operation, executor, causation
+            from audit_logs
+            where actor_username = 'taskmigo-migration' and operation = 'CREATE'
+            """
+        );
+
+        // Act + Assert
+        assertThat(rows)
+            .extracting(row -> row.get("entity_type"))
+            .contains("user", "role", "statement", "group");
+        assertThat(rows).allSatisfy(row -> {
+            assertThat(row.get("actor_type")).isEqualTo("SYSTEM");
+            assertThat(row.get("executor")).isEqualTo("migration");
+            assertThat(row.get("causation")).isEqualTo("INSTALLATION:startup");
+        });
+    }
+
+    /**
+     * Verifies that rerunning an unchanged plan is audit-idempotent.
+     *
+     * Given: the built-in declarative state already matches persistence.
+     * Expect: no new audit record is appended on the repeated migration.
+     */
+    @Test
+    @DisplayName("does not create audit noise for unchanged migration")
+    void shouldNotAppendAuditWhenMigrationIsUnchanged() {
+        // Arrange
+        Integer before = this.jdbc.queryForObject(
+            "select count(*) from audit_logs where actor_username = 'taskmigo-migration'",
+            Integer.class
+        );
+
+        // Act
+        this.migration.install(this.resources.load());
+
+        // Assert
+        Integer after = this.jdbc.queryForObject(
+            "select count(*) from audit_logs where actor_username = 'taskmigo-migration'",
+            Integer.class
+        );
+        assertThat(after).isEqualTo(before);
+    }
+
+    /**
      * Verifies: the flat resource loader binds OAuth clients to Spring's native property class.
      * Given: security.yaml with a registration map and placeholder values.
      * Expect: the resolved native Client contains no implicit API scope.
@@ -280,24 +339,40 @@ class MigrationIntegrationTest {
     void shouldUpsertManagedUserWhenUserIsMissingOrPresent() {
         String username = "migration-user";
         UUID roleId = this.authorizationProvisioning.requireRole("system-operator");
-        UUID createdId = this.identityProvisioning
-            .reconcileUser(
-                username,
-                this.passwordEncoder.encode("migration-password"),
-                Set.of("MIGRATION@EXAMPLE.COM"),
-                "Migration",
-                "User",
-                Set.of(roleId),
-                Set.of()
-            )
-            .id();
+        UUID createdId = AuditContexts.call(
+            AuditContext.system("test-provisioning", AuditExecutor.migration("migration"), AuditCause.test("create")),
+            () ->
+                this.identityProvisioning
+                    .reconcileUser(
+                        username,
+                        this.passwordEncoder.encode("migration-password"),
+                        Set.of("MIGRATION@EXAMPLE.COM"),
+                        "Migration",
+                        "User",
+                        Set.of(roleId),
+                        Set.of()
+                    )
+                    .id()
+        );
         String passwordHash = Objects.requireNonNull(
             this.users.findForAuthentication(username).orElseThrow().passwordHash()
         );
 
-        UUID reconciledId = this.identityProvisioning
-            .reconcileUser(username, null, Set.of("updated@example.com"), "Updated", "User", Set.of(roleId), Set.of())
-            .id();
+        UUID reconciledId = AuditContexts.call(
+            AuditContext.system("test-provisioning", AuditExecutor.migration("migration"), AuditCause.test("update")),
+            () ->
+                this.identityProvisioning
+                    .reconcileUser(
+                        username,
+                        null,
+                        Set.of("updated@example.com"),
+                        "Updated",
+                        "User",
+                        Set.of(roleId),
+                        Set.of()
+                    )
+                    .id()
+        );
 
         assertThat(reconciledId).isEqualTo(createdId);
         assertThat(this.users.require(createdId))
@@ -310,7 +385,7 @@ class MigrationIntegrationTest {
      * Verifies that managed User updates append the final audit row synchronously.
      *
      * Given: migration creates a managed User and later reconciles changed profile state for that same User.
-     * Expect: creation emits no update audit and the later update commits one audit row attributed to the system User.
+     * Expect: CREATE and UPDATE commit separate audit rows attributed to the logical migration actor.
      */
     @Test
     @DisplayName("appends synchronous audit for managed user updates")
@@ -330,8 +405,13 @@ class MigrationIntegrationTest {
         );
         this.migration.install(new InstallationPlan(List.of(initial), List.of(), List.of(), List.of(), Map.of()));
         UUID userId = this.users.findForAuthentication(username).orElseThrow().id();
-        UUID systemUserId = this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().id();
-        assertThat(this.auditRows(userId)).isEmpty();
+        assertThat(this.auditRows(userId))
+            .singleElement()
+            .satisfies(row -> {
+                assertThat(row.get("actor_username")).isEqualTo("taskmigo-migration");
+                assertThat(row.get("actor_type")).isEqualTo("SYSTEM");
+                assertThat(row.get("operation")).isEqualTo("CREATE");
+            });
 
         var updated = new InstallationPlan.User(
             username,
@@ -349,9 +429,11 @@ class MigrationIntegrationTest {
 
         // Assert
         assertThat(this.auditRows(userId))
-            .singleElement()
-            .satisfies(row -> {
-                assertThat(row.get("actor_id")).isEqualTo(systemUserId);
+            .hasSize(2)
+            .anySatisfy(row -> {
+                assertThat(row.get("actor_username")).isEqualTo("taskmigo-migration");
+                assertThat(row.get("actor_type")).isEqualTo("SYSTEM");
+                assertThat(row.get("operation")).isEqualTo("UPDATE");
                 assertThat(Objects.requireNonNull(row.get("changes_json")).toString()).contains(
                     "firstName",
                     "Before",
@@ -468,7 +550,14 @@ class MigrationIntegrationTest {
         assertThat(this.closureCount(root, leaf)).isEqualTo(1);
 
         // Act
-        boolean removed = this.groups.deleteGroup(middleCode);
+        boolean removed = AuditContexts.call(
+            AuditContext.system(
+                "test-provisioning",
+                AuditExecutor.migration("migration"),
+                AuditCause.test("group-delete")
+            ),
+            () -> this.groups.deleteGroup(middleCode)
+        );
 
         // Assert
         assertThat(removed).isTrue();
@@ -498,7 +587,14 @@ class MigrationIntegrationTest {
         this.roles.setChildRoles(middle, Set.of(leaf));
         assertThat(this.roleClosureCount(root, leaf)).isEqualTo(1);
         // Act
-        boolean removed = this.authorizationProvisioning.deleteRole(middleCode);
+        boolean removed = AuditContexts.call(
+            AuditContext.system(
+                "test-provisioning",
+                AuditExecutor.migration("migration"),
+                AuditCause.test("role-delete")
+            ),
+            () -> this.authorizationProvisioning.deleteRole(middleCode)
+        );
 
         // Assert
         assertThat(removed).isTrue();
@@ -529,6 +625,28 @@ class MigrationIntegrationTest {
         assertThat(rotatedHash).isNotEqualTo(initialHash);
         assertThat(this.passwordEncoder.matches("rotated-secret", rotatedHash)).isTrue();
         assertThat(this.passwordEncoder.matches("initial-secret", rotatedHash)).isFalse();
+        var auditRows = this.jdbc.queryForList(
+            "select entity_id, actor_username, operation, changes_json from audit_logs where entity_type = 'oauth-client' and entity_id = ?",
+            clientId
+        );
+        assertThat(auditRows)
+            .extracting(row -> row.get("operation"))
+            .containsExactlyInAnyOrder("CREATE", "UPDATE");
+        assertThat(auditRows).allSatisfy(row -> {
+            assertThat(row.get("entity_id")).isEqualTo(clientId);
+            assertThat(row.get("actor_username")).isEqualTo("taskmigo-migration");
+            assertThat(Objects.requireNonNull(row.get("changes_json")).toString())
+                .contains("clientSecret", "\"sensitive\":true")
+                .doesNotContain("initial-secret", "rotated-secret", initialHash, rotatedHash);
+        });
+        this.migration.install(resources(Map.of("rotation", client(clientId, "rotated-secret"))));
+        assertThat(
+            this.jdbc.queryForObject(
+                "select count(*) from audit_logs where entity_type = 'oauth-client' and entity_id = ?",
+                Integer.class,
+                clientId
+            )
+        ).isEqualTo(2);
     }
 
     /**
@@ -615,8 +733,8 @@ class MigrationIntegrationTest {
 
     private List<Map<String, @Nullable Object>> auditRows(UUID userId) {
         return this.jdbc.queryForList(
-            "select actor_id, changes_json from audit_logs where entity_type = 'user' and entity_id = ?",
-            userId
+            "select actor_id, actor_username, actor_type, operation, executor, causation, changes_json from audit_logs where entity_type = 'user' and entity_id = ?",
+            userId.toString()
         );
     }
 

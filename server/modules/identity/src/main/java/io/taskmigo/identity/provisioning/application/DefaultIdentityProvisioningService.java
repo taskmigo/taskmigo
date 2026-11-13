@@ -1,8 +1,9 @@
 package io.taskmigo.identity.provisioning.application;
 
-import io.taskmigo.audit.event.AuditEvent;
-import io.taskmigo.audit.model.AuditActor;
+import io.taskmigo.audit.application.record.AuditRecorder;
 import io.taskmigo.audit.model.AuditChange;
+import io.taskmigo.audit.model.AuditChanges;
+import io.taskmigo.audit.model.AuditOperation;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
 import io.taskmigo.identity.authorization.IdentitySubjects;
@@ -10,11 +11,8 @@ import io.taskmigo.identity.membership.application.api.MembershipService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningException;
 import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
 import io.taskmigo.identity.provisioning.application.api.IdentityProvisioningService;
-import io.taskmigo.identity.user.SystemUser;
 import io.taskmigo.identity.user.UserException;
-import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.UserStatus;
-import io.taskmigo.identity.user.application.UserAuditAppender;
 import io.taskmigo.identity.user.application.internal.UserCommandService;
 import io.taskmigo.identity.user.application.internal.UserDeletionLifecycleService;
 import io.taskmigo.identity.user.application.internal.UserMutationResult;
@@ -40,7 +38,7 @@ public class DefaultIdentityProvisioningService implements IdentityProvisioningS
     private final SubjectGrantQueryService grantQueries;
     private final MembershipService memberships;
     private final UserDeletionLifecycleService deletion;
-    private final UserAuditAppender audits;
+    private final AuditRecorder audits;
     private final Clock clock;
 
     public DefaultIdentityProvisioningService(
@@ -49,7 +47,7 @@ public class DefaultIdentityProvisioningService implements IdentityProvisioningS
         SubjectGrantQueryService grantQueries,
         MembershipService memberships,
         UserDeletionLifecycleService deletion,
-        UserAuditAppender audits,
+        AuditRecorder audits,
         Clock clock
     ) {
         this.users = users;
@@ -111,6 +109,20 @@ public class DefaultIdentityProvisioningService implements IdentityProvisioningS
             this.grantAssignments.setRoles(IdentitySubjects.user(id), requestedRoleIds);
             this.grantAssignments.setStatements(IdentitySubjects.user(id), Set.of());
             this.memberships.setGroupsForUser(id, requestedGroupIds);
+            this.audits.record(ENTITY_TYPE, id, AuditOperation.CREATE, () -> {
+                User created = this.users.findByUsername(username).orElseThrow();
+                AuditChanges changes = AuditChanges.builder()
+                    .add(AuditChange.visible("username", null, created.username().value()))
+                    .changed("emails", null, created.profile().emails().stream().sorted().toList())
+                    .changed("firstName", null, created.profile().firstName())
+                    .changed("lastName", null, created.profile().lastName())
+                    .changed("roleIds", null, ordered(requestedRoleIds))
+                    .changed("groupIds", null, ordered(requestedGroupIds));
+                if (created.credential().initialized()) {
+                    changes.add(AuditChange.sensitive("passwordHash"));
+                }
+                return changes.build();
+            });
             return new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.CREATED);
         }
 
@@ -140,19 +152,8 @@ public class DefaultIdentityProvisioningService implements IdentityProvisioningS
             return new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.UNCHANGED);
         }
 
-        this.audits.append(
-            new AuditEvent(UUID.randomUUID(), ENTITY_TYPE, id, this.systemActor(), this.clock.instant(), changes)
-        );
+        this.audits.record(ENTITY_TYPE, id, AuditOperation.UPDATE, () -> List.copyOf(changes));
         return new IdentityProvisioningResult<>(id, IdentityProvisioningResult.Change.UPDATED);
-    }
-
-    private AuditActor systemActor() {
-        User system = this.users
-            .findByUsername(SystemUser.USERNAME)
-            .orElseThrow(() ->
-                new IllegalStateException("System User must exist before managed User updates are audited")
-            );
-        return new AuditActor(system.id(), system.username().value());
     }
 
     private boolean deleteUserInTransaction(String username) {
@@ -168,16 +169,7 @@ public class DefaultIdentityProvisioningService implements IdentityProvisioningS
 
         try {
             existing.requireManagedDeletionAllowed();
-            User system = this.users
-                .findByUsername(SystemUser.USERNAME)
-                .orElseThrow(() ->
-                    new IllegalStateException("System User must exist before managed User deletion is audited")
-                );
-            this.deletion.delete(
-                existing,
-                new UserMutationActor(system.id(), system.username().value()),
-                this.clock.instant()
-            );
+            this.deletion.delete(existing, this.clock.instant());
         } catch (UserRuleViolation exception) {
             throw provisioningFailure(exception);
         }
