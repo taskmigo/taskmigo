@@ -2,7 +2,6 @@ package io.taskmigo.identity.user.application;
 
 import io.taskmigo.identity.configuration.RetentionDuration;
 import io.taskmigo.identity.configuration.application.api.ConfigurationService;
-import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.application.api.UserRetentionService;
 import java.time.Instant;
 import java.util.List;
@@ -26,7 +25,6 @@ public final class DefaultUserRetentionService implements UserRetentionService {
     public int purgeExpiredUsers(Instant now) {
         RetentionDuration retention = this.configuration.get().retention().user();
         Instant cutoff = now.minus(retention.duration());
-        UserMutationActor actor = this.batches.systemActor();
         int tombstoned = 0;
         RetainedUserCandidate cursor = null;
 
@@ -39,7 +37,7 @@ public final class DefaultUserRetentionService implements UserRetentionService {
             for (RetainedUserCandidate candidate : candidates) {
                 cursor = candidate;
                 try {
-                    if (this.batches.tombstoneIfStillEligible(candidate, cutoff, actor, now)) {
+                    if (this.batches.tombstoneIfStillEligible(candidate, cutoff, now)) {
                         tombstoned++;
                     }
                 } catch (RuntimeException exception) {

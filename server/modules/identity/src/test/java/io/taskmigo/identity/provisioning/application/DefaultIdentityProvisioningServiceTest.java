@@ -3,23 +3,27 @@ package io.taskmigo.identity.provisioning.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.audit.event.AuditEvent;
+import io.taskmigo.audit.application.record.AuditRecorder;
+import io.taskmigo.audit.context.AuditCause;
+import io.taskmigo.audit.context.AuditContext;
+import io.taskmigo.audit.context.AuditContexts;
+import io.taskmigo.audit.context.AuditExecutor;
+import io.taskmigo.audit.model.AuditActor;
 import io.taskmigo.audit.model.AuditChange;
+import io.taskmigo.audit.model.AuditOperation;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantQueryService;
 import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.membership.application.api.MembershipService;
 import io.taskmigo.identity.provisioning.IdentityProvisioningException;
 import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
-import io.taskmigo.identity.user.SystemUser;
-import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.UserStatus;
-import io.taskmigo.identity.user.application.UserAuditAppender;
 import io.taskmigo.identity.user.application.internal.UserCommandService;
 import io.taskmigo.identity.user.application.internal.UserDeletionLifecycleService;
 import io.taskmigo.identity.user.application.internal.UserMutationResult;
@@ -35,7 +39,7 @@ import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 
 @NullMarked
 class DefaultIdentityProvisioningServiceTest {
@@ -46,7 +50,7 @@ class DefaultIdentityProvisioningServiceTest {
      * Verifies that provisioning composes a newly created User with managed grants and memberships.
      *
      * Given: the shared User command path reports a created aggregate.
-     * Expect: Roles, direct Statements, and Groups are reconciled without emitting an update audit event.
+     * Expect: Roles, direct Statements, and Groups are reconciled with exactly one CREATE audit event.
      */
     @Test
     @DisplayName("reports added when the shared user command path creates a user")
@@ -63,7 +67,7 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        UserAuditAppender audits = mock(UserAuditAppender.class);
+        AuditRecorder audits = mock(AuditRecorder.class);
         var service = service(users, grantAssignments, grantQueries, groups, audits);
 
         // Act
@@ -82,7 +86,7 @@ class DefaultIdentityProvisioningServiceTest {
         verify(grantAssignments).setRoles(IdentitySubjects.user(id), Set.of(roleId));
         verify(grantAssignments).setStatements(IdentitySubjects.user(id), Set.of());
         verify(groups).setGroupsForUser(id, Set.of(groupId));
-        verify(audits, never()).append(any());
+        verify(audits).record(eq("user"), eq(id), eq(AuditOperation.CREATE), any());
     }
 
     /**
@@ -96,7 +100,6 @@ class DefaultIdentityProvisioningServiceTest {
     void shouldPublishOneAuditEventWhenManagedUserChangesAcrossBoundaries() {
         // Arrange
         User existing = user("alice");
-        User system = user("system");
         UUID id = existing.id();
         UUID oldRole = UUID.randomUUID();
         UUID newRole = UUID.randomUUID();
@@ -104,7 +107,6 @@ class DefaultIdentityProvisioningServiceTest {
         UUID oldGroup = UUID.randomUUID();
         UUID newGroup = UUID.randomUUID();
         UserCommandService users = mock(UserCommandService.class);
-        when(users.findByUsername(SystemUser.USERNAME)).thenReturn(Optional.of(system));
         when(users.reconcileManaged("alice", "{bcrypt}initial", List.of("new@example.com"), "New", "User")).thenReturn(
             new UserMutationResult(
                 id,
@@ -119,9 +121,8 @@ class DefaultIdentityProvisioningServiceTest {
         when(grantQueries.statementIds(IdentitySubjects.user(id))).thenReturn(Set.of(oldStatement));
         MembershipService groups = mock(MembershipService.class);
         when(groups.groupsForUser(id)).thenReturn(List.of(oldGroup));
-        UserAuditAppender audits = mock(UserAuditAppender.class);
+        AuditRecorder audits = mock(AuditRecorder.class);
         var service = service(users, grantAssignments, grantQueries, groups, audits);
-        ArgumentCaptor<AuditEvent> event = ArgumentCaptor.forClass(AuditEvent.class);
 
         // Act
         IdentityProvisioningResult<UUID> result = service.reconcileUser(
@@ -139,20 +140,22 @@ class DefaultIdentityProvisioningServiceTest {
         verify(grantAssignments).setRoles(IdentitySubjects.user(id), Set.of(newRole));
         verify(grantAssignments).setStatements(IdentitySubjects.user(id), Set.of());
         verify(groups).setGroupsForUser(id, Set.of(newGroup));
-        verify(audits).append(event.capture());
-        assertThat(event.getValue().entityType()).isEqualTo("user");
-        assertThat(event.getValue().entityId()).isEqualTo(id);
-        assertThat(event.getValue().actor().id()).isEqualTo(system.id());
-        assertThat(event.getValue().actor().username()).isEqualTo(SystemUser.USERNAME);
-        assertThat(event.getValue().occurredAt()).isEqualTo(NOW);
-        assertThat(event.getValue().changes())
-            .extracting(AuditChange::field)
-            .containsExactly("firstName", "passwordHash", "roleIds", "statementIds", "groupIds");
-        assertThat(event.getValue().changes())
-            .filteredOn(AuditChange::sensitive)
-            .singleElement()
-            .extracting(AuditChange::field)
-            .isEqualTo("passwordHash");
+        verify(audits).record(
+            eq("user"),
+            eq(id),
+            eq(AuditOperation.UPDATE),
+            ArgumentMatchers.argThat(supplier -> {
+                List<AuditChange> changes = supplier.get();
+                return (
+                    changes
+                        .stream()
+                        .map(AuditChange::field)
+                        .toList()
+                        .equals(List.of("firstName", "passwordHash", "roleIds", "statementIds", "groupIds")) &&
+                    changes.stream().filter(AuditChange::sensitive).count() == 1
+                );
+            })
+        );
     }
 
     /**
@@ -178,7 +181,7 @@ class DefaultIdentityProvisioningServiceTest {
         when(grantQueries.statementIds(IdentitySubjects.user(id))).thenReturn(Set.of());
         MembershipService groups = mock(MembershipService.class);
         when(groups.groupsForUser(id)).thenReturn(List.of());
-        UserAuditAppender audits = mock(UserAuditAppender.class);
+        AuditRecorder audits = mock(AuditRecorder.class);
         var service = service(users, grantAssignments, grantQueries, groups, audits);
 
         // Act
@@ -197,7 +200,7 @@ class DefaultIdentityProvisioningServiceTest {
         verify(grantAssignments, never()).setRoles(any(), any());
         verify(grantAssignments, never()).setStatements(any(), any());
         verify(groups, never()).setGroupsForUser(any(), any());
-        verify(audits, never()).append(any());
+        verify(audits, never()).record(any(), any(UUID.class), any(), any());
     }
 
     /**
@@ -212,21 +215,23 @@ class DefaultIdentityProvisioningServiceTest {
         // Arrange
         UserCommandService users = mock(UserCommandService.class);
         User existing = user("alice");
-        User system = user("system");
+        AuditActor actor = AuditActor.system("taskmigo-migration");
         when(users.findByUsernameForUpdate("alice")).thenReturn(Optional.of(existing));
-        when(users.findByUsername(SystemUser.USERNAME)).thenReturn(Optional.of(system));
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
         UserDeletionLifecycleService deletion = mock(UserDeletionLifecycleService.class);
-        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditAppender.class), deletion);
+        var service = service(users, grantAssignments, grantQueries, groups, mock(AuditRecorder.class), deletion);
 
         // Act
-        boolean removed = service.deleteUser("alice");
+        boolean removed = AuditContexts.call(
+            new AuditContext(actor, AuditExecutor.migration("migration"), AuditCause.test("delete")),
+            () -> service.deleteUser("alice")
+        );
 
         // Assert
         assertThat(removed).isTrue();
-        verify(deletion).delete(existing, new UserMutationActor(system.id(), SystemUser.USERNAME), NOW);
+        verify(deletion).delete(existing, NOW);
     }
 
     /**
@@ -244,7 +249,7 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantAssignmentService grantAssignments = mock(SubjectGrantAssignmentService.class);
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
-        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditAppender.class));
+        var service = service(users, grantAssignments, grantQueries, groups, mock(AuditRecorder.class));
 
         // Act
         boolean removed = service.deleteUser("alice");
@@ -273,13 +278,13 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantQueryService grantQueries = mock(SubjectGrantQueryService.class);
         MembershipService groups = mock(MembershipService.class);
         UserDeletionLifecycleService deletion = mock(UserDeletionLifecycleService.class);
-        var service = service(users, grantAssignments, grantQueries, groups, mock(UserAuditAppender.class), deletion);
+        var service = service(users, grantAssignments, grantQueries, groups, mock(AuditRecorder.class), deletion);
 
         // Act + Assert
         assertThatThrownBy(() -> service.deleteUser("system"))
             .isInstanceOf(IdentityProvisioningException.class)
             .hasMessageContaining("system user cannot be deleted");
-        verify(deletion, never()).delete(any(), any(), any());
+        verify(deletion, never()).delete(any(), any());
         verify(grantAssignments, never()).setRoles(any(), any());
         verify(grantAssignments, never()).setStatements(any(), any());
         verify(groups, never()).setGroupsForUser(any(), any());
@@ -303,7 +308,7 @@ class DefaultIdentityProvisioningServiceTest {
             mock(SubjectGrantAssignmentService.class),
             mock(SubjectGrantQueryService.class),
             mock(MembershipService.class),
-            mock(UserAuditAppender.class)
+            mock(AuditRecorder.class)
         );
 
         // Act + Assert
@@ -317,7 +322,7 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantAssignmentService grantAssignments,
         SubjectGrantQueryService grantQueries,
         MembershipService groups,
-        UserAuditAppender audits
+        AuditRecorder audits
     ) {
         return service(users, grantAssignments, grantQueries, groups, audits, mock(UserDeletionLifecycleService.class));
     }
@@ -327,7 +332,7 @@ class DefaultIdentityProvisioningServiceTest {
         SubjectGrantAssignmentService grantAssignments,
         SubjectGrantQueryService grantQueries,
         MembershipService groups,
-        UserAuditAppender audits,
+        AuditRecorder audits,
         UserDeletionLifecycleService deletion
     ) {
         return new DefaultIdentityProvisioningService(

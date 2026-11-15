@@ -1,5 +1,9 @@
 package io.taskmigo;
 
+import io.taskmigo.audit.context.AuditCause;
+import io.taskmigo.audit.context.AuditContext;
+import io.taskmigo.audit.context.AuditContexts;
+import io.taskmigo.audit.context.AuditExecutor;
 import io.taskmigo.authorization.provisioning.application.api.AuthorizationProvisioningService;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
@@ -32,111 +36,119 @@ public class PostgresTestConfiguration {
         AuthorizationProvisioningService authorization,
         JdbcRegisteredClientRepository clients
     ) {
-        return arguments -> {
-            UUID fullAccess = authorization
-                .reconcileStatement(
-                    "system_operator_request_all",
-                    "Allows the system administrator to access the versioned API.",
-                    Effect.ALLOW,
-                    Scope.REQUEST,
-                    "*",
-                    "/api/v.*/.*",
-                    "return true;"
+        AuditContext context = AuditContext.system(
+            "integration-fixture",
+            AuditExecutor.test("web-test"),
+            AuditCause.test("bootstrap")
+        );
+        return arguments -> AuditContexts.run(context, () -> populateFixtures(identity, authorization, clients));
+    }
+
+    /// Initializes the entire test fixture under the caller's trusted audit context.
+    private static void populateFixtures(
+        IdentityProvisioningService identity,
+        AuthorizationProvisioningService authorization,
+        JdbcRegisteredClientRepository clients
+    ) {
+        UUID fullAccess = authorization
+            .reconcileStatement(
+                "system_operator_request_all",
+                "Allows the system administrator to access the versioned API.",
+                Effect.ALLOW,
+                Scope.REQUEST,
+                "*",
+                "/api/v.*/.*",
+                "return true;"
+            )
+            .id();
+        UUID usersAccess = objectStatement(authorization, "system_users_full_access", "/api/v0/users");
+        UUID rolesAccess = objectStatement(authorization, "system_roles_full_access", "/api/v0/roles");
+        UUID groupsAccess = objectStatement(authorization, "system_groups_full_access", "/api/v0/groups");
+        UUID statementsAccess = objectStatement(authorization, "system_statements_full_access", "/api/v0/statements");
+        UUID auditAccess = objectStatement(authorization, "system_audit_full_access", "/api/v0/audit/.*");
+        UUID ticketListAccess = objectStatement(
+            authorization,
+            "system_tickets_list_full_access",
+            "GET",
+            "/api/v0/tickets",
+            "true"
+        );
+        UUID ticketReadAccess = objectStatement(
+            authorization,
+            "system_tickets_read_full_access",
+            "GET",
+            "/api/v0/tickets/.*",
+            "true"
+        );
+        UUID ticketUpdateAccess = objectStatement(
+            authorization,
+            "system_tickets_update_full_access",
+            "PATCH",
+            "/api/v0/tickets/.*",
+            "true"
+        );
+        UUID userStatementMutation = objectStatement(
+            authorization,
+            "system_user_statement_mutation",
+            "PATCH",
+            "/api/v0/users/.*/statements",
+            "object.status != \"RETAINED\" && object.status != \"TOMBSTONE\""
+        );
+        UUID userDelete = objectStatement(
+            authorization,
+            "system_user_delete",
+            "DELETE",
+            "/api/v0/users/.*",
+            "object.retainedAt == null && object.username != \"system\""
+        );
+        UUID roleId = authorization
+            .reconcileRole(
+                "system-operator",
+                "System Operator",
+                "Highest-privilege integration-test role.",
+                List.of(
+                    fullAccess,
+                    usersAccess,
+                    rolesAccess,
+                    groupsAccess,
+                    statementsAccess,
+                    auditAccess,
+                    ticketListAccess,
+                    ticketReadAccess,
+                    ticketUpdateAccess,
+                    userStatementMutation,
+                    userDelete
                 )
-                .id();
-            UUID usersAccess = objectStatement(authorization, "system_users_full_access", "/api/v0/users");
-            UUID rolesAccess = objectStatement(authorization, "system_roles_full_access", "/api/v0/roles");
-            UUID groupsAccess = objectStatement(authorization, "system_groups_full_access", "/api/v0/groups");
-            UUID statementsAccess = objectStatement(
-                authorization,
-                "system_statements_full_access",
-                "/api/v0/statements"
-            );
-            UUID auditAccess = objectStatement(authorization, "system_audit_full_access", "/api/v0/audit/.*");
-            UUID ticketListAccess = objectStatement(
-                authorization,
-                "system_tickets_list_full_access",
-                "GET",
-                "/api/v0/tickets",
-                "true"
-            );
-            UUID ticketReadAccess = objectStatement(
-                authorization,
-                "system_tickets_read_full_access",
-                "GET",
-                "/api/v0/tickets/.*",
-                "true"
-            );
-            UUID ticketUpdateAccess = objectStatement(
-                authorization,
-                "system_tickets_update_full_access",
-                "PATCH",
-                "/api/v0/tickets/.*",
-                "true"
-            );
-            UUID userStatementMutation = objectStatement(
-                authorization,
-                "system_user_statement_mutation",
-                "PATCH",
-                "/api/v0/users/.*/statements",
-                "object.status != \"RETAINED\" && object.status != \"TOMBSTONE\""
-            );
-            UUID userDelete = objectStatement(
-                authorization,
-                "system_user_delete",
-                "DELETE",
-                "/api/v0/users/.*",
-                "object.retainedAt == null && object.username != \"system\""
-            );
-            UUID roleId = authorization
-                .reconcileRole(
-                    "system-operator",
-                    "System Operator",
-                    "Highest-privilege integration-test role.",
-                    List.of(
-                        fullAccess,
-                        usersAccess,
-                        rolesAccess,
-                        groupsAccess,
-                        statementsAccess,
-                        auditAccess,
-                        ticketListAccess,
-                        ticketReadAccess,
-                        ticketUpdateAccess,
-                        userStatementMutation,
-                        userDelete
+            )
+            .id();
+        identity.reconcileUser(
+            "system",
+            "{noop}integration-password",
+            List.of(),
+            "System",
+            "User",
+            List.of(roleId),
+            List.of()
+        );
+        if (clients.findByClientId("browser") == null) {
+            clients.save(
+                RegisteredClient.withId("browser")
+                    .clientId("browser")
+                    .clientSecret("{noop}integration-secret")
+                    .clientName("Taskmigo browser test client")
+                    .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                    .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                    .clientSettings(
+                        ClientSettings.builder()
+                            .requireProofKey(false)
+                            .requireAuthorizationConsent(false)
+                            .setting("taskmigo.oauth-client.ownership", "internal")
+                            .setting("taskmigo.internal-client.managed", "v1")
+                            .build()
                     )
-                )
-                .id();
-            identity.reconcileUser(
-                "system",
-                "{noop}integration-password",
-                List.of(),
-                "System",
-                "User",
-                List.of(roleId),
-                List.of()
+                    .build()
             );
-            if (clients.findByClientId("browser") == null) {
-                clients.save(
-                    RegisteredClient.withId("browser")
-                        .clientId("browser")
-                        .clientSecret("{noop}integration-secret")
-                        .clientName("Taskmigo browser test client")
-                        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                        .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                        .clientSettings(
-                            ClientSettings.builder()
-                                .requireProofKey(false)
-                                .requireAuthorizationConsent(false)
-                                .setting("taskmigo.oauth-client.ownership", "internal")
-                                .setting("taskmigo.internal-client.managed", "v1")
-                                .build()
-                        )
-                        .build()
-                );
-            }
-        };
+        }
     }
 
     private static UUID objectStatement(AuthorizationProvisioningService authorization, String code, String path) {

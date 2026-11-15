@@ -37,10 +37,12 @@ public class JpaAuditLogStore implements AuditLogStore {
                 event.id(),
                 event.entityType(),
                 event.entityId(),
-                event.actor().id(),
-                event.actor().username(),
+                event.actor(),
                 event.occurredAt(),
-                this.writeChanges(event.changes().toArray(AuditChange[]::new))
+                this.writeChanges(event.changes().toArray(AuditChange[]::new)),
+                event.operation(),
+                event.executor(),
+                event.causation()
             )
         );
     }
@@ -61,18 +63,21 @@ public class JpaAuditLogStore implements AuditLogStore {
             entity.id,
             entity.entityType,
             entity.entityId,
-            new AuditActor(entity.actorId, entity.actorUsername),
+            new AuditActor(entity.actorId, entity.actorUsername, entity.actorType),
             entity.occurredAt,
-            Arrays.asList(this.readChanges(entity.changesJson))
+            Arrays.asList(this.readChanges(entity.changesJson)),
+            entity.operation,
+            entity.executor,
+            entity.causation
         );
     }
 
     @Override
     public void scrubUser(UUID userId) {
-        var actorLogs = this.logs.findAllByActorId(userId);
+        var actorLogs = this.logs.findAllByActorIdAndActorType(userId, AuditActor.Type.USER);
         actorLogs.forEach(log -> log.actorUsername = UNKNOWN_USER);
 
-        var userLogs = this.logs.findAllByEntityTypeAndEntityId("user", userId);
+        var userLogs = this.logs.findAllByEntityTypeAndEntityId("user", userId.toString());
         for (AuditLogEntity log : userLogs) {
             AuditChange[] changes = this.readChanges(log.changesJson);
             boolean changed = false;

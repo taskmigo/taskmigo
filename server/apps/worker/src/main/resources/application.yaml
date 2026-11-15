@@ -4,3 +4,7 @@ spring:
     import: classpath:application-database.yaml
   main:
     web-application-type: none
+
+taskmigo:
+  audit:
+    enabled: true

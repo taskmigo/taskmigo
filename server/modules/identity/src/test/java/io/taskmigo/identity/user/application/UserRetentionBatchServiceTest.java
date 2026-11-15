@@ -6,8 +6,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.taskmigo.identity.user.SystemUser;
-import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.internal.UserCommandService;
 import io.taskmigo.identity.user.application.internal.UserTombstoneService;
@@ -24,28 +22,6 @@ import org.mockito.ArgumentMatchers;
 class UserRetentionBatchServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-10-02T00:00:00Z");
-
-    /**
-     * Verifies that the batch boundary derives the retention actor from the persisted system User.
-     *
-     * Given: the system User exists in the command service.
-     * Expect: the returned actor contains the persisted system id and username.
-     */
-    @Test
-    @DisplayName("resolves the system actor inside the batch boundary")
-    void shouldResolveSystemActorWhenSystemUserExists() {
-        // Arrange
-        UserCommandService users = mock(UserCommandService.class);
-        User system = systemUser();
-        when(users.findByUsername(SystemUser.USERNAME)).thenReturn(Optional.of(system));
-        var service = new UserRetentionBatchService(users, mock(UserTombstoneService.class));
-
-        // Act
-        UserMutationActor actor = service.systemActor();
-
-        // Assert
-        assertThat(actor).isEqualTo(new UserMutationActor(system.id(), SystemUser.USERNAME));
-    }
 
     /**
      * Verifies that candidate discovery stays in the dedicated read transaction boundary.
@@ -85,16 +61,15 @@ class UserRetentionBatchServiceTest {
         User user = retainedUser(candidate.id(), candidate.retainedAt());
         UserCommandService users = mock(UserCommandService.class);
         UserTombstoneService tombstones = mock(UserTombstoneService.class);
-        UserMutationActor actor = new UserMutationActor(UUID.randomUUID(), SystemUser.USERNAME);
         when(users.claimRetainedForUpdate(candidate.id())).thenReturn(Optional.of(user));
         var service = new UserRetentionBatchService(users, tombstones);
 
         // Act
-        boolean result = service.tombstoneIfStillEligible(candidate, cutoff, actor, NOW);
+        boolean result = service.tombstoneIfStillEligible(candidate, cutoff, NOW);
 
         // Assert
         assertThat(result).isTrue();
-        verify(tombstones).tombstone(user, actor, NOW);
+        verify(tombstones).tombstone(user, NOW);
     }
 
     /**
@@ -114,16 +89,11 @@ class UserRetentionBatchServiceTest {
         var service = new UserRetentionBatchService(users, tombstones);
 
         // Act
-        boolean result = service.tombstoneIfStillEligible(
-            candidate,
-            NOW.minusSeconds(3600),
-            new UserMutationActor(UUID.randomUUID(), SystemUser.USERNAME),
-            NOW
-        );
+        boolean result = service.tombstoneIfStillEligible(candidate, NOW.minusSeconds(3600), NOW);
 
         // Assert
         assertThat(result).isFalse();
-        verify(tombstones, never()).tombstone(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any());
+        verify(tombstones, never()).tombstone(ArgumentMatchers.any(), ArgumentMatchers.any());
     }
 
     private static User retainedUser(UUID id, Instant retainedAt) {
@@ -137,18 +107,6 @@ class UserRetentionBatchServiceTest {
             retainedAt,
             null,
             null
-        );
-    }
-
-    private static User systemUser() {
-        return User.restore(
-            UUID.randomUUID(),
-            SystemUser.USERNAME,
-            Set.of(),
-            "System",
-            "User",
-            UserStatus.ACTIVE,
-            "{bcrypt}hash"
         );
     }
 }

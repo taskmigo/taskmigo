@@ -7,6 +7,7 @@ import io.taskmigo.audit.application.query.AuditQueryService;
 import io.taskmigo.audit.model.AuditActor;
 import io.taskmigo.audit.model.AuditChange;
 import io.taskmigo.audit.model.AuditLog;
+import io.taskmigo.audit.model.AuditOperation;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.identity.user.UserInfo;
 import io.taskmigo.query.QueryOperation;
@@ -77,10 +78,13 @@ class AuditController {
     record Response(
         UUID id,
         String entityType,
-        UUID entityId,
+        String entityId,
         ActorResponse actor,
         Instant occurredAt,
-        List<ChangeResponse> changes
+        List<ChangeResponse> changes,
+        AuditOperation operation,
+        @Nullable String executor,
+        @Nullable String causation
     ) {}
 
     private Response response(AuditLog log) {
@@ -90,14 +94,17 @@ class AuditController {
             log.entityId(),
             ActorResponse.from(log.actor()),
             log.occurredAt(),
-            log.changes().stream().map(ChangeResponse::from).toList()
+            log.changes().stream().map(ChangeResponse::from).toList(),
+            log.operation(),
+            log.executor(),
+            log.causation()
         );
     }
 
     @Schema(name = "AuditActor")
-    record ActorResponse(UUID id, String username) {
+    record ActorResponse(UUID id, String username, AuditActor.Type type) {
         static ActorResponse from(AuditActor actor) {
-            return new ActorResponse(actor.id(), actor.username());
+            return new ActorResponse(actor.id(), actor.username(), actor.type());
         }
     }
 

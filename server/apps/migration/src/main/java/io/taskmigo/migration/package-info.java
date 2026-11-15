@@ -2,6 +2,7 @@
 @ApplicationModule(
     allowedDependencies = {
         "foundation",
+        "audit :: context",
         "authorization :: object",
         "authorization :: object-target-resolution",
         "authorization :: provisioning",

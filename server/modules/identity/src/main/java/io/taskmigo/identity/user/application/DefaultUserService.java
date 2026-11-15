@@ -1,8 +1,8 @@
 package io.taskmigo.identity.user.application;
 
-import io.taskmigo.audit.event.AuditEvent;
-import io.taskmigo.audit.model.AuditActor;
+import io.taskmigo.audit.application.record.AuditRecorder;
 import io.taskmigo.audit.model.AuditChange;
+import io.taskmigo.audit.model.AuditOperation;
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.subject.SubjectRef;
 import io.taskmigo.authorization.subject.application.api.SubjectGrantAssignmentService;
@@ -14,7 +14,6 @@ import io.taskmigo.identity.authorization.IdentitySubjects;
 import io.taskmigo.identity.user.AuthenticationInfo;
 import io.taskmigo.identity.user.UserException;
 import io.taskmigo.identity.user.UserInfo;
-import io.taskmigo.identity.user.UserMutationActor;
 import io.taskmigo.identity.user.UserStatus;
 import io.taskmigo.identity.user.application.api.UserService;
 import io.taskmigo.identity.user.application.internal.UserCommandService;
@@ -23,7 +22,6 @@ import io.taskmigo.identity.user.domain.User;
 import io.taskmigo.identity.user.domain.UserRuleViolation;
 import io.taskmigo.query.ListQuerySpec;
 import java.time.Clock;
-import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -42,7 +40,7 @@ public class DefaultUserService implements UserService {
     private final SubjectGrantQueryService grantQueries;
     private final SubjectGrantAssignmentService grantAssignments;
     private final UserDeletionLifecycleService deletion;
-    private final UserAuditAppender audits;
+    private final AuditRecorder audits;
     private final Clock clock;
 
     public DefaultUserService(
@@ -51,7 +49,7 @@ public class DefaultUserService implements UserService {
         SubjectGrantQueryService grantQueries,
         SubjectGrantAssignmentService grantAssignments,
         UserDeletionLifecycleService deletion,
-        UserAuditAppender audits,
+        AuditRecorder audits,
         Clock clock
     ) {
         this.users = users;
@@ -100,25 +98,24 @@ public class DefaultUserService implements UserService {
     }
 
     @Override
-    public void setStatements(UUID userId, Collection<UUID> statementIds, UserMutationActor actor) {
+    public void setStatements(UUID userId, Collection<UUID> statementIds) {
         this.requireMutable(this.requireLocked(userId));
-        this.replaceStatements(userId, statementIds, actor);
+        this.replaceStatements(userId, statementIds);
     }
 
     @Override
     public void setStatements(
         UUID userId,
         Collection<UUID> statementIds,
-        ObjectAuthorizationPredicate<UserInfo> authorization,
-        UserMutationActor actor
+        ObjectAuthorizationPredicate<UserInfo> authorization
     ) {
         User target = this.requireAuthorizedStatementTarget(userId, authorization);
         this.requireMutable(target);
-        this.replaceStatements(userId, statementIds, actor);
+        this.replaceStatements(userId, statementIds);
     }
 
     @Override
-    public void setRoles(UUID userId, Collection<UUID> roleIds, UserMutationActor actor) {
+    public void setRoles(UUID userId, Collection<UUID> roleIds) {
         this.requireMutable(this.requireLocked(userId));
         SubjectRef subject = IdentitySubjects.user(userId);
         Set<UUID> before = this.grantQueries.roleIds(subject);
@@ -128,14 +125,14 @@ public class DefaultUserService implements UserService {
         }
 
         this.grantAssignments.setRoles(subject, after);
-        this.append(userId, actor, UserAuditChanges.visible("roleIds", ordered(before), ordered(after)));
+        this.append(userId, UserAuditChanges.visible("roleIds", ordered(before), ordered(after)));
     }
 
     @Override
-    public void delete(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization, UserMutationActor actor) {
+    public void delete(UUID userId, ObjectAuthorizationPredicate<UserInfo> authorization) {
         User target = this.requireAuthorizedDeleteTarget(userId, authorization);
         try {
-            this.deletion.delete(target, actor, this.clock.instant());
+            this.deletion.delete(target, this.clock.instant());
         } catch (UserRuleViolation violation) {
             throw translate(violation);
         }
@@ -153,7 +150,7 @@ public class DefaultUserService implements UserService {
             .orElseThrow(() -> new UserException(UserException.Type.NOT_FOUND, "User not found"));
     }
 
-    private void replaceStatements(UUID userId, Collection<UUID> statementIds, UserMutationActor actor) {
+    private void replaceStatements(UUID userId, Collection<UUID> statementIds) {
         SubjectRef subject = IdentitySubjects.user(userId);
         Set<UUID> before = this.grantQueries.statementIds(subject);
         Set<UUID> after = Set.copyOf(statementIds);
@@ -174,24 +171,11 @@ public class DefaultUserService implements UserService {
                 exception
             );
         }
-        this.append(userId, actor, UserAuditChanges.visible("statementIds", ordered(before), ordered(after)));
+        this.append(userId, UserAuditChanges.visible("statementIds", ordered(before), ordered(after)));
     }
 
-    private void append(UUID userId, UserMutationActor actor, AuditChange change) {
-        this.append(userId, actor, List.of(change), this.clock.instant());
-    }
-
-    private void append(UUID userId, UserMutationActor actor, List<AuditChange> changes, Instant occurredAt) {
-        this.audits.append(
-            new AuditEvent(
-                UUID.randomUUID(),
-                ENTITY_TYPE,
-                userId,
-                new AuditActor(actor.id(), actor.username()),
-                occurredAt,
-                changes
-            )
-        );
+    private void append(UUID userId, AuditChange change) {
+        this.audits.record(ENTITY_TYPE, userId, AuditOperation.UPDATE, () -> List.of(change));
     }
 
     private void requireExisting(UUID userId) {
