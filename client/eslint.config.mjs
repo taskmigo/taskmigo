@@ -77,5 +77,12 @@ export default defineConfig([
       ],
     },
   },
+  {
+    files: ["src/lib/utils.ts"],
+    rules: {
+      // shadcn/ui uses this canonical module path for its generated components.
+      "unicorn/prevent-abbreviations": "off",
+    },
+  },
   globalIgnores([".next/**", "coverage/**", "out/**", "build/**", "next-env.d.ts"]),
 ]);
