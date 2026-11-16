@@ -1,11 +1,4 @@
-import {
-  AlertTriangle,
-  ArrowRight,
-  CheckCheck,
-  Clock3,
-  Plus,
-  Ticket,
-} from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCheck, Clock3, Plus, Ticket } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,29 +7,130 @@ import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const metrics = [
-  { label: "Open tickets", value: "128", note: "+12 this week", icon: Ticket, color: "bg-indigo-50 text-indigo-600", noteColor: "text-emerald-600" },
-  { label: "In progress", value: "32", note: "Across 6 projects", icon: Clock3, color: "bg-violet-50 text-violet-600", noteColor: "text-muted-foreground" },
-  { label: "Completed", value: "84", note: "+18.6% this month", icon: CheckCheck, color: "bg-emerald-50 text-emerald-600", noteColor: "text-emerald-600" },
-  { label: "Overdue", value: "7", note: "Needs attention", icon: AlertTriangle, color: "bg-amber-50 text-amber-600", noteColor: "text-amber-600" },
+  {
+    label: "Open tickets",
+    value: "128",
+    note: "+12 this week",
+    icon: Ticket,
+    color: "bg-indigo-50 text-indigo-600",
+    noteColor: "text-emerald-600",
+  },
+  {
+    label: "In progress",
+    value: "32",
+    note: "Across 6 projects",
+    icon: Clock3,
+    color: "bg-violet-50 text-violet-600",
+    noteColor: "text-muted-foreground",
+  },
+  {
+    label: "Completed",
+    value: "84",
+    note: "+18.6% this month",
+    icon: CheckCheck,
+    color: "bg-emerald-50 text-emerald-600",
+    noteColor: "text-emerald-600",
+  },
+  {
+    label: "Overdue",
+    value: "7",
+    note: "Needs attention",
+    icon: AlertTriangle,
+    color: "bg-amber-50 text-amber-600",
+    noteColor: "text-amber-600",
+  },
 ] as const;
 
 const projects = [
-  { name: "Platform foundation", description: "Core services & APIs", done: 38, total: 50, value: 76, color: "[&_[data-slot=progress-indicator]]:bg-indigo-500" },
-  { name: "Workspace experience", description: "Navigation & collaboration", done: 27, total: 50, value: 54, color: "[&_[data-slot=progress-indicator]]:bg-violet-500" },
-  { name: "Automation engine", description: "Rules & workflow triggers", done: 8, total: 25, value: 32, color: "[&_[data-slot=progress-indicator]]:bg-amber-500" },
+  {
+    name: "Platform foundation",
+    description: "Core services & APIs",
+    done: 38,
+    total: 50,
+    value: 76,
+    color: "[&_[data-slot=progress-indicator]]:bg-indigo-500",
+  },
+  {
+    name: "Workspace experience",
+    description: "Navigation & collaboration",
+    done: 27,
+    total: 50,
+    value: 54,
+    color: "[&_[data-slot=progress-indicator]]:bg-violet-500",
+  },
+  {
+    name: "Automation engine",
+    description: "Rules & workflow triggers",
+    done: 8,
+    total: 25,
+    value: 32,
+    color: "[&_[data-slot=progress-indicator]]:bg-amber-500",
+  },
 ] as const;
 
 const activities = [
-  { person: "Alex Morgan", initials: "AM", action: "moved", ticket: "TM-1042", description: "to In progress", time: "12 min ago", avatar: "bg-violet-100 text-violet-700" },
-  { person: "Jordan Lee", initials: "JL", action: "commented on", ticket: "TM-1038", description: "", time: "1 hour ago", avatar: "bg-indigo-100 text-indigo-700" },
-  { person: "Sam Rivera", initials: "SR", action: "created", ticket: "TM-1035", description: "", time: "3 hours ago", avatar: "bg-emerald-100 text-emerald-700" },
+  {
+    person: "Alex Morgan",
+    initials: "AM",
+    action: "moved",
+    ticket: "TM-1042",
+    description: "to In progress",
+    time: "12 min ago",
+    avatar: "bg-violet-100 text-violet-700",
+  },
+  {
+    person: "Jordan Lee",
+    initials: "JL",
+    action: "commented on",
+    ticket: "TM-1038",
+    description: "",
+    time: "1 hour ago",
+    avatar: "bg-indigo-100 text-indigo-700",
+  },
+  {
+    person: "Sam Rivera",
+    initials: "SR",
+    action: "created",
+    ticket: "TM-1035",
+    description: "",
+    time: "3 hours ago",
+    avatar: "bg-emerald-100 text-emerald-700",
+  },
 ] as const;
 
 const tickets = [
-  { id: "TM-1042", title: "Improve ticket filtering experience", project: "Workspace", status: "In progress", priority: "High", assignee: "AM" },
-  { id: "TM-1038", title: "Define reusable issue templates", project: "Platform", status: "In review", priority: "Medium", assignee: "JL" },
-  { id: "TM-1035", title: "Investigate notification delivery", project: "Automation", status: "Todo", priority: "Medium", assignee: "SR" },
-  { id: "TM-1029", title: "Update workspace permission rules", project: "Platform", status: "Done", priority: "Low", assignee: "KL" },
+  {
+    id: "TM-1042",
+    title: "Improve ticket filtering experience",
+    project: "Workspace",
+    status: "In progress",
+    priority: "High",
+    assignee: "AM",
+  },
+  {
+    id: "TM-1038",
+    title: "Define reusable issue templates",
+    project: "Platform",
+    status: "In review",
+    priority: "Medium",
+    assignee: "JL",
+  },
+  {
+    id: "TM-1035",
+    title: "Investigate notification delivery",
+    project: "Automation",
+    status: "Todo",
+    priority: "Medium",
+    assignee: "SR",
+  },
+  {
+    id: "TM-1029",
+    title: "Update workspace permission rules",
+    project: "Platform",
+    status: "Done",
+    priority: "Low",
+    assignee: "KL",
+  },
 ] as const;
 
 const ticketStatusClasses = {
@@ -57,16 +151,25 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-end">
         <div>
-          <p className="text-[10px] font-bold tracking-[0.17em] text-muted-foreground">
-            YOUR WORKSPACE · OVERVIEW
-          </p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-[34px]">Good to see you <span aria-hidden="true" className="text-amber-500">✳</span></h1>
+          <p className="text-[10px] font-bold tracking-[0.17em] text-muted-foreground">YOUR WORKSPACE · OVERVIEW</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-[34px]">
+            Good to see you{" "}
+            <span aria-hidden="true" className="text-amber-500">
+              ✳
+            </span>
+          </h1>
           <p className="mt-2 text-sm text-muted-foreground">Here&apos;s what&apos;s happening with your team today.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="secondary" className="mr-auto rounded-md text-[11px] lg:mr-1">Sample data</Badge>
-          <Button variant="outline" disabled>View projects</Button>
-          <Button disabled><Plus /> New ticket</Button>
+          <Badge variant="secondary" className="mr-auto rounded-md text-[11px] lg:mr-1">
+            Sample data
+          </Badge>
+          <Button variant="outline" disabled>
+            View projects
+          </Button>
+          <Button disabled>
+            <Plus /> New ticket
+          </Button>
         </div>
       </div>
 
@@ -106,10 +209,16 @@ export default function DashboardPage() {
                   </div>
                   <div className="shrink-0 text-right">
                     <p className="text-xs font-semibold tabular-nums">{project.value}%</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">{project.done}/{project.total} tasks</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {project.done}/{project.total} tasks
+                    </p>
                   </div>
                 </div>
-                <Progress value={project.value} aria-label={`${project.name}: ${project.value}% complete`} className={`h-2 bg-muted ${project.color}`} />
+                <Progress
+                  value={project.value}
+                  aria-label={`${project.name}: ${project.value}% complete`}
+                  className={`h-2 bg-muted ${project.color}`}
+                />
               </div>
             ))}
           </CardContent>
@@ -129,7 +238,9 @@ export default function DashboardPage() {
             <ol className="space-y-5">
               {activities.map((activity) => (
                 <li key={activity.ticket} className="flex items-start gap-3">
-                  <span className={`flex size-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${activity.avatar}`}>
+                  <span
+                    className={`flex size-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${activity.avatar}`}
+                  >
                     {activity.initials}
                   </span>
                   <div>
@@ -155,7 +266,9 @@ export default function DashboardPage() {
             <CardTitle className="text-[15px]">Recent tickets</CardTitle>
             <CardDescription className="mt-1">A snapshot of work that matters right now.</CardDescription>
           </div>
-          <Button variant="outline" disabled>View all tickets <ArrowRight className="size-4" /></Button>
+          <Button variant="outline" disabled>
+            View all tickets <ArrowRight className="size-4" />
+          </Button>
         </CardHeader>
         <CardContent className="px-4 md:px-6">
           <Table className="min-w-[690px] text-xs">
@@ -187,7 +300,10 @@ export default function DashboardPage() {
                     </span>
                   </TableCell>
                   <TableCell>
-                    <span className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary" aria-label={`Assignee ${ticket.assignee}`}>
+                    <span
+                      className="flex size-7 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary"
+                      aria-label={`Assignee ${ticket.assignee}`}
+                    >
                       {ticket.assignee}
                     </span>
                   </TableCell>
