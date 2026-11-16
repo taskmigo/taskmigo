@@ -2,201 +2,205 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import {
+  Bell,
+  CalendarDays,
+  ChartNoAxesColumn,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CircleHelp,
+  FolderKanban,
+  LayoutDashboard,
+  Menu,
+  Search,
+  Settings2,
+  Sparkles,
+  Ticket,
+  Users,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-type IconName =
-  | "logo"
-  | "overview"
-  | "tickets"
-  | "projects"
-  | "calendar"
-  | "team"
-  | "reports"
-  | "settings"
-  | "help"
-  | "menu"
-  | "bell"
-  | "search"
-  | "user"
-  | "plus"
-  | "arrow"
-  | "up"
-  | "down"
-  | "check"
-  | "clock"
-  | "alert";
-
-const paths: Record<IconName, string> = {
-  logo: "M12 2.5 14.2 9.8 21.5 12 14.2 14.2 12 21.5 9.8 14.2 2.5 12 9.8 9.8 12 2.5Z",
-  overview: "M3 3h8v8H3z M14 3h7v5h-7z M14 11h7v10h-7z M3 14h8v7H3z",
-  tickets: "M4 4h16v16H4z M8 9h8 M8 13h8 M8 17h5",
-  projects: "M3 7h7l2 2h9v11H3z M3 7V5h7l2 2",
-  calendar: "M4 5h16v16H4z M8 3v4 M16 3v4 M4 10h16 M8 14h3 M14 14h3",
-  team: "M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M2 20v-2a7 7 0 0 1 14 0v2 M17 4a4 4 0 0 1 0 8 M18 15a6 6 0 0 1 4 5",
-  reports: "M4 20V11 M10 20V4 M16 20v-8 M22 20H2",
-  settings:
-    "M12 3v3 M12 18v3 M3 12h3 M18 12h3 M5.6 5.6l2.1 2.1 M16.3 16.3l2.1 2.1 M18.4 5.6l-2.1 2.1 M7.7 16.3l-2.1 2.1 M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z",
-  help: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M9.5 9a2.5 2.5 0 1 1 4 2c-1 .7-1.5 1.4-1.5 2.5 M12 17h.01",
-  menu: "M4 7h16 M4 12h16 M4 17h16",
-  bell: "M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9 M10 21h4",
-  search: "M16 16l5 5 M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0z",
-  user: "M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10z M3 21a9 9 0 0 1 18 0",
-  plus: "M12 5v14 M5 12h14",
-  arrow: "M5 12h14 M13 6l6 6-6 6",
-  up: "M6 17 17 6 M8 6h9v9",
-  down: "M6 7 17 18 M17 9v9H8",
-  check: "M4 12l5 5L20 6",
-  clock: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M12 6v6l4 2",
-  alert: "M12 3 2 21h20L12 3z M12 9v5 M12 18h.01",
+type NavigationItem = {
+  label: string;
+  icon: LucideIcon;
+  available: boolean;
 };
 
-export function DashboardIcon({ name, size = 19 }: Readonly<{ name: IconName; size?: number }>) {
-  return (
-    <svg
-      aria-hidden="true"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d={paths[name]} />
-    </svg>
-  );
-}
-
-const navItems: ReadonlyArray<{ label: string; icon: IconName; available: boolean }> = [
-  { label: "Overview", icon: "overview", available: true },
-  { label: "My tickets", icon: "tickets", available: false },
-  { label: "Projects", icon: "projects", available: false },
-  { label: "Calendar", icon: "calendar", available: false },
-  { label: "Team", icon: "team", available: false },
-  { label: "Reports", icon: "reports", available: false },
+const navigationItems: NavigationItem[] = [
+  { label: "Overview", icon: LayoutDashboard, available: true },
+  { label: "My tickets", icon: Ticket, available: false },
+  { label: "Projects", icon: FolderKanban, available: false },
+  { label: "Calendar", icon: CalendarDays, available: false },
+  { label: "Team", icon: Users, available: false },
+  { label: "Reports", icon: ChartNoAxesColumn, available: false },
 ];
 
-export function DashboardShell({ userName, children }: Readonly<{ userName: string; children: React.ReactNode }>) {
+export function DashboardShell({
+  userName,
+  children,
+}: Readonly<{ userName: string; children: React.ReactNode }>) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const toggleSidebar = () => setCollapsed((current) => !current);
 
   return (
-    <div className={`tm-app${collapsed ? " tm-app-collapsed" : ""}${mobileOpen ? " tm-app-mobile-open" : ""}`}>
+    <div className="min-h-screen bg-background font-sans text-foreground">
       {mobileOpen && (
-        <button className="tm-backdrop" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />
+        <button
+          aria-label="Close navigation"
+          className="fixed inset-0 z-40 bg-black/45 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
       )}
-      <aside className="tm-sidebar" aria-label="Main navigation">
-        <div className="tm-sidebar-top">
+
+      <aside
+        aria-label="Main navigation"
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-card px-3 py-5 transition-transform duration-200 md:translate-x-0 md:transition-[width]",
+          collapsed && "md:w-20",
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="flex h-11 items-center justify-between px-2">
           <Link
             href="/dashboard"
-            className="tm-brand"
+            className="flex min-w-0 items-center gap-3"
             aria-label="Taskmigo dashboard"
             onClick={() => setMobileOpen(false)}
           >
-            <span className="tm-brand-icon">
-              <DashboardIcon name="logo" size={21} />
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+              <Sparkles className="size-5" />
             </span>
-            <span className="tm-hide-when-collapsed">
-              <strong>taskmigo</strong>
-              <small>WORKSPACE</small>
+            <span className={cn("flex flex-col", collapsed && "md:hidden")}>
+              <span className="text-xl leading-5 font-bold tracking-tight">taskmigo</span>
+              <span className="mt-1 text-[9px] font-bold tracking-[0.19em] text-muted-foreground">
+                WORKSPACE
+              </span>
             </span>
           </Link>
-          <button className="tm-mobile-close" aria-label="Close menu" onClick={() => setMobileOpen(false)}>
-            ×
-          </button>
+          <Button variant="ghost" size="icon-sm" aria-label="Close menu" className="md:hidden" onClick={() => setMobileOpen(false)}>
+            <X />
+          </Button>
         </div>
-        <div className="tm-workspace-select tm-hide-when-collapsed">
-          <span className="tm-workspace-avatar">T</span>
-          <span>
-            <strong>Taskmigo Team</strong>
-            <small>Free workspace</small>
+
+        <div className={cn("mx-1 mt-8 mb-7 flex items-center gap-3 rounded-xl border bg-muted/50 p-2.5", collapsed && "md:hidden")}>
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-sm font-bold text-violet-700">
+            T
           </span>
-          <span className="tm-workspace-chevron">⌄</span>
+          <span className="flex flex-1 flex-col overflow-hidden">
+            <span className="truncate text-xs font-semibold">Taskmigo Team</span>
+            <span className="mt-0.5 text-[11px] text-muted-foreground">Free workspace</span>
+          </span>
+          <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
         </div>
-        <nav className="tm-nav" aria-label="Workspace">
-          <div className="tm-nav-label tm-hide-when-collapsed">WORKSPACE</div>
-          {navItems.map(({ label, icon, available }) =>
+
+        <nav aria-label="Workspace" className={cn("flex flex-col gap-1 px-1", collapsed && "md:mt-8")}>
+          <p className={cn("mb-2 px-3 text-[10px] font-bold tracking-widest text-muted-foreground", collapsed && "md:hidden")}>
+            WORKSPACE
+          </p>
+          {navigationItems.map(({ label, icon: Icon, available }) =>
             available ? (
               <Link
                 key={label}
                 href="/dashboard"
                 aria-current="page"
-                className="tm-nav-item tm-nav-active"
                 title={label}
                 onClick={() => setMobileOpen(false)}
+                className={cn(
+                  "flex h-10 items-center gap-3 rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground",
+                  collapsed && "md:justify-center"
+                )}
               >
-                <DashboardIcon name={icon} />
-                <span className="tm-hide-when-collapsed">{label}</span>
+                <Icon className="size-[18px] shrink-0" />
+                <span className={cn(collapsed && "md:hidden")}>{label}</span>
               </Link>
             ) : (
               <span
                 key={label}
-                className="tm-nav-item tm-nav-unavailable"
-                aria-disabled="true"
                 title={`${label} — coming soon`}
+                aria-disabled="true"
+                className={cn(
+                  "flex h-10 cursor-not-allowed items-center gap-3 rounded-lg px-3 text-sm text-muted-foreground opacity-70",
+                  collapsed && "md:justify-center"
+                )}
               >
-                <DashboardIcon name={icon} />
-                <span className="tm-hide-when-collapsed">{label}</span>
+                <Icon className="size-[18px] shrink-0" />
+                <span className={cn(collapsed && "md:hidden")}>{label}</span>
               </span>
-            ),
+            )
           )}
         </nav>
-        <div className="tm-sidebar-bottom">
-          <Badge variant="secondary" className="tm-preview-label tm-hide-when-collapsed">
-            LAYOUT PREVIEW
-          </Badge>
-          <span className="tm-nav-item tm-nav-unavailable" title="Help — coming soon" aria-disabled="true">
-            <DashboardIcon name="help" />
-            <span className="tm-hide-when-collapsed">Help & support</span>
+
+        <div className="mt-auto space-y-1 px-1">
+          <div className={cn("px-2 pb-3", collapsed && "md:hidden")}>
+            <Badge variant="secondary" className="text-[9px] tracking-wider">LAYOUT PREVIEW</Badge>
+          </div>
+          <span
+            title="Help & support — coming soon"
+            aria-disabled="true"
+            className={cn("flex h-10 cursor-not-allowed items-center gap-3 rounded-lg px-3 text-sm text-muted-foreground opacity-70", collapsed && "md:justify-center")}
+          >
+            <CircleHelp className="size-[18px] shrink-0" />
+            <span className={cn(collapsed && "md:hidden")}>Help & support</span>
           </span>
-          <Link href="/account" className="tm-nav-item" title="Account settings" onClick={() => setMobileOpen(false)}>
-            <DashboardIcon name="settings" />
-            <span className="tm-hide-when-collapsed">Account settings</span>
+          <Link
+            href="/account"
+            title="Account settings"
+            onClick={() => setMobileOpen(false)}
+            className={cn("flex h-10 items-center gap-3 rounded-lg px-3 text-sm text-muted-foreground hover:bg-muted", collapsed && "md:justify-center")}
+          >
+            <Settings2 className="size-[18px] shrink-0" />
+            <span className={cn(collapsed && "md:hidden")}>Account settings</span>
           </Link>
-          <button
-            className="tm-collapse"
+          <Button
+            variant="ghost"
+            onClick={toggleSidebar}
             aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
             aria-expanded={!collapsed}
-            onClick={() => setCollapsed(!collapsed)}
+            className="mt-3 hidden w-full justify-start border-t text-muted-foreground md:flex"
           >
-            <span>{collapsed ? "›" : "‹"}</span>
-            <span className="tm-hide-when-collapsed">Collapse sidebar</span>
-          </button>
+            {collapsed ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
+            {!collapsed && <span>Collapse sidebar</span>}
+          </Button>
         </div>
       </aside>
-      <div className="tm-main">
-        <header className="tm-header">
-          <div className="tm-header-left">
-            <button className="tm-menu-trigger" aria-label="Open navigation" onClick={() => setMobileOpen(true)}>
-              <DashboardIcon name="menu" />
-            </button>
-            <div className="tm-breadcrumb">
-              <span>Workspace</span>
-              <span className="tm-crumb-divider">/</span>
-              <strong>Overview</strong>
+
+      <div className={cn("min-w-0 transition-[padding] duration-200 md:pl-64", collapsed && "md:pl-20")}>
+        <header className="sticky top-0 z-30 flex h-[72px] items-center justify-between gap-4 border-b bg-card px-4 md:px-9">
+          <div className="flex min-w-0 items-center gap-3">
+            <Button variant="ghost" size="icon" aria-label="Open navigation" className="md:hidden" onClick={() => setMobileOpen(true)}>
+              <Menu />
+            </Button>
+            <div className="flex items-center gap-3 text-sm">
+              <span className="text-muted-foreground">Workspace</span>
+              <span className="text-muted-foreground/50">/</span>
+              <strong className="font-semibold">Overview</strong>
             </div>
           </div>
-          <div className="tm-header-right">
-            <Button variant="outline" className="tm-search" disabled>
-              <DashboardIcon name="search" size={16} /> Search workspace <span className="tm-keyboard">⌘ K</span>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" disabled className="hidden w-52 justify-start gap-2 text-muted-foreground lg:flex">
+              <Search className="size-4" /> Search workspace
             </Button>
-            <Button variant="ghost" size="icon" aria-label="Notifications — coming soon" disabled>
-              <DashboardIcon name="bell" />
+            <Button variant="ghost" size="icon" disabled aria-label="Notifications — coming soon">
+              <Bell />
             </Button>
-            <div className="tm-header-divider" />
-            <Link href="/account" className="tm-account" aria-label={`Account: ${userName}`}>
-              <span className="tm-account-avatar">
-                <DashboardIcon name="user" size={17} />
+            <div className="mx-1 h-7 w-px bg-border" />
+            <Link href="/account" aria-label={`Account: ${userName}`} className="flex items-center gap-2">
+              <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                {userName.charAt(0).toUpperCase()}
               </span>
-              <span className="tm-account-name">{userName}</span>
-              <span className="tm-account-caret">⌄</span>
+              <span className="hidden max-w-32 truncate text-xs font-semibold lg:inline">{userName}</span>
+              <ChevronDown className="hidden size-3 text-muted-foreground lg:inline" />
             </Link>
           </div>
         </header>
-        <main className="tm-content">{children}</main>
+        <main className="mx-auto w-full max-w-[1540px] p-4 md:p-8 lg:p-10">{children}</main>
       </div>
     </div>
   );
