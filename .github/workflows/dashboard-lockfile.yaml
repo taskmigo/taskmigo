@@ -1,0 +1,28 @@
+name: Generate dashboard lockfile (temporary)
+on:
+  pull_request:
+    paths:
+      - 'client/package.json'
+      - '.github/workflows/dashboard-lockfile.yaml'
+permissions:
+  contents: read
+jobs:
+  lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.24.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26.7.0
+      - name: Generate pnpm lockfile
+        working-directory: client
+        run: pnpm install --lockfile-only --no-frozen-lockfile --ignore-scripts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-pnpm-lockfile
+          path: client/pnpm-lock.yaml
+          if-no-files-found: error
+          retention-days: 1
