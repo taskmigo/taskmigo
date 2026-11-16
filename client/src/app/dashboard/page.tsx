@@ -95,6 +95,8 @@ const tickets = [
   },
 ] as const;
 
+const ticketStatusVariants = { Done: "success", "In progress": "default", "In review": "secondary", Todo: "secondary" } as const;
+
 export default function DashboardPage() {
   return (
     <div className="tm-dashboard">
@@ -241,13 +243,7 @@ export default function DashboardPage() {
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={
-                          ticket.status === "Done"
-                            ? "success"
-                            : ticket.status === "In progress"
-                              ? "default"
-                              : "secondary"
-                        }
+                        variant={ticketStatusVariants[ticket.status]}
                       >
                         {ticket.status}
                       </Badge>
