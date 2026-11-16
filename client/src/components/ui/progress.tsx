@@ -1,17 +1,30 @@
-export function Progress({ value, label }: Readonly<{ value: number; label: string }>) {
-  const percent = Math.max(0, Math.min(100, value));
+"use client"
 
+import * as React from "react"
+import { cn } from "@/lib/utils"
+import * as ProgressPrimitive from "@radix-ui/react-progress"
+
+function Progress({
+  className,
+  value,
+  ...properties
+}: React.ComponentProps<typeof ProgressPrimitive.Root>) {
   return (
-    <div
+    <ProgressPrimitive.Root
       data-slot="progress"
-      className="tm-progress"
-      role="progressbar"
-      aria-label={label}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={percent}
+      className={cn(
+        "relative h-2 w-full overflow-hidden rounded-full bg-primary/20",
+        className
+      )}
+      {...properties}
     >
-      <div className="tm-progress-indicator" style={{ width: `${percent}%` }} />
-    </div>
-  );
+      <ProgressPrimitive.Indicator
+        data-slot="progress-indicator"
+        className="h-full w-full flex-1 bg-primary transition-all"
+        style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
+      />
+    </ProgressPrimitive.Root>
+  )
 }
+
+export { Progress }
