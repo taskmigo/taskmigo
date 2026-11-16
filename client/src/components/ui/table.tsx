@@ -1,25 +1,25 @@
 import type * as React from "react";
 
-export function Table({ className, ...props }: React.ComponentProps<"table">) {
-  return <table data-slot="table" className={["tm-table", className].filter(Boolean).join(" ")} {...props} />;
+export function Table({ className, ...properties }: React.ComponentProps<"table">) {
+  return <table data-slot="table" className={["tm-table", className].filter(Boolean).join(" ")} {...properties} />;
 }
 
-export function TableHeader(props: React.ComponentProps<"thead">) {
-  return <thead data-slot="table-header" {...props} />;
+export function TableHeader(properties: React.ComponentProps<"thead">) {
+  return <thead data-slot="table-header" {...properties} />;
 }
 
-export function TableBody(props: React.ComponentProps<"tbody">) {
-  return <tbody data-slot="table-body" {...props} />;
+export function TableBody(properties: React.ComponentProps<"tbody">) {
+  return <tbody data-slot="table-body" {...properties} />;
 }
 
-export function TableRow(props: React.ComponentProps<"tr">) {
-  return <tr data-slot="table-row" {...props} />;
+export function TableRow(properties: React.ComponentProps<"tr">) {
+  return <tr data-slot="table-row" {...properties} />;
 }
 
-export function TableHead(props: React.ComponentProps<"th">) {
-  return <th data-slot="table-head" scope="col" {...props} />;
+export function TableHead(properties: React.ComponentProps<"th">) {
+  return <th data-slot="table-head" scope="col" {...properties} />;
 }
 
-export function TableCell(props: React.ComponentProps<"td">) {
-  return <td data-slot="table-cell" {...props} />;
+export function TableCell(properties: React.ComponentProps<"td">) {
+  return <td data-slot="table-cell" {...properties} />;
 }
