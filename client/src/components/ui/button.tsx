@@ -5,7 +5,7 @@ export function Button({
   variant = "default",
   size = "default",
   type = "button",
-  ...props
+  ...properties
 }: React.ComponentProps<"button"> & {
   variant?: "default" | "outline" | "ghost";
   size?: "default" | "sm" | "icon";
@@ -17,7 +17,7 @@ export function Button({
       data-size={size}
       className={["tm-button", className].filter(Boolean).join(" ")}
       type={type}
-      {...props}
+      {...properties}
     />
   );
 }
