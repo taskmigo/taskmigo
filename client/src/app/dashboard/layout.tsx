@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/auth";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 
-import "./dashboard.css";
 
 export const dynamic = "force-dynamic";
 
