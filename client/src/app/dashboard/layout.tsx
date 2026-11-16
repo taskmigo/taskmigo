@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/auth";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 
-
 export const dynamic = "force-dynamic";
 
 export default async function DashboardLayout({ children }: Readonly<{ children: React.ReactNode }>) {
