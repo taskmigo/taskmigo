@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, test } from "vitest";
+import { cleanup, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, test } from "vitest";
 
 import DashboardPage from "../app/dashboard/page";
+
+afterEach(cleanup);
 
 describe("dashboard layout", () => {
   test("labels sample data and renders its main sections", () => {
