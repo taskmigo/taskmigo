@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import type { Session } from "@taskmigo/auth";
+import type { Session } from "@/auth/core";
 
 const calls = vi.hoisted(() => ({
   config: vi.fn(),
@@ -12,15 +12,15 @@ const calls = vi.hoisted(() => ({
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({ cookies: calls.headerCookies }));
-vi.mock("@taskmigo/config/server", () => ({ getConfig: calls.config }));
-vi.mock("@taskmigo/auth/openid-client", () => ({
+vi.mock("@/config/server", () => ({ getConfig: calls.config }));
+vi.mock("@/auth/openid-client", () => ({
   OpenIdAuthorizationClient: class {
     constructor(options: unknown) {
       calls.authorizationClient(options);
     }
   },
 }));
-vi.mock("@taskmigo/auth", () => ({
+vi.mock("@/auth/core", () => ({
   AuthNavigation: class {
     constructor(options: unknown) {
       calls.navigation(options);

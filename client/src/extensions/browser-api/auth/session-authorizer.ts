@@ -1,5 +1,5 @@
 import { InvalidSessionError, SessionRenewalError, type AuthManager, type Session } from "@/auth";
-import type { CookieState } from "@taskmigo/foundation/state";
+import type { CookieState } from "@/foundation/state";
 import type { NextRequest, NextResponse } from "next/server";
 
 import {

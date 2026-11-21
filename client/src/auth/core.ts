@@ -1,4 +1,4 @@
-import { systemClock, type Clock } from "@taskmigo/foundation/runtime";
+import { systemClock, type Clock } from "@/foundation/runtime";
 
 import { AuthNavigation } from "./navigation";
 
