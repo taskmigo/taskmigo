@@ -1,4 +1,4 @@
-import { OriginScope } from "@taskmigo/foundation/url";
+import { OriginScope } from "@/foundation/url";
 
 export interface AuthNavigationOptions {
   appUrl: URL;

@@ -35,14 +35,14 @@ export default defineConfig([
     },
   },
   {
-    files: ["packages/auth/src/**/*.{ts,tsx}", "src/auth.ts", "src/auth/**/*.{ts,tsx}"],
+    files: ["src/auth.ts", "src/auth/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-properties": [
         "error",
         {
           object: "process",
           property: "env",
-          message: "Read environment configuration through @taskmigo/config/server.",
+          message: "Read environment configuration through @/config/server.",
         },
       ],
     },
@@ -55,15 +55,15 @@ export default defineConfig([
         {
           paths: [
             {
-              name: "@taskmigo/auth",
+              name: "@/auth/core",
               message: "Application code must use the @/auth facade.",
             },
             {
-              name: "@taskmigo/auth/openid-client",
+              name: "@/auth/openid-client",
               message: "Application code must use the @/auth facade.",
             },
             {
-              name: "@taskmigo/config/server",
+              name: "@/config/server",
               message: "Application code must use the @/auth facade instead of auth configuration internals.",
             },
           ],

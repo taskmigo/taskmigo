@@ -19,10 +19,8 @@
     "formatter:fix": "prettier --write ."
   },
   "dependencies": {
-    "@taskmigo/auth": "workspace:*",
-    "@taskmigo/config": "workspace:*",
-    "@taskmigo/foundation": "workspace:*",
     "next": "16.3.3",
+    "openid-client": "6.8.7",
     "prettier": "3.9.9",
     "react": "19.2.0",
     "react-dom": "19.2.0",

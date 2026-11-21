@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getConfig } from "@taskmigo/config/server";
+import { getConfig } from "@/config/server";
 import type { NextRequest, NextResponse } from "next/server";
 
 import { getAuth } from "@/auth";
