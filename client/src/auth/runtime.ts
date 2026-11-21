@@ -7,12 +7,12 @@ import {
   type AuthorizationTransaction,
   type Session,
   type User,
-} from "@taskmigo/auth";
-import { OpenIdAuthorizationClient } from "@taskmigo/auth/openid-client";
-import { getConfig, type Config } from "@taskmigo/config/server";
-import { SealedValue } from "@taskmigo/foundation/node/sealed-value";
-import { globalSingleton } from "@taskmigo/foundation/runtime";
-import { CookieState, type CookieAttributes } from "@taskmigo/foundation/state";
+} from "@/auth/core";
+import { OpenIdAuthorizationClient } from "@/auth/openid-client";
+import { getConfig, type Config } from "@/config/server";
+import { SealedValue } from "@/foundation/node/sealed-value";
+import { globalSingleton } from "@/foundation/runtime";
+import { CookieState, type CookieAttributes } from "@/foundation/state";
 import { cookies } from "next/headers";
 import { z } from "zod";
 

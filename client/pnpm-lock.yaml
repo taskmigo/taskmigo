@@ -7,18 +7,12 @@ settings:
 importers:
   .:
     dependencies:
-      "@taskmigo/auth":
-        specifier: workspace:*
-        version: link:packages/auth
-      "@taskmigo/config":
-        specifier: workspace:*
-        version: link:packages/config
-      "@taskmigo/foundation":
-        specifier: workspace:*
-        version: link:packages/foundation
       next:
         specifier: 16.3.3
         version: 16.3.3(@babel/core@7.29.7(supports-color@7.2.0))(@types/node@24.3.0)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      openid-client:
+        specifier: 6.8.7
+        version: 6.8.7
       prettier:
         specifier: 3.9.9
         version: 3.9.9
@@ -74,32 +68,6 @@ importers:
       vitest:
         specifier: 4.1.11
         version: 4.1.11(@types/node@24.3.0)(@vitest/coverage-v8@4.1.11)(jsdom@30.0.1)(vite@8.2.2(@types/node@24.3.0))
-
-  packages/auth:
-    dependencies:
-      "@taskmigo/foundation":
-        specifier: workspace:*
-        version: link:../foundation
-      openid-client:
-        specifier: 6.8.7
-        version: 6.8.7
-      server-only:
-        specifier: 0.0.1
-        version: 0.0.1
-      zod:
-        specifier: 4.4.3
-        version: 4.4.3
-
-  packages/config:
-    dependencies:
-      server-only:
-        specifier: 0.0.1
-        version: 0.0.1
-      zod:
-        specifier: 4.4.3
-        version: 4.4.3
-
-  packages/foundation: {}
 
 packages:
   "@asamuzakjp/css-color@6.0.7":

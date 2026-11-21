@@ -13,10 +13,9 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: [
-        "packages/auth/src/**/*.ts",
-        "packages/config/src/**/*.ts",
-        "packages/foundation/src/**/*.ts",
         "src/auth/**/*.ts",
+        "src/config/**/*.ts",
+        "src/foundation/**/*.ts",
         "src/app/api/auth/**/route.ts",
       ],
       exclude: ["**/*.test.ts", "**/*.test.tsx"],
