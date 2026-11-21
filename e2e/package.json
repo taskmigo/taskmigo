@@ -11,6 +11,7 @@
   },
   "scripts": {
     "test": "playwright test",
+    "test:api": "playwright test --grep @api",
     "test:auth": "playwright test --grep @auth",
     "test:bff": "playwright test --grep @bff",
     "test:performance": "playwright test --grep @performance",
