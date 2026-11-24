@@ -1,4 +1,4 @@
-import { browserApiRouteHandler } from "@/extensions/browser-api/route-handler";
+import { browserApiRouteHandler } from "@/server/bff/route-handler";
 
 export const runtime = "nodejs";
 

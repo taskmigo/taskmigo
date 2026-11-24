@@ -35,42 +35,50 @@ export default defineConfig([
     },
   },
   {
-    files: ["packages/auth/src/**/*.{ts,tsx}", "src/auth.ts", "src/auth/**/*.{ts,tsx}"],
+    files: ["src/domains/**/*.{ts,tsx}", "src/server/bff/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-properties": [
         "error",
         {
           object: "process",
           property: "env",
-          message: "Read environment configuration through @taskmigo/config/server.",
+          message: "Read environment configuration through @/server/config.",
         },
       ],
     },
   },
   {
-    files: ["src/app/**/*.{ts,tsx}"],
+    files: ["src/app/**/*.{ts,tsx}", "src/server/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [
         "error",
         {
-          paths: [
-            {
-              name: "@taskmigo/auth",
-              message: "Application code must use the @/auth facade.",
-            },
-            {
-              name: "@taskmigo/auth/openid-client",
-              message: "Application code must use the @/auth facade.",
-            },
-            {
-              name: "@taskmigo/config/server",
-              message: "Application code must use the @/auth facade instead of auth configuration internals.",
-            },
-          ],
           patterns: [
             {
-              group: ["@/auth/*", "**/auth/runtime"],
-              message: "Import authentication through @/auth; runtime internals are composition-only.",
+              group: [
+                "@/domains/*/auth",
+                "@/domains/*/auth/**",
+                "@/domains/*/http/**",
+                "**/domains/*/auth/**",
+                "**/domains/*/http/**",
+              ],
+              message: "Use the domain's public entry points instead of its internal implementation.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/domains/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/app", "@/app/**", "@/server/bff", "@/server/bff/**", "**/server/bff/**"],
+              message: "Domains must not depend on Next.js route entry points or BFF transport.",
             },
           ],
         },
