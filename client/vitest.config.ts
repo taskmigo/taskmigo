@@ -12,13 +12,7 @@ export default defineConfig({
     setupFiles: ["./test/setup.ts"],
     coverage: {
       provider: "v8",
-      include: [
-        "packages/auth/src/**/*.ts",
-        "packages/config/src/**/*.ts",
-        "packages/foundation/src/**/*.ts",
-        "src/auth/**/*.ts",
-        "src/app/api/auth/**/route.ts",
-      ],
+      include: ["src/domains/identity/**/*.ts", "src/server/config.ts", "src/app/api/auth/**/route.ts"],
       exclude: ["**/*.test.ts", "**/*.test.tsx"],
       reporter: ["text"],
       thresholds: {

@@ -1,4 +1,4 @@
-import { InvalidSessionError, SessionRenewalError } from "@/auth";
+import { InvalidSessionError, SessionRenewalError } from "@/domains/identity";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { NextRequest } from "next/server";
 
@@ -24,8 +24,8 @@ const auth = vi.hoisted(() => {
   return { manager, sessions, transactions, context, getAuth: vi.fn(() => context) };
 });
 
-vi.mock("@/auth", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/auth")>()),
+vi.mock("@/domains/identity", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/domains/identity")>()),
   getAuth: auth.getAuth,
 }));
 
