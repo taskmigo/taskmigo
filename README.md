@@ -12,6 +12,8 @@ Please keep contributions focused, add or update tests and documentation when ap
 
 Repository-specific instructions for automated contributors are documented in [`AGENTS.md`](AGENTS.md).
 
+For AI-driven development, see the [AI-DLC setup and delivery guide](docs/engineering/ai-dlc.md).
+
 ## Repository
 
 Taskmigo is developed as a monorepo. The main areas are:

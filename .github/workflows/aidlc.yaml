@@ -1,0 +1,88 @@
+---
+name: AI-DLC
+
+on:
+  pull_request:
+    paths:
+      - .aidlc-version
+      - AGENTS.md
+      - CONTRIBUTING.md
+      - Taskfile.yml
+      - .github/workflows/aidlc.yaml
+      - ".agents/skills/taskmigo-delivery/**"
+      - docs/engineering/ai-dlc.md
+  push:
+    branches: [next]
+    paths:
+      - .aidlc-version
+      - AGENTS.md
+      - CONTRIBUTING.md
+      - Taskfile.yml
+      - .github/workflows/aidlc.yaml
+      - ".agents/skills/taskmigo-delivery/**"
+      - docs/engineering/ai-dlc.md
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned AI-DLC
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version=$(cat .aidlc-version)
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          tag="v$version"
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          gh release download "$tag" --repo awslabs/aidlc-workflows --dir "$tmp" \
+            --pattern install.sh --pattern aidlc-release.intoto.jsonl
+          gh attestation verify "$tmp/install.sh" \
+            --bundle "$tmp/aidlc-release.intoto.jsonl" \
+            --repo awslabs/aidlc-workflows \
+            --signer-workflow awslabs/aidlc-workflows/.github/workflows/release.yml \
+            --hostname github.com --source-ref "refs/tags/$tag"
+          unset GH_TOKEN
+          sh "$tmp/install.sh" --version "$version" --quiet --yes
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Verify harness projections
+        run: |
+          set -euo pipefail
+          version=$(cat .aidlc-version)
+          baseline="$GITHUB_WORKSPACE/AGENTS.md"
+          for harness in copilot codex; do
+            checkout="$RUNNER_TEMP/aidlc-$harness"
+            git worktree add --detach "$checkout" HEAD
+            (
+              cd "$checkout"
+              aidlc config --pin "$version" --project-dir "$PWD" --quiet
+              aidlc config --project-dir "$PWD" --harness "$harness" --mcp none --quiet
+              test "$(cat .aidlc-version)" = "$version"
+              head -c "$(wc -c < "$baseline")" AGENTS.md | cmp "$baseline" -
+              git diff --exit-code -- .agents/skills .github/workflows .github/pull_request_template.md
+              test -d aidlc/spaces/default/memory
+              if [ "$harness" = copilot ]; then
+                test -f .github/hooks/aidlc.json
+                test -f .github/skills/aidlc/SKILL.md
+              else
+                test -f .codex/hooks.json
+                test -f .agents/skills/aidlc/SKILL.md
+              fi
+            )
+          done
