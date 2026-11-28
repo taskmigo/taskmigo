@@ -25,7 +25,7 @@ final class ListGroupsQuerySchema extends QuerySchema<GroupEntity> {
     }
 
     @Override
-    protected Collection<QueryField<GroupEntity, ?>> staticFields() {
+    protected Collection<QueryField<GroupEntity, ? extends Object>> staticFields() {
         return List.of(
             field(GroupEntity_.id).operators(EQ, NE).sortable(),
             field(GroupEntity_.code).operators(EQ, NE, CONTAINS).sortable(),
@@ -35,7 +35,7 @@ final class ListGroupsQuerySchema extends QuerySchema<GroupEntity> {
     }
 
     @Override
-    protected Collection<QueryField<GroupEntity, ?>> runtimeFields(QueryFieldContext context) {
+    protected Collection<QueryField<GroupEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
         return List.of();
     }
 }

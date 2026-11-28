@@ -39,7 +39,7 @@ abstract class TicketQuerySchema extends QuerySchema<TicketEntity> {
     }
 
     @Override
-    protected final Collection<QueryField<TicketEntity, ?>> staticFields() {
+    protected final Collection<QueryField<TicketEntity, ? extends Object>> staticFields() {
         QueryField<TicketEntity, String> title = field(TicketEntity_.title).operators(EQ, NE, CONTAINS);
         QueryField<TicketEntity, String> status = field(TicketEntity_.status).operators(EQ, NE, CONTAINS);
         QueryField<TicketEntity, Instant> createdAt = field(TicketEntity_.createdAt).operators(
@@ -76,9 +76,9 @@ abstract class TicketQuerySchema extends QuerySchema<TicketEntity> {
     }
 
     @Override
-    protected final Collection<QueryField<TicketEntity, ?>> runtimeFields(QueryFieldContext context) {
+    protected final Collection<QueryField<TicketEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
         JpaPath<TicketEntity, UUID> schemaInstancePath = JpaPath.of(TicketEntity_.schemaInstanceId);
-        List<QueryField<TicketEntity, ?>> fields = new ArrayList<>();
+        List<QueryField<TicketEntity, ? extends Object>> fields = new ArrayList<>();
         this.runtimeFields
             .fields(context)
             .values()

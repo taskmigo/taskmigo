@@ -25,7 +25,7 @@ final class ListStatementsQuerySchema extends QuerySchema<StatementEntity> {
     }
 
     @Override
-    protected Collection<QueryField<StatementEntity, ?>> staticFields() {
+    protected Collection<QueryField<StatementEntity, ? extends Object>> staticFields() {
         return List.of(
             field(StatementEntity_.id).operators(EQ, NE).sortable(),
             field(StatementEntity_.code).operators(EQ, NE, CONTAINS).sortable(),
@@ -36,7 +36,7 @@ final class ListStatementsQuerySchema extends QuerySchema<StatementEntity> {
     }
 
     @Override
-    protected Collection<QueryField<StatementEntity, ?>> runtimeFields(QueryFieldContext context) {
+    protected Collection<QueryField<StatementEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
         return List.of();
     }
 }

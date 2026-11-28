@@ -259,7 +259,7 @@ public final class JpaQueryExpressionBinder {
         return binding(reference, schema, context).valueExpression().resolve(root, query, builder);
     }
 
-    private static <E> QueryField<E, ?> binding(
+    private static <E> QueryField<E, ? extends Object> binding(
         QueryExpression.Reference reference,
         QuerySchema<E> schema,
         QueryFieldContext context

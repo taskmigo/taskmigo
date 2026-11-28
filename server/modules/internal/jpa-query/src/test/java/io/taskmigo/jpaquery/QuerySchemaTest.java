@@ -392,7 +392,7 @@ class QuerySchemaTest {
         }
 
         @Override
-        protected Collection<QueryField<TestEntity, ?>> staticFields() {
+        protected Collection<QueryField<TestEntity, ? extends Object>> staticFields() {
             return List.of(
                 field(this.id).operators(EQ, NE),
                 field(this.username).operators(EQ, NE, CONTAINS),
@@ -401,7 +401,7 @@ class QuerySchemaTest {
         }
 
         @Override
-        protected Collection<QueryField<TestEntity, ?>> runtimeFields(QueryFieldContext context) {
+        protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
             return List.of();
         }
     }
@@ -421,12 +421,12 @@ class QuerySchemaTest {
         }
 
         @Override
-        protected Collection<QueryField<TestEntity, ?>> staticFields() {
+        protected Collection<QueryField<TestEntity, ? extends Object>> staticFields() {
             return List.of(field(this.username).operators(EQ), field(this.username).operators(NE));
         }
 
         @Override
-        protected Collection<QueryField<TestEntity, ?>> runtimeFields(QueryFieldContext context) {
+        protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
             return List.of();
         }
     }
@@ -446,12 +446,12 @@ class QuerySchemaTest {
         }
 
         @Override
-        protected Collection<QueryField<TestEntity, ?>> staticFields() {
+        protected Collection<QueryField<TestEntity, ? extends Object>> staticFields() {
             return List.of(field(this.id).operators(EQ));
         }
 
         @Override
-        protected Collection<QueryField<TestEntity, ?>> runtimeFields(QueryFieldContext context) {
+        protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
             return List.of(field(this.id).operators(NE));
         }
     }
@@ -471,12 +471,12 @@ class QuerySchemaTest {
         }
 
         @Override
-        protected Collection<QueryField<TestEntity, ?>> staticFields() {
+        protected Collection<QueryField<TestEntity, ? extends Object>> staticFields() {
             return List.of();
         }
 
         @Override
-        protected Collection<QueryField<TestEntity, ?>> runtimeFields(QueryFieldContext context) {
+        protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
             return List.of(field(this.username).operators(EQ), field(this.username).operators(NE));
         }
     }
@@ -498,12 +498,12 @@ class QuerySchemaTest {
         }
 
         @Override
-        protected Collection<QueryField<TestEntity, ?>> staticFields() {
+        protected Collection<QueryField<TestEntity, ? extends Object>> staticFields() {
             return List.of(field(this.id).operators(EQ));
         }
 
         @Override
-        protected Collection<QueryField<TestEntity, ?>> runtimeFields(QueryFieldContext context) {
+        protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
             return List.of();
         }
     }

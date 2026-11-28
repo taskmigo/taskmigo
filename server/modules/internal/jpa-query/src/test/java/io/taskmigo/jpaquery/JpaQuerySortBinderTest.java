@@ -102,7 +102,7 @@ class JpaQuerySortBinderTest {
         ).sortable();
     }
 
-    private static QuerySchema<TestEntity> schema(QueryField<TestEntity, ?> field) {
+    private static QuerySchema<TestEntity> schema(QueryField<TestEntity, ? extends Object> field) {
         return new QuerySchema<>(TestEntity.class) {
             @Override
             protected String operationId() {
@@ -110,12 +110,12 @@ class JpaQuerySortBinderTest {
             }
 
             @Override
-            protected Collection<QueryField<TestEntity, ?>> staticFields() {
+            protected Collection<QueryField<TestEntity, ? extends Object>> staticFields() {
                 return List.of(field);
             }
 
             @Override
-            protected Collection<QueryField<TestEntity, ?>> runtimeFields(QueryFieldContext context) {
+            protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
                 return List.of();
             }
         };

@@ -25,7 +25,7 @@ final class UpdateUserStatementsQuerySchema extends QuerySchema<UserEntity> {
     }
 
     @Override
-    protected Collection<QueryField<UserEntity, ?>> staticFields() {
+    protected Collection<QueryField<UserEntity, ? extends Object>> staticFields() {
         return List.of(
             field(UserEntity_.id).operators(EQ, NE),
             field(UserEntity_.username).operators(EQ, NE, CONTAINS),
@@ -34,7 +34,7 @@ final class UpdateUserStatementsQuerySchema extends QuerySchema<UserEntity> {
     }
 
     @Override
-    protected Collection<QueryField<UserEntity, ?>> runtimeFields(QueryFieldContext context) {
+    protected Collection<QueryField<UserEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
         return List.of();
     }
 }

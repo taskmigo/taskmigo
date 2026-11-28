@@ -37,7 +37,7 @@ public final class JpaQuerySortBinder {
 
         ArrayList<Order> orders = new ArrayList<>(requested.size() * 2);
         for (QuerySort sort : requested) {
-            QueryField<E, ?> field = schema
+            QueryField<E, ? extends Object> field = schema
                 .binding(sort.path(), context)
                 .orElseThrow(() ->
                     new IllegalArgumentException("Persistence sort path is not bound: " + sort.path().text())

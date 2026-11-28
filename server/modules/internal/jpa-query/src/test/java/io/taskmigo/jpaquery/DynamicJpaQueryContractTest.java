@@ -92,12 +92,12 @@ class DynamicJpaQueryContractTest {
             }
 
             @Override
-            protected Collection<QueryField<TestEntity, ?>> staticFields() {
+            protected Collection<QueryField<TestEntity, ? extends Object>> staticFields() {
                 return List.of();
             }
 
             @Override
-            protected Collection<QueryField<TestEntity, ?>> runtimeFields(QueryFieldContext context) {
+            protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
                 return "incident".equals(context.values().get("scope")) ? List.of(dynamic) : List.of();
             }
         };
@@ -149,12 +149,12 @@ class DynamicJpaQueryContractTest {
             }
 
             @Override
-            protected Collection<QueryField<TestEntity, ?>> staticFields() {
+            protected Collection<QueryField<TestEntity, ? extends Object>> staticFields() {
                 return List.of();
             }
 
             @Override
-            protected Collection<QueryField<TestEntity, ?>> runtimeFields(QueryFieldContext context) {
+            protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
                 return List.of(dynamic);
             }
         };

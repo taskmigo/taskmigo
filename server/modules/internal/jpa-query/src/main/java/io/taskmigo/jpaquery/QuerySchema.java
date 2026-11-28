@@ -26,11 +26,10 @@ public abstract class QuerySchema<E> implements QuerySchemaView {
     protected abstract String operationId();
 
     /// Returns the statically allow-listed JPA fields for this operation.
-    protected abstract Collection<QueryField<E, ?>> staticFields();
+    protected abstract Collection<QueryField<E, ? extends Object>> staticFields();
 
     /// Returns runtime-discovered fields for this operation and context.
-    @SuppressWarnings("NullableProblems")
-    protected abstract Collection<QueryField<E, ?>> runtimeFields(QueryFieldContext context);
+    protected abstract Collection<QueryField<E, ? extends Object>> runtimeFields(QueryFieldContext context);
 
     /// Returns the entity root type owned by this operation schema.
     public final Class<E> rootType() {
@@ -52,13 +51,13 @@ public abstract class QuerySchema<E> implements QuerySchemaView {
     }
 
     /// Resolves the JPA-bound field for a logical path in the effective schema.
-    public final Optional<QueryField<E, ?>> binding(QueryPath path, QueryFieldContext context) {
+    public final Optional<QueryField<E, ? extends Object>> binding(QueryPath path, QueryFieldContext context) {
         Objects.requireNonNull(path);
         return Optional.ofNullable(this.bindings(context).get(path));
     }
 
     /// Resolves the JPA-bound field for a static-only context.
-    public final Optional<QueryField<E, ?>> binding(QueryPath path) {
+    public final Optional<QueryField<E, ? extends Object>> binding(QueryPath path) {
         return this.binding(path, QueryFieldContext.empty());
     }
 
@@ -72,16 +71,19 @@ public abstract class QuerySchema<E> implements QuerySchemaView {
         return QueryField.of(path);
     }
 
-    private Map<QueryPath, QueryField<E, ?>> bindings(QueryFieldContext context) {
+    private Map<QueryPath, QueryField<E, ? extends Object>> bindings(QueryFieldContext context) {
         Objects.requireNonNull(context);
-        LinkedHashMap<QueryPath, QueryField<E, ?>> effective = new LinkedHashMap<>();
+        LinkedHashMap<QueryPath, QueryField<E, ? extends Object>> effective = new LinkedHashMap<>();
         this.append(effective, this.staticFields());
         this.append(effective, this.runtimeFields(context));
         return Map.copyOf(effective);
     }
 
-    private void append(Map<QueryPath, QueryField<E, ?>> target, Collection<QueryField<E, ?>> fields) {
-        for (QueryField<E, ?> field : List.copyOf(Objects.requireNonNull(fields))) {
+    private void append(
+        Map<QueryPath, QueryField<E, ? extends Object>> target,
+        Collection<QueryField<E, ? extends Object>> fields
+    ) {
+        for (QueryField<E, ? extends Object> field : List.copyOf(Objects.requireNonNull(fields))) {
             QueryPath path = field.descriptor().path();
             if (target.putIfAbsent(path, field) != null) {
                 throw new IllegalStateException(
