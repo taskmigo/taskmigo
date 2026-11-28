@@ -2,30 +2,22 @@ package io.taskmigo.ticket.type.application.api;
 
 import io.taskmigo.ticket.type.domain.TicketTypeStatus;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 
 /// Defines Ticket Type metadata and versioned custom-template use cases.
 public interface TicketTypeService {
-    UUID create(String key, String name);
+    TicketTypeInfo create(String key, String name, List<TicketFieldSpec> fields);
 
     TicketTypeInfo get(UUID id);
 
     List<TicketTypeInfo> list();
 
-    TicketTypeInfo update(UUID id, String name, TicketTypeStatus status);
+    TicketTypeInfo update(UUID id, @Nullable String name, @Nullable TicketTypeStatus status);
 
-    TicketTemplateInfo createTemplate(UUID ticketTypeId);
-
-    TicketTemplateInfo replaceTemplate(UUID ticketTypeId, UUID versionId, List<TicketFieldSpec> fields);
-
-    TicketTemplateInfo publishTemplate(UUID ticketTypeId, UUID versionId);
-
-    TicketTemplateInfo retireTemplate(UUID ticketTypeId, UUID versionId);
+    TicketTemplateInfo createTemplate(UUID ticketTypeId, UUID expectedTemplateVersionId, List<TicketFieldSpec> fields);
 
     List<TicketTemplateInfo> listTemplates(UUID ticketTypeId);
 
     TicketTemplateInfo getTemplate(UUID ticketTypeId, UUID versionId);
-
-    Optional<TicketTemplateInfo> currentTemplate(UUID ticketTypeId);
 }

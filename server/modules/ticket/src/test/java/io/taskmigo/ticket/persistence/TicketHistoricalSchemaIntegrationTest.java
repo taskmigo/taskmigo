@@ -7,9 +7,11 @@ import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.ticket.application.api.TicketInfo;
 import io.taskmigo.ticket.application.api.TicketService;
+import io.taskmigo.ticket.field.application.api.TicketFieldService;
+import io.taskmigo.ticket.field.application.api.TicketFieldType;
 import io.taskmigo.ticket.type.application.api.TicketFieldSpec;
-import io.taskmigo.ticket.type.application.api.TicketFieldType;
 import io.taskmigo.ticket.type.application.api.TicketTemplateInfo;
+import io.taskmigo.ticket.type.application.api.TicketTypeInfo;
 import io.taskmigo.ticket.type.application.api.TicketTypeService;
 import io.taskmigo.ticket.type.domain.TicketTypeStatus;
 import jakarta.persistence.EntityManager;
@@ -59,17 +61,20 @@ class TicketHistoricalSchemaIntegrationTest {
     };
 
     private final TicketTypeService ticketTypes;
+    private final TicketFieldService fieldService;
     private final TicketService tickets;
     private final EntityManagerFactory entityManagerFactory;
     private final JdbcTemplate jdbc;
 
     TicketHistoricalSchemaIntegrationTest(
         TicketTypeService ticketTypes,
+        TicketFieldService fieldService,
         TicketService tickets,
         EntityManagerFactory entityManagerFactory,
         JdbcTemplate jdbc
     ) {
         this.ticketTypes = ticketTypes;
+        this.fieldService = fieldService;
         this.tickets = tickets;
         this.entityManagerFactory = entityManagerFactory;
         this.jdbc = jdbc;
@@ -79,25 +84,19 @@ class TicketHistoricalSchemaIntegrationTest {
     @DisplayName("keeps a Ticket pinned to its historical template after a newer template is published")
     void shouldKeepHistoricalTemplateIdentity() {
         UUID actor = insertUser("historical-ticket-actor");
-        UUID typeId = this.ticketTypes.create("historical", "Historical");
-        TicketTemplateInfo v1Draft = this.ticketTypes.createTemplate(typeId);
-        this.ticketTypes.replaceTemplate(
-            typeId,
-            v1Draft.id(),
-            List.of(
-                new TicketFieldSpec(UUID.randomUUID(), "severity", "Severity", TicketFieldType.STRING, false, Map.of())
-            )
+        TicketTypeInfo type = this.ticketTypes.create(
+            "historical",
+            "Historical",
+            List.of(field("severity", "Severity", TicketFieldType.STRING, false))
         );
-        TicketTemplateInfo v1 = this.ticketTypes.publishTemplate(typeId, v1Draft.id());
-        UUID ticketId = this.tickets.create(typeId, "Legacy", "OPEN", Map.of("severity", "HIGH"), actor);
-
-        TicketTemplateInfo v2Draft = this.ticketTypes.createTemplate(typeId);
-        this.ticketTypes.replaceTemplate(
+        UUID typeId = type.id();
+        TicketTemplateInfo v1 = type.currentTemplate();
+        UUID ticketId = this.tickets.create(typeId, "Legacy", "OPEN", Map.of("severity", "HIGH"), actor, v1.id());
+        this.ticketTypes.createTemplate(
             typeId,
-            v2Draft.id(),
-            List.of(new TicketFieldSpec(UUID.randomUUID(), "impact", "Impact", TicketFieldType.STRING, false, Map.of()))
+            v1.id(),
+            List.of(field("impact", "Impact", TicketFieldType.STRING, false))
         );
-        this.ticketTypes.publishTemplate(typeId, v2Draft.id());
 
         TicketInfo historical = this.tickets.read(ticketId, ALLOW_ALL, QueryFieldContext.empty());
 
@@ -109,13 +108,11 @@ class TicketHistoricalSchemaIntegrationTest {
     @DisplayName("refuses new Ticket creation after its Ticket Type is retired")
     void shouldRejectCreationForRetiredTicketType() {
         UUID actor = insertUser("retired-ticket-actor");
-        UUID typeId = this.ticketTypes.create("retired", "Retired");
-        TicketTemplateInfo draft = this.ticketTypes.createTemplate(typeId);
-        this.ticketTypes.publishTemplate(typeId, draft.id());
+        UUID typeId = this.ticketTypes.create("retired", "Retired", List.of()).id();
         this.ticketTypes.update(typeId, "Retired", TicketTypeStatus.RETIRED);
 
         assertThatThrownBy(() ->
-            this.tickets.create(typeId, "No longer allowed", "OPEN", Map.of(), actor)
+            this.tickets.create(typeId, "No longer allowed", "OPEN", Map.of(), actor, null)
         ).isInstanceOf(IllegalStateException.class);
     }
 
@@ -123,10 +120,8 @@ class TicketHistoricalSchemaIntegrationTest {
     @DisplayName("detects concurrent Ticket updates through JPA optimistic locking")
     void shouldDetectOptimisticLockConflict() {
         UUID actor = insertUser("optimistic-ticket-actor");
-        UUID typeId = this.ticketTypes.create("optimistic", "Optimistic");
-        TicketTemplateInfo draft = this.ticketTypes.createTemplate(typeId);
-        this.ticketTypes.publishTemplate(typeId, draft.id());
-        UUID ticketId = this.tickets.create(typeId, "Original", "OPEN", Map.of(), actor);
+        UUID typeId = this.ticketTypes.create("optimistic", "Optimistic", List.of()).id();
+        UUID ticketId = this.tickets.create(typeId, "Original", "OPEN", Map.of(), actor, null);
 
         EntityManager first = this.entityManagerFactory.createEntityManager();
         EntityManager second = this.entityManagerFactory.createEntityManager();
@@ -155,6 +150,10 @@ class TicketHistoricalSchemaIntegrationTest {
             first.close();
             second.close();
         }
+    }
+
+    private TicketFieldSpec field(String key, String label, TicketFieldType type, boolean required) {
+        return new TicketFieldSpec(this.fieldService.create(key, label, type).id(), null, required, Map.of());
     }
 
     private UUID insertUser(String username) {

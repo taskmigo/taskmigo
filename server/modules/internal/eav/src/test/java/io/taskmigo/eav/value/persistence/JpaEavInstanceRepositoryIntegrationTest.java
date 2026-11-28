@@ -72,7 +72,7 @@ class JpaEavInstanceRepositoryIntegrationTest {
         Map<String, @Nullable Object> patch = new LinkedHashMap<>();
         patch.put("score", 8);
         patch.put("note", null);
-        EavInstanceView patched = this.instances.patch(created.id(), patch);
+        EavInstanceView patched = this.instances.patch(created.id(), patch).instance();
         assertThat(patched.values())
             .containsEntry("severity", "legacy")
             .containsEntry("score", new BigDecimal("8"))
@@ -96,7 +96,7 @@ class JpaEavInstanceRepositoryIntegrationTest {
         this.schemas.publish(definitionId, v2.id());
         this.schemas.retire(definitionId, publishedV1.id());
 
-        EavInstanceView historical = this.instances.patch(created.id(), Map.of("severity", "still-legacy"));
+        EavInstanceView historical = this.instances.patch(created.id(), Map.of("severity", "still-legacy")).instance();
         assertThat(historical.schemaVersionId()).isEqualTo(publishedV1.id());
         assertThat(historical.values()).containsEntry("severity", "still-legacy");
         assertThat(this.instances.get(created.id())).isEqualTo(historical);

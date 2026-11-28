@@ -4,8 +4,10 @@ import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.eav.schema.application.EavSchemaService;
 import io.taskmigo.eav.schema.application.EavSchemaVersionInfo;
 import io.taskmigo.eav.schema.domain.EavSchemaStatus;
+import io.taskmigo.eav.value.application.EavInstancePatchResult;
 import io.taskmigo.eav.value.application.EavInstanceService;
 import io.taskmigo.eav.value.application.EavInstanceView;
+import io.taskmigo.foundation.DomainFailureType;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryFieldContext;
@@ -14,6 +16,7 @@ import io.taskmigo.ticket.application.api.TicketPatch;
 import io.taskmigo.ticket.application.api.TicketService;
 import io.taskmigo.ticket.domain.Ticket;
 import io.taskmigo.ticket.type.application.TicketTypeRepository;
+import io.taskmigo.ticket.type.application.api.TicketTypeException;
 import io.taskmigo.ticket.type.domain.TicketType;
 import java.time.Clock;
 import java.time.Instant;
@@ -53,14 +56,23 @@ public class TicketServiceImpl implements TicketService {
     }
 
     @Override
-    public UUID create(UUID ticketTypeId, String title, String status, Map<String, ?> customFields, UUID actorId) {
+    public UUID create(
+        UUID ticketTypeId,
+        String title,
+        String status,
+        Map<String, ?> customFields,
+        UUID actorId,
+        @Nullable UUID expectedTemplateVersionId
+    ) {
         Objects.requireNonNull(ticketTypeId);
         Objects.requireNonNull(customFields);
         Objects.requireNonNull(actorId);
         requireNonBlank(title, "Ticket title");
         requireNonBlank(status, "Ticket status");
 
-        TicketType type = this.requireType(ticketTypeId);
+        TicketType type = this.ticketTypes
+            .lockForCreation(ticketTypeId)
+            .orElseThrow(() -> new TicketTypeException(DomainFailureType.NOT_FOUND, "Unknown Ticket Type"));
         type.requireCreationEligible();
         EavSchemaVersionInfo current = this.schemas
             .current(type.schemaDefinitionId())
@@ -69,6 +81,12 @@ public class TicketServiceImpl implements TicketService {
             throw new IllegalStateException("Ticket Type current template must be published");
         }
 
+        if (expectedTemplateVersionId != null && !expectedTemplateVersionId.equals(current.id())) {
+            throw new TicketTypeException(
+                DomainFailureType.CONFLICT,
+                "Ticket template has changed; reload the current schema"
+            );
+        }
         EavInstanceView instance = this.instances.create(type.schemaDefinitionId(), current.id(), customFields);
         requireOwnedInstance(type, instance);
         if (!instance.schemaVersionId().equals(current.id())) {
@@ -130,20 +148,23 @@ public class TicketServiceImpl implements TicketService {
         Ticket ticket = this.requireAuthorized(ticketId, authorization, context);
         TicketType type = this.requireType(ticket.ticketTypeId());
 
-        if (!patch.hasChanges()) {
-            EavInstanceView current = this.instances.get(ticket.schemaInstanceId());
-            requireOwnedInstance(type, current);
-            return toInfo(ticket, current);
-        }
-
         String title = patch.title() == null ? ticket.title() : patch.title();
         String status = patch.status() == null ? ticket.status() : patch.status();
-        Ticket updated = ticket.updateCommonFields(title, status, this.now());
+        requireNonBlank(title, "Ticket title");
+        requireNonBlank(status, "Ticket status");
 
-        EavInstanceView instance = patch.customFields().isEmpty()
-            ? this.instances.get(ticket.schemaInstanceId())
+        EavInstancePatchResult result = patch.customFields().isEmpty()
+            ? new EavInstancePatchResult(this.instances.get(ticket.schemaInstanceId()), false)
             : this.instances.patch(ticket.schemaInstanceId(), patch.customFields());
+        EavInstanceView instance = result.instance();
         requireOwnedInstance(type, instance);
+        if (!result.changed() && ticket.title().equals(title) && ticket.status().equals(status)) {
+            return toInfo(ticket, instance);
+        }
+
+        Instant now = this.now();
+        Instant updatedAt = now.isAfter(ticket.updatedAt()) ? now : ticket.updatedAt().plusMillis(1);
+        Ticket updated = ticket.updateCommonFields(title, status, updatedAt);
         this.tickets.save(updated);
         return toInfo(updated, instance);
     }

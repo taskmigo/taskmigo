@@ -1,6 +1,5 @@
 package io.taskmigo.ticket.configuration;
 
-import io.taskmigo.eav.query.EavQueryFieldCatalog;
 import io.taskmigo.eav.schema.application.EavSchemaService;
 import io.taskmigo.eav.value.application.EavInstanceService;
 import io.taskmigo.ticket.application.TicketQueryFieldCatalog;
@@ -8,6 +7,9 @@ import io.taskmigo.ticket.application.TicketQueryRepository;
 import io.taskmigo.ticket.application.TicketRepository;
 import io.taskmigo.ticket.application.TicketServiceImpl;
 import io.taskmigo.ticket.application.api.TicketService;
+import io.taskmigo.ticket.field.application.TicketFieldRegistry;
+import io.taskmigo.ticket.field.application.TicketFieldServiceImpl;
+import io.taskmigo.ticket.field.application.api.TicketFieldService;
 import io.taskmigo.ticket.type.application.TicketTypeRepository;
 import io.taskmigo.ticket.type.application.TicketTypeServiceImpl;
 import io.taskmigo.ticket.type.application.api.TicketTypeService;
@@ -19,18 +21,22 @@ import org.springframework.context.annotation.Configuration;
 class TicketConfiguration {
 
     @Bean
-    TicketQueryFieldCatalog ticketQueryFieldCatalog(
-        EavSchemaService schemas,
-        EavInstanceService instances,
-        TicketTypeRepository ticketTypes,
-        TicketRepository tickets
-    ) {
-        return new TicketQueryFieldCatalog(new EavQueryFieldCatalog(), schemas, instances, ticketTypes, tickets);
+    TicketQueryFieldCatalog ticketQueryFieldCatalog(TicketFieldRegistry fields) {
+        return new TicketQueryFieldCatalog(fields);
     }
 
     @Bean
-    TicketTypeService ticketTypeService(TicketTypeRepository repository, EavSchemaService schemas) {
-        return new TicketTypeServiceImpl(repository, schemas, Clock.systemUTC());
+    TicketFieldService ticketFieldService(TicketFieldRegistry fields) {
+        return new TicketFieldServiceImpl(fields);
+    }
+
+    @Bean
+    TicketTypeService ticketTypeService(
+        TicketTypeRepository repository,
+        EavSchemaService schemas,
+        TicketFieldRegistry fields
+    ) {
+        return new TicketTypeServiceImpl(repository, schemas, fields, Clock.systemUTC());
     }
 
     @Bean

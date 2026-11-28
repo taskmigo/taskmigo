@@ -1,14 +1,12 @@
 package io.taskmigo.ticket.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.taskmigo.authorization.object.ObjectAuthorizationPredicate;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationExpression;
 import io.taskmigo.authorization.object.model.ObjectAuthorizationPredicateModels;
 import io.taskmigo.foundation.OffsetPage;
 import io.taskmigo.query.FilterByCompiler;
-import io.taskmigo.query.FilterByException;
 import io.taskmigo.query.ListQuerySpec;
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryPath;
@@ -17,9 +15,10 @@ import io.taskmigo.query.QuerySort;
 import io.taskmigo.ticket.application.TicketQueryFieldCatalog;
 import io.taskmigo.ticket.application.api.TicketInfo;
 import io.taskmigo.ticket.application.api.TicketService;
+import io.taskmigo.ticket.field.application.api.TicketFieldService;
+import io.taskmigo.ticket.field.application.api.TicketFieldStatus;
+import io.taskmigo.ticket.field.application.api.TicketFieldType;
 import io.taskmigo.ticket.type.application.api.TicketFieldSpec;
-import io.taskmigo.ticket.type.application.api.TicketFieldType;
-import io.taskmigo.ticket.type.application.api.TicketTemplateInfo;
 import io.taskmigo.ticket.type.application.api.TicketTypeService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -54,6 +53,7 @@ class TicketQueryPersistenceIntegrationTest {
     static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:18.4-alpine");
 
     private final TicketTypeService ticketTypes;
+    private final TicketFieldService fieldService;
     private final TicketService tickets;
     private final TicketQueryFieldCatalog fields;
     private final ListTicketsQuerySchema listSchema;
@@ -61,12 +61,14 @@ class TicketQueryPersistenceIntegrationTest {
 
     TicketQueryPersistenceIntegrationTest(
         TicketTypeService ticketTypes,
+        TicketFieldService fieldService,
         TicketService tickets,
         TicketQueryFieldCatalog fields,
         ListTicketsQuerySchema listSchema,
         JdbcTemplate jdbc
     ) {
         this.ticketTypes = ticketTypes;
+        this.fieldService = fieldService;
         this.tickets = tickets;
         this.fields = fields;
         this.listSchema = listSchema;
@@ -77,14 +79,11 @@ class TicketQueryPersistenceIntegrationTest {
     @DisplayName("typed EAV filter and Object Authorization are combined before database pagination")
     void shouldFilterAndAuthorizeBeforePagination() {
         UUID actor = insertUser("query-auth-actor");
-        UUID typeId = createType(
-            "query-auth",
-            List.of(new TicketFieldSpec(UUID.randomUUID(), "score", "Score", TicketFieldType.NUMBER, true, Map.of()))
-        );
+        UUID typeId = createType("query-auth", List.of(field("score", "Score", TicketFieldType.NUMBER, true)));
         for (int score = 1; score <= 5; score++) {
-            this.tickets.create(typeId, "Ticket " + score, "OPEN", Map.of("score", score), actor);
+            this.tickets.create(typeId, "Ticket " + score, "OPEN", Map.of("score", score), actor, null);
         }
-        QueryFieldContext context = this.fields.forType(typeId);
+        QueryFieldContext context = this.fields.snapshot();
         ListQuerySpec<TicketInfo> query = new ListQuerySpec<>(
             compile(context, "object.score >= 2"),
             context,
@@ -113,35 +112,33 @@ class TicketQueryPersistenceIntegrationTest {
     @DisplayName("typed custom sorting keeps missing values last without adding a tie breaker")
     void shouldSortTypedValuesWithMissingLastWithoutImplicitTieBreaker() {
         UUID actor = insertUser("query-sort-actor");
-        UUID typeId = createType(
-            "query-sort",
-            List.of(
-                new TicketFieldSpec(UUID.randomUUID(), "dueDate", "Due date", TicketFieldType.DATE, false, Map.of())
-            )
-        );
+        UUID typeId = createType("query-sort", List.of(field("dueDate", "Due date", TicketFieldType.DATE, false)));
         UUID late = this.tickets.create(
             typeId,
             "Late",
             "OPEN",
             Map.of("dueDate", LocalDate.parse("2026-10-20")),
-            actor
+            actor,
+            null
         );
-        UUID missing = this.tickets.create(typeId, "Missing", "OPEN", Map.of(), actor);
+        UUID missing = this.tickets.create(typeId, "Missing", "OPEN", Map.of(), actor, null);
         UUID firstTie = this.tickets.create(
             typeId,
             "Tie A",
             "OPEN",
             Map.of("dueDate", LocalDate.parse("2026-10-10")),
-            actor
+            actor,
+            null
         );
         UUID secondTie = this.tickets.create(
             typeId,
             "Tie B",
             "OPEN",
             Map.of("dueDate", LocalDate.parse("2026-10-10")),
-            actor
+            actor,
+            null
         );
-        QueryFieldContext context = this.fields.forType(typeId);
+        QueryFieldContext context = this.fields.snapshot();
         ListQuerySpec<TicketInfo> query = new ListQuerySpec<>(
             compile(context, null),
             context,
@@ -164,43 +161,88 @@ class TicketQueryPersistenceIntegrationTest {
     }
 
     @Test
-    @DisplayName("unscoped ambiguous custom fields fail closed while an explicit Ticket Type scope remains queryable")
-    void shouldFailClosedGloballyAndAllowTypeScopedQuery() {
-        UUID actor = insertUser("query-ambiguity-actor");
-        UUID firstType = createType(
-            "query-ambiguity-a",
-            List.of(
-                new TicketFieldSpec(UUID.randomUUID(), "customerTier", "Tier", TicketFieldType.NUMBER, false, Map.of())
-            )
+    @DisplayName("shared fields preserve numeric query and authorization semantics across types and retired versions")
+    void shouldQueryAcrossTypesWhenFieldIdentityIsShared() {
+        UUID actor = insertUser("query-shared-field-actor");
+        UUID fieldId = this.fieldService.create("customerTier", "Tier", TicketFieldType.NUMBER).id();
+        TicketFieldSpec spec = new TicketFieldSpec(fieldId, null, false, Map.of());
+        UUID firstType = createType("query-shared-a", List.of(spec));
+        UUID secondType = createType("query-shared-b", List.of(spec));
+        UUID oldVersion = this.ticketTypes.get(firstType).currentTemplate().id();
+        UUID high = this.tickets.create(firstType, "High", "SHARED_QUERY", Map.of("customerTier", 10), actor, null);
+        this.ticketTypes.createTemplate(firstType, oldVersion, List.of(spec));
+        UUID low = this.tickets.create(firstType, "Low", "SHARED_QUERY", Map.of("customerTier", 2), actor, null);
+        UUID highest = this.tickets.create(
+            secondType,
+            "Highest",
+            "SHARED_QUERY",
+            Map.of("customerTier", 20),
+            actor,
+            null
         );
-        createType(
-            "query-ambiguity-b",
-            List.of(
-                new TicketFieldSpec(UUID.randomUUID(), "customerTier", "Tier", TicketFieldType.NUMBER, false, Map.of())
-            )
-        );
-        this.tickets.create(firstType, "Scoped", "OPEN", Map.of("customerTier", 3), actor);
-        QueryFieldContext global = this.fields.global();
-        QueryFieldContext scoped = this.fields.forType(firstType);
+        UUID missingType = createType("query-shared-missing", List.of());
+        UUID missing = this.tickets.create(missingType, "Missing", "SHARED_QUERY", Map.of(), actor, null);
+        this.fieldService.update(fieldId, null, TicketFieldStatus.ARCHIVED);
 
-        assertThatThrownBy(() ->
-            new FilterByCompiler().compile(this.listSchema, global, "object.customerTier >= 2")
-        ).isInstanceOf(FilterByException.class);
-        assertThat(
-            new FilterByCompiler().compile(this.listSchema, scoped, "object.customerTier >= 2").isAlwaysFalse()
-        ).isFalse();
+        QueryFieldContext context = this.fields.snapshot();
+        ObjectAuthorizationPredicate<TicketInfo> allow = ObjectAuthorizationPredicateModels.constant(
+            this.listSchema,
+            context,
+            true
+        );
+
+        ListQuerySpec<TicketInfo> ascending = new ListQuerySpec<>(
+            compile(context, "object.status == \"SHARED_QUERY\""),
+            context,
+            List.of(new QuerySort(QueryPath.of("customerTier"), QuerySort.Direction.ASC))
+        );
+        ListQuerySpec<TicketInfo> descending = new ListQuerySpec<>(
+            ascending.predicate(),
+            context,
+            List.of(new QuerySort(QueryPath.of("customerTier"), QuerySort.Direction.DESC))
+        );
+        ListQuerySpec<TicketInfo> unequal = new ListQuerySpec<>(
+            compile(context, "object.customerTier != 2"),
+            context,
+            ascending.sorting()
+        );
+        assertThat(this.tickets.list(1, 10, null, ascending, allow).items())
+            .extracting(TicketInfo::id)
+            .containsExactly(low, high, highest, missing);
+        assertThat(this.tickets.list(1, 10, null, descending, allow).items())
+            .extracting(TicketInfo::id)
+            .containsExactly(highest, high, low, missing);
+        assertThat(this.tickets.list(1, 10, null, unequal, allow).items())
+            .extracting(TicketInfo::id)
+            .containsExactly(high, highest);
+
+        ObjectAuthorizationPredicate<TicketInfo> authorized = ObjectAuthorizationPredicateModels.from(
+            this.listSchema,
+            context,
+            new ObjectAuthorizationExpression.Binary(
+                ObjectAuthorizationExpression.BinaryOperator.GREATER_OR_EQUAL,
+                new ObjectAuthorizationExpression.Reference("object", List.of("customerTier")),
+                new ObjectAuthorizationExpression.Literal(10)
+            )
+        );
+        OffsetPage<TicketInfo> first = this.tickets.list(1, 1, null, ascending, authorized);
+        OffsetPage<TicketInfo> second = this.tickets.list(2, 1, null, ascending, authorized);
+        assertThat(first.totalItems()).isEqualTo(2);
+        assertThat(first.totalPages()).isEqualTo(2);
+        assertThat(first.items()).extracting(TicketInfo::id).containsExactly(high);
+        assertThat(second.items()).extracting(TicketInfo::id).containsExactly(highest);
     }
 
     private UUID createType(String key, List<TicketFieldSpec> fields) {
-        UUID typeId = this.ticketTypes.create(key, key);
-        TicketTemplateInfo draft = this.ticketTypes.createTemplate(typeId);
-        this.ticketTypes.replaceTemplate(typeId, draft.id(), fields);
-        this.ticketTypes.publishTemplate(typeId, draft.id());
-        return typeId;
+        return this.ticketTypes.create(key, key, fields).id();
     }
 
     private QueryPredicate<TicketInfo> compile(QueryFieldContext context, @Nullable String source) {
         return (QueryPredicate<TicketInfo>) new FilterByCompiler().compile(this.listSchema, context, source);
+    }
+
+    private TicketFieldSpec field(String key, String label, TicketFieldType type, boolean required) {
+        return new TicketFieldSpec(this.fieldService.create(key, label, type).id(), null, required, Map.of());
     }
 
     private UUID insertUser(String username) {

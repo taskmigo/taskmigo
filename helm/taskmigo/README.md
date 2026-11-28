@@ -60,6 +60,25 @@ The lifecycle is:
 
 A failed migration hook fails the Helm release before runtime workloads are changed.
 
+## Optional first Ticket
+
+By default, the first successful installation creates one ordinary `Hello World! 👋` Ticket, its Task Type
+and an optional STRING description field. The example uses the reserved system User as creator and the normal
+Ticket services. It is not a managed resource: subsequent migration runs never restore or overwrite it.
+
+To start without example data, set the following value before the first installation:
+
+```yaml
+migration:
+  initFirstTicket: false
+```
+
+For a standalone migration application, set `TM_INIT_FIRST_TICKET=false` (Spring property
+`taskmigo.migration.init-first-ticket`). The default is true. Disabling the option skips all three optional
+resources without skipping mandatory installation. Changing it after initial installation does not backfill or
+remove data. The first-install signal is the creation of the protected system User inside the existing
+serializable installation transaction, not the presence or absence of Tickets.
+
 ## Gateway API
 
 Gateway API routing is disabled by default. The chart can either create a `Gateway` for Taskmigo or attach its `HTTPRoute` resources to an existing shared Gateway.

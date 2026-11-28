@@ -9,6 +9,7 @@ import io.taskmigo.query.QueryOperation;
 import io.taskmigo.ticket.application.api.TicketInfo;
 import io.taskmigo.ticket.application.api.TicketPatch;
 import io.taskmigo.ticket.application.api.TicketService;
+import io.taskmigo.ticket.type.application.api.TicketTypeService;
 import io.taskmigo.web.api.support.objectauthorization.ObjectAuthorizationResolver;
 import io.taskmigo.web.api.support.objectauthorization.ResolvedObjectAuthorization;
 import io.taskmigo.web.api.support.query.ListQueryOptions;
@@ -17,6 +18,7 @@ import io.taskmigo.web.api.v0.support.pagination.OffsetPageRequest;
 import io.taskmigo.web.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.api.v0.support.response.ApiResponseFactory;
 import io.taskmigo.web.api.v0.support.response.ApiV0Responses.OpenApiCommonErrors;
+import io.taskmigo.web.api.v0.support.response.ApiV0Responses.OpenApiConflict;
 import io.taskmigo.web.api.v0.support.response.ApiV0Responses.OpenApiNotFound;
 import io.taskmigo.web.api.v0.support.response.ApiV0Responses.OpenApiUnsupportedMediaType;
 import jakarta.validation.Valid;
@@ -52,17 +54,20 @@ import org.springframework.web.bind.annotation.RestController;
 class TicketController {
 
     private final TicketService tickets;
+    private final TicketTypeService types;
     private final ListQueryResolver queryResolver;
     private final ObjectAuthorizationResolver objectAuthorization;
     private final ApiResponseFactory responses;
 
     TicketController(
         TicketService tickets,
+        TicketTypeService types,
         ListQueryResolver queryResolver,
         ObjectAuthorizationResolver objectAuthorization,
         ApiResponseFactory responses
     ) {
         this.tickets = tickets;
+        this.types = types;
         this.queryResolver = queryResolver;
         this.objectAuthorization = objectAuthorization;
         this.responses = responses;
@@ -70,6 +75,8 @@ class TicketController {
 
     @PostMapping(value = "/tickets", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Create a Ticket")
+    @OpenApiConflict
+    @OpenApiNotFound
     @OpenApiUnsupportedMediaType
     @ResponseStatus(HttpStatus.CREATED)
     ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(
@@ -81,7 +88,8 @@ class TicketController {
             request.title(),
             request.status(),
             createFields(request.customFields()),
-            actorId(authentication)
+            actorId(authentication),
+            request.expectedTemplateVersionId()
         );
         return this.responses.created(
             URI.create("/api/v0/tickets/" + id),
@@ -122,10 +130,14 @@ class TicketController {
     @Operation(summary = "Get a Ticket")
     @OpenApiNotFound
     @ResponseStatus(HttpStatus.OK)
-    ResponseEntity<ApiResponse<Response, ApiResponse.BasicMeta>> read(@PathVariable UUID ticketId) {
+    ResponseEntity<ApiResponse<DetailResponse, ApiResponse.BasicMeta>> read(@PathVariable UUID ticketId) {
         ResolvedObjectAuthorization<TicketInfo> authorization = this.objectAuthorization.resolve();
+        TicketInfo ticket = this.tickets.read(ticketId, authorization.predicate(), authorization.queryContext());
         return this.responses.ok(
-            Response.from(this.tickets.read(ticketId, authorization.predicate(), authorization.queryContext())),
+            new DetailResponse(
+                Response.from(ticket),
+                TicketTemplateResponse.from(this.types.getTemplate(ticket.ticketTypeId(), ticket.templateVersionId()))
+            ),
             "resource.ticket.read",
             "Ticket read"
         );
@@ -198,11 +210,15 @@ class TicketController {
         }
     }
 
+    @Schema(name = "TicketDetail")
+    record DetailResponse(Response ticket, TicketTemplateResponse template) {}
+
     @Schema(name = "CreateTicketRequest")
     record CreateRequest(
         @NotNull UUID ticketTypeId,
         @NotBlank String title,
         @NotBlank String status,
+        @Nullable UUID expectedTemplateVersionId,
         @Nullable Map<String, @Nullable Object> customFields
     ) {}
 

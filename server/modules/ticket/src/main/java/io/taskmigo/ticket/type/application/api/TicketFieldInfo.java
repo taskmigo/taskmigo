@@ -1,5 +1,6 @@
 package io.taskmigo.ticket.type.application.api;
 
+import io.taskmigo.ticket.field.application.api.TicketFieldType;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;

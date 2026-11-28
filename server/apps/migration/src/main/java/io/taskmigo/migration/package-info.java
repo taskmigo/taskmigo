@@ -13,6 +13,9 @@
         "identity :: provisioning-use-cases",
         "identity :: user",
         "identity :: group",
+        "ticket :: ticket-use-cases",
+        "ticket :: ticket-type-use-cases",
+        "ticket :: ticket-field-use-cases",
     }
 )
 @NullMarked

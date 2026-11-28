@@ -9,6 +9,7 @@ import io.taskmigo.eav.schema.application.EavSchemaService;
 import io.taskmigo.eav.schema.application.EavSchemaVersionInfo;
 import io.taskmigo.eav.schema.domain.EavDataType;
 import io.taskmigo.eav.schema.domain.EavSchemaStatus;
+import io.taskmigo.eav.value.application.EavInstancePatchResult;
 import io.taskmigo.eav.value.application.EavInstanceService;
 import io.taskmigo.eav.value.application.EavInstanceView;
 import io.taskmigo.foundation.OffsetPage;
@@ -24,6 +25,7 @@ import io.taskmigo.ticket.type.domain.TicketTypeStatus;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -77,7 +79,7 @@ class TicketServiceTest {
         );
         UUID actorId = UUID.randomUUID();
 
-        UUID ticketId = this.service.create(typeId, "Broken login", "OPEN", Map.of("severity", "HIGH"), actorId);
+        UUID ticketId = this.service.create(typeId, "Broken login", "OPEN", Map.of("severity", "HIGH"), actorId, null);
 
         Ticket stored = this.tickets.findById(ticketId).orElseThrow();
         EavInstanceView instance = this.instances.get(stored.schemaInstanceId());
@@ -107,14 +109,14 @@ class TicketServiceTest {
         this.schemas.publishWithFields(definitionId, draft.id(), List.of());
 
         assertThatThrownBy(() ->
-            this.service.create(retiredId, "No", "OPEN", Map.of(), UUID.randomUUID())
+            this.service.create(retiredId, "No", "OPEN", Map.of(), UUID.randomUUID(), null)
         ).isInstanceOf(IllegalStateException.class);
-        assertThatThrownBy(() -> this.service.create(activeId, " ", "OPEN", Map.of(), UUID.randomUUID())).isInstanceOf(
-            IllegalArgumentException.class
-        );
-        assertThatThrownBy(() -> this.service.create(activeId, "Valid", " ", Map.of(), UUID.randomUUID())).isInstanceOf(
-            IllegalArgumentException.class
-        );
+        assertThatThrownBy(() ->
+            this.service.create(activeId, " ", "OPEN", Map.of(), UUID.randomUUID(), null)
+        ).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() ->
+            this.service.create(activeId, "Valid", " ", Map.of(), UUID.randomUUID(), null)
+        ).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -133,7 +135,8 @@ class TicketServiceTest {
             "Legacy",
             "OPEN",
             Map.of("summary", "v1", "note", "remove me"),
-            UUID.randomUUID()
+            UUID.randomUUID(),
+            null
         );
 
         EavSchemaVersionInfo v2Draft = this.schemas.createDraft(definitionId);
@@ -190,6 +193,16 @@ class TicketServiceTest {
         @Override
         public Optional<TicketType> findById(UUID id) {
             return Optional.ofNullable(this.values.get(id));
+        }
+
+        @Override
+        public Optional<TicketType> lockById(UUID id) {
+            return findById(id);
+        }
+
+        @Override
+        public Optional<TicketType> lockForCreation(UUID id) {
+            return findById(id);
         }
 
         @Override
@@ -362,6 +375,11 @@ class TicketServiceTest {
         }
 
         @Override
+        public List<EavSchemaVersionInfo> currentVersions(Collection<UUID> definitionIds) {
+            return definitionIds.stream().map(this::current).flatMap(Optional::stream).toList();
+        }
+
+        @Override
         public List<EavSchemaVersionInfo> listVersions(UUID definitionId) {
             requireDefinition(definitionId);
             return this.versions
@@ -418,7 +436,7 @@ class TicketServiceTest {
         }
 
         @Override
-        public EavInstanceView patch(UUID instanceId, Map<String, ?> changes) {
+        public EavInstancePatchResult patch(UUID instanceId, Map<String, ?> changes) {
             EavInstanceView current = get(instanceId);
             EavSchemaVersionInfo version = this.schemas.version(
                 current.schemaDefinitionId(),
@@ -431,8 +449,11 @@ class TicketServiceTest {
                 current.schemaVersionId(),
                 normalized
             );
+            if (current.values().equals(normalized)) {
+                return new EavInstancePatchResult(current, false);
+            }
             this.values.put(instanceId, changed);
-            return changed;
+            return new EavInstancePatchResult(changed, true);
         }
 
         private static Map<String, Object> validate(

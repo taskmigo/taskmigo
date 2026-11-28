@@ -153,6 +153,61 @@ class MigrationIntegrationTest {
     }
 
     /**
+     * Verifies the optional example uses the canonical system creator and typed field value.
+     *
+     * Given: the default fresh installation.
+     * Expect: rerunning installation preserves the original Ticket and schema identities.
+     */
+    @Test
+    @DisplayName("creates the first Ticket once through normal Ticket services")
+    void shouldInitializeFirstTicketOnce() {
+        var before = this.jdbc.queryForList(
+            """
+            select t.id, t.title, t.status, t.created_by, t.ticket_type_id, t.schema_instance_id
+            from tickets t join ticket_types tt on tt.id = t.ticket_type_id
+            where tt.type_key = 'task'
+            """
+        );
+        assertThat(before)
+            .singleElement()
+            .satisfies(row -> {
+                assertThat(row.get("title")).isEqualTo("Hello World! 👋");
+                assertThat(row.get("status")).isEqualTo("OPEN");
+                assertThat(row.get("created_by")).isEqualTo(
+                    this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().id()
+                );
+            });
+        assertThat(
+            this.jdbc.queryForList(
+                "select field_key, data_type from ticket_field_registry where field_key = 'description'"
+            )
+        )
+            .singleElement()
+            .satisfies(row -> assertThat(row).containsEntry("data_type", "STRING"));
+        assertThat(
+            this.jdbc.queryForList(
+                "select string_value from eav_field_values where field_id = (select id from ticket_field_registry where field_key = 'description')"
+            )
+        )
+            .singleElement()
+            .satisfies(row ->
+                assertThat(Objects.toString(row.get("string_value"))).contains("Welcome to Taskmigo!", "Happy tasking!")
+            );
+
+        this.migration.install(this.resources.load(), true);
+
+        assertThat(
+            this.jdbc.queryForList(
+                """
+                select t.id, t.title, t.status, t.created_by, t.ticket_type_id, t.schema_instance_id
+                from tickets t join ticket_types tt on tt.id = t.ticket_type_id
+                where tt.type_key = 'task'
+                """
+            )
+        ).isEqualTo(before);
+    }
+
+    /**
      * Verifies that a clean migration attributes every managed resource CREATE to its declared system actor.
      *
      * Given: migration already installed the built-in User, Roles, Statements and Groups.
@@ -197,7 +252,7 @@ class MigrationIntegrationTest {
         );
 
         // Act
-        this.migration.install(this.resources.load());
+        this.migration.install(this.resources.load(), true);
 
         // Assert
         Integer after = this.jdbc.queryForObject(
@@ -236,7 +291,7 @@ class MigrationIntegrationTest {
         );
         String clientSecretHash = Objects.requireNonNull(this.storedClient("browser").getClientSecret());
 
-        this.migration.install(this.resources.load());
+        this.migration.install(this.resources.load(), true);
 
         assertThat(this.storedClient("browser").getId()).isEqualTo(browserId);
         assertThat(this.users.findForAuthentication(SystemUser.USERNAME).orElseThrow().passwordHash()).isEqualTo(
@@ -265,6 +320,23 @@ class MigrationIntegrationTest {
             .extracting(RoleInfo::displayName)
             .contains("System Operator");
         assertThat(this.users.roleIds(system.id())).hasSize(1);
+    }
+
+    /// Verifies the production migration grants Ticket PATCH to privileged roles only.
+    @Test
+    @DisplayName("provisions Ticket update permission for both privileged roles")
+    void shouldProvisionTicketUpdateAccess() {
+        assertThat(
+            this.jdbc.queryForList(
+                """
+                select r.code from roles r
+                join role_statements rs on rs.role_id = r.id
+                join statements s on s.id = rs.statement_id
+                where s.code = 'ticket_update_object_allow'
+                """,
+                String.class
+            )
+        ).containsExactlyInAnyOrder("system-operator", "administrator");
     }
 
     /**
@@ -403,7 +475,7 @@ class MigrationIntegrationTest {
             List.of(),
             false
         );
-        this.migration.install(new InstallationPlan(List.of(initial), List.of(), List.of(), List.of(), Map.of()));
+        this.migration.install(new InstallationPlan(List.of(initial), List.of(), List.of(), List.of(), Map.of()), true);
         UUID userId = this.users.findForAuthentication(username).orElseThrow().id();
         assertThat(this.auditRows(userId))
             .singleElement()
@@ -425,7 +497,7 @@ class MigrationIntegrationTest {
         );
 
         // Act
-        this.migration.install(new InstallationPlan(List.of(updated), List.of(), List.of(), List.of(), Map.of()));
+        this.migration.install(new InstallationPlan(List.of(updated), List.of(), List.of(), List.of(), Map.of()), true);
 
         // Assert
         assertThat(this.auditRows(userId))
@@ -481,7 +553,8 @@ class MigrationIntegrationTest {
             false
         );
         this.migration.install(
-            new InstallationPlan(List.of(user), List.of(role), List.of(statement), List.of(group), Map.of())
+            new InstallationPlan(List.of(user), List.of(role), List.of(statement), List.of(group), Map.of()),
+            true
         );
         var absentStatement = new InstallationPlan.Statement(
             statementCode,
@@ -514,8 +587,8 @@ class MigrationIntegrationTest {
         );
 
         // Act
-        this.migration.install(absentPlan);
-        this.migration.install(absentPlan);
+        this.migration.install(absentPlan, true);
+        this.migration.install(absentPlan, true);
 
         // Assert
         assertThat(this.users.findForAuthentication(username)).hasValueSatisfying(authentication ->
@@ -614,11 +687,11 @@ class MigrationIntegrationTest {
     void shouldRotateManagedClientSecretWhenConfiguredSecretChanges() {
         // Arrange
         String clientId = "rotation-" + UUID.randomUUID();
-        this.migration.install(resources(Map.of("rotation", client(clientId, "initial-secret"))));
+        this.migration.install(resources(Map.of("rotation", client(clientId, "initial-secret"))), true);
         String initialHash = Objects.requireNonNull(this.storedClient(clientId).getClientSecret());
 
         // Act
-        this.migration.install(resources(Map.of("rotation", client(clientId, "rotated-secret"))));
+        this.migration.install(resources(Map.of("rotation", client(clientId, "rotated-secret"))), true);
         String rotatedHash = Objects.requireNonNull(this.storedClient(clientId).getClientSecret());
 
         // Assert
@@ -639,7 +712,7 @@ class MigrationIntegrationTest {
                 .contains("clientSecret", "\"sensitive\":true")
                 .doesNotContain("initial-secret", "rotated-secret", initialHash, rotatedHash);
         });
-        this.migration.install(resources(Map.of("rotation", client(clientId, "rotated-secret"))));
+        this.migration.install(resources(Map.of("rotation", client(clientId, "rotated-secret"))), true);
         assertThat(
             this.jdbc.queryForObject(
                 "select count(*) from audit_logs where entity_type = 'oauth-client' and entity_id = ?",
@@ -661,8 +734,8 @@ class MigrationIntegrationTest {
         var configuredClients = Map.of("concurrent", client(clientId, "concurrent-secret"));
 
         try (var executor = Executors.newFixedThreadPool(2)) {
-            var first = executor.submit(() -> this.migration.install(resources(configuredClients)));
-            var second = executor.submit(() -> this.migration.install(resources(configuredClients)));
+            var first = executor.submit(() -> this.migration.install(resources(configuredClients), true));
+            var second = executor.submit(() -> this.migration.install(resources(configuredClients), true));
             first.get();
             second.get();
         }
@@ -695,7 +768,7 @@ class MigrationIntegrationTest {
         );
 
         assertThatThrownBy(() ->
-            this.migration.install(resources(Map.of("unmanaged", client(clientId, "secret"))))
+            this.migration.install(resources(Map.of("unmanaged", client(clientId, "secret"))), true)
         ).hasMessageContaining("Refusing to adopt unmanaged OAuth client");
     }
 

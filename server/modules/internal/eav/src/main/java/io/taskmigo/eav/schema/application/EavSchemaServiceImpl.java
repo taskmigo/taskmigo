@@ -6,6 +6,7 @@ import io.taskmigo.eav.schema.domain.EavSchemaVersion;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -129,6 +130,12 @@ public class EavSchemaServiceImpl implements EavSchemaService {
     public Optional<EavSchemaVersionInfo> current(UUID definitionId) {
         Objects.requireNonNull(definitionId);
         return this.repository.current(definitionId);
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<EavSchemaVersionInfo> currentVersions(Collection<UUID> definitionIds) {
+        return this.repository.currentVersions(List.copyOf(definitionIds));
     }
 
     @Transactional(readOnly = true)

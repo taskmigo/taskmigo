@@ -21,6 +21,7 @@ dependencies {
     implementation(project(":modules:audit"))
     implementation(project(":modules:authorization"))
     implementation(project(":modules:identity"))
+    implementation(project(":modules:ticket"))
     runtimeOnly(project(":modules:database"))
     runtimeOnly(libs.jspecify)
     implementation(libs.spring.boot.core.starter)

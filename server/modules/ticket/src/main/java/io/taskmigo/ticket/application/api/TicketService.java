@@ -10,7 +10,14 @@ import org.jspecify.annotations.Nullable;
 
 /// Defines Ticket creation, query, and historical-schema-preserving mutation use cases.
 public interface TicketService {
-    UUID create(UUID ticketTypeId, String title, String status, Map<String, ?> customFields, UUID actorId);
+    UUID create(
+        UUID ticketTypeId,
+        String title,
+        String status,
+        Map<String, ?> customFields,
+        UUID actorId,
+        @Nullable UUID expectedTemplateVersionId
+    );
 
     OffsetPage<TicketInfo> list(
         int page,

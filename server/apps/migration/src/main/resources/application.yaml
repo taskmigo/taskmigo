@@ -9,6 +9,8 @@ spring:
     validate-migration-naming: true
 
 taskmigo:
+  migration:
+    init-first-ticket: ${TM_INIT_FIRST_TICKET:true}
   audit:
     enabled: true
 

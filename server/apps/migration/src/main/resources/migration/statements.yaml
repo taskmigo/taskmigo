@@ -108,3 +108,14 @@
       path: /api/v0/users/.*/statements
   policy: object.status == "RETAINED"
   absent: false
+
+- code: ticket_update_object_allow
+  description: Allows System Operator and Administrator to update Ticket objects.
+  effect: allow
+  scope: object
+  target:
+    api:
+      method: PATCH
+      path: /api/v0/tickets/.*
+  policy: true
+  absent: false

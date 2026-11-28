@@ -66,7 +66,7 @@ public class EavInstanceServiceImpl implements EavInstanceService {
     }
 
     @Override
-    public EavInstanceView patch(UUID instanceId, Map<String, ? extends @Nullable Object> changes) {
+    public EavInstancePatchResult patch(UUID instanceId, Map<String, ? extends @Nullable Object> changes) {
         Objects.requireNonNull(instanceId);
         Objects.requireNonNull(changes);
         EavInstanceState current = this.requireState(instanceId);
@@ -77,9 +77,19 @@ public class EavInstanceServiceImpl implements EavInstanceService {
         Map<UUID, EavValue> updated = new LinkedHashMap<>(current.values());
         for (Map.Entry<String, ? extends @Nullable Object> change : changes.entrySet()) {
             EavFieldSpec field = requireField(fields, change.getKey());
-            this.validator
-                .validate(toDefinition(field), change.getValue())
-                .ifPresentOrElse(value -> updated.put(field.fieldId(), value), () -> updated.remove(field.fieldId()));
+            this.validator.validate(toDefinition(field), change.getValue()).ifPresentOrElse(
+                value -> {
+                    EavValue previous = updated.get(field.fieldId());
+                    if (!sameValue(previous, value)) {
+                        updated.put(field.fieldId(), value);
+                    }
+                },
+                () -> updated.remove(field.fieldId())
+            );
+        }
+
+        if (current.values().equals(updated)) {
+            return new EavInstancePatchResult(toView(current, version), false);
         }
 
         EavInstanceState state = new EavInstanceState(
@@ -89,7 +99,14 @@ public class EavInstanceServiceImpl implements EavInstanceService {
             updated
         );
         this.instances.update(state);
-        return toView(state, version);
+        return new EavInstancePatchResult(toView(state, version), true);
+    }
+
+    private static boolean sameValue(@Nullable EavValue previous, EavValue next) {
+        if (previous instanceof EavValue.NumberValue left && next instanceof EavValue.NumberValue right) {
+            return left.value().compareTo(right.value()) == 0;
+        }
+        return next.equals(previous);
     }
 
     private EavInstanceState requireState(UUID instanceId) {

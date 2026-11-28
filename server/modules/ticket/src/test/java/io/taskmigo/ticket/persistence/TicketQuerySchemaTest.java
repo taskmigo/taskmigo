@@ -6,28 +6,19 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.taskmigo.eav.query.EavQueryField;
-import io.taskmigo.eav.query.EavQueryFieldCatalog;
 import io.taskmigo.eav.query.jpa.EavJpaQueryFieldProvider;
-import io.taskmigo.eav.schema.application.EavFieldSpec;
-import io.taskmigo.eav.schema.application.EavSchemaService;
-import io.taskmigo.eav.schema.application.EavSchemaVersionInfo;
-import io.taskmigo.eav.schema.domain.EavDataType;
-import io.taskmigo.eav.schema.domain.EavSchemaStatus;
-import io.taskmigo.eav.value.application.EavInstanceService;
 import io.taskmigo.jpaquery.QueryField;
 import io.taskmigo.query.QueryFieldContext;
 import io.taskmigo.query.QueryFieldDescriptor;
 import io.taskmigo.query.QueryPath;
 import io.taskmigo.query.TypeDescriptor;
 import io.taskmigo.ticket.application.TicketQueryFieldCatalog;
-import io.taskmigo.ticket.application.TicketRepository;
-import io.taskmigo.ticket.type.application.TicketTypeRepository;
-import io.taskmigo.ticket.type.domain.TicketType;
-import java.time.Instant;
+import io.taskmigo.ticket.field.application.TicketFieldRegistry;
+import io.taskmigo.ticket.field.application.api.TicketFieldStatus;
+import io.taskmigo.ticket.field.application.api.TicketFieldType;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
@@ -35,56 +26,35 @@ import org.junit.jupiter.api.Test;
 
 class TicketQuerySchemaTest {
 
-    private static final Instant NOW = Instant.parse("2026-10-16T00:00:00Z");
-
     @Test
-    @DisplayName("Ticket QuerySchemas expose flat custom fields and global fallback fails closed for ambiguous keys")
-    void shouldExposeFlatScopedFieldsAndGlobalFallback() {
-        TicketTypeRepository ticketTypes = mock(TicketTypeRepository.class);
-        TicketRepository tickets = mock(TicketRepository.class);
-        EavSchemaService schemas = mock(EavSchemaService.class);
-        EavInstanceService instances = mock(EavInstanceService.class);
-        UUID firstTypeId = UUID.randomUUID();
-        UUID secondTypeId = UUID.randomUUID();
-        UUID firstDefinitionId = UUID.randomUUID();
-        UUID secondDefinitionId = UUID.randomUUID();
-        TicketType firstType = TicketType.active(firstTypeId, "incident", "Incident", firstDefinitionId, NOW);
-        TicketType secondType = TicketType.active(secondTypeId, "request", "Request", secondDefinitionId, NOW);
-        EavSchemaVersionInfo firstVersion = version(
-            firstDefinitionId,
-            List.of(field(UUID.randomUUID(), "severity", EavDataType.STRING))
+    @DisplayName("Ticket query schemas expose registered fields for all operations")
+    void shouldExposeStableRegisteredFields() {
+        TicketFieldRegistry registry = mock(TicketFieldRegistry.class);
+        when(registry.findAll()).thenReturn(
+            List.of(
+                new TicketFieldRegistry.Entry(
+                    UUID.randomUUID(),
+                    "severity",
+                    "Severity",
+                    TicketFieldType.STRING,
+                    TicketFieldStatus.ACTIVE
+                )
+            )
         );
-        EavSchemaVersionInfo secondVersion = version(
-            secondDefinitionId,
-            List.of(field(UUID.randomUUID(), "severity", EavDataType.ENUM))
-        );
-        when(ticketTypes.findAll()).thenReturn(List.of(firstType, secondType));
-        when(ticketTypes.findById(firstTypeId)).thenReturn(Optional.of(firstType));
-        when(schemas.listVersions(firstDefinitionId)).thenReturn(List.of(firstVersion));
-        when(schemas.listVersions(secondDefinitionId)).thenReturn(List.of(secondVersion));
-        TicketQueryFieldCatalog catalog = new TicketQueryFieldCatalog(
-            new EavQueryFieldCatalog(),
-            schemas,
-            instances,
-            ticketTypes,
-            tickets
-        );
+        TicketQueryFieldCatalog catalog = new TicketQueryFieldCatalog(registry);
         EavJpaQueryFieldProvider queryFields = queryFields();
         ListTicketsQuerySchema schema = new ListTicketsQuerySchema(catalog, queryFields);
 
-        QueryFieldContext global = QueryFieldContext.empty();
-        QueryFieldContext scoped = catalog.forType(firstTypeId);
-        List<QueryFieldDescriptor> globalFields = List.copyOf(schema.fields(global));
-        List<QueryFieldDescriptor> scopedFields = List.copyOf(schema.fields(scoped));
-
-        assertThat(globalFields)
+        QueryFieldContext snapshot = catalog.snapshot();
+        assertThat(schema.fields(snapshot))
             .extracting(field -> field.path().text())
-            .doesNotContain("severity", "fields.severity");
-        assertThat(scopedFields)
+            .contains("severity");
+        assertThat(new ReadTicketQuerySchema(catalog, queryFields).fields(snapshot))
             .extracting(field -> field.path().text())
-            .contains("severity")
-            .doesNotContain("fields.severity");
-        assertThat(schema.identity(global)).isNotEqualTo(schema.identity(scoped));
+            .contains("severity");
+        assertThat(new UpdateTicketQuerySchema(catalog, queryFields).fields(snapshot))
+            .extracting(field -> field.path().text())
+            .contains("severity");
         assertThat(schema.operation()).isEqualTo("tickets.list");
         assertThat(new ReadTicketQuerySchema(catalog, queryFields).operation()).isEqualTo("tickets.read");
         assertThat(new UpdateTicketQuerySchema(catalog, queryFields).operation()).isEqualTo("tickets.update");
@@ -129,23 +99,5 @@ class TicketQuerySchemaTest {
             return queryField;
         });
         return provider;
-    }
-
-    private static EavFieldSpec field(UUID id, String key, EavDataType type) {
-        Map<String, Object> constraints =
-            type == EavDataType.ENUM ? Map.of("options", List.of("HIGH", "LOW")) : Map.of();
-        return new EavFieldSpec(id, key, key, type, false, constraints);
-    }
-
-    private static EavSchemaVersionInfo version(UUID definitionId, List<EavFieldSpec> fields) {
-        return new EavSchemaVersionInfo(
-            UUID.randomUUID(),
-            definitionId,
-            1,
-            EavSchemaStatus.PUBLISHED,
-            fields,
-            Optional.of(NOW),
-            Optional.empty()
-        );
     }
 }

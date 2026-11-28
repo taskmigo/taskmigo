@@ -12,8 +12,8 @@ public record TicketTemplateInfo(
     long version,
     TicketTemplateStatus status,
     List<TicketFieldInfo> fields,
-    Optional<Instant> publishedAt,
-    Optional<Instant> retiredAt
+    Instant activatedAt,
+    Optional<Instant> supersededAt
 ) {
     public TicketTemplateInfo {
         Objects.requireNonNull(id);
@@ -22,7 +22,7 @@ public record TicketTemplateInfo(
             throw new IllegalArgumentException("Ticket template version must be positive");
         }
         fields = List.copyOf(Objects.requireNonNull(fields));
-        Objects.requireNonNull(publishedAt);
-        Objects.requireNonNull(retiredAt);
+        Objects.requireNonNull(activatedAt);
+        Objects.requireNonNull(supersededAt);
     }
 }
