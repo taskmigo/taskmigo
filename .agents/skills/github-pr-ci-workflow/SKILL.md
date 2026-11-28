@@ -153,7 +153,7 @@ Before opening a PR or starting the final implementation CI cycle when no local 
 3. Inspect compile-sensitive call sites changed by the refactor, especially method references, generic functional interfaces, Spring Data derived-query names, constructor injection, and moved package imports.
 4. Confirm that new application/domain packages do not violate the repository architecture rules already visible in tests or `AGENTS.md`.
 5. Run the bounded post-implementation self-review now. Resolve blockers and required integration gaps in one batch; defer adjacent improvements.
-6. Apply deterministic formatter output when available before the push rather than using CI as the formatter.
+6. Apply the mandatory Generated Artifact Impact Check in `taskmigo-delivery`; generate applicable outputs before the final CI cycle when execution is available, or record the pending canonical CI generation explicitly before an evidence-collection push. Apply deterministic formatter output when available before the push rather than using CI as the formatter.
 7. For multi-file connector edits, verify the final branch tree/ref points to the intended commit before creating or updating the PR.
 8. Finalize or substantially rewrite the PR body only after the implementation and cited fixed SHA have stabilized.
 9. Do not claim local validation when only static inspection was possible; CI remains the execution evidence.

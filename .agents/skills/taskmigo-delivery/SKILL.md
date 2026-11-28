@@ -23,13 +23,26 @@ Use the upstream AI-DLC engine when available. In ChatGPT Chat or a connector-on
 - Select the smallest upstream profile appropriate to risk. Use the guide for profile selection. A small diff is not necessarily low risk.
 - For new product behavior, architecture boundaries, security invariants, or material scope changes, obtain explicit human approval of the proposed behavior and design before implementation. Do not count an AI-written summary, issue label, or earlier unrelated approval as authorization. Reopen the gate if the approved scope materially changes. Breaking changes within an explicitly approved scope are permitted when the maintainer allows them.
 - Use the adversarial-self-review skill to compare alternatives and freeze the selected scope.
+- Identify affected generated artifacts and dependent contracts using the Generated Artifact Impact Check below. Plan their canonical generation, synchronization and verification alongside source changes, not as a later CI repair.
 
 ## Construction and delivery
 
 - Apply the relevant repository skills, contribution guidance, and test requirements. Preserve unrelated behavior and group coherent changes.
 - Run a bounded adversarial review and direct-consumer preflight before the final push. Add tests that prove changed invariants and important failure cases.
 - Follow the github-pr-ci-workflow skill when working with PRs and CI. Use the current head SHA, exact diagnostics and canonical artifacts. Never substitute an AI review or a successful engine stage for required verification.
+- Complete the Generated Artifact Impact Check before the final implementation CI cycle and revalidate the evidence after relevant source changes.
 - Report pending or failed verification as incomplete. Keep the PR template and issue relationship accurate. Do not merge or deploy without explicit maintainer authorization; a workflow gate is not deployment permission.
+
+## Generated Artifact Impact Check (mandatory)
+
+This repository-specific check applies to native AI-DLC and Chat, including profiles that omit a separate planning or build stage. Use the existing native stage evidence when it covers the same inputs and outputs; do not add a second native stage or state machine.
+
+1. **Identify impact during planning.** Inspect the actual changed source and its direct consumers, tracked generated outputs, canonical generators and existing CI verification. Record applicable artifact paths, generation/check commands and dependency order in the existing plan or issue. REST contract changes include DTOs, validation, error contracts, response schemas, query metadata, security and OpenAPI configuration, not only route changes. Check generated SDKs or source indexes when they actually exist and consume the changed inputs; review authored specifications, configuration documentation and hand-written clients separately.
+2. **Generate during Construction.** With a working local environment, run the repository's canonical generator after source changes and before the final implementation push. Regenerate downstream outputs from the updated upstream artifact in dependency order. Inspect the resulting diff for intended changes, include exact generated files with their owning problem commit, and run the relevant verification. An unchanged output is acceptable only with actual generation/check evidence.
+3. **Handle unavailable local execution explicitly.** In Chat or connector-only work, record the affected artifacts, missing execution capability, expected generator/CI job and next action before pushing. Use the existing CI generation path and earliest actionable canonical artifact for the exact head, run and attempt. If remote generation needs a draft implementation push, identify it as evidence collection, not a final verification cycle. Fix build blockers and batch all known repairs; do not hand-edit generated output, recreate it from guesses, add redundant runs, or loosen CI gates. Follow the artifact-specific skill and GitHub mutation budgets.
+4. **Reconcile and verify.** Inspect the canonical output, synchronize it with the owning change, and verify required checks on the resulting head. Reopen the impact check when generator inputs change or the evidence no longer matches the revision. Mark the PR checklist complete only when every applicable output is synchronized and relevant verification is supported by evidence, or the actual impact analysis establishes that generation is not applicable. Record pending generation in the existing issue/intent and Chat checkpoint next action; it blocks Ready even if other tests pass.
+
+For the current OpenAPI snapshot and connector-only recovery commands, use the [CI evidence guide](../../../docs/engineering/ci-evidence.md) and `github-actions-openapi-snapshot-artifact`. The check is a mandatory delivery obligation, not a claim that a native hook enforces agent compliance.
 
 ## Knowledge review
 
