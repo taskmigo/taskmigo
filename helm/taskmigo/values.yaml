@@ -30,6 +30,7 @@ database:
 
 migration:
   enabled: true
+  initFirstTicket: true
   image:
     repository: ghcr.io/taskmigo/taskmigo-migration
     tag: ""

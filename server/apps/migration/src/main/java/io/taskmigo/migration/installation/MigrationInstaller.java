@@ -9,6 +9,9 @@ import io.taskmigo.authorization.provisioning.application.api.AuthorizationProvi
 import io.taskmigo.identity.provisioning.application.api.GroupProvisioningService;
 import io.taskmigo.identity.provisioning.application.api.IdentityProvisioningService;
 import io.taskmigo.migration.oauth.ManagedClientRepository;
+import io.taskmigo.ticket.application.api.TicketService;
+import io.taskmigo.ticket.field.application.api.TicketFieldService;
+import io.taskmigo.ticket.type.application.api.TicketTypeService;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,6 +29,7 @@ public final class MigrationInstaller {
     private final ManagedResourceReconciler resources;
     private final InternalClientReconciler clients;
     private final TransactionTemplate transactions;
+    private final FirstTicketInitializer firstTicket;
 
     public MigrationInstaller(
         AuthorizationProvisioningService authorization,
@@ -34,15 +38,19 @@ public final class MigrationInstaller {
         ManagedClientRepository clients,
         PasswordEncoder passwords,
         PlatformTransactionManager transactionManager,
-        AuditRecorder audits
+        AuditRecorder audits,
+        TicketFieldService fields,
+        TicketTypeService types,
+        TicketService tickets
     ) {
         this.resources = new ManagedResourceReconciler(authorization, identity, groups, passwords);
         this.clients = new InternalClientReconciler(clients, passwords, audits);
+        this.firstTicket = new FirstTicketInitializer(fields, types, tickets);
         this.transactions = new TransactionTemplate(transactionManager);
         this.transactions.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
     }
 
-    public void install(InstallationPlan plan) {
+    public void install(InstallationPlan plan, boolean initFirstTicket) {
         this.resources.validate(plan);
         this.clients.validate(plan.clients());
         AuditContexts.run(
@@ -51,16 +59,19 @@ public final class MigrationInstaller {
                 AuditExecutor.migration("migration"),
                 AuditCause.installation("startup")
             ),
-            () -> this.reconcile(plan)
+            () -> this.reconcile(plan, initFirstTicket)
         );
     }
 
-    private void reconcile(InstallationPlan plan) {
+    private void reconcile(InstallationPlan plan, boolean initFirstTicket) {
         for (int attempt = 1; ; attempt++) {
             try {
                 this.transactions.executeWithoutResult(status -> {
-                    this.resources.reconcile(plan);
+                    var createdSystemUser = this.resources.reconcile(plan);
                     this.clients.reconcile(plan.clients());
+                    if (initFirstTicket) {
+                        createdSystemUser.ifPresent(this.firstTicket::initialize);
+                    }
                 });
                 return;
             } catch (TransientDataAccessException | DataIntegrityViolationException exception) {

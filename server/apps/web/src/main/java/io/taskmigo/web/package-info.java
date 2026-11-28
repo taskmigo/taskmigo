@@ -24,6 +24,7 @@
         "eav :: schema-model",
         "eav :: schema-use-cases",
         "ticket :: ticket-use-cases",
+        "ticket :: ticket-field-use-cases",
         "ticket :: ticket-type-use-cases",
         "ticket :: ticket-type-model",
     }

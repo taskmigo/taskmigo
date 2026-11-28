@@ -1,5 +1,6 @@
 package io.taskmigo.eav.schema.application;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,6 +24,10 @@ public interface EavSchemaService {
 
     @SuppressWarnings("NullableProblems")
     Optional<EavSchemaVersionInfo> current(UUID definitionId);
+
+    /// Loads current versions and their fields in bulk for the supplied definitions.
+    @SuppressWarnings("NullableProblems")
+    List<EavSchemaVersionInfo> currentVersions(Collection<UUID> definitionIds);
 
     @SuppressWarnings("NullableProblems")
     List<EavSchemaVersionInfo> listVersions(UUID definitionId);

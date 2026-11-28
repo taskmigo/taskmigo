@@ -5,8 +5,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-interface JpaEavSchemaVersionRepository extends JpaRepository<EavSchemaVersionEntity, UUID> {
+interface JpaEavSchemaVersionRepository
+    extends JpaRepository<EavSchemaVersionEntity, UUID>, JpaSpecificationExecutor<EavSchemaVersionEntity>
+{
     Optional<EavSchemaVersionEntity> findByIdAndSchemaDefinitionId(UUID id, UUID schemaDefinitionId);
 
     Optional<EavSchemaVersionEntity> findTopBySchemaDefinitionIdOrderByVersionDesc(UUID schemaDefinitionId);

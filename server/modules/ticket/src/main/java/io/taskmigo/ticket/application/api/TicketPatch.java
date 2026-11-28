@@ -14,9 +14,4 @@ public record TicketPatch(@Nullable String title, @Nullable String status, Map<S
         customFields.forEach((key, value) -> copy.put(Objects.requireNonNull(key), value));
         customFields = Collections.unmodifiableMap(copy);
     }
-
-    /// Returns whether the patch requests any common or custom-field mutation.
-    public boolean hasChanges() {
-        return this.title != null || this.status != null || !this.customFields.isEmpty();
-    }
 }

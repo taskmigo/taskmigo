@@ -203,6 +203,84 @@ class OpenApiGenerationIntegrationTest {
         });
     }
 
+    /// Verifies every Ticket management operation declares its typed success envelope and expected conflict responses.
+    @Test
+    @DisplayName("documents complete Ticket Type, template and field response contracts")
+    void shouldDocumentTicketManagementResponses() {
+        JsonNode document = this.generatedOpenApiDocument();
+        assertSuccessSchema(document, "/api/v0/ticket-types", "get", "200", "TicketTypeInfo", true);
+        assertSuccessSchema(document, "/api/v0/ticket-types", "post", "201", "TicketTypeInfo", false);
+        assertSuccessSchema(document, "/api/v0/ticket-types/{ticketTypeId}", "get", "200", "TicketTypeInfo", false);
+        assertSuccessSchema(document, "/api/v0/ticket-types/{ticketTypeId}", "patch", "200", "TicketTypeInfo", false);
+        assertSuccessSchema(
+            document,
+            "/api/v0/ticket-types/{ticketTypeId}/templates",
+            "get",
+            "200",
+            "TicketTemplateVersion",
+            true
+        );
+        assertSuccessSchema(
+            document,
+            "/api/v0/ticket-types/{ticketTypeId}/templates",
+            "post",
+            "201",
+            "TicketTemplateVersion",
+            false
+        );
+        assertSuccessSchema(
+            document,
+            "/api/v0/ticket-types/{ticketTypeId}/templates/{templateVersionId}",
+            "get",
+            "200",
+            "TicketTemplateVersion",
+            false
+        );
+        for (String path : List.of(
+            "/api/v0/tickets",
+            "/api/v0/ticket-types",
+            "/api/v0/ticket-fields",
+            "/api/v0/ticket-types/{ticketTypeId}/templates"
+        )) {
+            assertThat(document.path("paths").path(path).path("post").path("responses").has("409")).as(path).isTrue();
+        }
+        assertThat(
+            document.path("paths").path("/api/v0/ticket-fields/{fieldId}").path("patch").path("responses").has("409")
+        ).isTrue();
+    }
+
+    private static void assertSuccessSchema(
+        JsonNode document,
+        String path,
+        String method,
+        String code,
+        String model,
+        boolean array
+    ) {
+        JsonNode schema = document
+            .path("paths")
+            .path(path)
+            .path(method)
+            .path("responses")
+            .path(code)
+            .path("content")
+            .path("application/json")
+            .path("schema");
+        String ref = schema.path("$ref").asText();
+        assertThat(ref)
+            .as(method + " " + path)
+            .startsWith("#/components/schemas/");
+        JsonNode envelope = document.at(ref.substring(1));
+        JsonNode data = envelope.path("properties").path("data");
+        if (array) {
+            JsonNode type = data.path("type");
+            assertThat(type.isArray() ? textValues(type) : List.of(type.asText())).contains("array");
+            data = data.path("items");
+        }
+        assertThat(data.path("$ref").asText()).isEqualTo("#/components/schemas/" + model);
+        assertThat(document.path("components").path("schemas").has(model)).isTrue();
+    }
+
     @AfterAll
     void writeCommittedOpenApiYaml() throws IOException {
         JsonNode generated = this.generatedOpenApiDocument();

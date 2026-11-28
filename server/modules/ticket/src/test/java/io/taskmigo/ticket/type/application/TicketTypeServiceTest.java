@@ -7,10 +7,17 @@ import io.taskmigo.eav.schema.application.EavFieldSpec;
 import io.taskmigo.eav.schema.application.EavSchemaService;
 import io.taskmigo.eav.schema.application.EavSchemaVersionInfo;
 import io.taskmigo.eav.schema.domain.EavSchemaStatus;
+import io.taskmigo.foundation.DomainFailureType;
+import io.taskmigo.ticket.field.application.TicketFieldRegistry;
+import io.taskmigo.ticket.field.application.TicketFieldServiceImpl;
+import io.taskmigo.ticket.field.application.api.TicketFieldException;
+import io.taskmigo.ticket.field.application.api.TicketFieldService;
+import io.taskmigo.ticket.field.application.api.TicketFieldStatus;
+import io.taskmigo.ticket.field.application.api.TicketFieldType;
 import io.taskmigo.ticket.type.application.api.TicketFieldSpec;
-import io.taskmigo.ticket.type.application.api.TicketFieldType;
 import io.taskmigo.ticket.type.application.api.TicketTemplateInfo;
 import io.taskmigo.ticket.type.application.api.TicketTemplateStatus;
+import io.taskmigo.ticket.type.application.api.TicketTypeException;
 import io.taskmigo.ticket.type.application.api.TicketTypeInfo;
 import io.taskmigo.ticket.type.application.api.TicketTypeService;
 import io.taskmigo.ticket.type.domain.TicketType;
@@ -18,6 +25,7 @@ import io.taskmigo.ticket.type.domain.TicketTypeStatus;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,16 +43,19 @@ class TicketTypeServiceTest {
 
     private final InMemoryTicketTypeRepository ticketTypes = new InMemoryTicketTypeRepository();
     private final FakeEavSchemaService schemas = new FakeEavSchemaService();
+    private final InMemoryFieldRegistry registry = new InMemoryFieldRegistry();
+    private final TicketFieldService fieldService = new TicketFieldServiceImpl(this.registry);
     private final TicketTypeService service = new TicketTypeServiceImpl(
         this.ticketTypes,
         this.schemas,
+        this.registry,
         Clock.fixed(NOW, ZoneOffset.UTC)
     );
 
     @Test
     @DisplayName("creates a stable Ticket Type identity and rename preserves its EAV schema ownership")
     void shouldPreserveStableIdentityWhenRenamingTicketType() {
-        UUID id = this.service.create("bug", "Bug");
+        UUID id = this.service.create("bug", "Bug", List.of()).id();
         UUID schemaDefinitionId = this.ticketTypes.findById(id).orElseThrow().schemaDefinitionId();
 
         TicketTypeInfo renamed = this.service.update(id, "Defect", TicketTypeStatus.ACTIVE);
@@ -57,11 +68,35 @@ class TicketTypeServiceTest {
     }
 
     @Test
-    @DisplayName("template revisions clone logical fields and reject the Ticket common namespace")
-    void shouldCloneTemplateFieldsAndRejectCommonFieldCollisions() {
-        UUID typeId = this.service.create("incident", "Incident");
-        TicketTemplateInfo draft = this.service.createTemplate(typeId);
+    @DisplayName("creates the initial active template and replaces it with an immutable revision")
+    void shouldActivateTemplateSnapshots() {
+        UUID severityId = this.fieldService.create("severity", "Severity", TicketFieldType.STRING).id();
+        TicketFieldSpec field = new TicketFieldSpec(severityId, null, false, Map.of());
+        TicketTypeInfo type = this.service.create("incident", "Incident", List.of(field));
+        TicketTemplateInfo first = type.currentTemplate();
+        TicketTemplateInfo second = this.service.createTemplate(type.id(), first.id(), List.of(field));
 
+        assertThat(first.status()).isEqualTo(TicketTemplateStatus.ACTIVE);
+        assertThat(second.status()).isEqualTo(TicketTemplateStatus.ACTIVE);
+        assertThat(this.service.getTemplate(type.id(), first.id()).status()).isEqualTo(TicketTemplateStatus.SUPERSEDED);
+        assertThat(this.service.get(type.id()).currentTemplate().id()).isEqualTo(second.id());
+        assertThat(second.fields())
+            .singleElement()
+            .satisfies(value -> {
+                assertThat(value.fieldId()).isEqualTo(severityId);
+                assertThat(value.key()).isEqualTo("severity");
+                assertThat(value.dataType()).isEqualTo(TicketFieldType.STRING);
+            });
+        assertThatThrownBy(() ->
+            this.service.createTemplate(type.id(), first.id(), List.of(field))
+        ).isInstanceOfSatisfying(TicketTypeException.class, exception ->
+            assertThat(exception.type()).isEqualTo(DomainFailureType.CONFLICT)
+        );
+    }
+
+    @Test
+    @DisplayName("registration rejects reserved keys and conflicting types")
+    void shouldRejectConflictingFieldRegistration() {
         for (String reserved : List.of(
             "id",
             "ticketTypeId",
@@ -71,72 +106,87 @@ class TicketTypeServiceTest {
             "createdAt",
             "updatedAt"
         )) {
-            TicketFieldSpec collision = field(UUID.randomUUID(), reserved, TicketFieldType.STRING, false);
-            assertThatThrownBy(() -> this.service.replaceTemplate(typeId, draft.id(), List.of(collision)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining(reserved);
+            assertThatThrownBy(() -> this.fieldService.create(reserved, reserved, TicketFieldType.STRING)).isInstanceOf(
+                TicketFieldException.class
+            );
         }
 
-        UUID severityId = UUID.randomUUID();
-        TicketTemplateInfo replaced = this.service.replaceTemplate(
-            typeId,
-            draft.id(),
-            List.of(field(severityId, "severity", TicketFieldType.STRING, false))
+        this.fieldService.create("severity", "Severity", TicketFieldType.STRING);
+        assertThatThrownBy(() -> this.fieldService.create("severity", "Severity", TicketFieldType.NUMBER)).isInstanceOf(
+            TicketFieldException.class
         );
-        TicketTemplateInfo published = this.service.publishTemplate(typeId, replaced.id());
-        TicketTemplateInfo cloned = this.service.createTemplate(typeId);
-
-        assertThat(published.status()).isEqualTo(TicketTemplateStatus.PUBLISHED);
-        assertThat(cloned.fields())
-            .singleElement()
-            .satisfies(field -> {
-                assertThat(field.fieldId()).isEqualTo(severityId);
-                assertThat(field.key()).isEqualTo("severity");
-            });
     }
 
     @Test
-    @DisplayName("resolves omitted field identity inside the Ticket application boundary")
-    void shouldResolveOmittedFieldIdentityInsideTicketApplicationBoundary() {
-        UUID typeId = this.service.create("identity", "Identity");
-        TicketTemplateInfo draft = this.service.createTemplate(typeId);
-        TicketTemplateInfo initial = this.service.replaceTemplate(
-            typeId,
-            draft.id(),
-            List.of(field(null, "severity", TicketFieldType.STRING, false))
+    @DisplayName("archived fields remain in historical snapshots but cannot be attached to a new revision")
+    void shouldPreserveHistoryWhenFieldIsArchived() {
+        UUID fieldId = this.fieldService.create("severity", "Severity", TicketFieldType.STRING).id();
+        TicketFieldSpec spec = new TicketFieldSpec(fieldId, null, false, Map.of());
+        TicketTypeInfo type = this.service.create("incident", "Incident", List.of(spec));
+        UUID previous = type.currentTemplate().id();
+        this.fieldService.update(fieldId, null, TicketFieldStatus.ARCHIVED);
+
+        assertThatThrownBy(() ->
+            this.service.createTemplate(type.id(), previous, List.of(spec))
+        ).isInstanceOfSatisfying(TicketFieldException.class, exception ->
+            assertThat(exception.type()).isEqualTo(DomainFailureType.CONFLICT)
         );
-        UUID initialId = initial.fields().getFirst().fieldId();
+        assertThatThrownBy(() ->
+            this.service.createTemplate(
+                type.id(),
+                previous,
+                List.of(new TicketFieldSpec(UUID.randomUUID(), null, false, Map.of()))
+            )
+        ).isInstanceOf(TicketFieldException.class);
+        TicketTemplateInfo next = this.service.createTemplate(type.id(), previous, List.of());
 
-        TicketTemplateInfo sameType = this.service.replaceTemplate(
-            typeId,
-            draft.id(),
-            List.of(field(null, "severity", TicketFieldType.STRING, true))
-        );
-        TicketTemplateInfo changedType = this.service.replaceTemplate(
-            typeId,
-            draft.id(),
-            List.of(field(null, "severity", TicketFieldType.NUMBER, true))
-        );
-
-        assertThat(sameType.fields().getFirst().fieldId()).isEqualTo(initialId);
-        assertThat(changedType.fields().getFirst().fieldId()).isNotEqualTo(initialId);
-    }
-
-    @Test
-    @DisplayName("lists every template version in ascending version order")
-    void shouldListTemplateHistory() {
-        UUID typeId = this.service.create("history", "History");
-        TicketTemplateInfo first = this.service.createTemplate(typeId);
-        this.service.publishTemplate(typeId, first.id());
-        TicketTemplateInfo second = this.service.createTemplate(typeId);
-
-        assertThat(this.service.listTemplates(typeId))
+        assertThat(this.service.getTemplate(type.id(), previous).fields()).hasSize(1);
+        assertThat(next.fields()).isEmpty();
+        assertThat(this.service.listTemplates(type.id()))
             .extracting(TicketTemplateInfo::id)
-            .containsExactly(first.id(), second.id());
+            .containsExactly(previous, next.id());
     }
 
-    private static TicketFieldSpec field(@Nullable UUID id, String key, TicketFieldType type, boolean required) {
-        return new TicketFieldSpec(id, key, key, type, required, Map.of());
+    private static final class InMemoryFieldRegistry implements TicketFieldRegistry {
+
+        private final Map<UUID, Entry> fields = new LinkedHashMap<>();
+
+        @Override
+        public Optional<Entry> findByKey(String key) {
+            return this.fields
+                .values()
+                .stream()
+                .filter(entry -> entry.key().equals(key))
+                .findFirst();
+        }
+
+        @Override
+        public Optional<Entry> findById(UUID id) {
+            return Optional.ofNullable(this.fields.get(id));
+        }
+
+        @Override
+        public List<Entry> findAll() {
+            return List.copyOf(this.fields.values());
+        }
+
+        @Override
+        public Optional<Entry> lockById(UUID id) {
+            return findById(id);
+        }
+
+        @Override
+        public void insert(Entry entry) {
+            if (findByKey(entry.key()).isPresent() || this.fields.containsKey(entry.id())) {
+                throw new IllegalArgumentException("Duplicate field");
+            }
+            this.fields.put(entry.id(), entry);
+        }
+
+        @Override
+        public void update(Entry entry) {
+            this.fields.put(entry.id(), entry);
+        }
     }
 
     private static final class InMemoryTicketTypeRepository implements TicketTypeRepository {
@@ -151,6 +201,16 @@ class TicketTypeServiceTest {
         @Override
         public Optional<TicketType> findById(UUID id) {
             return Optional.ofNullable(this.values.get(id));
+        }
+
+        @Override
+        public Optional<TicketType> lockById(UUID id) {
+            return findById(id);
+        }
+
+        @Override
+        public Optional<TicketType> lockForCreation(UUID id) {
+            return findById(id);
         }
 
         @Override
@@ -276,6 +336,11 @@ class TicketTypeServiceTest {
         public Optional<EavSchemaVersionInfo> current(UUID definitionId) {
             Definition definition = requireDefinition(definitionId);
             return Optional.ofNullable(definition.currentVersionId()).map(this.versions::get);
+        }
+
+        @Override
+        public List<EavSchemaVersionInfo> currentVersions(Collection<UUID> definitionIds) {
+            return definitionIds.stream().map(this::current).flatMap(Optional::stream).toList();
         }
 
         @Override

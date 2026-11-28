@@ -1,4 +1,4 @@
-package io.taskmigo.ticket.type.application.api;
+package io.taskmigo.ticket.field.application.api;
 
 /// Enumerates the value kinds supported by custom fields in Ticket templates.
 public enum TicketFieldType {

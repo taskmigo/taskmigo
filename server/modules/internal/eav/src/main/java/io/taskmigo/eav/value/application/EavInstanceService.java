@@ -13,5 +13,5 @@ public interface EavInstanceService {
     EavInstanceView get(UUID instanceId);
 
     @SuppressWarnings("NullableProblems")
-    EavInstanceView patch(UUID instanceId, Map<String, ? extends @Nullable Object> changes);
+    EavInstancePatchResult patch(UUID instanceId, Map<String, ? extends @Nullable Object> changes);
 }

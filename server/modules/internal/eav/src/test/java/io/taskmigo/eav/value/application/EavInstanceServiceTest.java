@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -150,13 +151,16 @@ class EavInstanceServiceTest {
         );
 
         // Act
-        EavInstanceView patched = this.service.patch(created.id(), mapOf("note", null, "score", 2));
+        EavInstanceView patched = this.service.patch(created.id(), mapOf("note", null, "score", 2)).instance();
 
         // Assert
         assertThat(patched.values())
             .containsEntry("summary", "Keep")
             .containsEntry("score", new BigDecimal("2"))
             .doesNotContainKey("note");
+        var noChange = this.service.patch(created.id(), mapOf("score", new BigDecimal("2.00"), "note", null));
+        assertThat(noChange.changed()).isFalse();
+        assertThat(noChange.instance()).isEqualTo(patched);
         assertThatThrownBy(() -> this.service.patch(created.id(), mapOf("summary", null))).isInstanceOf(
             IllegalArgumentException.class
         );
@@ -192,7 +196,7 @@ class EavInstanceServiceTest {
         this.schemaService.retire(definitionId, v1.id());
 
         // Act
-        EavInstanceView patched = this.service.patch(created.id(), Map.of("severity", "still-legacy"));
+        EavInstanceView patched = this.service.patch(created.id(), Map.of("severity", "still-legacy")).instance();
         EavInstanceView read = this.service.get(created.id());
 
         // Assert
@@ -311,6 +315,11 @@ class EavInstanceServiceTest {
                 return Optional.empty();
             }
             return this.findVersion(definitionId, definition.currentVersionId());
+        }
+
+        @Override
+        public List<EavSchemaVersionInfo> currentVersions(Collection<UUID> definitionIds) {
+            return definitionIds.stream().map(this::current).flatMap(Optional::stream).toList();
         }
 
         @Override

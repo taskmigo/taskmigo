@@ -6,7 +6,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
-/// Describes one unambiguous logical EAV field that can participate in database-side queries.
+/// Describes a stable typed EAV identity for database-side queries.
 public record EavQueryField(
     UUID fieldId,
     String key,
@@ -20,5 +20,42 @@ public record EavQueryField(
         Objects.requireNonNull(key);
         Objects.requireNonNull(dataType);
         operators = Set.copyOf(Objects.requireNonNull(operators));
+    }
+
+    /// Derives the supported operators and sorting capability from the field's immutable value type.
+    public static EavQueryField describe(UUID id, String key, EavDataType type, boolean nullable) {
+        return switch (type) {
+            case STRING -> new EavQueryField(
+                id,
+                key,
+                type,
+                nullable,
+                Set.of(QueryOperator.EQ, QueryOperator.NE, QueryOperator.CONTAINS),
+                true
+            );
+            case NUMBER, DATE, DATETIME -> new EavQueryField(
+                id,
+                key,
+                type,
+                nullable,
+                Set.of(
+                    QueryOperator.EQ,
+                    QueryOperator.NE,
+                    QueryOperator.GT,
+                    QueryOperator.GTE,
+                    QueryOperator.LT,
+                    QueryOperator.LTE
+                ),
+                true
+            );
+            case BOOLEAN, UUID, ENUM -> new EavQueryField(
+                id,
+                key,
+                type,
+                nullable,
+                Set.of(QueryOperator.EQ, QueryOperator.NE),
+                false
+            );
+        };
     }
 }

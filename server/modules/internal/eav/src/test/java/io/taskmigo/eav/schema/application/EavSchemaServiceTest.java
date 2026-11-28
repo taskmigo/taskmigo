@@ -8,6 +8,7 @@ import io.taskmigo.eav.schema.domain.EavSchemaStatus;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -255,6 +256,11 @@ class EavSchemaServiceTest {
             return definition == null || definition.currentVersionId() == null
                 ? Optional.empty()
                 : this.findVersion(definitionId, definition.currentVersionId());
+        }
+
+        @Override
+        public List<EavSchemaVersionInfo> currentVersions(Collection<UUID> definitionIds) {
+            return definitionIds.stream().map(this::current).flatMap(Optional::stream).toList();
         }
 
         @Override

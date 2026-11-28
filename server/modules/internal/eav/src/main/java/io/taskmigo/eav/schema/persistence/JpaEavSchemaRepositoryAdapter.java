@@ -5,9 +5,13 @@ import io.taskmigo.eav.schema.application.EavSchemaRepository;
 import io.taskmigo.eav.schema.application.EavSchemaVersionInfo;
 import io.taskmigo.eav.schema.domain.EavSchemaStatus;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Repository;
 
@@ -97,6 +101,41 @@ class JpaEavSchemaRepositoryAdapter implements EavSchemaRepository {
     }
 
     @Override
+    public List<EavSchemaVersionInfo> currentVersions(Collection<UUID> definitionIds) {
+        if (definitionIds.isEmpty()) {
+            return List.of();
+        }
+        List<EavSchemaVersionEntity> current = this.versions.findAll((root, query, builder) -> {
+            var selected = Objects.requireNonNull(query).subquery(UUID.class);
+            var definition = selected.from(EavSchemaDefinitionEntity.class);
+            selected.select(definition.get(EavSchemaDefinitionEntity_.id));
+            selected.where(
+                definition.get(EavSchemaDefinitionEntity_.id).in(definitionIds),
+                builder.equal(
+                    definition.get(EavSchemaDefinitionEntity_.currentVersionId),
+                    root.get(EavSchemaVersionEntity_.id)
+                ),
+                builder.equal(
+                    definition.get(EavSchemaDefinitionEntity_.id),
+                    root.get(EavSchemaVersionEntity_.schemaDefinitionId)
+                )
+            );
+            return builder.exists(selected);
+        });
+        if (current.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, List<EavFieldDefinitionEntity>> grouped = this.fields
+            .findAllBySchemaVersionIdInOrderByKey(current.stream().map(EavSchemaVersionEntity::id).toList())
+            .stream()
+            .collect(Collectors.groupingBy(field -> field.schemaVersionId));
+        return current
+            .stream()
+            .map(version -> toInfo(version, grouped.getOrDefault(version.id(), List.of())))
+            .toList();
+    }
+
+    @Override
     public Optional<EavFieldSpec> publishedField(UUID definitionId, UUID fieldId) {
         List<UUID> versionIds = this.versions
             .findAllBySchemaDefinitionIdAndStatusNot(definitionId, EavSchemaStatus.DRAFT)
@@ -121,16 +160,16 @@ class JpaEavSchemaRepositoryAdapter implements EavSchemaRepository {
     }
 
     private EavSchemaVersionInfo toInfo(EavSchemaVersionEntity entity) {
+        return toInfo(entity, this.fields.findAllBySchemaVersionIdOrderByKey(entity.id()));
+    }
+
+    private static EavSchemaVersionInfo toInfo(EavSchemaVersionEntity entity, List<EavFieldDefinitionEntity> fields) {
         return new EavSchemaVersionInfo(
             entity.id(),
             entity.schemaDefinitionId(),
             entity.version(),
             entity.status(),
-            this.fields
-                .findAllBySchemaVersionIdOrderByKey(entity.id())
-                .stream()
-                .map(EavFieldDefinitionEntity::toSpec)
-                .toList(),
+            fields.stream().map(EavFieldDefinitionEntity::toSpec).toList(),
             Optional.ofNullable(entity.publishedAt()),
             Optional.ofNullable(entity.retiredAt())
         );

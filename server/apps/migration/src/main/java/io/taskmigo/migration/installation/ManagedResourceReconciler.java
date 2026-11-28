@@ -4,11 +4,13 @@ import io.taskmigo.authorization.provisioning.AuthorizationProvisioningException
 import io.taskmigo.authorization.provisioning.application.api.AuthorizationProvisioningService;
 import io.taskmigo.authorization.statement.Effect;
 import io.taskmigo.authorization.statement.Scope;
+import io.taskmigo.identity.provisioning.IdentityProvisioningResult;
 import io.taskmigo.identity.provisioning.application.api.GroupProvisioningService;
 import io.taskmigo.identity.provisioning.application.api.IdentityProvisioningService;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -67,13 +69,14 @@ final class ManagedResourceReconciler {
         }
     }
 
-    void reconcile(InstallationPlan data) {
+    /// Returns the reserved system User only when it was created in this transaction.
+    Optional<UUID> reconcile(InstallationPlan data) {
         this.deleteAbsent(data);
 
         Map<String, UUID> statementIds = this.reconcileStatements(data.statements());
         Map<String, UUID> roleIds = this.reconcileRoles(data.roles(), statementIds);
         Map<String, UUID> groupIds = this.reconcileGroups(data.groups(), roleIds);
-        this.reconcileUsers(data.users(), roleIds, groupIds);
+        return this.reconcileUsers(data.users(), roleIds, groupIds);
     }
 
     private void deleteAbsent(InstallationPlan data) {
@@ -147,18 +150,19 @@ final class ManagedResourceReconciler {
         return result;
     }
 
-    private void reconcileUsers(
+    private Optional<UUID> reconcileUsers(
         List<InstallationPlan.User> definitions,
         Map<String, UUID> roleIds,
         Map<String, UUID> groupIds
     ) {
+        Optional<UUID> createdSystemUser = Optional.empty();
         for (InstallationPlan.User user : definitions) {
             if (user.absent()) {
                 continue;
             }
             Set<UUID> roles = user.roles().stream().map(roleIds::get).collect(Collectors.toSet());
             Set<UUID> groups = user.groups().stream().map(groupIds::get).collect(Collectors.toSet());
-            this.identity.reconcileUser(
+            var result = this.identity.reconcileUser(
                 user.username(),
                 this.initialPasswordHash(user.password()),
                 user.emails(),
@@ -167,7 +171,11 @@ final class ManagedResourceReconciler {
                 roles,
                 groups
             );
+            if ("system".equals(user.username()) && result.change() == IdentityProvisioningResult.Change.CREATED) {
+                createdSystemUser = Optional.of(result.id());
+            }
         }
+        return createdSystemUser;
     }
 
     private @Nullable String initialPasswordHash(@Nullable String rawPassword) {

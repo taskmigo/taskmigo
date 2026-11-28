@@ -12,7 +12,8 @@ public record TicketTypeInfo(
     String name,
     TicketTypeStatus status,
     Instant createdAt,
-    Instant updatedAt
+    Instant updatedAt,
+    TicketTemplateInfo currentTemplate
 ) {
     public TicketTypeInfo {
         Objects.requireNonNull(id);
@@ -21,5 +22,6 @@ public record TicketTypeInfo(
         Objects.requireNonNull(status);
         Objects.requireNonNull(createdAt);
         Objects.requireNonNull(updatedAt);
+        Objects.requireNonNull(currentTemplate);
     }
 }

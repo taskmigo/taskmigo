@@ -35,6 +35,9 @@ class AuthorizationObjectSchemaConfiguration {
             case "identity.users.update-statements" -> List.of(
                 new Route("PATCH", "/api/v0/users/{userId}/statements", schema)
             );
+            case "tickets.list" -> List.of(new Route("GET", "/api/v0/tickets", schema));
+            case "tickets.read" -> List.of(new Route("GET", "/api/v0/tickets/{ticketId}", schema));
+            case "tickets.update" -> List.of(new Route("PATCH", "/api/v0/tickets/{ticketId}", schema));
             case "identity.groups.list" -> List.of(new Route("GET", "/api/v0/groups", schema));
             case "access-control.roles.list" -> List.of(new Route("GET", "/api/v0/roles", schema));
             case "access-control.statements.list" -> List.of(new Route("GET", "/api/v0/statements", schema));

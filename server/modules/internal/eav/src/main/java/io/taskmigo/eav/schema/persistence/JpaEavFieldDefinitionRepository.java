@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 interface JpaEavFieldDefinitionRepository extends JpaRepository<EavFieldDefinitionEntity, UUID> {
     List<EavFieldDefinitionEntity> findAllBySchemaVersionIdOrderByKey(UUID schemaVersionId);
 
+    List<EavFieldDefinitionEntity> findAllBySchemaVersionIdInOrderByKey(Collection<UUID> schemaVersionIds);
+
     Optional<EavFieldDefinitionEntity> findFirstBySchemaVersionIdInAndFieldId(
         Collection<UUID> schemaVersionIds,
         UUID fieldId

@@ -3,17 +3,15 @@ package io.taskmigo.web.api.v0.ticket;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.taskmigo.ticket.type.application.api.TicketFieldInfo;
 import io.taskmigo.ticket.type.application.api.TicketFieldSpec;
-import io.taskmigo.ticket.type.application.api.TicketFieldType;
 import io.taskmigo.ticket.type.application.api.TicketTemplateInfo;
-import io.taskmigo.ticket.type.application.api.TicketTemplateStatus;
 import io.taskmigo.ticket.type.application.api.TicketTypeInfo;
 import io.taskmigo.ticket.type.application.api.TicketTypeService;
 import io.taskmigo.ticket.type.domain.TicketTypeStatus;
 import io.taskmigo.web.api.v0.support.response.ApiResponse;
 import io.taskmigo.web.api.v0.support.response.ApiResponseFactory;
 import io.taskmigo.web.api.v0.support.response.ApiV0Responses.OpenApiCommonErrors;
+import io.taskmigo.web.api.v0.support.response.ApiV0Responses.OpenApiConflict;
 import io.taskmigo.web.api.v0.support.response.ApiV0Responses.OpenApiNotFound;
 import io.taskmigo.web.api.v0.support.response.ApiV0Responses.OpenApiUnsupportedMediaType;
 import jakarta.validation.Valid;
@@ -54,15 +52,21 @@ class TicketTypeController {
 
     @PostMapping(value = "/ticket-types", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Create a Ticket Type")
+    @OpenApiConflict
+    @OpenApiNotFound
     @OpenApiUnsupportedMediaType
     @ResponseStatus(HttpStatus.CREATED)
-    ResponseEntity<ApiResponse<Map<String, UUID>, ApiResponse.BasicMeta>> create(
+    ResponseEntity<ApiResponse<TypeResponse, ApiResponse.BasicMeta>> create(
         @Valid @RequestBody CreateTypeRequest request
     ) {
-        UUID id = this.types.create(Objects.requireNonNull(request.key()), Objects.requireNonNull(request.name()));
+        TicketTypeInfo type = this.types.create(
+            Objects.requireNonNull(request.key()),
+            Objects.requireNonNull(request.name()),
+            specs(request.fields())
+        );
         return this.responses.created(
-            URI.create("/api/v0/ticket-types/" + id),
-            Map.of("id", id),
+            URI.create("/api/v0/ticket-types/" + type.id()),
+            TypeResponse.from(type),
             "resource.ticket-type.created",
             "Ticket Type created"
         );
@@ -70,6 +74,7 @@ class TicketTypeController {
 
     @GetMapping("/ticket-types")
     @Operation(summary = "List Ticket Types")
+    @ResponseStatus(HttpStatus.OK)
     ResponseEntity<ApiResponse<List<TypeResponse>, ApiResponse.BasicMeta>> list() {
         return this.responses.ok(
             this.types.list().stream().map(TypeResponse::from).toList(),
@@ -80,6 +85,7 @@ class TicketTypeController {
 
     @GetMapping("/ticket-types/{ticketTypeId}")
     @Operation(summary = "Get a Ticket Type")
+    @ResponseStatus(HttpStatus.OK)
     @OpenApiNotFound
     ResponseEntity<ApiResponse<TypeResponse, ApiResponse.BasicMeta>> get(@PathVariable UUID ticketTypeId) {
         return this.responses.ok(
@@ -91,46 +97,52 @@ class TicketTypeController {
 
     @PatchMapping(value = "/ticket-types/{ticketTypeId}", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Update a Ticket Type")
+    @ResponseStatus(HttpStatus.OK)
     @OpenApiNotFound
     @OpenApiUnsupportedMediaType
     ResponseEntity<ApiResponse<TypeResponse, ApiResponse.BasicMeta>> update(
         @PathVariable UUID ticketTypeId,
         @Valid @RequestBody UpdateTypeRequest request
     ) {
-        TicketTypeInfo current = this.types.get(ticketTypeId);
-        String name = request.name() == null ? current.name() : request.name();
-        TicketTypeStatus status = request.status() == null ? current.status() : request.status();
         return this.responses.ok(
-            TypeResponse.from(this.types.update(ticketTypeId, name, status)),
+            TypeResponse.from(this.types.update(ticketTypeId, request.name(), request.status())),
             "resource.ticket-type.updated",
             "Ticket Type updated"
         );
     }
 
-    @PostMapping("/ticket-types/{ticketTypeId}/templates")
-    @Operation(summary = "Create a Ticket template draft")
+    @PostMapping(value = "/ticket-types/{ticketTypeId}/templates", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Create and activate a Ticket template version")
+    @OpenApiConflict
     @OpenApiNotFound
+    @OpenApiUnsupportedMediaType
     @ResponseStatus(HttpStatus.CREATED)
-    ResponseEntity<ApiResponse<TemplateResponse, ApiResponse.BasicMeta>> createTemplate(
-        @PathVariable UUID ticketTypeId
+    ResponseEntity<ApiResponse<TicketTemplateResponse, ApiResponse.BasicMeta>> createTemplate(
+        @PathVariable UUID ticketTypeId,
+        @Valid @RequestBody CreateTemplateRequest request
     ) {
-        TicketTemplateInfo template = this.types.createTemplate(ticketTypeId);
+        TicketTemplateInfo template = this.types.createTemplate(
+            ticketTypeId,
+            Objects.requireNonNull(request.expectedTemplateVersionId()),
+            specs(request.fields())
+        );
         return this.responses.created(
             URI.create("/api/v0/ticket-types/" + ticketTypeId + "/templates/" + template.id()),
-            TemplateResponse.from(template),
+            TicketTemplateResponse.from(template),
             "resource.ticket-template.created",
-            "Ticket template draft created"
+            "Ticket template activated"
         );
     }
 
     @GetMapping("/ticket-types/{ticketTypeId}/templates")
     @Operation(summary = "List Ticket template versions")
+    @ResponseStatus(HttpStatus.OK)
     @OpenApiNotFound
-    ResponseEntity<ApiResponse<List<TemplateResponse>, ApiResponse.BasicMeta>> listTemplates(
+    ResponseEntity<ApiResponse<List<TicketTemplateResponse>, ApiResponse.BasicMeta>> listTemplates(
         @PathVariable UUID ticketTypeId
     ) {
         return this.responses.ok(
-            this.types.listTemplates(ticketTypeId).stream().map(TemplateResponse::from).toList(),
+            this.types.listTemplates(ticketTypeId).stream().map(TicketTemplateResponse::from).toList(),
             "resource.ticket-template.listed",
             "Ticket templates listed"
         );
@@ -138,67 +150,21 @@ class TicketTypeController {
 
     @GetMapping("/ticket-types/{ticketTypeId}/templates/{templateVersionId}")
     @Operation(summary = "Get a Ticket template version")
+    @ResponseStatus(HttpStatus.OK)
     @OpenApiNotFound
-    ResponseEntity<ApiResponse<TemplateResponse, ApiResponse.BasicMeta>> getTemplate(
+    ResponseEntity<ApiResponse<TicketTemplateResponse, ApiResponse.BasicMeta>> getTemplate(
         @PathVariable UUID ticketTypeId,
         @PathVariable UUID templateVersionId
     ) {
         return this.responses.ok(
-            TemplateResponse.from(this.types.getTemplate(ticketTypeId, templateVersionId)),
+            TicketTemplateResponse.from(this.types.getTemplate(ticketTypeId, templateVersionId)),
             "resource.ticket-template.read",
             "Ticket template read"
         );
     }
 
-    @PatchMapping(
-        value = "/ticket-types/{ticketTypeId}/templates/{templateVersionId}",
-        consumes = MediaType.APPLICATION_JSON_VALUE
-    )
-    @Operation(summary = "Replace fields in a Ticket template draft")
-    @OpenApiNotFound
-    @OpenApiUnsupportedMediaType
-    ResponseEntity<ApiResponse<TemplateResponse, ApiResponse.BasicMeta>> replaceTemplate(
-        @PathVariable UUID ticketTypeId,
-        @PathVariable UUID templateVersionId,
-        @Valid @RequestBody UpdateTemplateRequest request
-    ) {
-        List<TicketFieldSpec> fields = Objects.requireNonNull(request.fields())
-            .stream()
-            .map(FieldRequest::toSpec)
-            .toList();
-        return this.responses.ok(
-            TemplateResponse.from(this.types.replaceTemplate(ticketTypeId, templateVersionId, fields)),
-            "resource.ticket-template.updated",
-            "Ticket template updated"
-        );
-    }
-
-    @PostMapping("/ticket-types/{ticketTypeId}/templates/{templateVersionId}/publish")
-    @Operation(summary = "Publish a Ticket template version")
-    @OpenApiNotFound
-    ResponseEntity<ApiResponse<TemplateResponse, ApiResponse.BasicMeta>> publishTemplate(
-        @PathVariable UUID ticketTypeId,
-        @PathVariable UUID templateVersionId
-    ) {
-        return this.responses.ok(
-            TemplateResponse.from(this.types.publishTemplate(ticketTypeId, templateVersionId)),
-            "resource.ticket-template.published",
-            "Ticket template published"
-        );
-    }
-
-    @PostMapping("/ticket-types/{ticketTypeId}/templates/{templateVersionId}/retire")
-    @Operation(summary = "Retire a Ticket template version")
-    @OpenApiNotFound
-    ResponseEntity<ApiResponse<TemplateResponse, ApiResponse.BasicMeta>> retireTemplate(
-        @PathVariable UUID ticketTypeId,
-        @PathVariable UUID templateVersionId
-    ) {
-        return this.responses.ok(
-            TemplateResponse.from(this.types.retireTemplate(ticketTypeId, templateVersionId)),
-            "resource.ticket-template.retired",
-            "Ticket template retired"
-        );
+    private static List<TicketFieldSpec> specs(@Nullable List<FieldRequest> fields) {
+        return Objects.requireNonNull(fields).stream().map(FieldRequest::toSpec).toList();
     }
 
     @Schema(name = "TicketTypeInfo")
@@ -208,7 +174,8 @@ class TicketTypeController {
         String name,
         TicketTypeStatus status,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        TicketTemplateResponse currentTemplate
     ) {
         static TypeResponse from(TicketTypeInfo type) {
             return new TypeResponse(
@@ -217,77 +184,39 @@ class TicketTypeController {
                 type.name(),
                 type.status(),
                 type.createdAt(),
-                type.updatedAt()
-            );
-        }
-    }
-
-    @Schema(name = "TicketTemplateVersion")
-    record TemplateResponse(
-        UUID id,
-        long version,
-        TicketTemplateStatus status,
-        List<FieldResponse> fields,
-        @Nullable Instant publishedAt,
-        @Nullable Instant retiredAt
-    ) {
-        static TemplateResponse from(TicketTemplateInfo template) {
-            return new TemplateResponse(
-                template.id(),
-                template.version(),
-                template.status(),
-                template.fields().stream().map(FieldResponse::from).toList(),
-                template.publishedAt().orElse(null),
-                template.retiredAt().orElse(null)
-            );
-        }
-    }
-
-    @Schema(name = "TicketTemplateField")
-    record FieldResponse(
-        UUID fieldId,
-        String key,
-        String label,
-        TicketFieldType dataType,
-        boolean required,
-        Map<String, Object> constraints
-    ) {
-        static FieldResponse from(TicketFieldInfo field) {
-            return new FieldResponse(
-                field.fieldId(),
-                field.key(),
-                field.label(),
-                field.dataType(),
-                field.required(),
-                field.constraints()
+                type.updatedAt(),
+                TicketTemplateResponse.from(type.currentTemplate())
             );
         }
     }
 
     @Schema(name = "CreateTicketTypeRequest")
-    record CreateTypeRequest(@NotBlank @Nullable String key, @NotBlank @Nullable String name) {}
+    record CreateTypeRequest(
+        @NotBlank @Nullable String key,
+        @NotBlank @Nullable String name,
+        @NotNull @Nullable List<@NotNull @Valid FieldRequest> fields
+    ) {}
 
     @Schema(name = "UpdateTicketTypeRequest")
     record UpdateTypeRequest(@Nullable String name, @Nullable TicketTypeStatus status) {}
 
-    @Schema(name = "UpdateTicketTemplateRequest")
-    record UpdateTemplateRequest(@NotNull @Nullable List<@NotNull @Valid FieldRequest> fields) {}
+    @Schema(name = "CreateTicketTemplateRequest")
+    record CreateTemplateRequest(
+        @NotNull @Nullable UUID expectedTemplateVersionId,
+        @NotNull @Nullable List<@NotNull @Valid FieldRequest> fields
+    ) {}
 
     @Schema(name = "TicketTemplateFieldRequest")
     record FieldRequest(
-        @Nullable UUID fieldId,
-        @NotBlank @Nullable String key,
-        @NotBlank @Nullable String label,
-        @NotNull @Nullable TicketFieldType dataType,
+        @NotNull @Nullable UUID fieldId,
+        @Nullable String label,
         boolean required,
         @Nullable Map<String, Object> constraints
     ) {
         TicketFieldSpec toSpec() {
             return new TicketFieldSpec(
-                this.fieldId,
-                Objects.requireNonNull(this.key),
-                Objects.requireNonNull(this.label),
-                Objects.requireNonNull(this.dataType),
+                Objects.requireNonNull(this.fieldId),
+                this.label,
                 this.required,
                 this.constraints == null ? Map.of() : this.constraints
             );

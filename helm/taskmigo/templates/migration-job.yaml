@@ -40,6 +40,8 @@ spec:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           env:
             {{- include "taskmigo.databaseEnv" . | nindent 12 }}
+            - name: TM_INIT_FIRST_TICKET
+              value: {{ .Values.migration.initFirstTicket | quote }}
             - name: TM_SYSTEM_PASSWORD
               valueFrom:
                 secretKeyRef:

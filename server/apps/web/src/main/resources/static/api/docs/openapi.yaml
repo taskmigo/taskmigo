@@ -433,7 +433,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApiResponseMapStringUUIDBasicMeta"
+                $ref: "#/components/schemas/ApiResponseTicketTypeInfoBasicMeta"
         "400":
           description: Bad Request
           content:
@@ -523,7 +523,7 @@ paths:
     post:
       tags:
       - Ticket Type
-      summary: Create a Ticket template draft
+      summary: Create and activate a Ticket template version
       operationId: createTemplate
       parameters:
       - name: ticketTypeId
@@ -532,6 +532,12 @@ paths:
         schema:
           type: string
           format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTicketTemplateRequest"
+        required: true
       responses:
         "201":
           description: Created
@@ -565,6 +571,8 @@ paths:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "406":
           description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
         "422":
           description: Unprocessable Content
           content:
@@ -577,26 +585,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
-  /api/v0/ticket-types/{ticketTypeId}/templates/{templateVersionId}/retire:
-    post:
+  /api/v0/ticket-fields:
+    get:
       tags:
-      - Ticket Type
-      summary: Retire a Ticket template version
-      operationId: retireTemplate
-      parameters:
-      - name: ticketTypeId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: templateVersionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
+      - Ticket Field
+      summary: List registered Ticket fields and query capabilities
+      operationId: list_3
       responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseListRegisteredTicketFieldBasicMeta"
         "400":
           description: Bad Request
           content:
@@ -615,12 +616,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
-        "404":
-          description: Not Found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "406":
           description: Not Acceptable
         "422":
@@ -635,26 +630,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
-  /api/v0/ticket-types/{ticketTypeId}/templates/{templateVersionId}/publish:
     post:
       tags:
-      - Ticket Type
-      summary: Publish a Ticket template version
-      operationId: publishTemplate
-      parameters:
-      - name: ticketTypeId
-        in: path
+      - Ticket Field
+      summary: Register a shared Ticket field
+      operationId: create_3
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTicketFieldRequest"
         required: true
-        schema:
-          type: string
-          format: uuid
-      - name: templateVersionId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
       responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseRegisteredTicketFieldBasicMeta"
         "400":
           description: Bad Request
           content:
@@ -673,14 +666,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
-        "404":
-          description: Not Found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
         "406":
           description: Not Acceptable
+        "415":
+          description: Unsupported Media Type
         "422":
           description: Unprocessable Content
           content:
@@ -698,7 +687,7 @@ paths:
       tags:
       - Statement
       summary: List authorization statements
-      operationId: list_3
+      operationId: list_4
       parameters:
       - name: page
         in: query
@@ -814,7 +803,7 @@ paths:
       tags:
       - Statement
       summary: Create an authorization statement
-      operationId: create_3
+      operationId: create_4
       requestBody:
         content:
           application/json:
@@ -873,7 +862,7 @@ paths:
       tags:
       - Role
       summary: List roles
-      operationId: list_4
+      operationId: list_5
       parameters:
       - name: page
         in: query
@@ -1043,7 +1032,7 @@ paths:
       tags:
       - Group
       summary: List groups
-      operationId: list_5
+      operationId: list_6
       parameters:
       - name: page
         in: query
@@ -1154,7 +1143,7 @@ paths:
       tags:
       - Group
       summary: Create a group
-      operationId: create_4
+      operationId: create_5
       requestBody:
         content:
           application/json:
@@ -1293,7 +1282,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ApiResponseTicketInfoBasicMeta"
+                $ref: "#/components/schemas/ApiResponseTicketDetailBasicMeta"
         "400":
           description: Bad Request
           content:
@@ -1508,26 +1497,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
-  /api/v0/ticket-types/{ticketTypeId}/templates/{templateVersionId}:
+  /api/v0/ticket-fields/{fieldId}:
     get:
       tags:
-      - Ticket Type
-      summary: Get a Ticket template version
-      operationId: getTemplate
+      - Ticket Field
+      summary: Get a registered Ticket field
+      operationId: get_1
       parameters:
-      - name: ticketTypeId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: templateVersionId
+      - name: fieldId
         in: path
         required: true
         schema:
           type: string
           format: uuid
       responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseRegisteredTicketFieldBasicMeta"
         "400":
           description: Bad Request
           content:
@@ -1568,17 +1557,11 @@ paths:
                 $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
     patch:
       tags:
-      - Ticket Type
-      summary: Replace fields in a Ticket template draft
-      operationId: replaceTemplate
+      - Ticket Field
+      summary: Update a Ticket field label or archive it
+      operationId: update_2
       parameters:
-      - name: ticketTypeId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-      - name: templateVersionId
+      - name: fieldId
         in: path
         required: true
         schema:
@@ -1588,9 +1571,15 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UpdateTicketTemplateRequest"
+              $ref: "#/components/schemas/UpdateTicketFieldRequest"
         required: true
       responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseRegisteredTicketFieldBasicMeta"
         "400":
           description: Bad Request
           content:
@@ -1696,7 +1685,7 @@ paths:
       tags:
       - Configuration
       summary: Get application configuration
-      operationId: get_1
+      operationId: get_2
       responses:
         "200":
           description: OK
@@ -1740,7 +1729,7 @@ paths:
       tags:
       - Configuration
       summary: Update application configuration
-      operationId: update_2
+      operationId: update_3
       requestBody:
         content:
           application/json:
@@ -1776,6 +1765,64 @@ paths:
           description: Not Acceptable
         "415":
           description: Unsupported Media Type
+        "422":
+          description: Unprocessable Content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+  /api/v0/ticket-types/{ticketTypeId}/templates/{templateVersionId}:
+    get:
+      tags:
+      - Ticket Type
+      summary: Get a Ticket template version
+      operationId: getTemplate
+      parameters:
+      - name: ticketTypeId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: templateVersionId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiResponseVoidBasicMeta"
+        "406":
+          description: Not Acceptable
         "422":
           description: Unprocessable Content
           content:
@@ -2146,6 +2193,9 @@ components:
         status:
           type: string
           minLength: 1
+        expectedTemplateVersionId:
+          type: string
+          format: uuid
         customFields:
           type: object
           additionalProperties: {}
@@ -2162,10 +2212,30 @@ components:
         name:
           type: string
           minLength: 1
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/TicketTemplateFieldRequest"
       required:
+      - fields
       - key
       - name
-    ApiResponseTicketTemplateVersionBasicMeta:
+    TicketTemplateFieldRequest:
+      type: object
+      properties:
+        fieldId:
+          type: string
+          format: uuid
+        label:
+          type: string
+        required:
+          type: boolean
+        constraints:
+          type: object
+          additionalProperties: {}
+      required:
+      - fieldId
+    ApiResponseTicketTypeInfoBasicMeta:
       type: object
       properties:
         success:
@@ -2187,7 +2257,7 @@ components:
           description: Execution and pagination metadata
         data:
           type: "null"
-          $ref: "#/components/schemas/TicketTemplateVersion"
+          $ref: "#/components/schemas/TicketTypeInfo"
           description: Response payload
       required:
       - data
@@ -2233,19 +2303,182 @@ components:
         status:
           type: string
           enum:
-          - DRAFT
-          - PUBLISHED
-          - RETIRED
+          - ACTIVE
+          - SUPERSEDED
         fields:
           type: array
           items:
             $ref: "#/components/schemas/TicketTemplateField"
-        publishedAt:
+        activatedAt:
           type: string
           format: date-time
-        retiredAt:
+        supersededAt:
           type: string
           format: date-time
+    TicketTypeInfo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        key:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - RETIRED
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        currentTemplate:
+          $ref: "#/components/schemas/TicketTemplateVersion"
+    CreateTicketTemplateRequest:
+      type: object
+      properties:
+        expectedTemplateVersionId:
+          type: string
+          format: uuid
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/TicketTemplateFieldRequest"
+      required:
+      - expectedTemplateVersionId
+      - fields
+    ApiResponseTicketTemplateVersionBasicMeta:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the request completed successfully
+        statusCode:
+          type: integer
+          format: int32
+          description: HTTP status code of the response
+        message:
+          $ref: "#/components/schemas/Message"
+          description: Machine-readable and human-readable outcome message
+        error:
+          type: "null"
+          $ref: "#/components/schemas/Error"
+          description: Error details when the request fails
+        meta:
+          $ref: "#/components/schemas/BasicMeta"
+          description: Execution and pagination metadata
+        data:
+          type: "null"
+          $ref: "#/components/schemas/TicketTemplateVersion"
+          description: Response payload
+      required:
+      - data
+      - error
+      - message
+      - meta
+      - statusCode
+      - success
+    CreateTicketFieldRequest:
+      type: object
+      properties:
+        key:
+          type: string
+          minLength: 1
+        label:
+          type: string
+          minLength: 1
+        dataType:
+          type: string
+          enum:
+          - STRING
+          - NUMBER
+          - BOOLEAN
+          - DATE
+          - DATETIME
+          - UUID
+          - ENUM
+      required:
+      - dataType
+      - key
+      - label
+    ApiResponseRegisteredTicketFieldBasicMeta:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the request completed successfully
+        statusCode:
+          type: integer
+          format: int32
+          description: HTTP status code of the response
+        message:
+          $ref: "#/components/schemas/Message"
+          description: Machine-readable and human-readable outcome message
+        error:
+          type: "null"
+          $ref: "#/components/schemas/Error"
+          description: Error details when the request fails
+        meta:
+          $ref: "#/components/schemas/BasicMeta"
+          description: Execution and pagination metadata
+        data:
+          type: "null"
+          $ref: "#/components/schemas/RegisteredTicketField"
+          description: Response payload
+      required:
+      - data
+      - error
+      - message
+      - meta
+      - statusCode
+      - success
+    RegisteredTicketField:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        key:
+          type: string
+        label:
+          type: string
+        dataType:
+          type: string
+          enum:
+          - STRING
+          - NUMBER
+          - BOOLEAN
+          - DATE
+          - DATETIME
+          - UUID
+          - ENUM
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - ARCHIVED
+        operators:
+          type: array
+          items:
+            type: string
+            enum:
+            - AND
+            - OR
+            - EQ
+            - NE
+            - GT
+            - GTE
+            - LT
+            - LTE
+            - CONTAINS
+        sortable:
+          type: boolean
+        nullable:
+          type: boolean
     ApiInfo:
       type: object
       properties:
@@ -2421,46 +2654,16 @@ components:
           enum:
           - ACTIVE
           - RETIRED
-    TicketTemplateFieldRequest:
+    UpdateTicketFieldRequest:
       type: object
       properties:
-        fieldId:
-          type: string
-          format: uuid
-        key:
-          type: string
-          minLength: 1
         label:
           type: string
-          minLength: 1
-        dataType:
+        status:
           type: string
           enum:
-          - STRING
-          - NUMBER
-          - BOOLEAN
-          - DATE
-          - DATETIME
-          - UUID
-          - ENUM
-        required:
-          type: boolean
-        constraints:
-          type: object
-          additionalProperties: {}
-      required:
-      - dataType
-      - key
-      - label
-    UpdateTicketTemplateRequest:
-      type: object
-      properties:
-        fields:
-          type: array
-          items:
-            $ref: "#/components/schemas/TicketTemplateFieldRequest"
-      required:
-      - fields
+          - ACTIVE
+          - ARCHIVED
     ReplaceRoleStatementsRequest:
       type: object
       properties:
@@ -2669,6 +2872,78 @@ components:
           description: Response payload
           items:
             $ref: "#/components/schemas/TicketInfo"
+      required:
+      - data
+      - error
+      - message
+      - meta
+      - statusCode
+      - success
+    ApiResponseTicketDetailBasicMeta:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the request completed successfully
+        statusCode:
+          type: integer
+          format: int32
+          description: HTTP status code of the response
+        message:
+          $ref: "#/components/schemas/Message"
+          description: Machine-readable and human-readable outcome message
+        error:
+          type: "null"
+          $ref: "#/components/schemas/Error"
+          description: Error details when the request fails
+        meta:
+          $ref: "#/components/schemas/BasicMeta"
+          description: Execution and pagination metadata
+        data:
+          type: "null"
+          $ref: "#/components/schemas/TicketDetail"
+          description: Response payload
+      required:
+      - data
+      - error
+      - message
+      - meta
+      - statusCode
+      - success
+    TicketDetail:
+      type: object
+      properties:
+        ticket:
+          $ref: "#/components/schemas/TicketInfo"
+        template:
+          $ref: "#/components/schemas/TicketTemplateVersion"
+    ApiResponseListRegisteredTicketFieldBasicMeta:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Whether the request completed successfully
+        statusCode:
+          type: integer
+          format: int32
+          description: HTTP status code of the response
+        message:
+          $ref: "#/components/schemas/Message"
+          description: Machine-readable and human-readable outcome message
+        error:
+          type: "null"
+          $ref: "#/components/schemas/Error"
+          description: Error details when the request fails
+        meta:
+          $ref: "#/components/schemas/BasicMeta"
+          description: Execution and pagination metadata
+        data:
+          type:
+          - array
+          - "null"
+          description: Response payload
+          items:
+            $ref: "#/components/schemas/RegisteredTicketField"
       required:
       - data
       - error

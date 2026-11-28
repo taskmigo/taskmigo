@@ -335,6 +335,20 @@ CREATE INDEX ix_eav_field_values_datetime ON eav_field_values(field_id, datetime
 CREATE INDEX ix_eav_field_values_uuid ON eav_field_values(field_id, uuid_value, schema_instance_id);
 CREATE INDEX ix_eav_field_values_enum ON eav_field_values(field_id, enum_value, schema_instance_id);
 
+CREATE TABLE ticket_field_registry (
+    id UUID PRIMARY KEY,
+    field_key VARCHAR(200) NOT NULL UNIQUE,
+    label VARCHAR(200) NOT NULL,
+    data_type VARCHAR(16) NOT NULL,
+    status VARCHAR(16) NOT NULL,
+    CONSTRAINT ck_ticket_field_registry_key CHECK (field_key ~ '^[A-Za-z][A-Za-z0-9_]*$'),
+    CONSTRAINT ck_ticket_field_registry_label CHECK (btrim(label) <> ''),
+    CONSTRAINT ck_ticket_field_registry_status CHECK (status IN ('ACTIVE', 'ARCHIVED')),
+    CONSTRAINT ck_ticket_field_registry_data_type CHECK (
+        data_type IN ('STRING', 'NUMBER', 'BOOLEAN', 'DATE', 'DATETIME', 'UUID', 'ENUM')
+    )
+);
+
 CREATE TABLE ticket_types (
     id UUID PRIMARY KEY,
     type_key VARCHAR(200) NOT NULL,
