@@ -18,13 +18,13 @@ This is Taskmigo's conversational adaptation of AI-DLC, not an AWS harness. Read
 
 - **inception:** establish acceptance criteria, inspect source/specification, compare designs and record the proposed scope in a dedicated issue comment if approval is required.
 - **approval:** present the exact proposal to the maintainer and stop before implementing it unless the maintainer explicitly approves it in the current conversation. Pin the proposal using its issue comment ID and last-updated timestamp. Material revisions invalidate earlier approval.
-- **construction:** implement the authorized scope using taskmigo-delivery, required skills, and a bounded preflight. Reuse or create the linked PR. Never invent local build or hook results.
+- **construction:** implement the authorized scope using taskmigo-delivery, required skills, and a bounded preflight. Apply its mandatory Generated Artifact Impact Check from planning onward. If local generation is unavailable, record affected outputs and pending canonical CI generation before a draft evidence-collection push. Reuse or create the linked PR. Never invent local build or hook results.
 - **verification:** inspect required checks for the actual current PR head, repair related failures and re-anchor after each push. Pending or failed checks are incomplete. Complete the shared knowledge review before ready; capture useful discoveries from verification in the owning guide or a focused follow-up if outside scope.
-- **ready:** only when required evidence, approval and knowledge review are actually satisfied. Report the PR and verification; do not auto-merge or deploy. For a research-only intent, ready means the requested research deliverable exists, not that a PR or CI run exists.
+- **ready:** only when required evidence, approval, generated artifact impact check and knowledge review are actually satisfied. Report the PR and verification; do not auto-merge or deploy. For a research-only intent, ready means the requested research deliverable exists, not that a PR or CI run exists.
 
 ## Durable checkpoint
 
-Append one issue comment when the stage, material proposal, PR head, or next action changes, and before handing off incomplete work. Do not post a comment for every tool call. Use the exact marker and JSON fence below; keep references short and omit secrets and copied logs. Record the actual issue number. Use null for unknown/not applicable fields. The checkpoint is a resume hint, never an authorization or verification certificate.
+Append one issue comment when the stage, material proposal, PR head, or next action changes, and before handing off incomplete work. Do not post a comment for every tool call. Use the exact marker and JSON fence below; keep references short and omit secrets and copied logs. Record the actual issue number. Use null for unknown/not applicable fields. The checkpoint is a resume hint, never an authorization or verification certificate. Record unresolved generated artifacts and the next canonical generation/verification action in the existing issue and checkpoint `next`; do not introduce a parallel state schema.
 
 <!-- taskmigo-ai-dlc:v1 -->
 

@@ -160,6 +160,20 @@ when scheduled, reuse matching evidence, and perform the remaining Taskmigo obli
 repository procedures directly. Do not replace a specific repository rule with a weaker generic recommendation,
 skip required checks, or maintain another native state machine.
 
+## Generated artifact impact check
+
+Generated outputs are part of their owning implementation change, not optional cleanup after a CI failure. The
+[shared delivery skill](../../.agents/skills/taskmigo-delivery/SKILL.md#generated-artifact-impact-check-mandatory)
+requires impact analysis during planning, canonical generation and diff review during Construction, and verification
+before Ready. Apply it even when the upstream profile skips a separate stage.
+
+With a usable local workspace, generate affected outputs in dependency order before the final implementation push.
+In Chat, record pending generation before a draft evidence-collection push, retrieve the earliest applicable exact-head
+CI artifact, and verify the synchronized result on the resulting head. The PR checklist records the outcome; the
+existing intent or issue/checkpoint records blockers. A checked box is not evidence, and a green check on an older
+revision cannot certify a new one. See [CI evidence](ci-evidence.md#prevent-stale-generated-artifacts) for the
+current OpenAPI procedure. No new native engine stage, hook or automatic enforcement is introduced by this policy.
+
 ## Continuous knowledge development
 
 Both Chat and native harnesses use the same [engineering knowledge base](../README.md). During discovery, read the relevant guides. Before the final implementation push or investigation handoff, review what the task established: useful architecture and implementation knowledge, proven techniques, operational insights, and lessons from mistakes. Use the [knowledge maintenance guide](knowledge-maintenance.md) and the [engineering-knowledge skill](../../.agents/skills/engineering-knowledge/SKILL.md) to update the owning document or record a focused follow-up when evidence or scope is incomplete.

@@ -16,6 +16,41 @@ Identify the PR head SHA, base branch, workflow run and attempt. Inspect failed 
 
 For exact artifact retrieval and agent-side triage, discover the relevant [repository skills](../../.agents/skills/). Use the workflow at the failing revision to confirm what evidence actually exists; names and report delivery can change over time.
 
+## Prevent stale generated artifacts
+
+A generated contract is a direct consumer of its generator inputs. Identify affected outputs during planning, not after
+a test failure. For example, [PR #343](https://github.com/taskmigo/taskmigo/pull/343) changed Ticket API contracts
+but did not synchronize the tracked OpenAPI snapshot. The
+[Server run 46161133201](https://github.com/taskmigo/taskmigo/actions/runs/46161133201) completed build/tests before
+snapshot verification exposed the drift. The canonical artifact repaired the output, but proactive generation would
+have made that dependency explicit earlier.
+
+For changes that can affect Taskmigo's OpenAPI contract, run the same generator used by the
+[Server workflow](../../.github/workflows/server.yaml) from the repository root:
+
+```sh
+cd server
+./gradlew --no-daemon --console=plain :apps:openapi-generator:generateOpenApi
+git diff -- apps/web/src/main/resources/static/api/docs/openapi.yaml
+```
+
+Review the snapshot diff and synchronize the file with the implementation. Include applicable downstream generated
+outputs only when the repository actually has them and provides a canonical generator. Review the authored
+specification, configuration guide and hand-written SDK consumers as separate dependencies.
+
+When no local runner is available, record the generation as pending and identify the existing CI job before a draft
+evidence-collection push. The Server workflow currently runs generation after a successful Gradle build; earlier
+build failures can therefore prevent the artifact from existing. Resolve those blockers first. When snapshot
+verification reports drift, use the exact-head `generated-openapi-<run_id>-<run_attempt>` artifact and follow the
+[OpenAPI artifact skill](../../.agents/skills/github-actions-openapi-snapshot-artifact/SKILL.md). Replace the tracked
+snapshot exactly, verify the resulting diff and blob bytes, and re-run required verification on the synchronized head.
+Do not fabricate output, reuse an older run's artifact, or skip verification. A connector-only session may still need
+a second CI cycle; the improvement is that the dependency is planned and handled at the earliest actionable point.
+
+The [Generated Artifact Impact Check](../../.agents/skills/taskmigo-delivery/SKILL.md#generated-artifact-impact-check-mandatory)
+is a delivery policy and is recorded in the PR checklist. Existing executable CI checks remain the verification
+authority.
+
 ## Example: formatter reports unrelated files
 
 Repository-wide formatting checks can report a file outside the intended change. Before applying a repair, inspect the emitted patch and compare the affected preimages with the base branch. If the same preimage already exists on the base branch, the formatting difference was not introduced by this PR.
