@@ -9,6 +9,7 @@ import io.taskmigo.jpaquery.QuerySchema;
 import io.taskmigo.query.QueryFieldContext;
 import java.util.Collection;
 import java.util.List;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 
 /// Defines the JPA query surface used to resolve a User while updating direct Statement assignments.
@@ -25,7 +26,7 @@ final class UpdateUserStatementsQuerySchema extends QuerySchema<UserEntity> {
     }
 
     @Override
-    protected Collection<QueryField<UserEntity, ?>> staticFields() {
+    protected Collection<QueryField<UserEntity, ? extends Object>> staticFields() {
         return List.of(
             field(UserEntity_.id).operators(EQ, NE),
             field(UserEntity_.username).operators(EQ, NE, CONTAINS),
@@ -34,7 +35,7 @@ final class UpdateUserStatementsQuerySchema extends QuerySchema<UserEntity> {
     }
 
     @Override
-    protected Collection<QueryField<UserEntity, ?>> runtimeFields(QueryFieldContext context) {
+    protected Collection<QueryField<UserEntity, ? extends Object>> runtimeFields(@NonNull QueryFieldContext context) {
         return List.of();
     }
 }

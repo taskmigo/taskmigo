@@ -26,6 +26,10 @@ public interface ApiSecurityErrorRenderer {
     /// @param messageCode the stable machine-readable failure code
     /// @param messageText the human-readable failure message
     /// @throws IOException if the response cannot be written
-    void write(HttpServletResponse response, HttpStatus status, String messageCode, String messageText)
-        throws IOException;
+    void write(
+        HttpServletResponse response,
+        HttpStatus status,
+        String messageCode,
+        String messageText
+    ) throws IOException;
 }

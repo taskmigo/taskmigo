@@ -9,6 +9,7 @@ import io.taskmigo.jpaquery.QuerySchema;
 import io.taskmigo.query.QueryFieldContext;
 import java.util.Collection;
 import java.util.List;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 
 /// Defines the JPA query surface for the list-groups operation.
@@ -25,7 +26,7 @@ final class ListGroupsQuerySchema extends QuerySchema<GroupEntity> {
     }
 
     @Override
-    protected Collection<QueryField<GroupEntity, ?>> staticFields() {
+    protected Collection<QueryField<GroupEntity, ? extends Object>> staticFields() {
         return List.of(
             field(GroupEntity_.id).operators(EQ, NE).sortable(),
             field(GroupEntity_.code).operators(EQ, NE, CONTAINS).sortable(),
@@ -35,7 +36,7 @@ final class ListGroupsQuerySchema extends QuerySchema<GroupEntity> {
     }
 
     @Override
-    protected Collection<QueryField<GroupEntity, ?>> runtimeFields(QueryFieldContext context) {
+    protected Collection<QueryField<GroupEntity, ? extends Object>> runtimeFields(@NonNull QueryFieldContext context) {
         return List.of();
     }
 }

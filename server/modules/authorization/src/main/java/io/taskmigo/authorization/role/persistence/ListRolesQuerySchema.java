@@ -9,6 +9,7 @@ import io.taskmigo.jpaquery.QuerySchema;
 import io.taskmigo.query.QueryFieldContext;
 import java.util.Collection;
 import java.util.List;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 
 /// Defines the JPA query surface for the list-roles operation.
@@ -25,7 +26,7 @@ final class ListRolesQuerySchema extends QuerySchema<RoleEntity> {
     }
 
     @Override
-    protected Collection<QueryField<RoleEntity, ?>> staticFields() {
+    protected Collection<QueryField<RoleEntity, ? extends Object>> staticFields() {
         return List.of(
             field(RoleEntity_.id).operators(EQ, NE).sortable(),
             field(RoleEntity_.code).operators(EQ, NE, CONTAINS).sortable(),
@@ -35,7 +36,7 @@ final class ListRolesQuerySchema extends QuerySchema<RoleEntity> {
     }
 
     @Override
-    protected Collection<QueryField<RoleEntity, ?>> runtimeFields(QueryFieldContext context) {
+    protected Collection<QueryField<RoleEntity, ? extends Object>> runtimeFields(@NonNull QueryFieldContext context) {
         return List.of();
     }
 }

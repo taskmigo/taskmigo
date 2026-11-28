@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
 final class EavJpaQueryFieldFactory implements EavJpaQueryFieldProvider {
 
     @Override
-    public <E> QueryField<E, ?> create(EavQueryField field, JpaPath<E, UUID> schemaInstancePath) {
+    public <E> QueryField<E, ? extends Object> create(EavQueryField field, JpaPath<E, UUID> schemaInstancePath) {
         return switch (field.dataType()) {
             case STRING -> createTyped(field, schemaInstancePath, String.class, "stringValue");
             case NUMBER -> createTyped(field, schemaInstancePath, BigDecimal.class, "numberValue");

@@ -28,8 +28,12 @@ final class ApiV0SecurityErrorRenderer implements ApiSecurityErrorRenderer {
     }
 
     @Override
-    public void write(HttpServletResponse response, HttpStatus status, String messageCode, String messageText)
-        throws IOException {
+    public void write(
+        HttpServletResponse response,
+        HttpStatus status,
+        String messageCode,
+        String messageText
+    ) throws IOException {
         String errorCode = status == HttpStatus.UNAUTHORIZED ? "UNAUTHORIZED" : "FORBIDDEN";
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);

@@ -21,6 +21,7 @@ import jakarta.persistence.criteria.Root;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -71,12 +72,14 @@ class JpaObjectAuthorizationRuntimeContextTest {
             }
 
             @Override
-            protected Collection<QueryField<TestEntity, ?>> staticFields() {
+            protected Collection<QueryField<TestEntity, ? extends Object>> staticFields() {
                 return List.of();
             }
 
             @Override
-            protected Collection<QueryField<TestEntity, ?>> runtimeFields(QueryFieldContext context) {
+            protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(
+                @NonNull QueryFieldContext context
+            ) {
                 return "incident".equals(context.values().get("scope")) ? List.of(severity) : List.of();
             }
         };
