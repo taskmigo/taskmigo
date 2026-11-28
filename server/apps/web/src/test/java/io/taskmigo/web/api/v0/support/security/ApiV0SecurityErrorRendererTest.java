@@ -59,8 +59,12 @@ class ApiV0SecurityErrorRendererTest {
         this.assertFailure(HttpStatus.FORBIDDEN, "security.forbidden", "Access is forbidden", "FORBIDDEN");
     }
 
-    private void assertFailure(HttpStatus status, String messageCode, String messageText, String errorCode)
-        throws IOException {
+    private void assertFailure(
+        HttpStatus status,
+        String messageCode,
+        String messageText,
+        String errorCode
+    ) throws IOException {
         ApiResponse<Void, ApiResponse.BasicMeta> body = new ApiResponse<>(
             false,
             status.value(),
