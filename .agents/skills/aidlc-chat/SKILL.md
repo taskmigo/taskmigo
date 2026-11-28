@@ -11,7 +11,7 @@ This is Taskmigo's conversational adaptation of AI-DLC, not an AWS harness. Read
 
 - Identify the user's intent and existing issue/PR. Reuse its issue; if none exists, create one for an explicitly requested non-trivial delivery or durable investigation. Use the AI-DLC intent template as guidance, not a second specification.
 - Fetch the issue body, comments, linked PR metadata and current-head CI evidence. Find the latest valid checkpoint in issue comments. If there are competing or contradictory checkpoints, reconcile against actual issue/PR state and ask only for a decision that cannot safely be inferred. Never overwrite another agent's work or silently adopt a different scope.
-- Choose an upstream profile using the shared guide. Small well-understood work can skip a separate design artifact; security, material product behavior, architecture boundaries, or scope changes require explicit approval. Research-only requests end at the investigation deliverable.
+- Choose an upstream profile using the shared guide. Small well-understood work can skip a separate design artifact; security, material product behavior, architecture boundaries, or scope changes require explicit approval. Research-only requests end at the investigation deliverable. Apply the engineering-knowledge skill at discovery and before handoff.
 - Keep visible updates concise: state the current stage, decision or blocker, and next action. A routine check or CI repair within approved scope does not require repeated approval.
 
 ## Stages
@@ -19,8 +19,8 @@ This is Taskmigo's conversational adaptation of AI-DLC, not an AWS harness. Read
 - **inception:** establish acceptance criteria, inspect source/specification, compare designs and record the proposed scope in a dedicated issue comment if approval is required.
 - **approval:** present the exact proposal to the maintainer and stop before implementing it unless the maintainer explicitly approves it in the current conversation. Pin the proposal using its issue comment ID and last-updated timestamp. Material revisions invalidate earlier approval.
 - **construction:** implement the authorized scope using taskmigo-delivery, required skills, and a bounded preflight. Reuse or create the linked PR. Never invent local build or hook results.
-- **verification:** inspect required checks for the actual current PR head, repair related failures and re-anchor after each push. Pending or failed checks are incomplete.
-- **ready:** only when required evidence and approval are actually satisfied. Report the PR and verification; do not auto-merge or deploy. For a research-only intent, ready means the requested research deliverable exists, not that a PR or CI run exists.
+- **verification:** inspect required checks for the actual current PR head, repair related failures and re-anchor after each push. Pending or failed checks are incomplete. Complete the shared knowledge review before ready; capture useful discoveries from verification in the owning guide or a focused follow-up if outside scope.
+- **ready:** only when required evidence, approval and knowledge review are actually satisfied. Report the PR and verification; do not auto-merge or deploy. For a research-only intent, ready means the requested research deliverable exists, not that a PR or CI run exists.
 
 ## Durable checkpoint
 

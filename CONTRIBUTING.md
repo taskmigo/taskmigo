@@ -22,6 +22,10 @@ native harness. ChatGPT Chat and connector-only agents must automatically use th
 [`aidlc-chat`](.agents/skills/aidlc-chat/SKILL.md) skill instead. Existing repository instructions, specifications,
 human approval requirements, and verification rules remain authoritative in both modes.
 
+## Engineering knowledge
+
+Use the [engineering knowledge index](docs/README.md) to find relevant developer guides. Review knowledge impact for every non-trivial task, including useful discoveries and mistakes. Update the owning document within approved scope, or explain why no update is necessary. Follow the [knowledge maintenance guide](docs/engineering/knowledge-maintenance.md); keep human-readable knowledge and evidence in the repository rather than private agent memory.
+
 ## Change quality
 
 - Keep each change focused and exclude unrelated edits.

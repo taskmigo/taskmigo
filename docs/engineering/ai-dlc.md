@@ -137,6 +137,12 @@ Never commit credentials, personal data, unrestricted logs, local cursors or mac
 existing issue, specification and CI evidence rather than duplicating it. Chat agents disclose that native hooks
 and gates were not executed.
 
+## Continuous knowledge development
+
+Both Chat and native harnesses use the same [engineering knowledge base](../README.md). During discovery, read the relevant guides. Before the final implementation push or investigation handoff, review what the task established: useful architecture and implementation knowledge, proven techniques, operational insights, and lessons from mistakes. Use the [knowledge maintenance guide](knowledge-maintenance.md) and the [engineering-knowledge skill](../../.agents/skills/engineering-knowledge/SKILL.md) to update the owning document or record a focused follow-up when evidence or scope is incomplete.
+
+Knowledge review is part of Taskmigo delivery policy, not a new upstream engine stage or a separate AI memory system. New documents are conditional on usefulness. The PR checklist records whether relevant knowledge was updated or why it did not need to change; a checked box cannot certify technical accuracy.
+
 ## Verification and upgrades
 
 The AI-DLC CI workflow verifies release provenance, projects each supported harness into a separate disposable
