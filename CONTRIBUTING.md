@@ -16,11 +16,11 @@ npm ci
 
 ## AI-driven development
 
-For non-trivial AI-assisted engineering work, use the pinned upstream AI-DLC workflow described in
-[`docs/engineering/ai-dlc.md`](docs/engineering/ai-dlc.md). Apply the repository
-[`taskmigo-delivery`](.agents/skills/taskmigo-delivery/SKILL.md) skill alongside AI-DLC. Existing repository instructions,
-product specifications, human approval requirements, and verification rules remain authoritative. Agents without a
-supported AI-DLC harness must still follow the delivery skill and must not claim that upstream gates ran.
+For non-trivial AI-assisted engineering work, follow the [AI-DLC guide](docs/engineering/ai-dlc.md) and the shared
+[`taskmigo-delivery`](.agents/skills/taskmigo-delivery/SKILL.md) skill. Use the pinned upstream engine in a supported
+native harness. ChatGPT Chat and connector-only agents must automatically use the
+[`aidlc-chat`](.agents/skills/aidlc-chat/SKILL.md) skill instead. Existing repository instructions, specifications,
+human approval requirements, and verification rules remain authoritative in both modes.
 
 ## Change quality
 

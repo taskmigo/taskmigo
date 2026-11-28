@@ -5,7 +5,43 @@ AI-assisted engineering. The version in [`.aidlc-version`](../../.aidlc-version)
 engine manages adaptive workflows, human interaction, intent state and audit evidence. It is a development tool, not
 a Taskmigo application dependency.
 
-## Setup
+## ChatGPT Chat (no CLI required)
+
+Chat is a first-class Taskmigo workflow, not an official AWS native harness. Repository skill discovery activates
+[`aidlc-chat`](../../.agents/skills/aidlc-chat/SKILL.md) for non-trivial connector-only work. Start with a normal
+request such as `Implement issue #123` or `Continue issue #123`. No slash command, native hooks, or Work mode is
+required. A GitHub connection with access to the repository is required for durable state and implementation.
+
+The agent uses the same profile guidance and delivery rules as the native engine. It records material stage
+transitions as issue comments and references existing proposals, PRs, and CI evidence. The checkpoint does not
+authorize a stage or certify a check. Human approval in the current conversation is valid for the exact proposal;
+a new session must reconfirm a material decision if independent human approval cannot be verified. Delegated GitHub
+identities can make agent-written comments appear human-authored, so comment authorship alone is not sufficient.
+
+### Checkpoint contract
+
+Use the marker `<!-- taskmigo-ai-dlc:v1 -->` on its own line, followed by a fenced JSON block. The complete example
+is in the chat skill. The checkpoint has these fields:
+
+- `issue`: positive GitHub issue number matching the comment's issue.
+- `profile`: non-empty upstream profile name.
+- `stage`: `inception`, `approval`, `construction`, `verification`, or `ready`.
+- `proposal`: null or an object with positive `comment_id` and ISO UTC `updated_at` for the proposal comment.
+- `approval`: `pending`, `session`, `external`, or `not-required`. This is descriptive metadata, not proof.
+- `pr` and `head`: null or the linked PR number and its full 40-character Git commit SHA, respectively.
+- `next`: concise next action or blocker.
+
+A checkpoint must reference a proposal if approval is pending, session-based, or external. An approval-stage
+checkpoint requires pending approval. PR and head must be present together; verification requires both. Ready
+without a PR is allowed for research-only work. Read the actual proposal revision, PR head, and required checks
+before acting. Append checkpoints rather than editing old comments. A malformed or conflicting checkpoint is not
+permission to advance. The CI validator checks checkpoint shape, not approval provenance or CI success.
+
+Switching between Chat and native harnesses is an explicit handoff via the linked GitHub issue and intent references.
+The receiving agent validates evidence and runs its own required gates. There is no automatic synchronization of
+native workflow internals, and no fake native audit records.
+
+## Native setup
 
 Install the native AI-DLC command using the pinned release from the
 [upstream releases](https://github.com/awslabs/aidlc-workflows/releases). Follow the
@@ -48,7 +84,7 @@ bypass hook trust, approval, sandbox, or repository verification controls to mak
 ## Choose a workflow
 
 Use the [upstream profiles](https://awslabs.github.io/aidlc-workflows/guide/workflow-profiles/) rather than maintaining
-a second profile engine.
+a second profile engine. Chat uses these profiles as risk-based guidance; native harnesses execute the upstream stages.
 
 | Work                                   | Starting profile                        |
 | -------------------------------------- | --------------------------------------- |
@@ -64,7 +100,7 @@ a second profile engine.
 Choose a deeper route when risk or ambiguity demands it. For research-only work, stop at the approved investigation
 deliverable rather than starting implementation. A profile never overrides Taskmigo rules or required checks.
 
-Start in Copilot chat:
+For native execution, start in Copilot chat:
 
 ```text
 /aidlc bugfix Investigate issue #123. Apply the Taskmigo delivery skill and repository instructions.
@@ -87,7 +123,7 @@ current-head GitHub evidence and an accurate PR. Deployment and merge remain sep
 | Source and regression tests        | Implementation branch                                               |
 | Review and implementation evidence | Pull request                                                        |
 | Required verification              | GitHub Actions for the current head SHA                             |
-| Resume state and audit trail       | Upstream AI-DLC intent                                              |
+| Resume state and audit trail       | Upstream AI-DLC intent or linked GitHub issue checkpoints           |
 | Durable engineering rules          | Repository instructions, skills and deterministic checks            |
 
 Resume an existing intent instead of recreating it. Re-read the approved scope, current branch, PR head, and relevant
@@ -98,9 +134,8 @@ Keep generated harness runtime and machine-local configuration out of product PR
 configuration, preserve repository-owned instructions, and stage explicit paths rather than using `git add -A`.
 Follow upstream artifact ownership for shared intent records and audit shards; review their contents before committing.
 Never commit credentials, personal data, unrestricted logs, local cursors or machine-local runtime state. Reference
-existing issue, specification and CI evidence rather than duplicating it. If a connector-only agent cannot access
-a configured host, it must disclose that limitation and follow the repository delivery policy without claiming
-upstream gate execution.
+existing issue, specification and CI evidence rather than duplicating it. Chat agents disclose that native hooks
+and gates were not executed.
 
 ## Verification and upgrades
 
@@ -108,10 +143,12 @@ The AI-DLC CI workflow verifies release provenance, projects each supported harn
 checkout, and checks that repository-owned instructions, skills and CI files are preserved. It does not call a model,
 grant hook trust, or run an interactive lifecycle.
 
-Before treating this rollout as complete, run an interactive pilot on both supported harnesses: start a focused
+Before treating this rollout as complete, run an interactive pilot in Chat and both native harnesses: start a focused
 bugfix, approve the proposed scope, reject and revise a material change, resume the intent in a fresh session, and
 verify the final PR against its current head SHA. Confirm that an agent cannot substitute its own approval for the
-maintainer's response. Record actual outcomes and any missing hook capabilities in the tracking issue.
+maintainer's response. In Chat, open a new conversation, resume the issue, verify that the old approval is not
+silently trusted, and confirm a stale head cannot advance verification. Record actual outcomes and any missing hook
+capabilities in the tracking issue.
 
 For upgrades, change the shared version in a focused PR and rerun the integration checks. Preview configuration
 changes using `aidlc config --dry-run` and inspect any proposed changes to repository-owned files. Use the upstream

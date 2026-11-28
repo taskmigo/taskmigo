@@ -5,7 +5,7 @@ description: Use for AI-DLC workflows and non-trivial AI-assisted features, bug 
 
 # Taskmigo delivery
 
-Use the upstream AI-DLC engine when available. Do not implement a second stage machine, invent approval evidence, or manually edit upstream state to advance a gate. Read the applicable repository instructions and discover relevant repository skills before work. The repository rules remain binding even if an upstream profile skips a stage.
+Use the upstream AI-DLC engine when available. In ChatGPT Chat or a connector-only environment, automatically use the aidlc-chat skill for conversational execution and GitHub checkpoints. Do not implement a second native engine, invent approval evidence, or manually edit upstream state to advance a gate. Read the applicable repository instructions and discover relevant repository skills before work. The repository rules remain binding even if an upstream profile skips a stage.
 
 ## Inception
 
@@ -24,6 +24,6 @@ Use the upstream AI-DLC engine when available. Do not implement a second stage m
 
 ## State and feedback
 
-Use upstream intent state to resume. Record issue, specification revision, PR, and current verification evidence as references in the intent. Do not copy full issue discussions, logs, credentials, tokens, personal data, or unrelated code into artifacts. Review the generated artifacts before committing or sharing them. Preserve human-authored approvals and upstream audit records; do not synthesize or backdate them.
+Use upstream intent state to resume native workflows, and the aidlc-chat checkpoint contract to resume conversational workflows. Record issue, specification revision, PR, and current verification evidence as references in the intent. Do not copy full issue discussions, logs, credentials, tokens, personal data, or unrelated code into artifacts. Review the generated artifacts before committing or sharing them. Preserve human-authored approvals and upstream audit records; do not synthesize or backdate them.
 
-When switching agents, reload the intent, approved scope, current PR head, and actual CI evidence. If the engine is unavailable, continue only with explicitly authorized work using the same repository rules; report that the engine's gates and hooks were not executed. Capture recurring lessons as a focused proposal for a skill, repository instruction, or deterministic test; do not silently change quality policy.
+When switching agents, reload the intent, approved scope, current PR head, and actual CI evidence. If the engine is unavailable, use the conversational workflow and report that native gates and hooks were not executed. Capture recurring lessons as a focused proposal for a skill, repository instruction, or deterministic test; do not silently change quality policy.
