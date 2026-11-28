@@ -9,13 +9,17 @@ A skill for writing consistent, high-quality tests for Spring Boot 4 (Java) code
 
 Stack assumed: JUnit 5, Mockito, AssertJ, Testcontainers, Spring Boot Test.
 
+## Native AI-DLC integration
+
+Use the native Testing Contract, selected test strategy, Code Generation and Build and Test stages for general test planning and execution when the engine schedules them. Do not produce a second test plan or rerun a test solely because this skill also applies; reuse fresh evidence for the same revision and command. The conventions and templates below remain required for Taskmigo tests, and additional real-boundary regression coverage must not be skipped because of an upstream profile or generic test-count guideline. In connector-only sessions, use this skill directly and obtain actual CI evidence when local execution is unavailable.
+
 ## Step 0: Decide unit vs integration test
 
 Ask this before writing anything: **does this test need real collaborators (DB, HTTP layer, Spring context) to be meaningful, or can it verify behavior with the real object under test and everything else mocked?**
 
 | Use a **unit test** when... | Use an **integration test** when... |
 | --- | --- |
-| Testing business/validation logic inside a single class | Testing DB constraints, triggers, or Liquibase-managed schema behavior |
+| Testing business/validation logic inside a single class | Testing DB constraints, triggers, or Flyway-managed schema behavior |
 | The class's collaborators can be faithfully mocked (repository, client, etc.) | Testing wiring across layers (controller → service → repository → DB) |
 | You want fast, no-context feedback (milliseconds) | Testing actual HTTP request/response handling, serialization, status codes |
 | Testing a `@Service`, mapper, validator, or util in isolation | Testing Spring Security / OIDC filter chains, `@ConfigurationProperties` binding, or anything context-dependent |

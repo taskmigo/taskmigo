@@ -137,6 +137,29 @@ Never commit credentials, personal data, unrestricted logs, local cursors or mac
 existing issue, specification and CI evidence rather than duplicating it. Chat agents disclose that native hooks
 and gates were not executed.
 
+## Built-in capabilities and repository skills
+
+Use the pinned AI-DLC release as the generic lifecycle implementation. Its native stages and protocols own planning,
+approval, independent review, test strategy and execution, and learning when scheduled. Taskmigo skills provide
+repository-specific constraints and connector-only execution, not a second native engine.
+
+The following assessment is based on the [v2.11.5 source](https://github.com/awslabs/aidlc-workflows/tree/v2.11.5).
+Revisit it when upgrading the pin; a similarly named capability is not evidence of equivalent behavior.
+
+- **Adversarial review:** the [architecture reviewer](https://github.com/awslabs/aidlc-workflows/blob/v2.11.5/core/knowledge/aidlc-architecture-reviewer-agent/reviewing.md) and [unit review protocol](https://github.com/awslabs/aidlc-workflows/blob/v2.11.5/core/aidlc-common/protocols/stage-protocol-reviewer-unit.md) own native independent reviews. Retain `adversarial-self-review` for semantic-boundary proof, solution minimization, scope freeze and direct-consumer preflight. Reuse matching findings; do not dispatch duplicate independent reviews.
+- **Testing:** [Code Generation](https://github.com/awslabs/aidlc-workflows/blob/v2.11.5/core/aidlc-common/stages/construction/code-generation.md) and [Build and Test](https://github.com/awslabs/aidlc-workflows/blob/v2.11.5/core/aidlc-common/stages/construction/build-and-test.md) own generic test strategy and execution. Retain `spring-boot-testing` for concrete Spring Boot, JUnit, AssertJ and Testcontainers conventions and templates. Generic test ratios or counts do not replace risk-based repository coverage.
+- **PR and CI:** the upstream pipeline methodology supplies generic pipeline planning. Retain `github-pr-ci-workflow` for current-head checks, PR template and issue links, GitHub mutation discipline and recovery from actual CI failures.
+- **CI artifacts:** retain the four `github-actions-*-artifact` skills. Upstream generic verification does not define Taskmigo's canonical formatting patch, generated OpenAPI snapshot, Gradle log or Qodana results artifact contract.
+- **Connector refactors:** retain `github-connector-large-refactors`. Native worktree and delivery orchestration do not implement connector-only atomic Git tree writes, expected-head leases or mutation budgets.
+- **Java documentation:** retain `java-javadoc` for Taskmigo's JEP 467 Markdown Javadoc conventions.
+- **Knowledge:** use the native [Learnings protocol](https://github.com/awslabs/aidlc-workflows/blob/v2.11.5/core/aidlc-common/protocols/stage-protocol-learnings.md) for human corrections when enabled. Retain `engineering-knowledge` for verified, human-readable engineering guides and useful discoveries from successful work. The built-in [aidlc-knowledge skill](https://github.com/awslabs/aidlc-workflows/blob/v2.11.5/core/skills/aidlc-knowledge/SKILL.md) indexes existing documents; it does not curate these guides and onboarding repository files creates managed copies.
+- **Delivery:** retain `taskmigo-delivery` and `aidlc-chat` as the shared repository-policy bridge and connector-only lifecycle. Chat cannot execute native hooks or engine-owned protocols.
+
+No legacy skill has a complete upstream replacement at this pin. Delegate generic operations to the native stage
+when scheduled, reuse matching evidence, and perform the remaining Taskmigo obligations once. In Chat, invoke
+repository procedures directly. Do not replace a specific repository rule with a weaker generic recommendation,
+skip required checks, or maintain another native state machine.
+
 ## Continuous knowledge development
 
 Both Chat and native harnesses use the same [engineering knowledge base](../README.md). During discovery, read the relevant guides. Before the final implementation push or investigation handoff, review what the task established: useful architecture and implementation knowledge, proven techniques, operational insights, and lessons from mistakes. Use the [knowledge maintenance guide](knowledge-maintenance.md) and the [engineering-knowledge skill](../../.agents/skills/engineering-knowledge/SKILL.md) to update the owning document or record a focused follow-up when evidence or scope is incomplete.

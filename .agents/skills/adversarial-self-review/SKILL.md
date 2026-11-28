@@ -22,6 +22,10 @@ Use this skill for:
 
 Do not force a debate around trivial mechanical work that has no meaningful alternative or material risk.
 
+## Native AI-DLC integration
+
+When a running native AI-DLC directive schedules a reviewer, use the upstream reviewer protocol for its independent artifact or unit review. Do not dispatch a second reviewer for the same scope or recreate the engine's review records. Reuse the review's concrete findings and validation evidence where relevant to this skill. The bounded pre-implementation challenge, semantic-boundary proof, scope freeze, direct-consumer scan and post-implementation self-review remain Taskmigo obligations; cover gaps rather than repeating checks already established by current evidence. An upstream READY verdict does not waive a repository blocker. In Chat or when native review is not scheduled, apply this skill directly without simulating engine-owned review records.
+
 ## Core principles
 
 1. **Do not defend the first answer.** Treat the initial proposal as a hypothesis to falsify.

@@ -7,6 +7,13 @@ description: Use for AI-DLC workflows and non-trivial AI-assisted features, bug 
 
 Use the upstream AI-DLC engine when available. In ChatGPT Chat or a connector-only environment, automatically use the aidlc-chat skill for conversational execution and GitHub checkpoints. Do not implement a second native engine, invent approval evidence, or manually edit upstream state to advance a gate. Read the applicable repository instructions and discover relevant repository skills before work. The repository rules remain binding even if an upstream profile skips a stage.
 
+## Native capability routing
+
+- In a running native workflow, let upstream directives own generic lifecycle sequencing, plan approval, artifact reviews, testing strategy, build/test stages, and CI pipeline planning. Do not create a parallel ceremony, duplicate artifacts, or manually advance native state. Use the applicable repository skills as Taskmigo-specific constraints and execution procedures inside those stages.
+- Reuse native review and test evidence for matching acceptance criteria and the exact reviewed revision. Complete only uncovered repository-specific checks; the bounded adversarial self-review and current-head GitHub verification remain required. An upstream READY verdict does not replace them.
+- When the current directive enables the native Learnings protocol, use it for reusable human corrections instead of asking a second equivalent learning question. Keep the shared documentation review for useful engineering discoveries, including discoveries that did not result from a mistake. Native approval or memory does not authorize a change to Taskmigo policy.
+- Chat and other connector-only sessions use the repository skills directly for the same obligations. Do not try to run native protocols outside their engine or claim native sensors, reviewers, or learning writes ran.
+
 ## Inception
 
 - Discover relevant engineering knowledge through the engineering-knowledge skill before analysis. Read only the applicable articles and verify claims against source and specification.
