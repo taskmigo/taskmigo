@@ -9,6 +9,10 @@ Use this workflow for PR implementation, CI triage, and final verification.
 
 The goal is not to "watch CI." The goal is to extract the earliest actionable failure, fix all currently known failures together, and minimize expensive or redundant GitHub operations.
 
+## Native AI-DLC integration
+
+When a native AI-DLC workflow is running, let its scheduled Build and Test and CI Pipeline stages own generic build/test planning and pipeline orchestration. Reuse current, matching execution evidence without producing duplicate stage artifacts or running a second generic lifecycle. This skill owns Taskmigo's GitHub PR metadata, connector mutation discipline, actual current-head CI triage and canonical artifact recovery; native stage completion does not certify GitHub checks or permit merging. For Chat and connector-only work, execute this skill directly. Never assume a native capability ran merely because the active profile can schedule it.
+
 ## Bug-fix reproduction gate
 
 Before changing production code for a reported bug, establish whether the defect still exists on the latest target base branch.

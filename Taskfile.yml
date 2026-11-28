@@ -18,6 +18,18 @@ tasks:
     cmds:
       - task: kubernetes:deploy
 
+  aidlc:copilot:
+    desc: Configure the pinned AI-DLC release for GitHub Copilot in this checkout
+    cmds:
+      - aidlc config --harness copilot --mcp none --download
+      - aidlc doctor
+
+  aidlc:codex:
+    desc: Configure the pinned AI-DLC release for Codex in this checkout
+    cmds:
+      - aidlc config --harness codex --mcp none --download
+      - aidlc doctor
+
   kubernetes:validate:
     desc: Lint and render every supported Taskmigo chart configuration
     preconditions:

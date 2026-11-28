@@ -138,5 +138,6 @@ Explicitly highlight any potential side effects or breaking contracts.
 - [ ] The applicable Taskmigo specification is linked to a **specific release tag** (NOT a branch like `main` or `next`), or `N/A` is justified.
 - [ ] For bug fixes, the RCA is understandable without prior internal knowledge and uses fixed-commit code evidence and Mermaid visualization where they materially improve clarity.
 - [ ] Tests and documentation are updated where applicable.
+- [ ] Engineering knowledge impact is reviewed; relevant guides are linked in Changes, or a concise no-change reason is recorded.
 - [ ] The change follows the contribution guidelines.
 - [ ] All required pipeline checks pass.

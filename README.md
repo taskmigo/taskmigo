@@ -12,6 +12,8 @@ Please keep contributions focused, add or update tests and documentation when ap
 
 Repository-specific instructions for automated contributors are documented in [`AGENTS.md`](AGENTS.md).
 
+For AI-driven development, see the [AI-DLC setup and delivery guide](docs/engineering/ai-dlc.md).
+
 ## Repository
 
 Taskmigo is developed as a monorepo. The main areas are:
@@ -21,4 +23,4 @@ Taskmigo is developed as a monorepo. The main areas are:
 - [`helm/`](helm/) and [`deploy/`](deploy/) — Deployment resources.
 - [`e2e/`](e2e/) — End-to-end tests.
 
-Detailed implementation and operational information intentionally lives outside this README so the repository landing page remains concise and stable.
+Explore the [engineering knowledge base](docs/README.md) for architecture, implementation guides, troubleshooting, and operational references.
