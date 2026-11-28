@@ -7,10 +7,10 @@ import io.taskmigo.query.QuerySchemaView;
 import jakarta.persistence.metamodel.SingularAttribute;
 import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import org.jspecify.annotations.NonNull;
 
 /// Defines one operation-scoped, JPA-backed query surface for an entity root.
 public abstract class QuerySchema<E> implements QuerySchemaView {
@@ -29,7 +29,7 @@ public abstract class QuerySchema<E> implements QuerySchemaView {
     protected abstract Collection<QueryField<E, ? extends Object>> staticFields();
 
     /// Returns runtime-discovered fields for this operation and context.
-    protected abstract Collection<QueryField<E, ? extends Object>> runtimeFields(QueryFieldContext context);
+    protected abstract Collection<QueryField<E, ? extends Object>> runtimeFields(@NonNull QueryFieldContext context);
 
     /// Returns the entity root type owned by this operation schema.
     public final Class<E> rootType() {
@@ -83,7 +83,9 @@ public abstract class QuerySchema<E> implements QuerySchemaView {
         Map<QueryPath, QueryField<E, ? extends Object>> target,
         Collection<QueryField<E, ? extends Object>> fields
     ) {
-        for (QueryField<E, ? extends Object> field : List.copyOf(Objects.requireNonNull(fields))) {
+        Objects.requireNonNull(fields);
+        for (QueryField<E, ? extends Object> field : fields) {
+            Objects.requireNonNull(field);
             QueryPath path = field.descriptor().path();
             if (target.putIfAbsent(path, field) != null) {
                 throw new IllegalStateException(

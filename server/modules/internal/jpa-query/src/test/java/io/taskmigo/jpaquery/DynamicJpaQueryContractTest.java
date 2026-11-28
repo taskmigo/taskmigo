@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
@@ -97,7 +98,9 @@ class DynamicJpaQueryContractTest {
             }
 
             @Override
-            protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
+            protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(
+                @NonNull QueryFieldContext context
+            ) {
                 return "incident".equals(context.values().get("scope")) ? List.of(dynamic) : List.of();
             }
         };
@@ -154,7 +157,9 @@ class DynamicJpaQueryContractTest {
             }
 
             @Override
-            protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
+            protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(
+                @NonNull QueryFieldContext context
+            ) {
                 return List.of(dynamic);
             }
         };

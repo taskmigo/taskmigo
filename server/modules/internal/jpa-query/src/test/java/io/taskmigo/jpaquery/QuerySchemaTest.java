@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -401,7 +402,9 @@ class QuerySchemaTest {
         }
 
         @Override
-        protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
+        protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(
+            @NonNull QueryFieldContext context
+        ) {
             return List.of();
         }
     }
@@ -426,7 +429,9 @@ class QuerySchemaTest {
         }
 
         @Override
-        protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
+        protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(
+            @NonNull QueryFieldContext context
+        ) {
             return List.of();
         }
     }
@@ -451,7 +456,9 @@ class QuerySchemaTest {
         }
 
         @Override
-        protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
+        protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(
+            @NonNull QueryFieldContext context
+        ) {
             return List.of(field(this.id).operators(NE));
         }
     }
@@ -476,7 +483,9 @@ class QuerySchemaTest {
         }
 
         @Override
-        protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
+        protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(
+            @NonNull QueryFieldContext context
+        ) {
             return List.of(field(this.username).operators(EQ), field(this.username).operators(NE));
         }
     }
@@ -503,7 +512,9 @@ class QuerySchemaTest {
         }
 
         @Override
-        protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
+        protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(
+            @NonNull QueryFieldContext context
+        ) {
             return List.of();
         }
     }

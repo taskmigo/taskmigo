@@ -17,6 +17,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import java.util.Collection;
 import java.util.List;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -115,7 +116,9 @@ class JpaQuerySortBinderTest {
             }
 
             @Override
-            protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
+            protected Collection<QueryField<TestEntity, ? extends Object>> runtimeFields(
+                @NonNull QueryFieldContext context
+            ) {
                 return List.of();
             }
         };

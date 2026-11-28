@@ -20,6 +20,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import org.jspecify.annotations.NonNull;
 
 abstract class TicketQuerySchema extends QuerySchema<TicketEntity> {
 
@@ -76,7 +77,9 @@ abstract class TicketQuerySchema extends QuerySchema<TicketEntity> {
     }
 
     @Override
-    protected final Collection<QueryField<TicketEntity, ? extends Object>> runtimeFields(QueryFieldContext context) {
+    protected final Collection<QueryField<TicketEntity, ? extends Object>> runtimeFields(
+        @NonNull QueryFieldContext context
+    ) {
         JpaPath<TicketEntity, UUID> schemaInstancePath = JpaPath.of(TicketEntity_.schemaInstanceId);
         List<QueryField<TicketEntity, ? extends Object>> fields = new ArrayList<>();
         this.runtimeFields

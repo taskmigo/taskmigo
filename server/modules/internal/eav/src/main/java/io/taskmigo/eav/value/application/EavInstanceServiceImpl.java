@@ -37,7 +37,10 @@ public class EavInstanceServiceImpl implements EavInstanceService {
         Objects.requireNonNull(definitionId);
         Objects.requireNonNull(versionId);
         Objects.requireNonNull(values);
-        Map<String, @Nullable Object> supplied = new LinkedHashMap<>(values);
+        Map<String, @Nullable Object> supplied = new LinkedHashMap<>();
+        for (Map.Entry<String, ? extends @Nullable Object> entry : values.entrySet()) {
+            supplied.put(entry.getKey(), entry.getValue());
+        }
         EavSchemaVersionInfo version = this.schemas.version(definitionId, versionId);
         if (version.status() != EavSchemaStatus.PUBLISHED) {
             throw new IllegalStateException("New EAV instances require a published schema version");
